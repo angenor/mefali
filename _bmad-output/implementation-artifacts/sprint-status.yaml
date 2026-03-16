@@ -1,0 +1,128 @@
+# generated: 2026-03-16
+# last_updated: 2026-03-16
+# project: mefali
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-16
+last_updated: 2026-03-16T14:00:00
+project: mefali
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  # Epic 1: Project Foundation & Design System
+  epic-1: in-progress
+  1-1-initialize-flutter-monorepo: ready-for-dev
+  1-2-initialize-rust-backend-workspace: backlog
+  1-3-docker-compose-infrastructure: backlog
+  1-4-database-schema-and-migrations: backlog
+  1-5-design-system-package-theme: backlog
+  1-6-ci-cd-pipeline: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Authentication & User Management
+  epic-2: backlog
+  2-1-phone-otp-registration-b2c: backlog
+  2-2-jwt-authentication-system: backlog
+  2-3-multi-role-registration: backlog
+  2-4-user-profile-management: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Merchant ERP & Onboarding (Standalone Value)
+  epic-3: backlog
+  3-1-agent-terrain-merchant-onboarding-flow: backlog
+  3-2-kyc-document-capture: backlog
+  3-3-product-catalogue-management: backlog
+  3-4-stock-level-management: backlog
+  3-5-vendor-availability-4-states: backlog
+  3-6-order-reception-and-management-b2b: backlog
+  3-7-sales-dashboard: backlog
+  3-8-business-hours-management: backlog
+  3-9-agent-terrain-performance-dashboard: backlog
+  3-10-demo-mode: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Customer Food Ordering & Payment
+  epic-4: backlog
+  4-1-restaurant-discovery-and-home: backlog
+  4-2-restaurant-catalogue-view: backlog
+  4-3-cart-and-order-placement: backlog
+  4-4-cod-payment-flow: backlog
+  4-5-mobile-money-payment: backlog
+  4-6-address-selection: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Delivery Operations & Real-Time Tracking
+  epic-5: backlog
+  5-1-delivery-mission-notification-push: backlog
+  5-2-sms-fallback-for-offline: backlog
+  5-3-mission-accept-refuse-and-assignment: backlog
+  5-4-order-collection-and-navigation: backlog
+  5-5-real-time-tracking-client-side: backlog
+  5-6-delivery-confirmation-and-instant-payment: backlog
+  5-7-client-absent-protocol: backlog
+  5-8-driver-availability-and-wallet-withdrawal: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Wallet & Financial Operations
+  epic-6: backlog
+  6-1-merchant-wallet-and-escrow-release: backlog
+  6-2-merchant-withdrawal: backlog
+  6-3-daily-reconciliation: backlog
+  6-4-admin-credit-refund: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Ratings, Sharing & Customer Feedback
+  epic-7: backlog
+  7-1-double-rating: backlog
+  7-2-whatsapp-sharing: backlog
+  7-3-dispute-reporting: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: Admin Dashboard & Operations
+  epic-8: backlog
+  8-1-admin-operational-dashboard: backlog
+  8-2-dispute-management-with-timeline: backlog
+  8-3-city-configuration: backlog
+  8-4-account-management: backlog
+  8-5-merchant-and-driver-history: backlog
+  epic-8-retrospective: optional
+
+  # Epic 9: Driver Sponsorship System
+  epic-9: backlog
+  9-1-driver-sponsorship: backlog
+  9-2-sponsor-first-contact: backlog
+  9-3-progressive-penalties: backlog
+  epic-9-retrospective: optional

@@ -156,3 +156,12 @@ PHASE 4 — IMPLÉMENTATION
 ---
 
 *Source : [docs.bmad-method.org](https://docs.bmad-method.org) — BMAD-METHOD v6*
+
+
+
+Prochaines etapes :                                                                                     
+  1. Relire la story dans 1-1-initialize-flutter-monorepo.md                                              
+  2. Lancer /bmad-dev-story pour l'implementation                                                         
+  3. Lancer /bmad-code-review quand termine                                                               
+  4. Optionnel : /bmad-testarch-automate pour les tests guardrail                                         
+
