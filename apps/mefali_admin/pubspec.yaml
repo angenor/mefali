@@ -1,0 +1,31 @@
+name: mefali_admin
+description: App admin mefali (Flutter Web)
+publish_to: none
+version: 1.0.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mefali_design:
+    path: ../../packages/mefali_design
+  mefali_core:
+    path: ../../packages/mefali_core
+  mefali_api_client:
+    path: ../../packages/mefali_api_client
+  mefali_offline:
+    path: ../../packages/mefali_offline
+  flutter_riverpod: ^2.6.0
+  go_router: ^14.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

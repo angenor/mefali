@@ -1,0 +1,30 @@
+name: mefali_workspace
+publish_to: none
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+
+workspace:
+  - apps/mefali_b2c
+  - apps/mefali_b2b
+  - apps/mefali_livreur
+  - apps/mefali_admin
+  - packages/mefali_design
+  - packages/mefali_core
+  - packages/mefali_api_client
+  - packages/mefali_offline
+
+dev_dependencies:
+  melos: ^7.0.0
+
+melos:
+  scripts:
+    analyze:
+      exec: dart analyze --fatal-infos
+      description: Analyse statique Dart
+    test:
+      exec: flutter test
+      description: Tests unitaires
+    format:
+      exec: dart format --set-exit-if-changed .
+      description: Formatage Dart

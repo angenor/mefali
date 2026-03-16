@@ -1,0 +1,27 @@
+name: mefali_offline
+description: Base de donnees locale Drift, sync queue et connectivity mefali
+version: 0.0.1
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mefali_core:
+    path: ../mefali_core
+  drift: ^2.22.0
+  sqlite3_flutter_libs: ^0.5.0
+  path_provider: ^2.1.0
+  connectivity_plus: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.22.0
+  build_runner: ^2.4.0

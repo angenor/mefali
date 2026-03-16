@@ -1,0 +1,49 @@
+# Flutter/Dart
+**/build/
+**/.dart_tool/
+**/.packages
+**/.pub/
+**/pubspec.lock
+!packages/**/pubspec.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/*.jks
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Melos
+.melos/
+
+# Generated files
+**/*.g.dart
+**/*.freezed.dart
+
+# Coverage
+coverage/
+**/coverage/
+
+# Server (Rust)
+server/target/

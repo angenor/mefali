@@ -1,0 +1,24 @@
+name: mefali_api_client
+description: Client HTTP Dio, WebSocket et providers Riverpod mefali
+version: 0.0.1
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mefali_core:
+    path: ../mefali_core
+  dio: ^5.7.0
+  flutter_riverpod: ^2.6.0
+  web_socket_channel: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
