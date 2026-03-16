@@ -3,8 +3,9 @@
 **/.dart_tool/
 **/.packages
 **/.pub/
-**/pubspec.lock
-!packages/**/pubspec.lock
+# With Pub Workspaces, only root pubspec.lock matters
+apps/**/pubspec.lock
+packages/**/pubspec.lock
 
 # IDE
 .idea/

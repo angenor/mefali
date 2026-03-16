@@ -21,6 +21,6 @@ abstract final class MefaliTypography {
         bodySmall: TextStyle(fontFamily: _fontFamily, fontSize: 12),
         labelLarge: TextStyle(fontFamily: _fontFamily, fontSize: 14),
         labelMedium: TextStyle(fontFamily: _fontFamily, fontSize: 12),
-        labelSmall: TextStyle(fontFamily: _fontFamily, fontSize: 11),
+        labelSmall: TextStyle(fontFamily: _fontFamily, fontSize: 12),
       );
 }

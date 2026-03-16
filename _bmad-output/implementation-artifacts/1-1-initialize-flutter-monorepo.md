@@ -1,6 +1,6 @@
 # Story 1.1: Initialize Flutter Monorepo
 
-Status: review
+Status: done
 
 ## Story
 
@@ -357,34 +357,50 @@ Claude Opus 4.6 (1M context)
 - `melos run test` succes: tous les tests passent (8/8)
 - `flutter build web` succes pour mefali_admin
 - Theme MefaliTheme.light() / .dark() avec palette marron M3 fonctionnel
-- Tests unitaires: 7 tests theme/colors/typography dans mefali_design + 1 test widget par app + 1 test skeleton par package = 12 tests total
+- Tests unitaires: 7 tests theme/colors/typography dans mefali_design + 1 test widget par app + 1 test skeleton par package = 14 tests total
 - Chaque app utilise ProviderScope (Riverpod) + MefaliTheme dans app.dart
+
+### Code Review Fixes (AI) — 2026-03-16
+
+- [H1] Per-package `analysis_options.yaml` remplacees par `include: ../../analysis_options.yaml` pour heriter des regles strictes racine
+- [H2] `labelSmall` fontSize corrige de 11sp a 12sp (minimum accessibilite spec)
+- [M1] `flutter_web_plugins` ajoute aux dependances de mefali_admin (spec requirement)
+- [M2] `.gitignore` corrige : root `pubspec.lock` conserve, seuls apps/packages ignores (Pub Workspaces)
+- [M3] Tests skeleton packages ajoutent `import` du package pour valider la resolution compile-time
+- [M4] File List completee avec les 8 `analysis_options.yaml` per-package manquants
+- [L1] Widget tests wrappent dans `ProviderScope` pour compatibilite Riverpod future
+- [L2] Correction comptage tests 12 → 14
 
 ### File List
 
 - pubspec.yaml (racine workspace + melos config)
 - analysis_options.yaml
 - .gitignore
+- apps/mefali_b2c/analysis_options.yaml
 - apps/mefali_b2c/pubspec.yaml
 - apps/mefali_b2c/lib/main.dart
 - apps/mefali_b2c/lib/app.dart
 - apps/mefali_b2c/lib/features/.gitkeep
 - apps/mefali_b2c/test/widget_test.dart
+- apps/mefali_b2b/analysis_options.yaml
 - apps/mefali_b2b/pubspec.yaml
 - apps/mefali_b2b/lib/main.dart
 - apps/mefali_b2b/lib/app.dart
 - apps/mefali_b2b/lib/features/.gitkeep
 - apps/mefali_b2b/test/widget_test.dart
+- apps/mefali_livreur/analysis_options.yaml
 - apps/mefali_livreur/pubspec.yaml
 - apps/mefali_livreur/lib/main.dart
 - apps/mefali_livreur/lib/app.dart
 - apps/mefali_livreur/lib/features/.gitkeep
 - apps/mefali_livreur/test/widget_test.dart
+- apps/mefali_admin/analysis_options.yaml
 - apps/mefali_admin/pubspec.yaml
 - apps/mefali_admin/lib/main.dart
 - apps/mefali_admin/lib/app.dart
 - apps/mefali_admin/lib/features/.gitkeep
 - apps/mefali_admin/test/widget_test.dart
+- packages/mefali_design/analysis_options.yaml
 - packages/mefali_design/pubspec.yaml
 - packages/mefali_design/lib/mefali_design.dart
 - packages/mefali_design/lib/mefali_theme.dart
@@ -393,12 +409,14 @@ Claude Opus 4.6 (1M context)
 - packages/mefali_design/lib/theme/.gitkeep
 - packages/mefali_design/lib/components/.gitkeep
 - packages/mefali_design/test/mefali_design_test.dart
+- packages/mefali_core/analysis_options.yaml
 - packages/mefali_core/pubspec.yaml
 - packages/mefali_core/lib/mefali_core.dart
 - packages/mefali_core/lib/models/.gitkeep
 - packages/mefali_core/lib/enums/.gitkeep
 - packages/mefali_core/lib/utils/.gitkeep
 - packages/mefali_core/test/mefali_core_test.dart
+- packages/mefali_api_client/analysis_options.yaml
 - packages/mefali_api_client/pubspec.yaml
 - packages/mefali_api_client/lib/mefali_api_client.dart
 - packages/mefali_api_client/lib/dio_client/.gitkeep
@@ -406,6 +424,7 @@ Claude Opus 4.6 (1M context)
 - packages/mefali_api_client/lib/endpoints/.gitkeep
 - packages/mefali_api_client/lib/providers/.gitkeep
 - packages/mefali_api_client/test/mefali_api_client_test.dart
+- packages/mefali_offline/analysis_options.yaml
 - packages/mefali_offline/pubspec.yaml
 - packages/mefali_offline/lib/mefali_offline.dart
 - packages/mefali_offline/lib/database/.gitkeep
