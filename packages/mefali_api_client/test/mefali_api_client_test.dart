@@ -64,10 +64,7 @@ void main() {
 
     test('copyWith updates specific fields', () {
       const state = AuthState(accessToken: 'a');
-      final updated = state.copyWith(
-        refreshToken: 'r',
-        accessToken: 'b',
-      );
+      final updated = state.copyWith(refreshToken: 'r', accessToken: 'b');
       expect(updated.accessToken, 'b');
       expect(updated.refreshToken, 'r');
     });
@@ -78,24 +75,30 @@ void main() {
       String? capturedAuth;
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
 
-      dio.interceptors.add(AuthInterceptor(
-        dio: dio,
-        getAccessToken: () => 'test-access-token',
-        getRefreshToken: () => 'test-refresh-token',
-        onTokensRefreshed: (_, _) async {},
-        onLogout: () async {},
-      ));
+      dio.interceptors.add(
+        AuthInterceptor(
+          dio: dio,
+          getAccessToken: () => 'test-access-token',
+          getRefreshToken: () => 'test-refresh-token',
+          onTokensRefreshed: (_, _) async {},
+          onLogout: () async {},
+        ),
+      );
 
-      dio.interceptors.add(InterceptorsWrapper(
-        onRequest: (options, handler) {
-          capturedAuth = options.headers['Authorization'] as String?;
-          handler.resolve(Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: <String, dynamic>{'data': 'ok'},
-          ));
-        },
-      ));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            capturedAuth = options.headers['Authorization'] as String?;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{'data': 'ok'},
+              ),
+            );
+          },
+        ),
+      );
 
       await dio.get<dynamic>('/test');
       expect(capturedAuth, 'Bearer test-access-token');
@@ -105,24 +108,30 @@ void main() {
       String? capturedAuth;
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
 
-      dio.interceptors.add(AuthInterceptor(
-        dio: dio,
-        getAccessToken: () => null,
-        getRefreshToken: () => null,
-        onTokensRefreshed: (_, _) async {},
-        onLogout: () async {},
-      ));
+      dio.interceptors.add(
+        AuthInterceptor(
+          dio: dio,
+          getAccessToken: () => null,
+          getRefreshToken: () => null,
+          onTokensRefreshed: (_, _) async {},
+          onLogout: () async {},
+        ),
+      );
 
-      dio.interceptors.add(InterceptorsWrapper(
-        onRequest: (options, handler) {
-          capturedAuth = options.headers['Authorization'] as String?;
-          handler.resolve(Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: <String, dynamic>{'data': 'ok'},
-          ));
-        },
-      ));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            capturedAuth = options.headers['Authorization'] as String?;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{'data': 'ok'},
+              ),
+            );
+          },
+        ),
+      );
 
       await dio.get<dynamic>('/test');
       expect(capturedAuth, isNull);
@@ -132,15 +141,17 @@ void main() {
       var logoutCalled = false;
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
 
-      dio.interceptors.add(AuthInterceptor(
-        dio: dio,
-        getAccessToken: () => 'expired-token',
-        getRefreshToken: () => null,
-        onTokensRefreshed: (_, _) async {},
-        onLogout: () async {
-          logoutCalled = true;
-        },
-      ));
+      dio.interceptors.add(
+        AuthInterceptor(
+          dio: dio,
+          getAccessToken: () => 'expired-token',
+          getRefreshToken: () => null,
+          onTokensRefreshed: (_, _) async {},
+          onLogout: () async {
+            logoutCalled = true;
+          },
+        ),
+      );
 
       // Use a mock HTTP adapter that returns 401 so the error flows
       // through the interceptor onError chain properly.
@@ -158,15 +169,20 @@ void main() {
 
   group('JWT local expiration check', () {
     String createTestJwt({required int expInSeconds}) {
-      final header = base64Url
-          .encode(utf8.encode(jsonEncode({'alg': 'HS256', 'typ': 'JWT'})));
+      final header = base64Url.encode(
+        utf8.encode(jsonEncode({'alg': 'HS256', 'typ': 'JWT'})),
+      );
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final payload = base64Url.encode(utf8.encode(jsonEncode({
-        'sub': 'test-user-id',
-        'role': 'client',
-        'iat': now,
-        'exp': now + expInSeconds,
-      })));
+      final payload = base64Url.encode(
+        utf8.encode(
+          jsonEncode({
+            'sub': 'test-user-id',
+            'role': 'client',
+            'iat': now,
+            'exp': now + expInSeconds,
+          }),
+        ),
+      );
       final signature = base64Url.encode(utf8.encode('fake-signature'));
       return '$header.$payload.$signature';
     }

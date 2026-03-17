@@ -29,6 +29,9 @@ jobs:
       - name: Bootstrap packages
         run: dart pub global run melos bootstrap
 
+      - name: Generate code
+        run: dart pub global run melos run generate
+
       - name: Analyze
         run: dart pub global run melos run analyze
 

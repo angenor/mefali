@@ -9,7 +9,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1")
             .route("/health", web::get().to(health::health_check))
-            // Public auth routes — no JWT required
+            // Auth routes — no JWT middleware; logout uses refresh token as credential
             .service(
                 web::scope("/auth")
                     .route("/request-otp", web::post().to(auth::request_otp))

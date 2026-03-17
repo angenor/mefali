@@ -70,8 +70,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
           return NameScreen(phone: data['phone'] ?? '', otp: data['otp'] ?? '');
         },
       ),
-      GoRoute(
-          path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
     ],
   );
 });

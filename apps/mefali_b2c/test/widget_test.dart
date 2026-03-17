@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_b2c/app.dart';
@@ -11,13 +12,14 @@ void main() {
     expect(find.text('Inscription'), findsOneWidget);
   });
 
-  testWidgets('MefaliB2cApp unauthenticated user sees phone screen',
-      (WidgetTester tester) async {
-    // Sans token, l'utilisateur est redirige vers l'ecran phone.
+  testWidgets('MefaliB2cApp applies mefali theme and title', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const ProviderScope(child: MefaliB2cApp()));
     await tester.pumpAndSettle();
 
-    // Verifie que l'ecran d'authentification est affiche
-    expect(find.text('Inscription'), findsOneWidget);
+    // Verifie que le MaterialApp est configure avec le bon titre.
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(materialApp.title, 'mefali');
   });
 }

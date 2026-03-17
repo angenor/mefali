@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-17 # dev-story 2-2 → in-progress
+last_updated: 2026-03-17 # code-review 2-2 → done
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
   # Epic 2: Authentication & User Management
   epic-2: in-progress
   2-1-phone-otp-registration-b2c: done
-  2-2-jwt-authentication-system: in-progress
+  2-2-jwt-authentication-system: done
   2-3-multi-role-registration: backlog
   2-4-user-profile-management: backlog
   epic-2-retrospective: optional

@@ -44,8 +44,9 @@ class AuthState {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
       accessToken: clearAccessToken ? null : (accessToken ?? this.accessToken),
-      refreshToken:
-          clearRefreshToken ? null : (refreshToken ?? this.refreshToken),
+      refreshToken: clearRefreshToken
+          ? null
+          : (refreshToken ?? this.refreshToken),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -164,25 +165,54 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final decoded = utf8.decode(base64Url.decode(normalized));
       final payload = jsonDecode(decoded) as Map<String, dynamic>;
       final exp = payload['exp'] as int;
-      return DateTime.fromMillisecondsSinceEpoch(exp * 1000)
-          .isBefore(DateTime.now());
+      return DateTime.fromMillisecondsSinceEpoch(
+        exp * 1000,
+      ).isBefore(DateTime.now());
     } catch (_) {
       return true;
     }
   }
 
-  /// Deconnecte l'utilisateur et supprime les tokens.
+  /// Deconnecte l'utilisateur et supprime les tokens locaux.
+  ///
+  /// Utilisee par l'intercepteur quand le refresh echoue (le token est
+  /// deja invalide, pas besoin de revoquer cote serveur).
   Future<void> logout() async {
     await _storage.delete(key: _keyAccessToken);
     await _storage.delete(key: _keyRefreshToken);
     state = const AuthState();
   }
+
+  /// Deconnecte l'utilisateur en revoquant le refresh token cote serveur,
+  /// puis nettoie l'etat local.
+  ///
+  /// A utiliser pour les deconnexions initiees par l'utilisateur.
+  /// Utilise un Dio sans intercepteur pour eviter un deadlock avec le
+  /// QueuedInterceptorsWrapper.
+  Future<void> logoutAndRevoke() async {
+    final currentRefreshToken = state.refreshToken;
+    if (currentRefreshToken != null) {
+      try {
+        final plainDio = Dio(
+          BaseOptions(
+            baseUrl: _dio.options.baseUrl,
+            contentType: 'application/json',
+          ),
+        );
+        await plainDio.post<void>(
+          '/auth/logout',
+          data: {'refresh_token': currentRefreshToken},
+        );
+      } catch (_) {
+        // Best effort — nettoyer l'etat local meme si le serveur est injoignable.
+      }
+    }
+    await logout();
+  }
 }
 
 /// Provider Riverpod pour l'etat d'authentification.
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (ref) => AuthNotifier(
-    ref.watch(authEndpointProvider),
-    ref.watch(dioProvider),
-  ),
+  (ref) =>
+      AuthNotifier(ref.watch(authEndpointProvider), ref.watch(dioProvider)),
 );

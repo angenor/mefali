@@ -96,9 +96,8 @@ pub async fn refresh(
 /// Body: {"refresh_token": "uuid"}
 /// Response: {"data": {"message": "Logged out"}}
 ///
-/// Protected by auth middleware — requires valid access token.
+/// No JWT required — the refresh token in the body serves as the credential.
 pub async fn logout(
-    _auth: crate::extractors::AuthenticatedUser,
     body: web::Json<LogoutPayload>,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, common::error::AppError> {

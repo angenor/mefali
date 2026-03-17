@@ -13,13 +13,13 @@ class AuthInterceptor extends QueuedInterceptorsWrapper {
     required String? Function() getAccessToken,
     required String? Function() getRefreshToken,
     required Future<void> Function(String accessToken, String refreshToken)
-        onTokensRefreshed,
+    onTokensRefreshed,
     required Future<void> Function() onLogout,
-  })  : _dio = dio,
-        _getAccessToken = getAccessToken,
-        _getRefreshToken = getRefreshToken,
-        _onTokensRefreshed = onTokensRefreshed,
-        _onLogout = onLogout;
+  }) : _dio = dio,
+       _getAccessToken = getAccessToken,
+       _getRefreshToken = getRefreshToken,
+       _onTokensRefreshed = onTokensRefreshed,
+       _onLogout = onLogout;
 
   final Dio _dio;
   final String? Function() _getAccessToken;
@@ -55,10 +55,12 @@ class AuthInterceptor extends QueuedInterceptorsWrapper {
 
     try {
       // Utiliser un Dio sans intercepteur pour eviter la boucle infinie
-      final plainDio = Dio(BaseOptions(
-        baseUrl: _dio.options.baseUrl,
-        contentType: 'application/json',
-      ));
+      final plainDio = Dio(
+        BaseOptions(
+          baseUrl: _dio.options.baseUrl,
+          contentType: 'application/json',
+        ),
+      );
 
       final response = await plainDio.post<Map<String, dynamic>>(
         '/auth/refresh',
