@@ -15,7 +15,7 @@ class ProductListScreen extends ConsumerWidget {
 
     return Scaffold(
       body: productsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => _buildSkeletonGrid(context),
         error: (error, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -160,4 +160,63 @@ class _ProductCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildSkeletonGrid(BuildContext context) {
+  return GridView.builder(
+    padding: const EdgeInsets.all(16),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 0.75,
+    ),
+    itemCount: 6,
+    itemBuilder: (context, index) {
+      final color = Theme.of(context).colorScheme.surfaceContainerHighest;
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Container(color: color)),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 14,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 14,
+                    width: 60,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 12,
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

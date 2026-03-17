@@ -74,13 +74,13 @@ pub async fn create_product_for_merchant(
     repository::create_product(pool, merchant_id, payload).await
 }
 
-/// Update a product with ownership check.
+/// Update a product with ownership check. Returns (updated_product, old_photo_url).
 pub async fn update_product(
     pool: &PgPool,
     merchant_id: Id,
     product_id: Id,
     payload: &UpdateProductPayload,
-) -> Result<Product, AppError> {
+) -> Result<(Product, Option<String>), AppError> {
     payload.validate()?;
 
     let product = repository::find_by_id(pool, product_id)
@@ -89,7 +89,9 @@ pub async fn update_product(
 
     verify_ownership(&product, merchant_id)?;
 
-    repository::update_product(pool, product_id, payload).await
+    let old_photo_url = product.photo_url.clone();
+    let updated = repository::update_product(pool, product_id, payload).await?;
+    Ok((updated, old_photo_url))
 }
 
 /// Soft-delete a product with ownership check.

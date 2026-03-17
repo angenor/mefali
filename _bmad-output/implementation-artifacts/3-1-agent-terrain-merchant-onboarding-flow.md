@@ -1,6 +1,6 @@
 # Story 3.1: Agent Terrain — Flux d'Onboarding Marchand
 
-Status: in-progress
+Status: done
 
 ## Story
 

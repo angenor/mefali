@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -78,12 +79,31 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
+  /// Compress picked image to WebP < 200KB.
+  Future<String?> _compressToWebp(String sourcePath) async {
+    final targetPath =
+        '${Directory.systemTemp.path}/mefali_${DateTime.now().millisecondsSinceEpoch}.webp';
+    final result = await FlutterImageCompress.compressAndGetFile(
+      sourcePath,
+      targetPath,
+      format: CompressFormat.webp,
+      quality: 75,
+    );
+    return result?.path;
+  }
+
   Future<void> _onSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      // Compress picked image to WebP before upload
+      String? imagePath;
+      if (_pickedImage != null) {
+        imagePath = await _compressToWebp(_pickedImage!.path);
+      }
+
       final notifier = ref.read(productCatalogueProvider.notifier);
 
       if (_isEditing) {
@@ -97,7 +117,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           stock: _stockController.text.trim().isNotEmpty
               ? int.parse(_stockController.text.trim())
               : null,
-          imagePath: _pickedImage?.path,
+          imagePath: imagePath,
         );
       } else {
         await notifier.createProduct(
@@ -109,14 +129,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           stock: _stockController.text.trim().isNotEmpty
               ? int.parse(_stockController.text.trim())
               : null,
-          imagePath: _pickedImage?.path,
+          imagePath: imagePath,
         );
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEditing ? 'Produit modifie' : 'Produit ajoute'),
+          content: Text(_isEditing ? 'Produit modifié' : 'Produit ajouté'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
         ),
@@ -129,6 +149,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         SnackBar(
           content: Text('Erreur: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(days: 1),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
         ),
       );
     } finally {
@@ -169,7 +195,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Produit supprime'),
+          content: Text('Produit supprimé'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 3),
         ),
@@ -182,6 +208,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         SnackBar(
           content: Text('Erreur: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(days: 1),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
         ),
       );
     } finally {

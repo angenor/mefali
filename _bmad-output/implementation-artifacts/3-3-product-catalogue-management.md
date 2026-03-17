@@ -1,6 +1,6 @@
 # Story 3.3: Gestion du Catalogue Produits
 
-Status: review
+Status: done
 
 ## Story
 
@@ -286,6 +286,32 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-03-17: Story 3.3 implementee — Gestion catalogue produits (backend CRUD + frontend B2B)
+- 2026-03-17: Code review — 4 HIGH + 4 MEDIUM fixes appliques automatiquement
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.6 (1M context) — 2026-03-17
+
+**Issues Found:** 4 High, 4 Medium, 3 Low — tous H/M corriges.
+
+**HIGH fixes:**
+- H1 (AC2): Ajout `flutter_image_compress` pour compression WebP reelle avant upload (JPEG → WebP). L'AC2 exigeait WebP < 200KB cote Flutter.
+- H2: Photo URLs MinIO resolues en URLs completes (`{endpoint}/{bucket}/{key}`) dans les route handlers. `CachedNetworkImage` recevait la cle brute au lieu d'une URL.
+- H3: `updated_at = NOW()` ajoute dans `update_product` SQL query (repository.rs).
+- H4: `updated_at = NOW()` ajoute dans `soft_delete_product` SQL query (repository.rs).
+
+**MEDIUM fixes:**
+- M1: Multipart parsing extrait dans `parse_product_multipart()` + helpers `upload_photo()`, `with_photo_url()` — elimination de ~40 lignes dupliquees.
+- M2: Description clearable via `CASE WHEN $4 IS NOT NULL THEN NULLIF($4, '') ELSE description END` au lieu de `COALESCE`.
+- M3: Suppression best-effort de l'ancienne photo MinIO lors du remplacement. `service::update_product` retourne desormais `(Product, Option<String>)` pour exposer l'ancien `photo_url`.
+- M4: Loading spinner remplace par skeleton grid (6 cartes placeholder) dans `ProductListScreen`.
+
+**LOW (non corriges, documentes):**
+- L1: Error SnackBars rendus persistants (`duration: Duration(days: 1)` + bouton OK dismiss) — CORRIGE avec H/M batch.
+- L2: Accents manquants dans SnackBar messages corriges ("Produit modifié", "Produit ajouté", "Produit supprimé") — CORRIGE.
+- L3: Commit 608816d regroupe 3 stories mais n'en mentionne que 2 (cosmétique).
+
+**Verdict:** APPROVE — Tous les ACs implementes, tous issues H/M corriges, 121 tests Rust + 0 issues lint Dart.
 
 ### File List
 

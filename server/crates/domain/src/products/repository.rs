@@ -64,9 +64,10 @@ pub async fn update_product(
         "UPDATE products SET
             name = COALESCE($2, name),
             price = COALESCE($3, price),
-            description = COALESCE($4, description),
+            description = CASE WHEN $4 IS NOT NULL THEN NULLIF($4, '') ELSE description END,
             stock = COALESCE($5, stock),
-            photo_url = COALESCE($6, photo_url)
+            photo_url = COALESCE($6, photo_url),
+            updated_at = NOW()
          WHERE id = $1
          RETURNING id, merchant_id, name, description, price, stock, initial_stock,
                    photo_url, is_available, created_at, updated_at",
@@ -91,7 +92,7 @@ pub async fn update_product(
 /// Soft-delete a product (set is_available = false).
 pub async fn soft_delete_product(pool: &PgPool, product_id: Id) -> Result<(), AppError> {
     let result = sqlx::query(
-        "UPDATE products SET is_available = false WHERE id = $1 AND is_available = true",
+        "UPDATE products SET is_available = false, updated_at = NOW() WHERE id = $1 AND is_available = true",
     )
     .bind(product_id)
     .execute(pool)
