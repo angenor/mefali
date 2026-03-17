@@ -49,6 +49,9 @@ thiserror = "2"
 # JWT
 jsonwebtoken = "9"
 
+# Hashing
+sha2 = "0.10"
+
 # Random / OTP
 rand = "0.8"
 

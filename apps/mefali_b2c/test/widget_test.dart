@@ -10,4 +10,14 @@ void main() {
     // L'app demarre sur l'ecran de saisie du telephone (non authentifie).
     expect(find.text('Inscription'), findsOneWidget);
   });
+
+  testWidgets('MefaliB2cApp unauthenticated user sees phone screen',
+      (WidgetTester tester) async {
+    // Sans token, l'utilisateur est redirige vers l'ecran phone.
+    await tester.pumpWidget(const ProviderScope(child: MefaliB2cApp()));
+    await tester.pumpAndSettle();
+
+    // Verifie que l'ecran d'authentification est affiche
+    expect(find.text('Inscription'), findsOneWidget);
+  });
 }

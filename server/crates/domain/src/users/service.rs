@@ -5,11 +5,14 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use notification::sms::SmsProvider;
 use redis::aio::ConnectionManager;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use tracing::info;
+use uuid::Uuid;
 
 use super::model::{AuthResponse, User};
 use super::otp_service;
+use super::refresh_token_repository;
 use super::repository;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,6 +34,27 @@ fn validate_phone(phone: &str) -> Result<(), AppError> {
         ));
     }
     Ok(())
+}
+
+/// Hash a token with SHA-256 and return hex string.
+pub fn hash_token(token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+/// Generate a JWT access token for a user.
+fn generate_access_token(user: &User, config: &AppConfig) -> Result<String, AppError> {
+    let now = Utc::now().timestamp();
+    let claims = JwtClaims {
+        sub: user.id.to_string(),
+        role: user.role.to_string(),
+        iat: now,
+        exp: now + config.jwt_access_expiry as i64,
+    };
+    let encoding_key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
+    encode(&Header::default(), &claims, &encoding_key)
+        .map_err(|e| AppError::InternalError(format!("JWT encoding error: {}", e)))
 }
 
 /// Request OTP: validate phone, check rate limit, generate OTP, send via SMS.
@@ -73,54 +97,97 @@ pub async fn verify_otp_and_register(
 
     otp_service::verify_otp(redis, phone, otp, config.otp_max_attempts).await?;
 
-    // Find or create user
+    // Find or create user — login vs registration distinction
     let user = match repository::find_by_phone(pool, phone).await? {
         Some(existing) => {
+            // Login: user exists, no name required
             info!(phone = phone, "Existing user authenticated");
             existing
         }
         None => {
-            let user = repository::create_user(pool, phone, name).await?;
+            // Registration: name is required for new users
+            let name = name.ok_or_else(|| {
+                AppError::NotFound("User not found. Please register first.".into())
+            })?;
+            let user = repository::create_user(pool, phone, Some(name)).await?;
             info!(phone = phone, user_id = %user.id, "New user registered");
             user
         }
     };
 
-    let auth_response = generate_auth_response(&user, config)?;
+    let auth_response = generate_auth_response(pool, &user, config).await?;
     Ok(auth_response)
 }
 
-/// Generate JWT access and refresh tokens for a user.
-fn generate_auth_response(user: &User, config: &AppConfig) -> Result<AuthResponse, AppError> {
-    let now = Utc::now().timestamp();
+/// Generate JWT access token and opaque refresh token for a user.
+/// The refresh token is a UUID v4, stored as SHA-256 hash in DB.
+pub async fn generate_auth_response(
+    pool: &PgPool,
+    user: &User,
+    config: &AppConfig,
+) -> Result<AuthResponse, AppError> {
+    let access_token = generate_access_token(user, config)?;
 
-    let access_claims = JwtClaims {
-        sub: user.id.to_string(),
-        role: user.role.to_string(),
-        iat: now,
-        exp: now + config.jwt_access_expiry as i64,
-    };
+    // Refresh token: opaque UUID v4, hashed SHA-256 before storage
+    let refresh_uuid = Uuid::new_v4();
+    let refresh_token_raw = refresh_uuid.to_string();
+    let token_hash = hash_token(&refresh_token_raw);
+    let expires_at = Utc::now() + chrono::Duration::seconds(config.jwt_refresh_expiry as i64);
 
-    let refresh_claims = JwtClaims {
-        sub: user.id.to_string(),
-        role: user.role.to_string(),
-        iat: now,
-        exp: now + config.jwt_refresh_expiry as i64,
-    };
-
-    let encoding_key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
-
-    let access_token = encode(&Header::default(), &access_claims, &encoding_key)
-        .map_err(|e| AppError::InternalError(format!("JWT encoding error: {}", e)))?;
-
-    let refresh_token = encode(&Header::default(), &refresh_claims, &encoding_key)
-        .map_err(|e| AppError::InternalError(format!("JWT encoding error: {}", e)))?;
+    refresh_token_repository::create(pool, user.id, &token_hash, expires_at).await?;
 
     Ok(AuthResponse {
         access_token,
-        refresh_token,
+        refresh_token: refresh_token_raw,
         user: user.clone(),
     })
+}
+
+/// Refresh tokens: validate refresh token, rotate, return new pair.
+pub async fn refresh_tokens(
+    pool: &PgPool,
+    config: &AppConfig,
+    refresh_token: &str,
+) -> Result<AuthResponse, AppError> {
+    let token_hash = hash_token(refresh_token);
+
+    let stored = refresh_token_repository::find_by_hash(pool, &token_hash)
+        .await?
+        .ok_or_else(|| AppError::Unauthorized("Invalid refresh token".into()))?;
+
+    if stored.revoked_at.is_some() {
+        return Err(AppError::Unauthorized(
+            "Refresh token has been revoked".into(),
+        ));
+    }
+
+    if stored.expires_at < Utc::now() {
+        return Err(AppError::Unauthorized("Refresh token has expired".into()));
+    }
+
+    // Revoke the old refresh token (rotation)
+    refresh_token_repository::revoke(pool, stored.id).await?;
+
+    // Find the user
+    let user = repository::find_by_id(pool, stored.user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+
+    // Generate new auth response with new tokens
+    generate_auth_response(pool, &user, config).await
+}
+
+/// Logout: revoke the refresh token.
+pub async fn logout(pool: &PgPool, refresh_token: &str) -> Result<(), AppError> {
+    let token_hash = hash_token(refresh_token);
+
+    let stored = refresh_token_repository::find_by_hash(pool, &token_hash)
+        .await?
+        .ok_or_else(|| AppError::Unauthorized("Invalid refresh token".into()))?;
+
+    refresh_token_repository::revoke(pool, stored.id).await?;
+    info!(user_id = %stored.user_id, "User logged out, refresh token revoked");
+    Ok(())
 }
 
 #[cfg(test)]
@@ -157,7 +224,19 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_auth_response() {
+    fn test_hash_token() {
+        let token = "test-token-uuid";
+        let hash = hash_token(token);
+        // SHA-256 produces 64 hex characters
+        assert_eq!(hash.len(), 64);
+        // Same input produces same hash
+        assert_eq!(hash, hash_token(token));
+        // Different input produces different hash
+        assert_ne!(hash, hash_token("different-token"));
+    }
+
+    #[test]
+    fn test_generate_access_token() {
         let user = User {
             id: uuid::Uuid::new_v4(),
             phone: "+2250700000000".into(),
@@ -187,18 +266,15 @@ mod tests {
             otp_rate_limit_per_minute: 3,
         };
 
-        let result = generate_auth_response(&user, &config);
+        let result = generate_access_token(&user, &config);
         assert!(result.is_ok());
-        let auth = result.unwrap();
-        assert!(!auth.access_token.is_empty());
-        assert!(!auth.refresh_token.is_empty());
-        assert_eq!(auth.user.phone, "+2250700000000");
+        let token = result.unwrap();
+        assert!(!token.is_empty());
 
         // Verify token is decodable
         let decoding_key = jsonwebtoken::DecodingKey::from_secret(config.jwt_secret.as_bytes());
         let validation = jsonwebtoken::Validation::default();
-        let decoded =
-            jsonwebtoken::decode::<JwtClaims>(&auth.access_token, &decoding_key, &validation);
+        let decoded = jsonwebtoken::decode::<JwtClaims>(&token, &decoding_key, &validation);
         assert!(decoded.is_ok());
         let claims = decoded.unwrap().claims;
         assert_eq!(claims.role, "client");

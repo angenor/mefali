@@ -1,3 +1,3 @@
-// Custom Actix extractors for future implementation
-// - AuthenticatedUser: Extract JWT claims from request
-// - PaginationQuery: Extract and validate pagination params
+pub mod authenticated_user;
+
+pub use authenticated_user::AuthenticatedUser;

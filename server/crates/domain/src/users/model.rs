@@ -66,6 +66,26 @@ pub struct AuthResponse {
     pub user: User,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct RefreshToken {
+    pub id: Id,
+    pub user_id: Id,
+    pub token_hash: String,
+    pub expires_at: Timestamp,
+    pub revoked_at: Option<Timestamp>,
+    pub created_at: Timestamp,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RefreshPayload {
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LogoutPayload {
+    pub refresh_token: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -9,13 +9,38 @@ import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
 
+/// Ecoute les changements d'authentification pour declencher
+/// la reevaluation du redirect GoRouter sans recreer le routeur.
+class _AuthRouterNotifier extends ChangeNotifier {
+  _AuthRouterNotifier(this._ref) {
+    _sub = _ref.listen(authProvider, (prev, next) {
+      if (prev?.isAuthenticated != next.isAuthenticated) {
+        notifyListeners();
+      }
+    });
+  }
+
+  final Ref _ref;
+  late final ProviderSubscription<AuthState> _sub;
+
+  bool get isAuthenticated => _ref.read(authProvider).isAuthenticated;
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+}
+
 final _routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = _AuthRouterNotifier(ref);
+  ref.onDispose(notifier.dispose);
 
   return GoRouter(
     initialLocation: '/auth/phone',
+    refreshListenable: notifier,
     redirect: (context, state) {
-      final isAuthenticated = authState.isAuthenticated;
+      final isAuthenticated = notifier.isAuthenticated;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
 
       if (isAuthenticated && isAuthRoute) {
@@ -45,7 +70,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
           return NameScreen(phone: data['phone'] ?? '', otp: data['otp'] ?? '');
         },
       ),
-      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+          path: '/home', builder: (context, state) => const HomeScreen()),
     ],
   );
 });

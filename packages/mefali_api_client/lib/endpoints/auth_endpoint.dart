@@ -27,6 +27,25 @@ class AuthEndpoint {
     final data = response.data!['data'] as Map<String, dynamic>;
     return AuthResponse.fromJson(data);
   }
+
+  /// Rafraichit les tokens avec un refresh token valide.
+  Future<AuthResponse> refreshToken(String refreshToken) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/refresh',
+      data: {'refresh_token': refreshToken},
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return AuthResponse.fromJson(data);
+  }
+
+  /// Revoque le refresh token cote serveur.
+  Future<void> logoutServer(String refreshToken) async {
+    await _dio.post<void>(
+      '/auth/logout',
+      data: {'refresh_token': refreshToken},
+    );
+  }
 }
 
 /// Provider Riverpod pour [AuthEndpoint].

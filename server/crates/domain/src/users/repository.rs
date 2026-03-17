@@ -1,7 +1,20 @@
 use common::error::AppError;
+use common::types::Id;
 use sqlx::PgPool;
 
 use super::model::{User, UserRole, UserStatus};
+
+/// Find a user by ID.
+pub async fn find_by_id(pool: &PgPool, id: Id) -> Result<Option<User>, AppError> {
+    sqlx::query_as::<_, User>(
+        "SELECT id, phone, name, role, status, city_id, fcm_token, created_at, updated_at \
+         FROM users WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to find user: {}", e)))
+}
 
 /// Find a user by phone number.
 pub async fn find_by_phone(pool: &PgPool, phone: &str) -> Result<Option<User>, AppError> {

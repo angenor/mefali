@@ -19,6 +19,9 @@ tracing-subscriber.workspace = true
 dotenvy.workspace = true
 sqlx.workspace = true
 redis.workspace = true
+jsonwebtoken.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 actix-web = { workspace = true, features = ["macros"] }
+chrono.workspace = true

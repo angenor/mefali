@@ -27,4 +27,7 @@ Dio createDio() {
 }
 
 /// Provider Riverpod pour l'instance Dio singleton.
+///
+/// L'[AuthInterceptor] est ajoute par [AuthNotifier] lors de son
+/// initialisation pour eviter une dependance circulaire.
 final dioProvider = Provider<Dio>((ref) => createDio());
