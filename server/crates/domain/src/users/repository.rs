@@ -28,8 +28,14 @@ pub async fn find_by_phone(pool: &PgPool, phone: &str) -> Result<Option<User>, A
     .map_err(|e| AppError::DatabaseError(format!("Failed to find user: {}", e)))
 }
 
-/// Create a new B2C client user.
-pub async fn create_user(pool: &PgPool, phone: &str, name: Option<&str>) -> Result<User, AppError> {
+/// Create a new user with the given role and status.
+pub async fn create_user(
+    pool: &PgPool,
+    phone: &str,
+    name: Option<&str>,
+    role: UserRole,
+    status: UserStatus,
+) -> Result<User, AppError> {
     sqlx::query_as::<_, User>(
         "INSERT INTO users (phone, name, role, status) \
          VALUES ($1, $2, $3, $4) \
@@ -38,8 +44,8 @@ pub async fn create_user(pool: &PgPool, phone: &str, name: Option<&str>) -> Resu
     )
     .bind(phone)
     .bind(name)
-    .bind(UserRole::Client)
-    .bind(UserStatus::Active)
+    .bind(role)
+    .bind(status)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to create user: {}", e)))

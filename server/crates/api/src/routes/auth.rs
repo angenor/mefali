@@ -52,7 +52,8 @@ pub async fn login(
 
 /// POST /api/v1/auth/verify-otp
 ///
-/// Body: {"phone": "+225XXXXXXXXXX", "otp": "123456", "name": "Koffi"}
+/// Body: {"phone": "+225XXXXXXXXXX", "otp": "123456", "name": "Koffi",
+///        "role": "driver", "sponsor_phone": "+225XXXXXXXXXX"}
 /// Response: {"data": {"access_token": "...", "refresh_token": "...", "user": {...}}}
 pub async fn verify_otp(
     body: web::Json<VerifyOtpPayload>,
@@ -69,6 +70,8 @@ pub async fn verify_otp(
         &body.phone,
         &body.otp,
         body.name.as_deref(),
+        body.role.as_deref(),
+        body.sponsor_phone.as_deref(),
     )
     .await?;
 

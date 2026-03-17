@@ -57,6 +57,8 @@ pub struct VerifyOtpPayload {
     pub phone: String,
     pub otp: String,
     pub name: Option<String>,
+    pub role: Option<String>,
+    pub sponsor_phone: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,6 +86,35 @@ pub struct RefreshPayload {
 #[derive(Debug, Deserialize)]
 pub struct LogoutPayload {
     pub refresh_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
+#[sqlx(type_name = "sponsorship_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum SponsorshipStatus {
+    Active,
+    Suspended,
+    Terminated,
+}
+
+impl std::fmt::Display for SponsorshipStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SponsorshipStatus::Active => write!(f, "active"),
+            SponsorshipStatus::Suspended => write!(f, "suspended"),
+            SponsorshipStatus::Terminated => write!(f, "terminated"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct Sponsorship {
+    pub id: Id,
+    pub sponsor_id: Id,
+    pub sponsored_id: Id,
+    pub status: SponsorshipStatus,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 #[cfg(test)]
@@ -127,5 +158,40 @@ mod tests {
         assert_eq!(payload.phone, "+2250700000000");
         assert_eq!(payload.otp, "123456");
         assert_eq!(payload.name.unwrap(), "Koffi");
+        assert!(payload.role.is_none());
+        assert!(payload.sponsor_phone.is_none());
+    }
+
+    #[test]
+    fn test_verify_otp_payload_with_driver_role() {
+        let json = r#"{"phone": "+2250700000000", "otp": "123456", "name": "Moussa", "role": "driver", "sponsor_phone": "+2250700000001"}"#;
+        let payload: VerifyOtpPayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.role.unwrap(), "driver");
+        assert_eq!(payload.sponsor_phone.unwrap(), "+2250700000001");
+    }
+
+    #[test]
+    fn test_verify_otp_payload_backward_compatible() {
+        // B2C payload without role/sponsor_phone still works
+        let json = r#"{"phone": "+2250700000000", "otp": "123456"}"#;
+        let payload: VerifyOtpPayload = serde_json::from_str(json).unwrap();
+        assert!(payload.name.is_none());
+        assert!(payload.role.is_none());
+        assert!(payload.sponsor_phone.is_none());
+    }
+
+    #[test]
+    fn test_sponsorship_status_display() {
+        assert_eq!(SponsorshipStatus::Active.to_string(), "active");
+        assert_eq!(SponsorshipStatus::Suspended.to_string(), "suspended");
+        assert_eq!(SponsorshipStatus::Terminated.to_string(), "terminated");
+    }
+
+    #[test]
+    fn test_sponsorship_status_serde() {
+        let json = serde_json::to_string(&SponsorshipStatus::Active).unwrap();
+        assert_eq!(json, "\"active\"");
+        let parsed: SponsorshipStatus = serde_json::from_str("\"terminated\"").unwrap();
+        assert_eq!(parsed, SponsorshipStatus::Terminated);
     }
 }

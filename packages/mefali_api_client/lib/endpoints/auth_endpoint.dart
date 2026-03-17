@@ -18,10 +18,23 @@ class AuthEndpoint {
   /// Verifie l'OTP et retourne les tokens + utilisateur.
   ///
   /// [name] est optionnel, fourni uniquement lors de la premiere inscription.
-  Future<AuthResponse> verifyOtp(String phone, String otp, String? name) async {
+  /// [role] et [sponsorPhone] sont optionnels, fournis pour l'inscription livreur.
+  Future<AuthResponse> verifyOtp(
+    String phone,
+    String otp,
+    String? name, {
+    String? role,
+    String? sponsorPhone,
+  }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/auth/verify-otp',
-      data: {'phone': phone, 'otp': otp, 'name': ?name},
+      data: {
+        'phone': phone,
+        'otp': otp,
+        'name': ?name,
+        'role': ?role,
+        'sponsor_phone': ?sponsorPhone,
+      },
     );
 
     final data = response.data!['data'] as Map<String, dynamic>;

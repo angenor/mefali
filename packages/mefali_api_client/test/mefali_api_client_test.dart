@@ -167,6 +167,93 @@ void main() {
     });
   });
 
+  group('AuthEndpoint', () {
+    /// Helper: creates a Dio instance with an interceptor that captures
+    /// the request body and returns a mock [AuthResponse] JSON.
+    (Dio, Map<String, dynamic> Function()) dioWithCapture({
+      String role = 'client',
+      String status = 'active',
+    }) {
+      Map<String, dynamic>? captured;
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            captured = options.data as Map<String, dynamic>?;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{
+                  'data': {
+                    'access_token': 'test-at',
+                    'refresh_token': 'test-rt',
+                    'user': {
+                      'id': '00000000-0000-0000-0000-000000000001',
+                      'phone': '+2250700000000',
+                      'name': 'Test',
+                      'role': role,
+                      'status': status,
+                    },
+                  },
+                },
+              ),
+            );
+          },
+        ),
+      );
+      return (dio, () => captured!);
+    }
+
+    test('verifyOtp sends role and sponsorPhone when provided', () async {
+      final (dio, getBody) = dioWithCapture(
+        role: 'driver',
+        status: 'pending_kyc',
+      );
+      final endpoint = AuthEndpoint(dio);
+
+      await endpoint.verifyOtp(
+        '+2250700000000',
+        '123456',
+        'Moussa',
+        role: 'driver',
+        sponsorPhone: '+2250700000001',
+      );
+
+      final body = getBody();
+      expect(body['role'], 'driver');
+      expect(body['sponsor_phone'], '+2250700000001');
+      expect(body['phone'], '+2250700000000');
+      expect(body['otp'], '123456');
+      expect(body['name'], 'Moussa');
+    });
+
+    test('verifyOtp omits role and sponsorPhone when null', () async {
+      final (dio, getBody) = dioWithCapture();
+      final endpoint = AuthEndpoint(dio);
+
+      await endpoint.verifyOtp('+2250700000000', '123456', 'Koffi');
+
+      final body = getBody();
+      expect(body.containsKey('role'), isFalse);
+      expect(body.containsKey('sponsor_phone'), isFalse);
+      expect(body['phone'], '+2250700000000');
+      expect(body['name'], 'Koffi');
+    });
+
+    test('verifyOtp omits name when null (login flow)', () async {
+      final (dio, getBody) = dioWithCapture();
+      final endpoint = AuthEndpoint(dio);
+
+      await endpoint.verifyOtp('+2250700000000', '123456', null);
+
+      final body = getBody();
+      expect(body.containsKey('name'), isFalse);
+      expect(body.containsKey('role'), isFalse);
+      expect(body.containsKey('sponsor_phone'), isFalse);
+    });
+  });
+
   group('JWT local expiration check', () {
     String createTestJwt({required int expInSeconds}) {
       final header = base64Url.encode(

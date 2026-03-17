@@ -100,10 +100,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Verifie l'OTP et stocke les tokens.
-  Future<void> verifyOtp(String phone, String otp, String? name) async {
+  ///
+  /// [role] et [sponsorPhone] sont optionnels, utilises pour l'inscription livreur.
+  Future<void> verifyOtp(
+    String phone,
+    String otp,
+    String? name, {
+    String? role,
+    String? sponsorPhone,
+  }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final response = await _authEndpoint.verifyOtp(phone, otp, name);
+      final response = await _authEndpoint.verifyOtp(
+        phone,
+        otp,
+        name,
+        role: role,
+        sponsorPhone: sponsorPhone,
+      );
       await _storage.write(key: _keyAccessToken, value: response.accessToken);
       await _storage.write(key: _keyRefreshToken, value: response.refreshToken);
       state = state.copyWith(

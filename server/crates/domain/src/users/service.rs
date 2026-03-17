@@ -10,10 +10,11 @@ use sqlx::PgPool;
 use tracing::info;
 use uuid::Uuid;
 
-use super::model::{AuthResponse, User};
+use super::model::{AuthResponse, User, UserRole, UserStatus};
 use super::otp_service;
 use super::refresh_token_repository;
 use super::repository;
+use super::sponsorship_repository;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
@@ -84,7 +85,21 @@ pub async fn request_otp(
     Ok(())
 }
 
+/// Parse and validate role for self-registration.
+/// Only "client" and "driver" are allowed. Defaults to "client" if absent.
+fn parse_registration_role(role: Option<&str>) -> Result<UserRole, AppError> {
+    match role {
+        None | Some("client") => Ok(UserRole::Client),
+        Some("driver") => Ok(UserRole::Driver),
+        Some(other) => Err(AppError::BadRequest(format!(
+            "Invalid role for self-registration: {}",
+            other
+        ))),
+    }
+}
+
 /// Verify OTP, create user if new, return JWT tokens.
+/// Supports multi-role registration: role and sponsor_phone are optional.
 pub async fn verify_otp_and_register(
     redis: &mut ConnectionManager,
     pool: &PgPool,
@@ -92,6 +107,8 @@ pub async fn verify_otp_and_register(
     phone: &str,
     otp: &str,
     name: Option<&str>,
+    role: Option<&str>,
+    sponsor_phone: Option<&str>,
 ) -> Result<AuthResponse, AppError> {
     validate_phone(phone)?;
 
@@ -100,7 +117,7 @@ pub async fn verify_otp_and_register(
     // Find or create user — login vs registration distinction
     let user = match repository::find_by_phone(pool, phone).await? {
         Some(existing) => {
-            // Login: user exists, no name required
+            // Login: user exists, return as-is (no role change)
             info!(phone = phone, "Existing user authenticated");
             existing
         }
@@ -109,8 +126,50 @@ pub async fn verify_otp_and_register(
             let name = name.ok_or_else(|| {
                 AppError::NotFound("User not found. Please register first.".into())
             })?;
-            let user = repository::create_user(pool, phone, Some(name)).await?;
-            info!(phone = phone, user_id = %user.id, "New user registered");
+
+            let parsed_role = parse_registration_role(role)?;
+
+            // Validate sponsor BEFORE creating user to avoid orphaned drivers
+            let sponsor = if parsed_role == UserRole::Driver {
+                let sp = sponsor_phone.ok_or_else(|| {
+                    AppError::BadRequest(
+                        "Sponsor phone is required for driver registration".into(),
+                    )
+                })?;
+                validate_phone(sp)?;
+
+                // Prevent self-sponsoring
+                if phone == sp {
+                    return Err(AppError::BadRequest(
+                        "Cannot use your own phone as sponsor".into(),
+                    ));
+                }
+
+                let sponsor = repository::find_by_phone(pool, sp).await?.ok_or_else(|| {
+                    AppError::BadRequest("Sponsor not found. Ensure they are registered.".into())
+                })?;
+                Some(sponsor)
+            } else {
+                None
+            };
+
+            let (user_role, user_status) = if parsed_role == UserRole::Driver {
+                (UserRole::Driver, UserStatus::PendingKyc)
+            } else {
+                (UserRole::Client, UserStatus::Active)
+            };
+
+            let user =
+                repository::create_user(pool, phone, Some(name), user_role, user_status).await?;
+
+            // Create sponsorship (sponsor already validated above)
+            if let Some(sponsor) = sponsor {
+                sponsorship_repository::create(pool, sponsor.id, user.id).await?;
+                info!(phone = phone, user_id = %user.id, sponsor_id = %sponsor.id, "Driver registered with sponsor");
+            } else {
+                info!(phone = phone, user_id = %user.id, "New user registered");
+            }
+
             user
         }
     };
@@ -278,5 +337,43 @@ mod tests {
         assert!(decoded.is_ok());
         let claims = decoded.unwrap().claims;
         assert_eq!(claims.role, "client");
+    }
+
+    #[test]
+    fn test_parse_registration_role_none_defaults_to_client() {
+        let role = parse_registration_role(None).unwrap();
+        assert_eq!(role, UserRole::Client);
+    }
+
+    #[test]
+    fn test_parse_registration_role_client() {
+        let role = parse_registration_role(Some("client")).unwrap();
+        assert_eq!(role, UserRole::Client);
+    }
+
+    #[test]
+    fn test_parse_registration_role_driver() {
+        let role = parse_registration_role(Some("driver")).unwrap();
+        assert_eq!(role, UserRole::Driver);
+    }
+
+    #[test]
+    fn test_parse_registration_role_admin_rejected() {
+        assert!(parse_registration_role(Some("admin")).is_err());
+    }
+
+    #[test]
+    fn test_parse_registration_role_merchant_rejected() {
+        assert!(parse_registration_role(Some("merchant")).is_err());
+    }
+
+    #[test]
+    fn test_parse_registration_role_agent_rejected() {
+        assert!(parse_registration_role(Some("agent")).is_err());
+    }
+
+    #[test]
+    fn test_parse_registration_role_unknown_rejected() {
+        assert!(parse_registration_role(Some("superadmin")).is_err());
     }
 }
