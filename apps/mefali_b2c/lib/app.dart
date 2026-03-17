@@ -8,6 +8,9 @@ import 'features/auth/name_screen.dart';
 import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/profile/change_phone_screen.dart';
+import 'features/profile/edit_name_screen.dart';
+import 'features/profile/verify_phone_screen.dart';
 
 /// Ecoute les changements d'authentification pour declencher
 /// la reevaluation du redirect GoRouter sans recreer le routeur.
@@ -71,6 +74,21 @@ final _routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/profile/edit-name',
+        builder: (context, state) => const EditNameScreen(),
+      ),
+      GoRoute(
+        path: '/profile/change-phone',
+        builder: (context, state) => const ChangePhoneScreen(),
+      ),
+      GoRoute(
+        path: '/profile/verify-phone',
+        builder: (context, state) {
+          final newPhone = state.extra as String? ?? '';
+          return VerifyPhoneScreen(newPhone: newPhone);
+        },
+      ),
     ],
   );
 });

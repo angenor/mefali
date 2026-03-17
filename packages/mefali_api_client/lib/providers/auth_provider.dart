@@ -187,6 +187,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Met a jour l'utilisateur en memoire (apres modification du profil).
+  void updateUser(User user) {
+    state = state.copyWith(user: user);
+  }
+
   /// Deconnecte l'utilisateur et supprime les tokens locaux.
   ///
   /// Utilisee par l'intercepteur quand le refresh echoue (le token est

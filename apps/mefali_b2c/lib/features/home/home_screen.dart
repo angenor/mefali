@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
+import '../profile/profile_screen.dart';
+
 /// Ecran d'accueil principal avec navigation par onglets.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -26,7 +28,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _HomeTab(userName: userName),
             const _PlaceholderTab(title: 'Recherche'),
             const _PlaceholderTab(title: 'Commandes'),
-            const _PlaceholderTab(title: 'Profil'),
+            const ProfileScreen(),
           ],
         ),
       ),

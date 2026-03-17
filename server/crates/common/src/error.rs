@@ -26,6 +26,9 @@ pub enum AppError {
 
     #[error("Too many requests: {0}")]
     TooManyRequests(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
 }
 
 impl AppError {
@@ -39,6 +42,7 @@ impl AppError {
             AppError::DatabaseError(_) => "DATABASE_ERROR",
             AppError::ExternalServiceError(_) => "EXTERNAL_SERVICE_ERROR",
             AppError::TooManyRequests(_) => "TOO_MANY_REQUESTS",
+            AppError::Conflict(_) => "CONFLICT",
         }
     }
 
@@ -52,6 +56,7 @@ impl AppError {
             AppError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::ExternalServiceError(_) => StatusCode::BAD_GATEWAY,
             AppError::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
+            AppError::Conflict(_) => StatusCode::CONFLICT,
         }
     }
 }
@@ -116,6 +121,10 @@ mod tests {
         assert_eq!(
             AppError::TooManyRequests("x".into()).status_code_value(),
             StatusCode::TOO_MANY_REQUESTS
+        );
+        assert_eq!(
+            AppError::Conflict("x".into()).status_code_value(),
+            StatusCode::CONFLICT
         );
     }
 

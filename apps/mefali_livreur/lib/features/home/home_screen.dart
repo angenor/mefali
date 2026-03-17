@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 
@@ -15,7 +16,16 @@ class HomeScreen extends ConsumerWidget {
     final isPendingKyc = status == UserStatus.pendingKyc;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('mefali Livreur')),
+      appBar: AppBar(
+        title: const Text('mefali Livreur'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profil',
+            onPressed: () => context.push('/profile'),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

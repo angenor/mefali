@@ -28,6 +28,34 @@ pub async fn find_by_phone(pool: &PgPool, phone: &str) -> Result<Option<User>, A
     .map_err(|e| AppError::DatabaseError(format!("Failed to find user: {}", e)))
 }
 
+/// Update a user's name.
+pub async fn update_name(pool: &PgPool, user_id: Id, name: &str) -> Result<User, AppError> {
+    sqlx::query_as::<_, User>(
+        "UPDATE users SET name = $2 \
+         WHERE id = $1 \
+         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+    )
+    .bind(user_id)
+    .bind(name)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to update user name: {}", e)))
+}
+
+/// Update a user's phone number.
+pub async fn update_phone(pool: &PgPool, user_id: Id, new_phone: &str) -> Result<User, AppError> {
+    sqlx::query_as::<_, User>(
+        "UPDATE users SET phone = $2 \
+         WHERE id = $1 \
+         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+    )
+    .bind(user_id)
+    .bind(new_phone)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to update user phone: {}", e)))
+}
+
 /// Create a new user with the given role and status.
 pub async fn create_user(
     pool: &PgPool,

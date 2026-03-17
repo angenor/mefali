@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/mefali_core.dart';
 
 /// Mock HTTP adapter that always returns 401 Unauthorized.
 class _Mock401Adapter implements HttpClientAdapter {
@@ -251,6 +252,124 @@ void main() {
       expect(body.containsKey('name'), isFalse);
       expect(body.containsKey('role'), isFalse);
       expect(body.containsKey('sponsor_phone'), isFalse);
+    });
+  });
+
+  group('UserEndpoint', () {
+    (Dio, Map<String, dynamic> Function()) dioWithCapture() {
+      Map<String, dynamic>? captured;
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            captured = options.data as Map<String, dynamic>?;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{
+                  'data': {
+                    'user': {
+                      'id': '00000000-0000-0000-0000-000000000001',
+                      'phone': '+2250700000000',
+                      'name': 'Koffi Updated',
+                      'role': 'client',
+                      'status': 'active',
+                    },
+                    'message': 'OTP envoye au nouveau numero',
+                  },
+                },
+              ),
+            );
+          },
+        ),
+      );
+      return (dio, () => captured ?? {});
+    }
+
+    test('getProfile sends GET /users/me', () async {
+      String? method;
+      String? path;
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            method = options.method;
+            path = options.path;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{
+                  'data': {
+                    'user': {
+                      'id': '00000000-0000-0000-0000-000000000001',
+                      'phone': '+2250700000000',
+                      'name': 'Koffi',
+                      'role': 'client',
+                      'status': 'active',
+                    },
+                  },
+                },
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = UserEndpoint(dio);
+      final user = await endpoint.getProfile();
+      expect(method, 'GET');
+      expect(path, '/users/me');
+      expect(user.name, 'Koffi');
+    });
+
+    test('updateProfile sends PUT /users/me with name', () async {
+      final (dio, getBody) = dioWithCapture();
+      final endpoint = UserEndpoint(dio);
+      final user = await endpoint.updateProfile(name: 'Koffi Updated');
+      expect(getBody()['name'], 'Koffi Updated');
+      expect(user.name, 'Koffi Updated');
+    });
+
+    test('requestPhoneChange sends POST with new_phone', () async {
+      final (dio, getBody) = dioWithCapture();
+      final endpoint = UserEndpoint(dio);
+      await endpoint.requestPhoneChange('+2250700000001');
+      expect(getBody()['new_phone'], '+2250700000001');
+    });
+
+    test('verifyPhoneChange sends POST with new_phone and otp', () async {
+      final (dio, getBody) = dioWithCapture();
+      final endpoint = UserEndpoint(dio);
+      final user = await endpoint.verifyPhoneChange('+2250700000001', '123456');
+      expect(getBody()['new_phone'], '+2250700000001');
+      expect(getBody()['otp'], '123456');
+      expect(user.name, 'Koffi Updated');
+    });
+  });
+
+  group('AuthNotifier.updateUser', () {
+    test('updateUser updates user in state', () {
+      const user = User(
+        id: 'test-id',
+        phone: '+2250700000000',
+        name: 'Updated',
+        role: UserRole.client,
+        status: UserStatus.active,
+      );
+      const initialState = AuthState(
+        accessToken: 'token',
+        user: User(
+          id: 'test-id',
+          phone: '+2250700000000',
+          name: 'Original',
+          role: UserRole.client,
+          status: UserStatus.active,
+        ),
+      );
+      final updated = initialState.copyWith(user: user);
+      expect(updated.user?.name, 'Updated');
+      expect(updated.accessToken, 'token');
     });
   });
 

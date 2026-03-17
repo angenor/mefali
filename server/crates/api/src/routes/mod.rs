@@ -19,6 +19,18 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/logout", web::post().to(auth::logout)),
             )
             // Protected routes — JWT required via AuthenticatedUser extractor
-            .service(web::scope("/users").route("/me", web::get().to(users::me))),
+            .service(
+                web::scope("/users")
+                    .route("/me", web::get().to(users::me))
+                    .route("/me", web::put().to(users::update_profile))
+                    .route(
+                        "/me/change-phone/request",
+                        web::post().to(users::change_phone_request),
+                    )
+                    .route(
+                        "/me/change-phone/verify",
+                        web::post().to(users::change_phone_verify),
+                    ),
+            ),
     );
 }

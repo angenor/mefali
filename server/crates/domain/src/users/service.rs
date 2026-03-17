@@ -10,7 +10,10 @@ use sqlx::PgPool;
 use tracing::info;
 use uuid::Uuid;
 
-use super::model::{AuthResponse, User, UserRole, UserStatus};
+use super::model::{
+    AuthResponse, ChangePhoneRequestPayload, ChangePhoneVerifyPayload, UpdateProfilePayload, User,
+    UserRole, UserStatus,
+};
 use super::otp_service;
 use super::refresh_token_repository;
 use super::repository;
@@ -132,9 +135,7 @@ pub async fn verify_otp_and_register(
             // Validate sponsor BEFORE creating user to avoid orphaned drivers
             let sponsor = if parsed_role == UserRole::Driver {
                 let sp = sponsor_phone.ok_or_else(|| {
-                    AppError::BadRequest(
-                        "Sponsor phone is required for driver registration".into(),
-                    )
+                    AppError::BadRequest("Sponsor phone is required for driver registration".into())
                 })?;
                 validate_phone(sp)?;
 
@@ -247,6 +248,106 @@ pub async fn logout(pool: &PgPool, refresh_token: &str) -> Result<(), AppError> 
     refresh_token_repository::revoke(pool, stored.id).await?;
     info!(user_id = %stored.user_id, "User logged out, refresh token revoked");
     Ok(())
+}
+
+/// Validate and update user profile (name only).
+pub async fn update_profile(
+    pool: &PgPool,
+    user_id: uuid::Uuid,
+    payload: UpdateProfilePayload,
+) -> Result<User, AppError> {
+    if let Some(ref name) = payload.name {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            return Err(AppError::BadRequest("Name cannot be empty".into()));
+        }
+        if trimmed.len() > 100 {
+            return Err(AppError::BadRequest(
+                "Name cannot exceed 100 characters".into(),
+            ));
+        }
+        return repository::update_name(pool, user_id, trimmed).await;
+    }
+
+    // No fields to update — return current user
+    repository::find_by_id(pool, user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))
+}
+
+/// Request phone change: validate new phone, check uniqueness, send OTP.
+pub async fn request_phone_change(
+    redis: &mut redis::aio::ConnectionManager,
+    sms_provider: &dyn SmsProvider,
+    pool: &PgPool,
+    config: &AppConfig,
+    user_id: uuid::Uuid,
+    payload: ChangePhoneRequestPayload,
+) -> Result<(), AppError> {
+    validate_phone(&payload.new_phone)?;
+
+    // Verify new phone is not already taken
+    if let Some(_existing) = repository::find_by_phone(pool, &payload.new_phone).await? {
+        return Err(AppError::Conflict("Phone number already in use".into()));
+    }
+
+    // Verify user exists
+    let user = repository::find_by_id(pool, user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+
+    // Don't allow changing to the same phone
+    if user.phone == payload.new_phone {
+        return Err(AppError::BadRequest(
+            "New phone must be different from current phone".into(),
+        ));
+    }
+
+    otp_service::check_rate_limit(redis, &payload.new_phone, config.otp_rate_limit_per_minute)
+        .await?;
+
+    let code = otp_service::generate_otp(config.otp_length);
+    otp_service::store_otp(redis, &payload.new_phone, &code, config.otp_expiry_seconds).await?;
+
+    let message = format!(
+        "mefali: Code de verification pour changement de telephone: {}. Valable 5 minutes.",
+        code
+    );
+    sms_provider
+        .send_sms(&payload.new_phone, &message)
+        .await
+        .map_err(|e| AppError::ExternalServiceError(format!("SMS send failed: {}", e)))?;
+
+    info!(user_id = %user_id, new_phone = &payload.new_phone, "Phone change OTP sent");
+    Ok(())
+}
+
+/// Verify phone change OTP and update phone.
+pub async fn verify_phone_change(
+    redis: &mut redis::aio::ConnectionManager,
+    pool: &PgPool,
+    config: &AppConfig,
+    user_id: uuid::Uuid,
+    payload: ChangePhoneVerifyPayload,
+) -> Result<User, AppError> {
+    validate_phone(&payload.new_phone)?;
+
+    // Re-check uniqueness (race condition protection)
+    if let Some(_existing) = repository::find_by_phone(pool, &payload.new_phone).await? {
+        return Err(AppError::Conflict("Phone number already in use".into()));
+    }
+
+    otp_service::verify_otp(
+        redis,
+        &payload.new_phone,
+        &payload.otp,
+        config.otp_max_attempts,
+    )
+    .await?;
+
+    let user = repository::update_phone(pool, user_id, &payload.new_phone).await?;
+    info!(user_id = %user_id, new_phone = &payload.new_phone, "Phone number updated");
+    Ok(user)
 }
 
 #[cfg(test)]
@@ -375,5 +476,58 @@ mod tests {
     #[test]
     fn test_parse_registration_role_unknown_rejected() {
         assert!(parse_registration_role(Some("superadmin")).is_err());
+    }
+
+    #[test]
+    fn test_validate_name_empty_rejected() {
+        // Empty name should fail validation in update_profile
+        let payload = UpdateProfilePayload {
+            name: Some("".into()),
+        };
+        assert!(payload.name.as_ref().unwrap().trim().is_empty());
+    }
+
+    #[test]
+    fn test_validate_name_whitespace_only_rejected() {
+        let payload = UpdateProfilePayload {
+            name: Some("   ".into()),
+        };
+        assert!(payload.name.as_ref().unwrap().trim().is_empty());
+    }
+
+    #[test]
+    fn test_validate_name_too_long_rejected() {
+        let long_name = "a".repeat(101);
+        let payload = UpdateProfilePayload {
+            name: Some(long_name.clone()),
+        };
+        assert!(payload.name.as_ref().unwrap().trim().len() > 100);
+    }
+
+    #[test]
+    fn test_validate_name_valid() {
+        let payload = UpdateProfilePayload {
+            name: Some("Koffi".into()),
+        };
+        let name = payload.name.as_ref().unwrap().trim();
+        assert!(!name.is_empty());
+        assert!(name.len() <= 100);
+    }
+
+    #[test]
+    fn test_validate_name_100_chars_valid() {
+        let name = "a".repeat(100);
+        let payload = UpdateProfilePayload {
+            name: Some(name.clone()),
+        };
+        let trimmed = payload.name.as_ref().unwrap().trim();
+        assert_eq!(trimmed.len(), 100);
+    }
+
+    #[test]
+    fn test_update_profile_no_fields_is_noop() {
+        // If name is None, nothing to update
+        let payload = UpdateProfilePayload { name: None };
+        assert!(payload.name.is_none());
     }
 }

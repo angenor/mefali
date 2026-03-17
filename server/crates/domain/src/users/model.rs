@@ -88,6 +88,22 @@ pub struct LogoutPayload {
     pub refresh_token: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateProfilePayload {
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChangePhoneRequestPayload {
+    pub new_phone: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChangePhoneVerifyPayload {
+    pub new_phone: String,
+    pub otp: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
 #[sqlx(type_name = "sponsorship_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
@@ -178,6 +194,35 @@ mod tests {
         assert!(payload.name.is_none());
         assert!(payload.role.is_none());
         assert!(payload.sponsor_phone.is_none());
+    }
+
+    #[test]
+    fn test_update_profile_payload_deserialize_with_name() {
+        let json = r#"{"name": "Koffi"}"#;
+        let payload: UpdateProfilePayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.name.unwrap(), "Koffi");
+    }
+
+    #[test]
+    fn test_update_profile_payload_deserialize_empty() {
+        let json = r#"{}"#;
+        let payload: UpdateProfilePayload = serde_json::from_str(json).unwrap();
+        assert!(payload.name.is_none());
+    }
+
+    #[test]
+    fn test_change_phone_request_payload_deserialize() {
+        let json = r#"{"new_phone": "+2250700000001"}"#;
+        let payload: ChangePhoneRequestPayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.new_phone, "+2250700000001");
+    }
+
+    #[test]
+    fn test_change_phone_verify_payload_deserialize() {
+        let json = r#"{"new_phone": "+2250700000001", "otp": "123456"}"#;
+        let payload: ChangePhoneVerifyPayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.new_phone, "+2250700000001");
+        assert_eq!(payload.otp, "123456");
     }
 
     #[test]
