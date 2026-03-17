@@ -11,11 +11,7 @@ class MefaliLivreurApp extends StatelessWidget {
       theme: MefaliTheme.light(),
       darkTheme: MefaliTheme.dark(),
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(
-          child: Text('mefali Livreur'),
-        ),
-      ),
+      home: const Scaffold(body: Center(child: Text('mefali Livreur'))),
     );
   }
 }

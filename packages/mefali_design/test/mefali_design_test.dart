@@ -1,8 +1,33 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_design/mefali_design.dart';
 
+/// Relative luminance per WCAG 2.0.
+double _relativeLuminance(Color c) {
+  double linearize(double s) {
+    return s <= 0.04045
+        ? s / 12.92
+        : math.pow((s + 0.055) / 1.055, 2.4).toDouble();
+  }
+
+  return 0.2126 * linearize(c.r) +
+      0.7152 * linearize(c.g) +
+      0.0722 * linearize(c.b);
+}
+
+/// WCAG contrast ratio between two colors.
+double _contrastRatio(Color a, Color b) {
+  final la = _relativeLuminance(a);
+  final lb = _relativeLuminance(b);
+  final lighter = math.max(la, lb);
+  final darker = math.min(la, lb);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 void main() {
+  // ─── MefaliTheme ─────────────────────────────────────────
   group('MefaliTheme', () {
     test('light() returns a valid ThemeData with M3', () {
       final theme = MefaliTheme.light();
@@ -27,8 +52,82 @@ void main() {
       final theme = MefaliTheme.dark();
       expect(theme.colorScheme.primary, MefaliColors.primaryDark);
     });
+
+    test('light theme surface colors are correct', () {
+      final cs = MefaliTheme.light().colorScheme;
+      expect(cs.surface, MefaliColors.surfaceLight);
+      expect(cs.onSurface, MefaliColors.onSurfaceLight);
+    });
+
+    test('dark theme surface colors are correct', () {
+      final cs = MefaliTheme.dark().colorScheme;
+      expect(cs.surface, MefaliColors.surfaceDark);
+      expect(cs.onSurface, MefaliColors.onSurfaceDark);
+    });
+
+    test('light theme error color is correct', () {
+      expect(MefaliTheme.light().colorScheme.error, MefaliColors.errorLight);
+    });
+
+    test('dark theme error color is correct', () {
+      expect(MefaliTheme.dark().colorScheme.error, MefaliColors.errorDark);
+    });
   });
 
+  // ─── MefaliCustomColors ThemeExtension ───────────────────
+  group('MefaliCustomColors', () {
+    test('light theme includes MefaliCustomColors extension', () {
+      final theme = MefaliTheme.light();
+      final custom = theme.extension<MefaliCustomColors>();
+      expect(custom, isNotNull);
+      expect(custom!.success, MefaliColors.successLight);
+      expect(custom.onSuccess, MefaliColors.onSuccessLight);
+      expect(custom.successContainer, MefaliColors.successContainerLight);
+      expect(custom.onSuccessContainer, MefaliColors.onSuccessContainerLight);
+      expect(custom.warning, MefaliColors.warningLight);
+    });
+
+    test('dark theme includes MefaliCustomColors extension', () {
+      final theme = MefaliTheme.dark();
+      final custom = theme.extension<MefaliCustomColors>();
+      expect(custom, isNotNull);
+      expect(custom!.success, MefaliColors.successDark);
+      expect(custom.onSuccess, MefaliColors.onSuccessDark);
+      expect(custom.successContainer, MefaliColors.successContainerDark);
+      expect(custom.onSuccessContainer, MefaliColors.onSuccessContainerDark);
+      expect(custom.warning, MefaliColors.warningDark);
+    });
+
+    test('copyWith preserves unchanged values', () {
+      const original = MefaliCustomColors.light;
+      final copy = original.copyWith(success: Colors.red);
+      expect(copy.success, Colors.red);
+      expect(copy.onSuccess, original.onSuccess);
+      expect(copy.warning, original.warning);
+    });
+
+    test('lerp interpolates correctly at t=0', () {
+      const a = MefaliCustomColors.light;
+      const b = MefaliCustomColors.dark;
+      final result = a.lerp(b, 0);
+      expect(result.success, a.success);
+    });
+
+    test('lerp interpolates correctly at t=1', () {
+      const a = MefaliCustomColors.light;
+      const b = MefaliCustomColors.dark;
+      final result = a.lerp(b, 1);
+      expect(result.success, b.success);
+    });
+
+    test('lerp returns self when other is null', () {
+      const a = MefaliCustomColors.light;
+      final result = a.lerp(null, 0.5);
+      expect(result.success, a.success);
+    });
+  });
+
+  // ─── MefaliColors ────────────────────────────────────────
   group('MefaliColors', () {
     test('primary light is Brown 700', () {
       expect(MefaliColors.primaryLight, const Color(0xFF5D4037));
@@ -41,14 +140,166 @@ void main() {
     test('success light is green', () {
       expect(MefaliColors.successLight, const Color(0xFF4CAF50));
     });
+
+    test('success dark is lighter green', () {
+      expect(MefaliColors.successDark, const Color(0xFF81C784));
+    });
+
+    test('seedColor matches primaryLight', () {
+      expect(MefaliColors.seedColor, MefaliColors.primaryLight);
+    });
+
+    test('warning colors are defined', () {
+      expect(MefaliColors.warningLight, const Color(0xFFFF9800));
+      expect(MefaliColors.warningDark, const Color(0xFFFFCC80));
+    });
+
+    test('success container colors are defined', () {
+      expect(MefaliColors.successContainerLight, const Color(0xFFC8E6C9));
+      expect(MefaliColors.successContainerDark, const Color(0xFF2E7D32));
+    });
   });
 
+  // ─── MefaliTypography ────────────────────────────────────
   group('MefaliTypography', () {
     test('textTheme has correct body minimum sizes', () {
       final textTheme = MefaliTypography.textTheme;
       expect(textTheme.bodyMedium?.fontSize, 14);
       expect(textTheme.bodySmall?.fontSize, 12);
       expect(textTheme.labelMedium?.fontSize, 12);
+    });
+
+    test('bodyLarge is at least 14sp', () {
+      final size = MefaliTypography.textTheme.bodyLarge?.fontSize ?? 0;
+      expect(size, greaterThanOrEqualTo(14));
+    });
+
+    test('labelLarge is at least 12sp', () {
+      final size = MefaliTypography.textTheme.labelLarge?.fontSize ?? 0;
+      expect(size, greaterThanOrEqualTo(12));
+    });
+  });
+
+  // ─── Touch targets (>= 48dp) ────────────────────────────
+  group('Touch targets', () {
+    test('FilledButton minimum height is >= 48', () {
+      final theme = MefaliTheme.light();
+      final style = theme.filledButtonTheme.style!;
+      final minSize = style.minimumSize!.resolve({});
+      expect(minSize!.height, greaterThanOrEqualTo(48));
+    });
+
+    test('OutlinedButton minimum height is >= 48', () {
+      final theme = MefaliTheme.light();
+      final style = theme.outlinedButtonTheme.style!;
+      final minSize = style.minimumSize!.resolve({});
+      expect(minSize!.height, greaterThanOrEqualTo(48));
+    });
+
+    test('TextButton minimum height is >= 48', () {
+      final theme = MefaliTheme.light();
+      final style = theme.textButtonTheme.style!;
+      final minSize = style.minimumSize!.resolve({});
+      expect(minSize!.height, greaterThanOrEqualTo(48));
+    });
+
+    test('ElevatedButton minimum height is >= 48', () {
+      final theme = MefaliTheme.light();
+      final style = theme.elevatedButtonTheme.style!;
+      final minSize = style.minimumSize!.resolve({});
+      expect(minSize!.height, greaterThanOrEqualTo(48));
+    });
+
+    test('IconButton minimum size is >= 48x48', () {
+      final theme = MefaliTheme.light();
+      final style = theme.iconButtonTheme.style!;
+      final minSize = style.minimumSize!.resolve({});
+      expect(minSize!.width, greaterThanOrEqualTo(48));
+      expect(minSize.height, greaterThanOrEqualTo(48));
+    });
+  });
+
+  // ─── Component themes configurees ───────────────────────
+  group('Component themes', () {
+    test('CardTheme has rounded shape', () {
+      final theme = MefaliTheme.light();
+      expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
+    });
+
+    test('CardTheme light elevation is 1', () {
+      expect(MefaliTheme.light().cardTheme.elevation, 1);
+    });
+
+    test('CardTheme dark elevation is 0', () {
+      expect(MefaliTheme.dark().cardTheme.elevation, 0);
+    });
+
+    test('NavigationBarTheme is configured', () {
+      final theme = MefaliTheme.light();
+      expect(theme.navigationBarTheme.height, 64);
+    });
+
+    test('TabBarTheme uses primary indicator', () {
+      final theme = MefaliTheme.light();
+      expect(theme.tabBarTheme.indicatorColor, MefaliColors.primaryLight);
+    });
+
+    test('InputDecorationTheme has outlined border', () {
+      final theme = MefaliTheme.light();
+      expect(theme.inputDecorationTheme.border, isA<OutlineInputBorder>());
+    });
+
+    test('InputDecorationTheme labels always float', () {
+      final theme = MefaliTheme.light();
+      expect(
+        theme.inputDecorationTheme.floatingLabelBehavior,
+        FloatingLabelBehavior.always,
+      );
+    });
+
+    test('SnackBarTheme is floating', () {
+      final theme = MefaliTheme.light();
+      expect(theme.snackBarTheme.behavior, SnackBarBehavior.floating);
+    });
+
+    test('ChipTheme has rounded shape', () {
+      final theme = MefaliTheme.light();
+      expect(theme.chipTheme.shape, isA<RoundedRectangleBorder>());
+    });
+
+    test('BadgeTheme sizes are configured', () {
+      final theme = MefaliTheme.light();
+      expect(theme.badgeTheme.smallSize, 8);
+      expect(theme.badgeTheme.largeSize, 16);
+    });
+
+    test('materialTapTargetSize is padded', () {
+      final theme = MefaliTheme.light();
+      expect(theme.materialTapTargetSize, MaterialTapTargetSize.padded);
+    });
+  });
+
+  // ─── Contraste WCAG AA (>= 4.5:1) ──────────────────────
+  group('WCAG AA contrast', () {
+    test('primary on white (light mode) >= 4.5:1', () {
+      final ratio = _contrastRatio(MefaliColors.primaryLight, Colors.white);
+      expect(ratio, greaterThanOrEqualTo(4.5));
+    });
+
+    test('onSurface on surface (light mode) >= 4.5:1', () {
+      final ratio = _contrastRatio(
+        MefaliColors.onSurfaceLight,
+        MefaliColors.surfaceLight,
+      );
+      expect(ratio, greaterThanOrEqualTo(4.5));
+    });
+
+    test('onSurface on surface (dark mode) >= 4.5:1', () {
+      final ratio = _contrastRatio(
+        MefaliColors.onSurfaceDark,
+        MefaliColors.surfaceDark,
+      );
+      expect(ratio, greaterThanOrEqualTo(4.5));
     });
   });
 }

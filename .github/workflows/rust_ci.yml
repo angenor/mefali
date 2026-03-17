@@ -1,0 +1,38 @@
+name: Rust CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clippy-fmt-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server -> target
+
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Test
+        run: cargo test --workspace

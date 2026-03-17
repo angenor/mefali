@@ -11,11 +11,7 @@ class MefaliAdminApp extends StatelessWidget {
       theme: MefaliTheme.light(),
       darkTheme: MefaliTheme.dark(),
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(
-          child: Text('mefali Admin'),
-        ),
-      ),
+      home: const Scaffold(body: Center(child: Text('mefali Admin'))),
     );
   }
 }

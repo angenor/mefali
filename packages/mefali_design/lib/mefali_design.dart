@@ -4,3 +4,4 @@ library;
 export 'mefali_colors.dart';
 export 'mefali_theme.dart';
 export 'mefali_typography.dart';
+export 'theme/mefali_custom_colors.dart';

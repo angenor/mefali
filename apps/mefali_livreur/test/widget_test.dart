@@ -4,11 +4,7 @@ import 'package:mefali_livreur/app.dart';
 
 void main() {
   testWidgets('MefaliLivreurApp renders', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MefaliLivreurApp(),
-      ),
-    );
+    await tester.pumpWidget(const ProviderScope(child: MefaliLivreurApp()));
     expect(find.text('mefali Livreur'), findsOneWidget);
   });
 }

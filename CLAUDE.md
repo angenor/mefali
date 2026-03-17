@@ -25,11 +25,17 @@ mefali is an African marketplace & logistics super-app targeting Bouake, Cote d'
 
 ### Flutter
 
+Melos is not installed globally. Use `dart pub global run melos` or run dart/flutter commands directly on individual packages.
+
 ```bash
-melos bootstrap                     # Install deps for all packages
-melos run analyze                   # dart analyze --fatal-infos on all packages
-melos run test                      # flutter test on all packages
-melos run format                    # dart format --set-exit-if-changed
+dart pub global run melos bootstrap  # Install deps for all packages
+dart pub global run melos run analyze # dart analyze --fatal-infos on all packages
+dart pub global run melos run test    # flutter test on all packages
+dart pub global run melos run format  # dart format --set-exit-if-changed
+
+# Or run directly on a single package (faster, no melos needed):
+dart analyze packages/mefali_design            # Analyze one package
+flutter test packages/mefali_design            # Test one package
 ```
 
 ### Rust (run from `server/`)

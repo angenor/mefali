@@ -4,11 +4,7 @@ import 'package:mefali_admin/app.dart';
 
 void main() {
   testWidgets('MefaliAdminApp renders', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MefaliAdminApp(),
-      ),
-    );
+    await tester.pumpWidget(const ProviderScope(child: MefaliAdminApp()));
     expect(find.text('mefali Admin'), findsOneWidget);
   });
 }

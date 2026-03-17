@@ -11,11 +11,7 @@ class MefaliB2cApp extends StatelessWidget {
       theme: MefaliTheme.light(),
       darkTheme: MefaliTheme.dark(),
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(
-          child: Text('mefali B2C'),
-        ),
-      ),
+      home: const Scaffold(body: Center(child: Text('mefali B2C'))),
     );
   }
 }

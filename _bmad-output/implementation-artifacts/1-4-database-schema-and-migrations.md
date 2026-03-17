@@ -1,6 +1,6 @@
 # Story 1.4: Database Schema & Migrations
 
-Status: ready-for-dev
+Status: done
 
 ---
 
@@ -23,33 +23,33 @@ Afin que **la base de donnees soit prete pour le developpement des fonctionnalit
 
 ## Taches / Sous-taches
 
-- [ ] **T1** Creer les fichiers de migration SQLx dans `server/migrations/` (AC: #1, #3, #4)
-  - [ ] T1.1 Migration 001: enums PostgreSQL (tous les types enumeres)
-  - [ ] T1.2 Migration 002: `city_config` (aucune dependance FK)
-  - [ ] T1.3 Migration 003: `users` (FK → city_config)
-  - [ ] T1.4 Migration 004: `merchants` (FK → users, city_config)
-  - [ ] T1.5 Migration 005: `products` (FK → merchants)
-  - [ ] T1.6 Migration 006: `wallets` (FK → users)
-  - [ ] T1.7 Migration 007: `orders` (FK → users, merchants, city_config)
-  - [ ] T1.8 Migration 008: `order_items` (FK → orders, products)
-  - [ ] T1.9 Migration 009: `wallet_transactions` (FK → wallets)
-  - [ ] T1.10 Migration 010: `deliveries` (FK → orders, users)
-  - [ ] T1.11 Migration 011: `disputes` (FK → orders, users)
-  - [ ] T1.12 Migration 012: `sponsorships` (FK → users)
-  - [ ] T1.13 Migration 013: `kyc_documents` (FK → users)
-- [ ] **T2** Creer les index de performance (AC: #5)
-  - [ ] T2.1 Index dans chaque migration de table (co-localises)
-- [ ] **T3** Ajouter le code de migration au demarrage de l'API (AC: #1)
-  - [ ] T3.1 `sqlx::migrate!()` dans `api/src/main.rs` apres creation du pool
-- [ ] **T4** Verifier la compilation et les tests (AC: #6, #7)
-  - [ ] T4.1 `cargo build --workspace`
-  - [ ] T4.2 `cargo test --workspace`
-  - [ ] T4.3 `cargo clippy --workspace`
-- [ ] **T5** Tester le cycle de migration (AC: #1, #8)
-  - [ ] T5.1 Demarrer PostgreSQL (via Docker ou local port 5433)
-  - [ ] T5.2 `sqlx migrate run` → succes
-  - [ ] T5.3 Verifier les tables avec `\dt` dans psql
-  - [ ] T5.4 Verifier les enums avec `\dT+`
+- [x] **T1** Creer les fichiers de migration SQLx dans `server/migrations/` (AC: #1, #3, #4)
+  - [x] T1.1 Migration 001: enums PostgreSQL (tous les types enumeres)
+  - [x] T1.2 Migration 002: `city_config` (aucune dependance FK)
+  - [x] T1.3 Migration 003: `users` (FK → city_config)
+  - [x] T1.4 Migration 004: `merchants` (FK → users, city_config)
+  - [x] T1.5 Migration 005: `products` (FK → merchants)
+  - [x] T1.6 Migration 006: `wallets` (FK → users)
+  - [x] T1.7 Migration 007: `orders` (FK → users, merchants, city_config)
+  - [x] T1.8 Migration 008: `order_items` (FK → orders, products)
+  - [x] T1.9 Migration 009: `wallet_transactions` (FK → wallets)
+  - [x] T1.10 Migration 010: `deliveries` (FK → orders, users)
+  - [x] T1.11 Migration 011: `disputes` (FK → orders, users)
+  - [x] T1.12 Migration 012: `sponsorships` (FK → users)
+  - [x] T1.13 Migration 013: `kyc_documents` (FK → users)
+- [x] **T2** Creer les index de performance (AC: #5)
+  - [x] T2.1 Index dans chaque migration de table (co-localises)
+- [x] **T3** Ajouter le code de migration au demarrage de l'API (AC: #1)
+  - [x] T3.1 `sqlx::migrate!()` dans `api/src/main.rs` apres creation du pool
+- [x] **T4** Verifier la compilation et les tests (AC: #6, #7)
+  - [x] T4.1 `cargo build --workspace`
+  - [x] T4.2 `cargo test --workspace`
+  - [x] T4.3 `cargo clippy --workspace`
+- [x] **T5** Tester le cycle de migration (AC: #1, #8)
+  - [x] T5.1 Demarrer PostgreSQL (via Docker ou local port 5433)
+  - [x] T5.2 `sqlx migrate run` → succes
+  - [x] T5.3 Verifier les tables avec `\dt` dans psql
+  - [x] T5.4 Verifier les enums avec `\dT+`
 
 ## Dev Notes
 
@@ -269,49 +269,36 @@ Index: `idx_kyc_documents_user_id`, `idx_kyc_documents_status`
 
 ### Organisation des fichiers de migration
 
-Format SQLx reversible (dossiers avec `up.sql` + `down.sql`) :
+Format SQLx 0.8 reversible (fichiers plats avec suffixes `.up.sql` / `.down.sql`) :
 
 ```
 server/migrations/
-├── 001_create_enums/
-│   ├── up.sql          # CREATE TYPE ...
-│   └── down.sql        # DROP TYPE ...
-├── 002_create_city_config/
-│   ├── up.sql
-│   └── down.sql
-├── 003_create_users/
-│   ├── up.sql
-│   └── down.sql
-├── 004_create_merchants/
-│   ├── up.sql
-│   └── down.sql
-├── 005_create_products/
-│   ├── up.sql
-│   └── down.sql
-├── 006_create_wallets/
-│   ├── up.sql
-│   └── down.sql
-├── 007_create_orders/
-│   ├── up.sql
-│   └── down.sql
-├── 008_create_order_items/
-│   ├── up.sql
-│   └── down.sql
-├── 009_create_wallet_transactions/
-│   ├── up.sql
-│   └── down.sql
-├── 010_create_deliveries/
-│   ├── up.sql
-│   └── down.sql
-├── 011_create_disputes/
-│   ├── up.sql
-│   └── down.sql
-├── 012_create_sponsorships/
-│   ├── up.sql
-│   └── down.sql
-└── 013_create_kyc_documents/
-    ├── up.sql
-    └── down.sql
+├── 20260317000001_create_enums.up.sql
+├── 20260317000001_create_enums.down.sql
+├── 20260317000002_create_city_config.up.sql
+├── 20260317000002_create_city_config.down.sql
+├── 20260317000003_create_users.up.sql
+├── 20260317000003_create_users.down.sql
+├── 20260317000004_create_merchants.up.sql
+├── 20260317000004_create_merchants.down.sql
+├── 20260317000005_create_products.up.sql
+├── 20260317000005_create_products.down.sql
+├── 20260317000006_create_wallets.up.sql
+├── 20260317000006_create_wallets.down.sql
+├── 20260317000007_create_orders.up.sql
+├── 20260317000007_create_orders.down.sql
+├── 20260317000008_create_order_items.up.sql
+├── 20260317000008_create_order_items.down.sql
+├── 20260317000009_create_wallet_transactions.up.sql
+├── 20260317000009_create_wallet_transactions.down.sql
+├── 20260317000010_create_deliveries.up.sql
+├── 20260317000010_create_deliveries.down.sql
+├── 20260317000011_create_disputes.up.sql
+├── 20260317000011_create_disputes.down.sql
+├── 20260317000012_create_sponsorships.up.sql
+├── 20260317000012_create_sponsorships.down.sql
+├── 20260317000013_create_kyc_documents.up.sql
+└── 20260317000013_create_kyc_documents.down.sql
 ```
 
 **Note** : Supprimer le fichier `.gitkeep` existant dans `server/migrations/`.
@@ -413,13 +400,11 @@ cargo clippy --workspace                                       # 0 warning
 
 Fichiers a creer :
 ```
-server/migrations/001_create_enums/up.sql        # CREER
-server/migrations/001_create_enums/down.sql      # CREER
-server/migrations/002_create_city_config/up.sql   # CREER
-server/migrations/002_create_city_config/down.sql # CREER
-... (13 dossiers au total)
-server/migrations/013_create_kyc_documents/up.sql
-server/migrations/013_create_kyc_documents/down.sql
+server/migrations/20260317000001_create_enums.up.sql        # CREER
+server/migrations/20260317000001_create_enums.down.sql      # CREER
+... (13 paires au total, format plat SQLx 0.8)
+server/migrations/20260317000013_create_kyc_documents.up.sql
+server/migrations/20260317000013_create_kyc_documents.down.sql
 ```
 
 Fichiers a modifier :
@@ -458,12 +443,64 @@ server/crates/common/src/config.rs                # AppConfig est deja correct
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- Format migration initial avec dossiers (001_create_enums/up.sql) ne fonctionnait pas — SQLx 0.8 utilise des fichiers plats avec suffixes .up.sql/.down.sql
+- Restructuration vers format timestamp : `20260317000001_create_enums.up.sql`
+- `sqlx::migrate!("./migrations")` echouait car le chemin est relatif a CARGO_MANIFEST_DIR (crates/api/), corrige vers `../../migrations`
+- Import `use sqlx::PgPool` retire car inutilise (PgPool utilise indirectement via infrastructure::database)
+- Ajout de `sqlx.workspace = true` dans api/Cargo.toml (manquant initialement)
+
 ### Completion Notes List
+
+- AC1: 13 migrations appliquees avec succes via `sqlx migrate run` (total ~96ms)
+- AC2: Toutes les tables ont UUID PK via gen_random_uuid(), FK correctes avec ON DELETE CASCADE sur relations parent-enfant (merchants→users, products→merchants, order_items→orders, wallets→users, kyc_documents→users)
+- AC3: 12 tables creees + _sqlx_migrations systeme. Verifie via `\dt` psql
+- AC4: 13 enums PostgreSQL creees correspondant aux enums Rust domain. Verifie via `SELECT typname FROM pg_type WHERE typtype = 'e'`
+- AC5: 22 index custom crees + 20 index systeme (PK, UNIQUE). 42 index total via `\di`
+- AC6: 30 tests passent sans regression (cargo test --workspace)
+- AC7: `cargo build --workspace` compile sans erreur
+- AC8: Reversibilite verifiee — `sqlx migrate revert` + `sqlx migrate run` fonctionnent correctement
+- Bonus: Fonction trigger_set_updated_at() + triggers sur toutes les tables avec updated_at
+- Bonus: CHECK constraints sur montants (>= 0), quantites (> 0), et sponsorships (sponsor != sponsored)
 
 ### Change Log
 
+- 2026-03-17: Implementation complete des 13 migrations SQLx (Story 1.4)
+- 2026-03-17: Integration sqlx::migrate!() dans api/src/main.rs avec db_pool
+- 2026-03-17: Code review — Dev Notes corrigees (format fichiers migration), Cargo.lock ajoute au File List
+
 ### File List
+
+- server/migrations/20260317000001_create_enums.up.sql (CREE)
+- server/migrations/20260317000001_create_enums.down.sql (CREE)
+- server/migrations/20260317000002_create_city_config.up.sql (CREE)
+- server/migrations/20260317000002_create_city_config.down.sql (CREE)
+- server/migrations/20260317000003_create_users.up.sql (CREE)
+- server/migrations/20260317000003_create_users.down.sql (CREE)
+- server/migrations/20260317000004_create_merchants.up.sql (CREE)
+- server/migrations/20260317000004_create_merchants.down.sql (CREE)
+- server/migrations/20260317000005_create_products.up.sql (CREE)
+- server/migrations/20260317000005_create_products.down.sql (CREE)
+- server/migrations/20260317000006_create_wallets.up.sql (CREE)
+- server/migrations/20260317000006_create_wallets.down.sql (CREE)
+- server/migrations/20260317000007_create_orders.up.sql (CREE)
+- server/migrations/20260317000007_create_orders.down.sql (CREE)
+- server/migrations/20260317000008_create_order_items.up.sql (CREE)
+- server/migrations/20260317000008_create_order_items.down.sql (CREE)
+- server/migrations/20260317000009_create_wallet_transactions.up.sql (CREE)
+- server/migrations/20260317000009_create_wallet_transactions.down.sql (CREE)
+- server/migrations/20260317000010_create_deliveries.up.sql (CREE)
+- server/migrations/20260317000010_create_deliveries.down.sql (CREE)
+- server/migrations/20260317000011_create_disputes.up.sql (CREE)
+- server/migrations/20260317000011_create_disputes.down.sql (CREE)
+- server/migrations/20260317000012_create_sponsorships.up.sql (CREE)
+- server/migrations/20260317000012_create_sponsorships.down.sql (CREE)
+- server/migrations/20260317000013_create_kyc_documents.up.sql (CREE)
+- server/migrations/20260317000013_create_kyc_documents.down.sql (CREE)
+- server/migrations/.gitkeep (SUPPRIME)
+- server/crates/api/src/main.rs (MODIFIE — ajout db_pool + sqlx::migrate!())
+- server/crates/api/Cargo.toml (MODIFIE — ajout sqlx.workspace = true)
+- server/Cargo.lock (MODIFIE — auto-genere suite a ajout sqlx dans api)

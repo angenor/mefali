@@ -22,13 +22,26 @@ async fn main() -> std::io::Result<()> {
     let bind_addr = format!("{}:{}", config.api_host, config.api_port);
     info!(bind = %bind_addr, "Starting mefali API server");
 
+    // Initialize database connection pool
+    let db_pool = infrastructure::database::create_pool(&config.database_url)
+        .await
+        .expect("Failed to create database pool");
+
+    // Run database migrations
+    sqlx::migrate!("../../migrations")
+        .run(&db_pool)
+        .await
+        .expect("Failed to run database migrations");
+    info!("Database migrations applied successfully");
+
     // Shared application state injected via web::Data<>
     let app_config = web::Data::new(config.clone());
+    let db_data = web::Data::new(db_pool);
 
     HttpServer::new(move || {
         App::new()
             .app_data(app_config.clone())
-            // Future: .app_data(web::Data::new(db_pool.clone()))
+            .app_data(db_data.clone())
             // Future: .app_data(web::Data::new(redis_conn.clone()))
             // Future: .app_data(web::Data::new(s3_client.clone()))
             .configure(routes::configure)
