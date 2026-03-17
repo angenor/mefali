@@ -75,3 +75,11 @@ Ports 8080/5432/6379 are occupied on the dev machine. Use:
 ## Planning Docs
 
 Full requirements and architecture decisions live in `_bmad-output/planning-artifacts/` (PRD, architecture, epics, UX spec). Sprint tracking is in `_bmad-output/implementation-artifacts/sprint-status.yaml`.
+
+
+## Parallel Sub-agents Strategy
+
+Use multiple sub-agents in parallel for efficiency:
+- Search frontend + backend simultaneously
+- Explore multiple files/folders at the same time
+- Run tests + verifications in parallel after modifications
