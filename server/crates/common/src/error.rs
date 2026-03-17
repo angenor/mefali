@@ -23,6 +23,9 @@ pub enum AppError {
 
     #[error("External service error: {0}")]
     ExternalServiceError(String),
+
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
 }
 
 impl AppError {
@@ -35,6 +38,7 @@ impl AppError {
             AppError::InternalError(_) => "INTERNAL_ERROR",
             AppError::DatabaseError(_) => "DATABASE_ERROR",
             AppError::ExternalServiceError(_) => "EXTERNAL_SERVICE_ERROR",
+            AppError::TooManyRequests(_) => "TOO_MANY_REQUESTS",
         }
     }
 
@@ -47,6 +51,7 @@ impl AppError {
             AppError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::ExternalServiceError(_) => StatusCode::BAD_GATEWAY,
+            AppError::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
         }
     }
 }
@@ -57,10 +62,16 @@ impl ResponseError for AppError {
     }
 
     fn error_response(&self) -> HttpResponse {
+        let user_message = match self {
+            AppError::InternalError(_)
+            | AppError::DatabaseError(_)
+            | AppError::ExternalServiceError(_) => "An internal error occurred".to_string(),
+            _ => self.to_string(),
+        };
         HttpResponse::build(self.status_code_value()).json(json!({
             "error": {
                 "code": self.error_code(),
-                "message": self.to_string(),
+                "message": user_message,
                 "details": null
             }
         }))
@@ -101,6 +112,10 @@ mod tests {
         assert_eq!(
             AppError::ExternalServiceError("x".into()).status_code_value(),
             StatusCode::BAD_GATEWAY
+        );
+        assert_eq!(
+            AppError::TooManyRequests("x".into()).status_code_value(),
+            StatusCode::TOO_MANY_REQUESTS
         );
     }
 

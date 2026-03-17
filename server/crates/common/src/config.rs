@@ -14,6 +14,10 @@ pub struct AppConfig {
     pub jwt_secret: String,
     pub jwt_access_expiry: u64,
     pub jwt_refresh_expiry: u64,
+    pub otp_length: usize,
+    pub otp_expiry_seconds: u64,
+    pub otp_max_attempts: u32,
+    pub otp_rate_limit_per_minute: u32,
 }
 
 fn parse_or_default<T: std::str::FromStr>(var_name: &str, raw: &str, default: T) -> T {
@@ -33,6 +37,10 @@ impl AppConfig {
         let api_port_raw = env::var("API_PORT").unwrap_or_else(|_| "8090".into());
         let jwt_access_raw = env::var("JWT_ACCESS_EXPIRY").unwrap_or_else(|_| "900".into());
         let jwt_refresh_raw = env::var("JWT_REFRESH_EXPIRY").unwrap_or_else(|_| "604800".into());
+        let otp_length_raw = env::var("OTP_LENGTH").unwrap_or_else(|_| "6".into());
+        let otp_expiry_raw = env::var("OTP_EXPIRY_SECONDS").unwrap_or_else(|_| "300".into());
+        let otp_max_raw = env::var("OTP_MAX_ATTEMPTS").unwrap_or_else(|_| "3".into());
+        let otp_rate_raw = env::var("OTP_RATE_LIMIT_PER_MINUTE").unwrap_or_else(|_| "3".into());
 
         Ok(Self {
             database_url: env::var("DATABASE_URL")?,
@@ -46,6 +54,14 @@ impl AppConfig {
             jwt_secret: env::var("JWT_SECRET")?,
             jwt_access_expiry: parse_or_default("JWT_ACCESS_EXPIRY", &jwt_access_raw, 900),
             jwt_refresh_expiry: parse_or_default("JWT_REFRESH_EXPIRY", &jwt_refresh_raw, 604800),
+            otp_length: parse_or_default("OTP_LENGTH", &otp_length_raw, 6),
+            otp_expiry_seconds: parse_or_default("OTP_EXPIRY_SECONDS", &otp_expiry_raw, 300),
+            otp_max_attempts: parse_or_default("OTP_MAX_ATTEMPTS", &otp_max_raw, 3),
+            otp_rate_limit_per_minute: parse_or_default(
+                "OTP_RATE_LIMIT_PER_MINUTE",
+                &otp_rate_raw,
+                3,
+            ),
         })
     }
 }

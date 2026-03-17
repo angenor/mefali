@@ -46,6 +46,12 @@ tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 # Error handling
 thiserror = "2"
 
+# JWT
+jsonwebtoken = "9"
+
+# Random / OTP
+rand = "0.8"
+
 # Internal crates
 common = { path = "crates/common" }
 infrastructure = { path = "crates/infrastructure" }

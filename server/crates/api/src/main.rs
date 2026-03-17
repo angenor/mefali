@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use actix_web::{web, App, HttpServer};
+use notification::sms::dev_provider::DevSmsProvider;
+use notification::sms::SmsProvider;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -34,15 +38,27 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to run database migrations");
     info!("Database migrations applied successfully");
 
+    // Initialize Redis connection
+    let redis_conn = infrastructure::redis::create_connection(&config.redis_url)
+        .await
+        .expect("Failed to create Redis connection");
+    info!("Redis connection established");
+
+    // SMS provider — swap DevSmsProvider for a real provider in production
+    let sms_provider: Arc<dyn SmsProvider> = Arc::new(DevSmsProvider);
+
     // Shared application state injected via web::Data<>
     let app_config = web::Data::new(config.clone());
     let db_data = web::Data::new(db_pool);
+    let redis_data = web::Data::new(redis_conn);
+    let sms_data = web::Data::new(sms_provider);
 
     HttpServer::new(move || {
         App::new()
             .app_data(app_config.clone())
             .app_data(db_data.clone())
-            // Future: .app_data(web::Data::new(redis_conn.clone()))
+            .app_data(redis_data.clone())
+            .app_data(sms_data.clone())
             // Future: .app_data(web::Data::new(s3_client.clone()))
             .configure(routes::configure)
     })
