@@ -1,5 +1,8 @@
 pub mod auth;
 pub mod health;
+pub mod kyc;
+pub mod merchants;
+pub mod products;
 pub mod users;
 
 use actix_web::web;
@@ -31,6 +34,36 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                         "/me/change-phone/verify",
                         web::post().to(users::change_phone_verify),
                     ),
+            )
+            // KYC routes — Agent role required
+            .service(
+                web::scope("/kyc")
+                    .route("/pending", web::get().to(kyc::pending_drivers))
+                    .route("/{user_id}", web::get().to(kyc::kyc_summary))
+                    .route("/{user_id}/documents", web::post().to(kyc::upload_document))
+                    .route("/{user_id}/activate", web::post().to(kyc::activate_driver)),
+            )
+            // Merchant onboarding routes — Agent role required
+            .service(
+                web::scope("/merchants")
+                    .service(
+                        web::scope("/onboard")
+                            .route("/request-otp", web::post().to(merchants::onboard_request_otp))
+                            .route("/verify-and-create", web::post().to(merchants::onboard_verify_and_create))
+                            .route("/in-progress", web::get().to(merchants::in_progress)),
+                    )
+                    .route("/{id}/products", web::post().to(merchants::add_products))
+                    .route("/{id}/hours", web::put().to(merchants::set_hours))
+                    .route("/{id}/finalize", web::post().to(merchants::finalize))
+                    .route("/{id}/onboarding-status", web::get().to(merchants::onboarding_status)),
+            )
+            // Product catalogue routes — Merchant role required
+            .service(
+                web::scope("/products")
+                    .route("", web::get().to(products::list_products))
+                    .route("", web::post().to(products::create_product))
+                    .route("/{id}", web::put().to(products::update_product))
+                    .route("/{id}", web::delete().to(products::delete_product)),
             ),
     );
 }

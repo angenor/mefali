@@ -1,0 +1,41 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'merchant.g.dart';
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class Merchant {
+  const Merchant({
+    required this.id,
+    required this.userId,
+    required this.name,
+    this.address,
+    required this.status,
+    this.cityId,
+    required this.consecutiveNoResponse,
+    this.photoUrl,
+    this.category,
+    required this.onboardingStep,
+    this.createdByAgentId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory Merchant.fromJson(Map<String, dynamic> json) =>
+      _$MerchantFromJson(json);
+
+  final String id;
+  final String userId;
+  final String name;
+  final String? address;
+  final String status;
+  final String? cityId;
+  final int consecutiveNoResponse;
+  final String? photoUrl;
+  final String? category;
+  final int onboardingStep;
+  final String? createdByAgentId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  Map<String, dynamic> toJson() => _$MerchantToJson(this);
+}

@@ -1,7 +1,9 @@
 pub mod deliveries;
 pub mod disputes;
+pub mod kyc;
 pub mod merchants;
 pub mod orders;
+pub mod products;
 pub mod sponsorships;
 pub mod users;
 pub mod wallets;

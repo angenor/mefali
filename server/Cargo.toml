@@ -13,6 +13,8 @@ members = [
 # Web framework
 actix-web = "4"
 actix-rt = "2"
+actix-multipart = "0.7"
+futures-util = "0.3"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

@@ -15,6 +15,7 @@ async-trait.workspace = true
 thiserror.workspace = true
 redis.workspace = true
 sqlx.workspace = true
+aws-sdk-s3.workspace = true
 rand.workspace = true
 jsonwebtoken.workspace = true
 tracing.workspace = true

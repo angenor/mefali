@@ -56,6 +56,24 @@ pub async fn update_phone(pool: &PgPool, user_id: Id, new_phone: &str) -> Result
     .map_err(|e| AppError::DatabaseError(format!("Failed to update user phone: {}", e)))
 }
 
+/// Update a user's status.
+pub async fn update_status(
+    pool: &PgPool,
+    user_id: Id,
+    new_status: UserStatus,
+) -> Result<User, AppError> {
+    sqlx::query_as::<_, User>(
+        "UPDATE users SET status = $2, updated_at = now() \
+         WHERE id = $1 \
+         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+    )
+    .bind(user_id)
+    .bind(new_status)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to update user status: {}", e)))
+}
+
 /// Create a new user with the given role and status.
 pub async fn create_user(
     pool: &PgPool,

@@ -85,7 +85,7 @@ Full requirements and architecture decisions live in `_bmad-output/planning-arti
 
 ## Parallel Sub-agents Strategy
 
-Use multiple sub-agents in parallel for efficiency:
+Use multiple sub-agents in parallel for efficiency(10 max):
 - Search frontend + backend simultaneously
 - Explore multiple files/folders at the same time
 - Run tests + verifications in parallel after modifications

@@ -47,11 +47,21 @@ async fn main() -> std::io::Result<()> {
     // SMS provider — swap DevSmsProvider for a real provider in production
     let sms_provider: Arc<dyn SmsProvider> = Arc::new(DevSmsProvider);
 
+    // Initialize MinIO/S3 client
+    let s3_client = infrastructure::storage::create_s3_client(
+        &config.minio_endpoint,
+        &config.minio_access_key,
+        &config.minio_secret_key,
+    )
+    .await;
+    info!("MinIO/S3 client initialized");
+
     // Shared application state injected via web::Data<>
     let app_config = web::Data::new(config.clone());
     let db_data = web::Data::new(db_pool);
     let redis_data = web::Data::new(redis_conn);
     let sms_data = web::Data::new(sms_provider);
+    let s3_data = web::Data::new(s3_client);
 
     HttpServer::new(move || {
         App::new()
@@ -59,7 +69,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(db_data.clone())
             .app_data(redis_data.clone())
             .app_data(sms_data.clone())
-            // Future: .app_data(web::Data::new(s3_client.clone()))
+            .app_data(s3_data.clone())
             .configure(routes::configure)
     })
     .bind(&bind_addr)?
