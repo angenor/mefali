@@ -1,6 +1,6 @@
 # Story 2.4: Gestion du Profil Utilisateur
 
-Status: review
+Status: done
 
 ## Story
 
@@ -307,6 +307,7 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-03-17: Story 2.4 Gestion du Profil Utilisateur — Implementation complete (T1-T6)
+- 2026-03-17: Code Review — Fixed: (H1) AuthNotifier.updateUser test now tests actual notifier, (C1) added 4 UserProfileNotifier tests, (C2) added 2 B2C ProfileScreen widget tests, (C3) added 2 Livreur ProfileScreen widget tests with KYC badge, (M1) explicit updated_at=now() in repository UPDATE queries. Added TestWidgetsFlutterBinding.ensureInitialized() + dio dev_dependency for B2C/Livreur.
 
 ### File List
 
@@ -332,4 +333,8 @@ Claude Opus 4.6 (1M context)
 - apps/mefali_livreur/lib/features/profile/verify_phone_screen.dart (NOUVEAU)
 - apps/mefali_livreur/lib/features/home/home_screen.dart (MODIFIE — icone profil dans AppBar)
 - apps/mefali_livreur/lib/app.dart (MODIFIE — routes profil)
-- packages/mefali_api_client/test/mefali_api_client_test.dart (MODIFIE — 6 tests UserEndpoint + AuthNotifier)
+- packages/mefali_api_client/test/mefali_api_client_test.dart (MODIFIE — 10 tests UserEndpoint + AuthNotifier + UserProfileNotifier)
+- apps/mefali_b2c/test/widget_test.dart (MODIFIE — 2 tests ProfileScreen widget)
+- apps/mefali_livreur/test/widget_test.dart (MODIFIE — 2 tests ProfileScreen widget + KYC badge)
+- apps/mefali_b2c/pubspec.yaml (MODIFIE — ajout dio dev_dependency pour tests)
+- apps/mefali_livreur/pubspec.yaml (MODIFIE — ajout dio dev_dependency pour tests)

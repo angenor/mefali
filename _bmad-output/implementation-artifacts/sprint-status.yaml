@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-17 # dev-story 2-4 → review
+last_updated: 2026-03-17 # code-review 2-4 → done
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -57,7 +57,7 @@ development_status:
   2-1-phone-otp-registration-b2c: done
   2-2-jwt-authentication-system: done
   2-3-multi-role-registration: done
-  2-4-user-profile-management: review
+  2-4-user-profile-management: done
   epic-2-retrospective: optional
 
   # Epic 3: Merchant ERP & Onboarding (Standalone Value)

@@ -31,7 +31,7 @@ pub async fn find_by_phone(pool: &PgPool, phone: &str) -> Result<Option<User>, A
 /// Update a user's name.
 pub async fn update_name(pool: &PgPool, user_id: Id, name: &str) -> Result<User, AppError> {
     sqlx::query_as::<_, User>(
-        "UPDATE users SET name = $2 \
+        "UPDATE users SET name = $2, updated_at = now() \
          WHERE id = $1 \
          RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
     )
@@ -45,7 +45,7 @@ pub async fn update_name(pool: &PgPool, user_id: Id, name: &str) -> Result<User,
 /// Update a user's phone number.
 pub async fn update_phone(pool: &PgPool, user_id: Id, new_phone: &str) -> Result<User, AppError> {
     sqlx::query_as::<_, User>(
-        "UPDATE users SET phone = $2 \
+        "UPDATE users SET phone = $2, updated_at = now() \
          WHERE id = $1 \
          RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
     )

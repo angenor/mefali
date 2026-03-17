@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
@@ -28,6 +29,8 @@ class _Mock401Adapter implements HttpClientAdapter {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('mefali_api_client', () {
     test('package is importable', () {
       expect(true, isTrue);
@@ -349,27 +352,22 @@ void main() {
   });
 
   group('AuthNotifier.updateUser', () {
-    test('updateUser updates user in state', () {
+    test('updateUser updates user in notifier state', () {
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      final notifier = AuthNotifier(AuthEndpoint(dio), dio);
+      expect(notifier.state.user, isNull);
+
       const user = User(
-        id: 'test-id',
+        id: '00000000-0000-0000-0000-000000000001',
         phone: '+2250700000000',
         name: 'Updated',
         role: UserRole.client,
         status: UserStatus.active,
       );
-      const initialState = AuthState(
-        accessToken: 'token',
-        user: User(
-          id: 'test-id',
-          phone: '+2250700000000',
-          name: 'Original',
-          role: UserRole.client,
-          status: UserStatus.active,
-        ),
-      );
-      final updated = initialState.copyWith(user: user);
-      expect(updated.user?.name, 'Updated');
-      expect(updated.accessToken, 'token');
+
+      notifier.updateUser(user);
+      expect(notifier.state.user?.name, 'Updated');
+      expect(notifier.state.user?.phone, '+2250700000000');
     });
   });
 
@@ -409,6 +407,128 @@ void main() {
     test('no token means not authenticated', () {
       const state = AuthState();
       expect(state.isAuthenticated, isFalse);
+    });
+  });
+
+  group('UserProfileNotifier', () {
+    const testUser = User(
+      id: '00000000-0000-0000-0000-000000000001',
+      phone: '+2250700000000',
+      name: 'Koffi',
+      role: UserRole.client,
+      status: UserStatus.active,
+    );
+
+    ProviderContainer createTestContainer({Dio? mockDio, User? user}) {
+      final authDio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      final container = ProviderContainer(
+        overrides: [
+          userEndpointProvider.overrideWith(
+            (ref) => UserEndpoint(
+              mockDio ?? Dio(BaseOptions(baseUrl: 'http://localhost')),
+            ),
+          ),
+          authProvider.overrideWith((ref) {
+            final n = AuthNotifier(AuthEndpoint(authDio), authDio);
+            if (user != null) n.updateUser(user);
+            return n;
+          }),
+        ],
+      );
+      // Pre-initialize authProvider to avoid debug assertion when
+      // userProfileProvider reads it during construction.
+      container.read(authProvider);
+      return container;
+    }
+
+    Dio mockDioWithUserResponse({String name = 'Koffi Updated'}) {
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{
+                  'data': {
+                    'user': {
+                      'id': '00000000-0000-0000-0000-000000000001',
+                      'phone': '+2250700000000',
+                      'name': name,
+                      'role': 'client',
+                      'status': 'active',
+                    },
+                  },
+                },
+              ),
+            );
+          },
+        ),
+      );
+      return dio;
+    }
+
+    test('initial state loads user from authProvider', () {
+      final container = createTestContainer(user: testUser);
+      final sub = container.listen(userProfileProvider, (_, __) {});
+      addTearDown(() {
+        sub.close();
+        container.dispose();
+      });
+
+      final state = container.read(userProfileProvider);
+      expect(state.value?.name, 'Koffi');
+    });
+
+    test('initial state is loading when no user in authProvider', () {
+      final container = createTestContainer();
+      final sub = container.listen(userProfileProvider, (_, __) {});
+      addTearDown(() {
+        sub.close();
+        container.dispose();
+      });
+
+      final state = container.read(userProfileProvider);
+      expect(state.isLoading, isTrue);
+    });
+
+    test('updateName calls API and updates state', () async {
+      final container = createTestContainer(
+        user: testUser,
+        mockDio: mockDioWithUserResponse(),
+      );
+      final sub = container.listen(userProfileProvider, (_, __) {});
+      addTearDown(() {
+        sub.close();
+        container.dispose();
+      });
+
+      await container
+          .read(userProfileProvider.notifier)
+          .updateName('Koffi Updated');
+
+      final state = container.read(userProfileProvider);
+      expect(state.value?.name, 'Koffi Updated');
+    });
+
+    test('updateName syncs with authProvider', () async {
+      final container = createTestContainer(
+        user: testUser,
+        mockDio: mockDioWithUserResponse(),
+      );
+      final sub = container.listen(userProfileProvider, (_, __) {});
+      addTearDown(() {
+        sub.close();
+        container.dispose();
+      });
+
+      await container
+          .read(userProfileProvider.notifier)
+          .updateName('Koffi Updated');
+
+      final authState = container.read(authProvider);
+      expect(authState.user?.name, 'Koffi Updated');
     });
   });
 }
