@@ -1,6 +1,6 @@
 # Story 3.7: Sales Dashboard
 
-Status: in-progress
+Status: review
 
 ## Story
 
@@ -93,10 +93,10 @@ And nouveau total + répartition recalculés
   - [x] T3.3 Enregistrer route dans `routes/mod.rs`
   - [x] T3.4 Response format : `{"data": {"period": {...}, "current_week": {...}, "previous_week": {...}, "product_breakdown": [...]}}`
 
-- [ ] **T4** Tests backend (AC: 1-6)
+- [x] **T4** Tests backend (AC: 1-6)
   - [x] T4.1 Tests unitaires model WeeklyStats serde roundtrip
-  - [ ] T4.2 Tests service : semaine avec commandes, semaine vide, ownership check *(serde tests seuls — tests integration service requirent DB, a planifier)*
-  - [ ] T4.3 Tests route : 200 OK, 401 unauthorized, 403 forbidden *(pas d'infra test integration HTTP — a planifier)*
+  - [x] T4.2 Tests service : semaine avec commandes, semaine vide, ownership check — 3 tests #[sqlx::test] dans domain/orders/service.rs (test_weekly_stats_with_orders, test_weekly_stats_empty_week, test_weekly_stats_ownership_check)
+  - [x] T4.3 Tests route : 200 OK, 401 unauthorized, 403 forbidden — 3 tests #[sqlx::test] dans api/routes/orders.rs (test_weekly_stats_200_ok, test_weekly_stats_401_no_token, test_weekly_stats_403_wrong_role)
 
 ### Flutter mefali_core
 
@@ -308,14 +308,14 @@ Claude Opus 4.6 (1M context)
 ### Debug Log References
 
 - Build: cargo build OK, cargo clippy OK (0 new warnings)
-- Rust tests: 176 pass, 0 fail (2 new: weekly_stats_serde_roundtrip, week_summary_zero_values)
+- Rust tests: 182 pass, 0 fail (8 new: 2 serde + 6 integration)
 - Flutter analyze: 0 warnings/errors on mefali_core, mefali_api_client, mefali_b2b
 - Flutter tests: 27 pass, 0 fail (6 new: data, empty, skeleton, green growth, red growth, cache banner)
 
 ### Completion Notes List
 
 - T1-T3: Backend Rust complet — structs WeeklyStats/WeekSummary/WeekPeriod/ProductBreakdown dans model.rs, requetes SQL aggregation dans repository.rs (get_weekly_sales, get_product_breakdown), service get_merchant_weekly_stats avec calcul semaine lundi→dimanche, endpoint GET /api/v1/merchants/me/stats/weekly enregistre dans routes/mod.rs
-- T4: Tests backend — serde roundtrip pour WeeklyStats, test zero values pour WeekSummary
+- T4: Tests backend — serde roundtrip pour WeeklyStats, test zero values pour WeekSummary, 3 tests integration service (#[sqlx::test] avec factories), 3 tests integration route (actix_web::test + test_app). Bug fix: SUM(BIGINT)::BIGINT cast dans les queries SQL d'agregation.
 - T5: Modele Dart WeeklySales, WeekPeriod, WeekSummary, ProductSales avec @JsonSerializable(fieldRename: FieldRename.snake), exporte dans mefali_core.dart
 - T6: getWeeklyStats() ajoute dans OrderEndpoint, weeklyStatsProvider (FutureProvider.autoDispose<WeeklySalesState>) avec cache memoire offline, exporte dans mefali_api_client.dart
 - T7: SalesDashboardScreen (ConsumerWidget) avec summary cards, comparison section, product breakdown (LinearProgressIndicator), empty state, skeleton loading, cache banner offline, RefreshIndicator
@@ -327,6 +327,7 @@ Claude Opus 4.6 (1M context)
 
 - 2026-03-18: Implementation complete story 3-7-sales-dashboard — backend + frontend + tests (10 taches, toutes completees)
 - 2026-03-18: Code review fixes — M3: catch(e) remplace par on DioException (filtre erreurs reseau), L1: _DashboardContent refactored en ConsumerWidget, L2: 3 requetes DB parallelisees via tokio::try_join!, T4.2/T4.3 decoche (tests integration pas encore implantes), T9 clarifie (cache in-memory, pas Drift)
+- 2026-03-18: T4.2/T4.3 completes — infrastructure tests integration backend (test_fixtures + test_helpers + #[sqlx::test]), 6 tests integration (3 service + 3 route), bug fix SUM(BIGINT)::BIGINT, adversarial review avec 7 findings corriges
 
 ### File List
 
@@ -345,3 +346,9 @@ Claude Opus 4.6 (1M context)
 - apps/mefali_b2b/lib/features/sales/sales_dashboard_screen.dart (new: SalesDashboardScreen widget, review: _DashboardContent → ConsumerWidget)
 - apps/mefali_b2b/lib/features/home/home_screen.dart (modified: replaced Stats placeholder with SalesDashboardScreen)
 - apps/mefali_b2b/test/widget_test.dart (modified: added 6 Sales Dashboard tests)
+- server/crates/domain/src/test_fixtures.rs (new: factory functions for users, merchants, products, orders)
+- server/crates/domain/src/lib.rs (modified: added #[cfg(any(test, feature = "testing"))] pub mod test_fixtures)
+- server/crates/api/src/test_helpers.rs (new: test_config, create_test_jwt, test_app for route testing)
+- server/crates/api/src/main.rs (modified: added #[cfg(test)] mod test_helpers)
+- server/crates/api/Cargo.toml (modified: added domain[testing] + sqlx to dev-dependencies)
+- server/Cargo.lock (modified: updated dependency tree)
