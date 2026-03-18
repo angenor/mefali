@@ -2,6 +2,7 @@ pub mod auth;
 pub mod health;
 pub mod kyc;
 pub mod merchants;
+pub mod orders;
 pub mod products;
 pub mod users;
 
@@ -43,12 +44,21 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{user_id}/documents", web::post().to(kyc::upload_document))
                     .route("/{user_id}/activate", web::post().to(kyc::activate_driver)),
             )
+            // Order routes
+            .service(
+                web::scope("/orders")
+                    .route("", web::post().to(orders::create_order))
+                    .route("/{id}/accept", web::put().to(orders::accept_order))
+                    .route("/{id}/reject", web::put().to(orders::reject_order))
+                    .route("/{id}/ready", web::put().to(orders::mark_ready)),
+            )
             // Merchant routes — mixed roles
             .service(
                 web::scope("/merchants")
                     // Merchant self-service routes (must be before /{id} to avoid capture)
                     .route("/me", web::get().to(merchants::get_me))
                     .route("/me/status", web::put().to(merchants::update_status))
+                    .route("/me/orders", web::get().to(orders::get_merchant_orders))
                     .route("/me/stock-alerts", web::get().to(products::list_stock_alerts))
                     // Onboarding routes — Agent role required
                     .service(

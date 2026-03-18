@@ -105,6 +105,27 @@ class MerchantEndpoint {
     return OnboardingStatusResponse.fromJson(data);
   }
 
+  /// Recupere le marchand courant (pour le marchand connecte).
+  Future<Merchant> getCurrentMerchant() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/merchants/me',
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return Merchant.fromJson(data['merchant'] as Map<String, dynamic>);
+  }
+
+  /// Met a jour le statut de disponibilite du marchand.
+  Future<Merchant> updateStatus(VendorStatus status) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/merchants/me/status',
+      data: {'status': status.apiValue},
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return Merchant.fromJson(data['merchant'] as Map<String, dynamic>);
+  }
+
   /// Liste les onboardings en cours de l'agent.
   Future<List<Merchant>> getInProgress() async {
     final response = await _dio.get<Map<String, dynamic>>(

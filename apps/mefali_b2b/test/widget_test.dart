@@ -5,6 +5,7 @@ import 'package:mefali_b2b/app.dart';
 import 'package:mefali_b2b/features/auth/phone_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_form_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_list_screen.dart';
+import 'package:mefali_b2b/features/home/home_screen.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
@@ -546,6 +547,78 @@ void main() {
     // No alerts section visible
     expect(find.text('Alertes stock'), findsNothing);
     expect(find.byIcon(Icons.notification_important), findsNothing);
+  });
+
+  // --- VendorStatus / B2B Home tests (story 3.5) ---
+
+  Merchant makeMerchant(VendorStatus status) {
+    return Merchant(
+      id: '00000000-0000-0000-0000-000000000001',
+      userId: '00000000-0000-0000-0000-000000000002',
+      name: 'Chez Adjoua',
+      status: status,
+      consecutiveNoResponse: status == VendorStatus.autoPaused ? 3 : 0,
+      onboardingStep: 5,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  testWidgets('B2bHomeScreen shows VendorStatusIndicator with open status', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentMerchantProvider.overrideWith(
+            (ref) => Future.value(makeMerchant(VendorStatus.open)),
+          ),
+        ],
+        child: const MaterialApp(home: B2bHomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ouvert'), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+  });
+
+  testWidgets('B2bHomeScreen shows auto-pause banner when auto_paused', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentMerchantProvider.overrideWith(
+            (ref) => Future.value(makeMerchant(VendorStatus.autoPaused)),
+          ),
+        ],
+        child: const MaterialApp(home: B2bHomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Auto-pause'), findsOneWidget);
+    expect(
+      find.text('Vous etes en pause automatique — 3 commandes sans reponse'),
+      findsOneWidget,
+    );
+    expect(find.text('Reactiver'), findsOneWidget);
+  });
+
+  testWidgets('B2bHomeScreen hides auto-pause banner when open', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentMerchantProvider.overrideWith(
+            (ref) => Future.value(makeMerchant(VendorStatus.open)),
+          ),
+        ],
+        child: const MaterialApp(home: B2bHomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Vous etes en pause automatique — 3 commandes sans reponse'),
+      findsNothing,
+    );
   });
 
   testWidgets('Stock badge renders check icon for OK stock', (tester) async {

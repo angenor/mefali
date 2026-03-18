@@ -117,8 +117,8 @@ pub async fn update_status(
 }
 
 /// Increment the consecutive_no_response counter for a merchant.
-pub async fn increment_no_response(
-    pool: &PgPool,
+pub async fn increment_no_response<'e>(
+    executor: impl sqlx::PgExecutor<'e>,
     merchant_id: Id,
 ) -> Result<Merchant, AppError> {
     sqlx::query_as::<_, Merchant>(
@@ -129,14 +129,14 @@ pub async fn increment_no_response(
                    created_by_agent_id, created_at, updated_at",
     )
     .bind(merchant_id)
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))
 }
 
 /// Reset the consecutive_no_response counter to 0 for a merchant.
-pub async fn reset_no_response(
-    pool: &PgPool,
+pub async fn reset_no_response<'e>(
+    executor: impl sqlx::PgExecutor<'e>,
     merchant_id: Id,
 ) -> Result<Merchant, AppError> {
     sqlx::query_as::<_, Merchant>(
@@ -147,7 +147,7 @@ pub async fn reset_no_response(
                    created_by_agent_id, created_at, updated_at",
     )
     .bind(merchant_id)
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))
 }

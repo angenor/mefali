@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_design/mefali_design.dart';
 
 /// Relative luminance per WCAG 2.0.
@@ -276,6 +277,163 @@ void main() {
     test('materialTapTargetSize is padded', () {
       final theme = MefaliTheme.light();
       expect(theme.materialTapTargetSize, MaterialTapTargetSize.padded);
+    });
+  });
+
+  // ─── VendorStatusIndicator ──────────────────────────────
+  group('VendorStatusIndicator', () {
+    testWidgets('displays correct text for each status', (tester) async {
+      for (final status in VendorStatus.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: VendorStatusIndicator(status: status),
+            ),
+          ),
+        );
+        expect(find.text(status.label), findsOneWidget);
+      }
+    });
+
+    testWidgets('displays correct icon for each status', (tester) async {
+      for (final status in VendorStatus.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: VendorStatusIndicator(status: status),
+            ),
+          ),
+        );
+        expect(find.byIcon(status.icon), findsOneWidget);
+      }
+    });
+
+    testWidgets('read-only mode does not open bottom sheet on tap', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: VendorStatusIndicator(status: VendorStatus.open),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Ouvert'));
+      await tester.pumpAndSettle();
+
+      // No bottom sheet should appear
+      expect(find.text('Changer mon statut'), findsNothing);
+    });
+
+    testWidgets('interactive mode opens bottom sheet on tap', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VendorStatusIndicator(
+              status: VendorStatus.open,
+              interactive: true,
+              onStatusChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Ouvert'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Changer mon statut'), findsOneWidget);
+      expect(find.text('Ouvert'), findsWidgets); // in indicator + sheet
+      expect(find.text('Deborde'), findsOneWidget);
+      expect(find.text('Ferme'), findsOneWidget);
+    });
+
+    testWidgets('bottom sheet has 3 options when not auto_paused', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VendorStatusIndicator(
+              status: VendorStatus.overwhelmed,
+              interactive: true,
+              onStatusChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Deborde'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ouvert'), findsOneWidget);
+      expect(find.text('Deborde'), findsWidgets);
+      expect(find.text('Ferme'), findsOneWidget);
+    });
+
+    testWidgets('tapping option in bottom sheet calls onStatusChanged', (tester) async {
+      VendorStatus? selectedStatus;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VendorStatusIndicator(
+              status: VendorStatus.open,
+              interactive: true,
+              onStatusChanged: (s) => selectedStatus = s,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Ouvert'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Deborde'));
+      await tester.pumpAndSettle();
+
+      expect(selectedStatus, VendorStatus.overwhelmed);
+    });
+
+    testWidgets('auto_paused shows reactivate button instead of options', (tester) async {
+      VendorStatus? selectedStatus;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VendorStatusIndicator(
+              status: VendorStatus.autoPaused,
+              interactive: true,
+              onStatusChanged: (s) => selectedStatus = s,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Auto-pause'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vous etes en pause automatique'), findsOneWidget);
+      expect(find.text('Reactiver'), findsOneWidget);
+      expect(find.text('Changer mon statut'), findsNothing);
+
+      await tester.tap(find.text('Reactiver'));
+      await tester.pumpAndSettle();
+
+      expect(selectedStatus, VendorStatus.open);
+    });
+
+    testWidgets('indicator has minimum 48dp touch target', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VendorStatusIndicator(
+              status: VendorStatus.open,
+              interactive: true,
+              onStatusChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      final sizedBox = tester.widget<SizedBox>(find.byType(SizedBox).first);
+      expect(sizedBox.height, greaterThanOrEqualTo(48));
     });
   });
 

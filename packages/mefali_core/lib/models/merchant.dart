@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../enums/vendor_status.dart';
+
 part 'merchant.g.dart';
 
 @JsonSerializable(fieldRename: FieldRename.snake)
@@ -27,7 +29,7 @@ class Merchant {
   final String userId;
   final String name;
   final String? address;
-  final String status;
+  final VendorStatus status;
   final String? cityId;
   final int consecutiveNoResponse;
   final String? photoUrl;

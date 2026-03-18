@@ -12,6 +12,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  mefali_core:
+    path: ../mefali_core
 
 dev_dependencies:
   flutter_test:

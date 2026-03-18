@@ -1,6 +1,6 @@
 # Story 3.5: Disponibilite marchand 4 etats (Vendor Availability)
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -31,53 +31,53 @@ so that les clients voient mon etat reel et que le systeme me protege si je ne r
 
 ### Backend Rust
 
-- [ ] **T1** — Domain : logique changement statut (AC: #1, #2, #3, #6)
-  - [ ] T1.1 — `model.rs` : `UpdateStatusPayload { status: MerchantStatus }` + `validate()` + `MerchantStatus::valid_transitions()` retournant les transitions autorisees depuis chaque etat
-  - [ ] T1.2 — `repository.rs` : `update_status(pool, merchant_id, new_status) -> Merchant` — `UPDATE merchants SET availability_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`
-  - [ ] T1.3 — `repository.rs` : `increment_no_response(pool, merchant_id) -> Merchant` — `UPDATE merchants SET consecutive_no_response = consecutive_no_response + 1, updated_at = NOW() WHERE id = $1 RETURNING *`
-  - [ ] T1.4 — `repository.rs` : `reset_no_response(pool, merchant_id) -> Merchant` — `UPDATE merchants SET consecutive_no_response = 0, updated_at = NOW() WHERE id = $1 RETURNING *`
-  - [ ] T1.5 — `service.rs` : `change_status(pool, user_id, new_status)` — resolve merchant, valide transition, execute update. Si `auto_paused → open` : reset counter en plus.
-  - [ ] T1.6 — `service.rs` : `check_auto_pause(pool, merchant_id)` — charge merchant, si `consecutive_no_response >= 3` ET statut != `auto_paused` → bascule a `auto_paused`. Retourne bool (true si auto-pause declenche).
-  - [ ] T1.7 — `service.rs` : `get_current_merchant(pool, user_id)` — resolve merchant par user_id, retourne Merchant ou NotFound.
+- [x] **T1** — Domain : logique changement statut (AC: #1, #2, #3, #6)
+  - [x] T1.1 — `model.rs` : `UpdateStatusPayload { status: MerchantStatus }` + `validate()` + `MerchantStatus::valid_transitions()` retournant les transitions autorisees depuis chaque etat
+  - [x] T1.2 — `repository.rs` : `update_status(pool, merchant_id, new_status) -> Merchant` — `UPDATE merchants SET availability_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`
+  - [x] T1.3 — `repository.rs` : `increment_no_response(pool, merchant_id) -> Merchant` — `UPDATE merchants SET consecutive_no_response = consecutive_no_response + 1, updated_at = NOW() WHERE id = $1 RETURNING *`
+  - [x] T1.4 — `repository.rs` : `reset_no_response(pool, merchant_id) -> Merchant` — `UPDATE merchants SET consecutive_no_response = 0, updated_at = NOW() WHERE id = $1 RETURNING *`
+  - [x] T1.5 — `service.rs` : `change_status(pool, user_id, new_status)` — resolve merchant, valide transition, execute update. Si `auto_paused → open` : reset counter en plus.
+  - [x] T1.6 — `service.rs` : `check_auto_pause(pool, merchant_id)` — charge merchant, si `consecutive_no_response >= 3` ET statut != `auto_paused` → bascule a `auto_paused`. Retourne bool (true si auto-pause declenche).
+  - [x] T1.7 — `service.rs` : `get_current_merchant(pool, user_id)` — resolve merchant par user_id, retourne Merchant ou NotFound.
 
-- [ ] **T2** — Routes API (AC: #1, #2, #5)
-  - [ ] T2.1 — `PUT /api/v1/merchants/me/status` — JSON body `{ "status": "open" }`, require_role Merchant. Appelle `service::change_status()`.
-  - [ ] T2.2 — `GET /api/v1/merchants/me` — require_role Merchant. Appelle `service::get_current_merchant()`.
-  - [ ] T2.3 — Routes enregistrees dans `mod.rs` sous le scope `/merchants`
+- [x] **T2** — Routes API (AC: #1, #2, #5)
+  - [x] T2.1 — `PUT /api/v1/merchants/me/status` — JSON body `{ "status": "open" }`, require_role Merchant. Appelle `service::change_status()`.
+  - [x] T2.2 — `GET /api/v1/merchants/me` — require_role Merchant. Appelle `service::get_current_merchant()`.
+  - [x] T2.3 — Routes enregistrees dans `mod.rs` sous le scope `/merchants`
 
-- [ ] **T3** — Tests backend (AC: tous)
-  - [ ] T3.1 — Tests unitaires transitions : `valid_transitions()` pour chaque etat, payload validation
-  - [ ] T3.2 — Tests unitaires service : transition valide/invalide, auto_paused → open reset counter
-  - [ ] T3.3 — Tests serde : `UpdateStatusPayload` deserialise correctement les 4 valeurs snake_case
+- [x] **T3** — Tests backend (AC: tous)
+  - [x] T3.1 — Tests unitaires transitions : `valid_transitions()` pour chaque etat, payload validation
+  - [x] T3.2 — Tests unitaires service : transition valide/invalide, auto_paused → open reset counter
+  - [x] T3.3 — Tests serde : `UpdateStatusPayload` deserialise correctement les 4 valeurs snake_case
 
 ### Flutter Shared
 
-- [ ] **T4** — Enum VendorStatus dans mefali_core (AC: #4)
-  - [ ] T4.1 — `packages/mefali_core/lib/enums/vendor_status.dart` : enum `VendorStatus { open, overwhelmed, autoPaused, closed }` avec `@JsonEnum(fieldRename: FieldRename.snake)` + helpers (`label`, `color`, `icon`)
-  - [ ] T4.2 — Modifier `Merchant` model : changer `final String status` en `final VendorStatus status`
-  - [ ] T4.3 — Exporter depuis barrel file `mefali_core.dart`
-  - [ ] T4.4 — Regenerer `merchant.g.dart` via `dart run build_runner build`
+- [x] **T4** — Enum VendorStatus dans mefali_core (AC: #4)
+  - [x] T4.1 — `packages/mefali_core/lib/enums/vendor_status.dart` : enum `VendorStatus { open, overwhelmed, autoPaused, closed }` avec `@JsonEnum(fieldRename: FieldRename.snake)` + helpers (`label`, `color`, `icon`)
+  - [x] T4.2 — Modifier `Merchant` model : changer `final String status` en `final VendorStatus status`
+  - [x] T4.3 — Exporter depuis barrel file `mefali_core.dart`
+  - [x] T4.4 — Regenerer `merchant.g.dart` via `dart run build_runner build`
 
-- [ ] **T5** — VendorStatusIndicator widget dans mefali_design (AC: #4)
-  - [ ] T5.1 — `packages/mefali_design/lib/components/vendor_status_indicator.dart` : widget avec 2 modes (`interactive: true/false`). Affiche pastille coloree + texte. Mode interactif : `onTap` callback.
-  - [ ] T5.2 — Bottom sheet de selection statut : 3 options (Ouvert / Deborde / Ferme) si etat != auto_paused, sinon bouton unique "Reactiver" pour revenir a open.
+- [x] **T5** — VendorStatusIndicator widget dans mefali_design (AC: #4)
+  - [x] T5.1 — `packages/mefali_design/lib/components/vendor_status_indicator.dart` : widget avec 2 modes (`interactive: true/false`). Affiche pastille coloree + texte. Mode interactif : `onTap` callback.
+  - [x] T5.2 — Bottom sheet de selection statut : 3 options (Ouvert / Deborde / Ferme) si etat != auto_paused, sinon bouton unique "Reactiver" pour revenir a open.
 
-- [ ] **T6** — API Client (AC: #1, #2, #5)
-  - [ ] T6.1 — `MerchantEndpoint` : ajouter `updateStatus(VendorStatus status)` → PUT, `getCurrentMerchant()` → GET
-  - [ ] T6.2 — Provider : `currentMerchantProvider` (FutureProvider.autoDispose) qui appelle `getCurrentMerchant()`
-  - [ ] T6.3 — Provider : `VendorStatusNotifier` (StateNotifier) avec methode `changeStatus(VendorStatus)` qui appelle endpoint + invalide `currentMerchantProvider`
+- [x] **T6** — API Client (AC: #1, #2, #5)
+  - [x] T6.1 — `MerchantEndpoint` : ajouter `updateStatus(VendorStatus status)` → PUT, `getCurrentMerchant()` → GET
+  - [x] T6.2 — Provider : `currentMerchantProvider` (FutureProvider.autoDispose) qui appelle `getCurrentMerchant()`
+  - [x] T6.3 — Provider : `VendorStatusNotifier` (StateNotifier) avec methode `changeStatus(VendorStatus)` qui appelle endpoint + invalide `currentMerchantProvider`
 
 ### Flutter B2B
 
-- [ ] **T7** — Integration VendorStatusIndicator dans B2B Home (AC: #1, #2, #4)
-  - [ ] T7.1 — `B2bHomeScreen` AppBar : ajouter VendorStatusIndicator interactif a droite du titre (avant le bouton logout). Watcher `currentMerchantProvider` pour l'etat courant.
-  - [ ] T7.2 — Tap → bottom sheet selection statut. Appel `vendorStatusProvider.changeStatus()`. SnackBar succes vert / erreur rouge.
-  - [ ] T7.3 — Si auto_paused : afficher bandeau orange en haut du body "Vous etes en pause automatique — 3 commandes sans reponse" + bouton "Reactiver".
+- [x] **T7** — Integration VendorStatusIndicator dans B2B Home (AC: #1, #2, #4)
+  - [x] T7.1 — `B2bHomeScreen` AppBar : ajouter VendorStatusIndicator interactif a droite du titre (avant le bouton logout). Watcher `currentMerchantProvider` pour l'etat courant.
+  - [x] T7.2 — Tap → bottom sheet selection statut. Appel `vendorStatusProvider.changeStatus()`. SnackBar succes vert / erreur rouge.
+  - [x] T7.3 — Si auto_paused : afficher bandeau orange en haut du body "Vous etes en pause automatique — 3 commandes sans reponse" + bouton "Reactiver".
 
-- [ ] **T8** — Tests Flutter (AC: #1, #2, #4)
-  - [ ] T8.1 — Widget test VendorStatusIndicator : 4 couleurs, 4 textes, mode interactif vs read-only
-  - [ ] T8.2 — Widget test bottom sheet : 3 options visibles, tap change statut
-  - [ ] T8.3 — Widget test bandeau auto-pause : visible quand auto_paused, cache sinon
+- [x] **T8** — Tests Flutter (AC: #1, #2, #4)
+  - [x] T8.1 — Widget test VendorStatusIndicator : 4 couleurs, 4 textes, mode interactif vs read-only
+  - [x] T8.2 — Widget test bottom sheet : 3 options visibles, tap change statut
+  - [x] T8.3 — Widget test bandeau auto-pause : visible quand auto_paused, cache sinon
 
 ## Dev Notes
 
@@ -261,10 +261,85 @@ Derniers commits : pattern `{story-key}: {status}`. Story 3.4 livree et reviewee
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+Aucun probleme majeur rencontre. Ajout de la dependance mefali_core au pubspec de mefali_design pour le widget VendorStatusIndicator.
+
 ### Completion Notes List
 
+- T1: Implemente `UpdateStatusPayload`, `valid_manual_transitions()`, `can_transition_to()` dans model.rs. Ajoute `update_status()`, `increment_no_response()`, `reset_no_response()` dans repository.rs. Ajoute `change_status()`, `check_auto_pause()`, `get_current_merchant()` dans service.rs. 21 tests unitaires ajoutés pour les transitions et la logique service.
+- T2: Implemente handlers `get_me()` et `update_status()` dans merchants.rs. Routes `/me` et `/me/status` placees avant `/{id}/*` dans mod.rs pour eviter la capture UUID. Auth require_role Merchant.
+- T3: Tests unitaires transitions (4 etats x transitions valides/invalides), tests serde UpdateStatusPayload (4 valeurs + invalide), tests validation payload. Total : 148 tests Rust passent (101 domain).
+- T4: Cree enum VendorStatus avec `@JsonEnum`, helpers `label`, `color`, `icon`, `apiValue`. Change `String status` → `VendorStatus status` dans Merchant. Regenere merchant.g.dart. Export dans barrel file.
+- T5: Cree VendorStatusIndicator avec 2 modes (interactive/read-only). Bottom sheet avec 3 options normales ou bouton "Reactiver" si auto_paused. Touch target >= 48dp.
+- T6: Ajoute `getCurrentMerchant()` et `updateStatus()` dans MerchantEndpoint. Cree `currentMerchantProvider` (FutureProvider.autoDispose) et `VendorStatusNotifier` (StateNotifier) dans nouveau fichier vendor_status_provider.dart.
+- T7: Integre VendorStatusIndicator dans AppBar B2B avec watcher currentMerchantProvider. Bandeau MaterialBanner auto-pause avec bouton "Reactiver". SnackBar succes vert/erreur rouge.
+- T8: 8 widget tests VendorStatusIndicator (couleurs, textes, modes, bottom sheet, auto_paused). 3 widget tests B2B home (statut open, bandeau auto-pause, bandeau cache). Total : 51 tests design, 21 tests B2B passent.
+
 ### File List
+
+**Modifies :**
+- server/crates/domain/src/merchants/model.rs — Ajoute UpdateStatusPayload, valid_manual_transitions(), can_transition_to(), tests
+- server/crates/domain/src/merchants/repository.rs — Ajoute update_status(), increment_no_response(), reset_no_response()
+- server/crates/domain/src/merchants/service.rs — Ajoute change_status(), check_auto_pause(), get_current_merchant(), tests transitions
+- server/crates/api/src/routes/merchants.rs — Ajoute handlers get_me(), update_status()
+- server/crates/api/src/routes/mod.rs — Routes /merchants/me et /merchants/me/status
+- packages/mefali_core/lib/models/merchant.dart — String status → VendorStatus status
+- packages/mefali_core/lib/models/merchant.g.dart — Regenere (VendorStatus enum decode)
+- packages/mefali_core/lib/mefali_core.dart — Export vendor_status.dart
+- packages/mefali_design/lib/mefali_design.dart — Export vendor_status_indicator.dart
+- packages/mefali_design/pubspec.yaml — Ajout dependance mefali_core
+- packages/mefali_api_client/lib/endpoints/merchant_endpoint.dart — Ajoute getCurrentMerchant(), updateStatus()
+- packages/mefali_api_client/lib/mefali_api_client.dart — Export vendor_status_provider.dart
+- apps/mefali_b2b/lib/features/home/home_screen.dart — Integre VendorStatusIndicator + bandeau auto-pause
+- apps/mefali_b2b/test/widget_test.dart — 3 tests B2B home vendor status
+- packages/mefali_design/test/mefali_design_test.dart — 8 tests VendorStatusIndicator
+
+**Nouveaux :**
+- packages/mefali_core/lib/enums/vendor_status.dart — Enum VendorStatus
+- packages/mefali_design/lib/components/vendor_status_indicator.dart — Widget VendorStatusIndicator
+- packages/mefali_api_client/lib/providers/vendor_status_provider.dart — Providers currentMerchantProvider + VendorStatusNotifier
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Angenor — 2026-03-18
+**Model:** Claude Opus 4.6 (1M context)
+**Outcome:** Approved with fixes applied
+
+### Tests verifie
+
+| Suite | Tests | Resultat |
+|-------|-------|----------|
+| Rust workspace | 148 | OK |
+| mefali_design | 51 (8 VendorStatusIndicator) | OK |
+| mefali_b2b | 21 (3 vendor status) | OK |
+
+### AC Validation
+
+Tous les 6 AC verifies et IMPLEMENTED.
+
+### Issues trouvees et corrigees
+
+**M1 — Frontend autorisait les transitions invalides (CORRIGE)**
+Le bottom sheet affichait les 3 options sans filtrer par transitions valides. Depuis `closed`, taper "Deborde" causait 400 backend.
+Fix: Ajout `validManualTransitions` getter sur `VendorStatus` + desactivation des options invalides dans `_StatusSelectionSheet`.
+
+**M2 — SnackBar erreur non-persistent (CORRIGE)**
+Utilisait `Duration(seconds: 10)` au lieu de persistent. Fix: `Duration(days: 1)` + `showCloseIcon: true`.
+
+### Issues LOW non corrigees (informatives)
+
+- L1: Tests manquants pour cas limites (provider error, overwhelmed/closed dans home)
+- L2: Couleurs dark mode non supportees dans VendorStatus.color
+- L3: Bruit DioException dans tests B2B (stories precedentes)
+
+### Note sur git
+
+Le backend Rust (5 fichiers) + merchant.g.dart ont ete commites dans `70d9080 (3-4-stock-level-management)` au lieu d'un commit dedie 3-5. L'historique git est legerement trompeur mais le code est correct.
+
+## Change Log
+
+- 2026-03-18: Implementation complete story 3-5 — disponibilite marchand 4 etats (backend + frontend)
+- 2026-03-18: Code review — 2 issues MEDIUM corrigees (transitions invalides front + SnackBar persistent). Status → done
