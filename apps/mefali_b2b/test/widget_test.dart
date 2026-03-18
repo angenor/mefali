@@ -706,6 +706,34 @@ void main() {
     expect(find.byIcon(Icons.arrow_downward), findsWidgets);
   });
 
+  testWidgets('SalesDashboardScreen shows encouragement when current empty but previous has data', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => Future.value(makeStatsState(
+              currentTotal: 0,
+              currentCount: 0,
+              prevTotal: 4000000,
+              prevCount: 40,
+            )),
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Summary cards + comparison should be visible
+    expect(find.text('Total ventes'), findsOneWidget);
+    expect(find.text('Comparaison'), findsOneWidget);
+    // AC5 encouragement message shown alongside comparison
+    expect(find.text('Pas de commandes cette semaine'), findsOneWidget);
+    expect(find.text('Continuez a ameliorer votre catalogue !'), findsOneWidget);
+    // Full empty state (big icon) should NOT be shown
+    expect(find.byIcon(Icons.receipt_long), findsOneWidget); // compact card icon
+  });
+
   testWidgets('SalesDashboardScreen shows cache banner when offline', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

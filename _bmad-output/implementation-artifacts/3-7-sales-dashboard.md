@@ -1,6 +1,6 @@
 # Story 3.7: Sales Dashboard
 
-Status: review
+Status: done
 
 ## Story
 
@@ -310,7 +310,7 @@ Claude Opus 4.6 (1M context)
 - Build: cargo build OK, cargo clippy OK (0 new warnings)
 - Rust tests: 182 pass, 0 fail (8 new: 2 serde + 6 integration)
 - Flutter analyze: 0 warnings/errors on mefali_core, mefali_api_client, mefali_b2b
-- Flutter tests: 27 pass, 0 fail (6 new: data, empty, skeleton, green growth, red growth, cache banner)
+- Flutter tests: 28 pass, 0 fail (7 new: data, empty, skeleton, green growth, red growth, cache banner, AC5 encouragement)
 
 ### Completion Notes List
 
@@ -328,6 +328,7 @@ Claude Opus 4.6 (1M context)
 - 2026-03-18: Implementation complete story 3-7-sales-dashboard — backend + frontend + tests (10 taches, toutes completees)
 - 2026-03-18: Code review fixes — M3: catch(e) remplace par on DioException (filtre erreurs reseau), L1: _DashboardContent refactored en ConsumerWidget, L2: 3 requetes DB parallelisees via tokio::try_join!, T4.2/T4.3 decoche (tests integration pas encore implantes), T9 clarifie (cache in-memory, pas Drift)
 - 2026-03-18: T4.2/T4.3 completes — infrastructure tests integration backend (test_fixtures + test_helpers + #[sqlx::test]), 6 tests integration (3 service + 3 route), bug fix SUM(BIGINT)::BIGINT, adversarial review avec 7 findings corriges
+- 2026-03-18: Code review final — M1 fixed (clearSalesCache() au logout pour eviter fuite cache entre marchands), L2 fixed (AC5: encouragement card quand semaine courante vide mais precedente a des donnees), 1 test widget ajoute. Story → done
 
 ### File List
 
@@ -341,11 +342,12 @@ Claude Opus 4.6 (1M context)
 - packages/mefali_core/lib/models/weekly_sales.g.dart (new: generated json_serializable code)
 - packages/mefali_core/lib/mefali_core.dart (modified: added weekly_sales.dart export)
 - packages/mefali_api_client/lib/endpoints/order_endpoint.dart (modified: added getWeeklyStats method)
-- packages/mefali_api_client/lib/providers/sales_dashboard_provider.dart (new: weeklyStatsProvider + WeeklySalesState + offline cache, review: DioException filter)
+- packages/mefali_api_client/lib/providers/sales_dashboard_provider.dart (new: weeklyStatsProvider + WeeklySalesState + offline cache, review: DioException filter, review2: clearSalesCache())
+- packages/mefali_api_client/lib/providers/auth_provider.dart (modified: review2: import + appel clearSalesCache() au logout)
 - packages/mefali_api_client/lib/mefali_api_client.dart (modified: added sales_dashboard_provider export)
-- apps/mefali_b2b/lib/features/sales/sales_dashboard_screen.dart (new: SalesDashboardScreen widget, review: _DashboardContent → ConsumerWidget)
+- apps/mefali_b2b/lib/features/sales/sales_dashboard_screen.dart (new: SalesDashboardScreen widget, review: _DashboardContent → ConsumerWidget, review2: _EmptyWeekEncouragement AC5)
 - apps/mefali_b2b/lib/features/home/home_screen.dart (modified: replaced Stats placeholder with SalesDashboardScreen)
-- apps/mefali_b2b/test/widget_test.dart (modified: added 6 Sales Dashboard tests)
+- apps/mefali_b2b/test/widget_test.dart (modified: added 7 Sales Dashboard tests, review2: AC5 encouragement test)
 - server/crates/domain/src/test_fixtures.rs (new: factory functions for users, merchants, products, orders)
 - server/crates/domain/src/lib.rs (modified: added #[cfg(any(test, feature = "testing"))] pub mod test_fixtures)
 - server/crates/api/src/test_helpers.rs (new: test_config, create_test_jwt, test_app for route testing)

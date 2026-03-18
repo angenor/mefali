@@ -21,6 +21,13 @@ class WeeklySalesState {
 WeeklySales? _cachedStats;
 DateTime? _cachedAt;
 
+/// Purge le cache ventes. A appeler au logout pour eviter
+/// qu'un autre marchand voie les stats du precedent en offline.
+void clearSalesCache() {
+  _cachedStats = null;
+  _cachedAt = null;
+}
+
 /// Provider pour les stats hebdomadaires du marchand.
 /// Tente l'API, retombe sur le cache en cas d'echec reseau.
 final weeklyStatsProvider =

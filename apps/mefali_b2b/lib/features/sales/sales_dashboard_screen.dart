@@ -32,8 +32,8 @@ class _DashboardContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = state.stats;
-    final isEmpty = stats.currentWeek.orderCount == 0 &&
-        stats.previousWeek.orderCount == 0;
+    final currentIsEmpty = stats.currentWeek.orderCount == 0;
+    final allEmpty = currentIsEmpty && stats.previousWeek.orderCount == 0;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(weeklyStatsProvider),
@@ -42,7 +42,7 @@ class _DashboardContent extends ConsumerWidget {
         children: [
           // Bandeau offline
           if (state.isCached) _CacheBanner(lastSync: state.lastSync),
-          if (isEmpty)
+          if (allEmpty)
             const _EmptyState()
           else ...[
             _SummaryCards(stats: stats),
@@ -51,6 +51,9 @@ class _DashboardContent extends ConsumerWidget {
             const SizedBox(height: 16),
             if (stats.productBreakdown.isNotEmpty)
               _ProductBreakdown(products: stats.productBreakdown),
+            // AC5: encouragement quand semaine courante vide mais precedente a des donnees
+            if (currentIsEmpty)
+              const _EmptyWeekEncouragement(),
           ],
         ],
       ),
@@ -392,6 +395,49 @@ class _ProductRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Encouragement compact quand semaine courante vide mais precedente a des donnees.
+class _EmptyWeekEncouragement extends StatelessWidget {
+  const _EmptyWeekEncouragement();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              Icons.receipt_long,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pas de commandes cette semaine',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Continuez a ameliorer votre catalogue !',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
