@@ -156,6 +156,41 @@ impl RejectOrderPayload {
     }
 }
 
+/// Week period descriptor for stats responses.
+/// `start` is Monday (first day), `end` is Sunday (last day, inclusive).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeekPeriod {
+    pub start: chrono::NaiveDate,
+    pub end: chrono::NaiveDate,
+}
+
+/// Weekly sales summary for a single week.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeekSummary {
+    pub total_sales: i64,
+    pub order_count: i64,
+    pub average_order: i64,
+}
+
+/// Product sales breakdown entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductBreakdown {
+    pub product_id: Id,
+    pub product_name: String,
+    pub quantity_sold: i64,
+    pub revenue: i64,
+    pub percentage: f64,
+}
+
+/// Complete weekly stats for a merchant.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeeklyStats {
+    pub period: WeekPeriod,
+    pub current_week: WeekSummary,
+    pub previous_week: WeekSummary,
+    pub product_breakdown: Vec<ProductBreakdown>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -323,5 +358,52 @@ mod tests {
         assert_eq!(back.quantity, 3);
         assert_eq!(back.unit_price, 50000);
         assert_eq!(back.product_name, Some("Garba".into()));
+    }
+
+    #[test]
+    fn test_weekly_stats_serde_roundtrip() {
+        let stats = WeeklyStats {
+            period: WeekPeriod {
+                start: chrono::NaiveDate::from_ymd_opt(2026, 3, 9).unwrap(),
+                end: chrono::NaiveDate::from_ymd_opt(2026, 3, 15).unwrap(),
+            },
+            current_week: WeekSummary {
+                total_sales: 4700000,
+                order_count: 47,
+                average_order: 100000,
+            },
+            previous_week: WeekSummary {
+                total_sales: 4000000,
+                order_count: 40,
+                average_order: 100000,
+            },
+            product_breakdown: vec![ProductBreakdown {
+                product_id: uuid::Uuid::new_v4(),
+                product_name: "Garba".into(),
+                quantity_sold: 23,
+                revenue: 2300000,
+                percentage: 48.9,
+            }],
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        let back: WeeklyStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.current_week.total_sales, 4700000);
+        assert_eq!(back.current_week.order_count, 47);
+        assert_eq!(back.product_breakdown.len(), 1);
+        assert_eq!(back.product_breakdown[0].product_name, "Garba");
+        assert_eq!(back.period.start.to_string(), "2026-03-09");
+    }
+
+    #[test]
+    fn test_week_summary_zero_values() {
+        let summary = WeekSummary {
+            total_sales: 0,
+            order_count: 0,
+            average_order: 0,
+        };
+        let json = serde_json::to_string(&summary).unwrap();
+        let back: WeekSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.total_sales, 0);
+        assert_eq!(back.order_count, 0);
     }
 }

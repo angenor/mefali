@@ -55,6 +55,16 @@ class OrderEndpoint {
     return Order.fromJson(data['order'] as Map<String, dynamic>);
   }
 
+  /// Recupere les stats hebdomadaires du marchand connecte.
+  Future<WeeklySales> getWeeklyStats() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/merchants/me/stats/weekly',
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return WeeklySales.fromJson(data);
+  }
+
   /// Cree une commande (role client, utilise pour les tests).
   Future<Order> createOrder({
     required String merchantId,

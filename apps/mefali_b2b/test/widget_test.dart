@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,7 @@ import 'package:mefali_b2b/features/auth/phone_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_form_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_list_screen.dart';
 import 'package:mefali_b2b/features/home/home_screen.dart';
+import 'package:mefali_b2b/features/sales/sales_dashboard_screen.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
@@ -547,6 +550,177 @@ void main() {
     // No alerts section visible
     expect(find.text('Alertes stock'), findsNothing);
     expect(find.byIcon(Icons.notification_important), findsNothing);
+  });
+
+  // --- Sales Dashboard tests (story 3.7) ---
+
+  WeeklySalesState makeStatsState({
+    int currentTotal = 4700000,
+    int currentCount = 47,
+    int prevTotal = 4000000,
+    int prevCount = 40,
+    bool isCached = false,
+  }) {
+    return WeeklySalesState(
+      stats: WeeklySales(
+        period: const WeekPeriod(start: '2026-03-09', end: '2026-03-15'),
+        currentWeek: WeekSummary(
+          totalSales: currentTotal,
+          orderCount: currentCount,
+          averageOrder: currentCount > 0 ? currentTotal ~/ currentCount : 0,
+        ),
+        previousWeek: WeekSummary(
+          totalSales: prevTotal,
+          orderCount: prevCount,
+          averageOrder: prevCount > 0 ? prevTotal ~/ prevCount : 0,
+        ),
+        productBreakdown: currentTotal > 0
+            ? [
+                ProductSales(
+                  productId: '1',
+                  productName: 'Garba',
+                  quantitySold: 23,
+                  revenue: 2300000,
+                  percentage: 48.9,
+                ),
+                ProductSales(
+                  productId: '2',
+                  productName: 'Alloco-poisson',
+                  quantitySold: 15,
+                  revenue: 1500000,
+                  percentage: 31.9,
+                ),
+              ]
+            : [],
+      ),
+      lastSync: DateTime.now(),
+      isCached: isCached,
+    );
+  }
+
+  testWidgets('SalesDashboardScreen shows data with products', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => Future.value(makeStatsState()),
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Total ventes'), findsOneWidget);
+    expect(find.text('Commandes'), findsOneWidget);
+    expect(find.text('47'), findsOneWidget);
+    expect(find.text('Garba'), findsOneWidget);
+    expect(find.text('Alloco-poisson'), findsOneWidget);
+    expect(find.text('Repartition par produit'), findsOneWidget);
+    expect(find.text('Comparaison'), findsOneWidget);
+  });
+
+  testWidgets('SalesDashboardScreen shows empty state', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => Future.value(makeStatsState(
+              currentTotal: 0,
+              currentCount: 0,
+              prevTotal: 0,
+              prevCount: 0,
+            )),
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pas de commandes cette semaine'), findsOneWidget);
+    expect(find.text('Continuez a ameliorer votre catalogue !'), findsOneWidget);
+    expect(find.byIcon(Icons.receipt_long), findsOneWidget);
+  });
+
+  testWidgets('SalesDashboardScreen shows skeleton loading', (tester) async {
+    final completer = Completer<WeeklySalesState>();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => completer.future,
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    // Skeleton should be visible, not the dashboard content
+    expect(find.text('Total ventes'), findsNothing);
+    expect(find.text('Pas de commandes cette semaine'), findsNothing);
+
+    // Complete to avoid dangling future
+    completer.complete(makeStatsState());
+  });
+
+  testWidgets('SalesDashboardScreen shows green growth for positive', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => Future.value(makeStatsState(
+              currentTotal: 5000000,
+              prevTotal: 4000000,
+            )),
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Growth arrow up icon should be visible
+    expect(find.byIcon(Icons.arrow_upward), findsWidgets);
+  });
+
+  testWidgets('SalesDashboardScreen shows red growth for negative', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => Future.value(makeStatsState(
+              currentTotal: 3000000,
+              prevTotal: 4000000,
+            )),
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Growth arrow down icon should be visible
+    expect(find.byIcon(Icons.arrow_downward), findsWidgets);
+  });
+
+  testWidgets('SalesDashboardScreen shows cache banner when offline', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          weeklyStatsProvider.overrideWith(
+            (ref) => Future.value(makeStatsState(isCached: true)),
+          ),
+        ],
+        child: const MaterialApp(home: SalesDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+    expect(find.textContaining('Donnees en cache'), findsOneWidget);
   });
 
   // --- VendorStatus / B2B Home tests (story 3.5) ---

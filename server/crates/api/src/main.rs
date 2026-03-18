@@ -10,6 +10,9 @@ mod extractors;
 mod middleware;
 mod routes;
 
+#[cfg(test)]
+mod test_helpers;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Load .env file

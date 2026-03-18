@@ -17,3 +17,4 @@ export 'models/order_item.dart';
 export 'models/product.dart';
 export 'models/stock_alert.dart';
 export 'models/user.dart';
+export 'models/weekly_sales.dart';

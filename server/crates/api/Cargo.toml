@@ -28,3 +28,5 @@ uuid.workspace = true
 [dev-dependencies]
 actix-web = { workspace = true, features = ["macros"] }
 chrono.workspace = true
+domain = { path = "../domain", features = ["testing"] }
+sqlx.workspace = true

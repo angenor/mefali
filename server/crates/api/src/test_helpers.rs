@@ -1,0 +1,81 @@
+use actix_web::{web, App};
+use chrono::Utc;
+use common::config::AppConfig;
+use common::types::Id;
+use domain::users::service::JwtClaims;
+use jsonwebtoken::{encode, EncodingKey, Header};
+use sqlx::PgPool;
+
+use crate::routes::orders;
+
+pub fn test_config() -> AppConfig {
+    AppConfig {
+        database_url: String::new(),
+        redis_url: String::new(),
+        minio_endpoint: String::new(),
+        minio_access_key: String::new(),
+        minio_secret_key: String::new(),
+        minio_bucket: String::new(),
+        api_host: String::new(),
+        api_port: 8090,
+        jwt_secret: "test-secret-key-for-testing".into(),
+        jwt_access_expiry: 900,
+        jwt_refresh_expiry: 604800,
+        otp_length: 6,
+        otp_expiry_seconds: 300,
+        otp_max_attempts: 3,
+        otp_rate_limit_per_minute: 3,
+    }
+}
+
+pub fn create_test_jwt(user_id: Id, role: &str) -> String {
+    let now = Utc::now().timestamp();
+    let claims = JwtClaims {
+        sub: user_id.to_string(),
+        role: role.into(),
+        iat: now,
+        exp: now + 900,
+    };
+    let config = test_config();
+    let key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
+    encode(&Header::default(), &claims, &key).unwrap()
+}
+
+/// Build a test App with only orders/merchants routes registered.
+/// Does NOT include auth, kyc, users, or products routes (they need Redis/S3/SMS).
+///
+/// WARNING: Route paths are duplicated from routes/mod.rs — if routes change there,
+/// update them here too. Only exercised routes should be registered.
+pub fn test_app(
+    pool: PgPool,
+) -> App<
+    impl actix_web::dev::ServiceFactory<
+        actix_web::dev::ServiceRequest,
+        Config = (),
+        Response = actix_web::dev::ServiceResponse,
+        Error = actix_web::Error,
+        InitError = (),
+    >,
+> {
+    App::new()
+        .app_data(web::Data::new(test_config()))
+        .app_data(web::Data::new(pool))
+        .service(
+            web::scope("/api/v1")
+                .service(
+                    web::scope("/orders")
+                        .route("", web::post().to(orders::create_order))
+                        .route("/{id}/accept", web::put().to(orders::accept_order))
+                        .route("/{id}/reject", web::put().to(orders::reject_order))
+                        .route("/{id}/ready", web::put().to(orders::mark_ready)),
+                )
+                .service(
+                    web::scope("/merchants")
+                        .route("/me/orders", web::get().to(orders::get_merchant_orders))
+                        .route(
+                            "/me/stats/weekly",
+                            web::get().to(orders::get_weekly_stats),
+                        ),
+                ),
+        )
+}

@@ -8,6 +8,9 @@ pub mod sponsorships;
 pub mod users;
 pub mod wallets;
 
+#[cfg(any(test, feature = "testing"))]
+pub mod test_fixtures;
+
 #[cfg(test)]
 mod tests {
     #[test]

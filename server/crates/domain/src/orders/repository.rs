@@ -1,5 +1,5 @@
 use common::error::AppError;
-use common::types::Id;
+use common::types::{Id, Timestamp};
 use sqlx::PgPool;
 
 use super::model::{Order, OrderItem, OrderStatus, OrderWithItems, PaymentType};
@@ -236,4 +236,82 @@ pub async fn set_rejection_note<'e>(
             AppError::DatabaseError(e.to_string())
         }
     })
+}
+
+// --- Weekly sales aggregation queries ---
+
+/// Raw aggregate row for weekly sales.
+#[derive(Debug, sqlx::FromRow)]
+struct WeekSalesRow {
+    total_sales: Option<i64>,
+    order_count: Option<i64>,
+}
+
+/// Raw aggregate row for product breakdown.
+#[derive(Debug, sqlx::FromRow)]
+pub struct ProductBreakdownRow {
+    pub product_id: Id,
+    pub product_name: String,
+    pub quantity_sold: Option<i64>,
+    pub revenue: Option<i64>,
+}
+
+/// Get aggregated sales for a merchant in a time range (delivered orders only).
+/// Returns (total_sales, order_count).
+pub async fn get_weekly_sales(
+    pool: &PgPool,
+    merchant_id: Id,
+    from: Timestamp,
+    to: Timestamp,
+) -> Result<(i64, i64), AppError> {
+    let row = sqlx::query_as::<_, WeekSalesRow>(
+        "SELECT COALESCE(SUM(o.total)::BIGINT, 0) as total_sales,
+                COUNT(DISTINCT o.id) as order_count
+         FROM orders o
+         WHERE o.merchant_id = $1
+           AND o.status = $2
+           AND o.created_at >= $3
+           AND o.created_at < $4",
+    )
+    .bind(merchant_id)
+    .bind(&OrderStatus::Delivered)
+    .bind(from)
+    .bind(to)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok((row.total_sales.unwrap_or(0), row.order_count.unwrap_or(0)))
+}
+
+/// Get product breakdown for a merchant in a time range (delivered orders only).
+/// Results sorted by revenue descending.
+pub async fn get_product_breakdown(
+    pool: &PgPool,
+    merchant_id: Id,
+    from: Timestamp,
+    to: Timestamp,
+) -> Result<Vec<ProductBreakdownRow>, AppError> {
+    sqlx::query_as::<_, ProductBreakdownRow>(
+        "SELECT p.id as product_id,
+                p.name as product_name,
+                COALESCE(SUM(oi.quantity::BIGINT)::BIGINT, 0) as quantity_sold,
+                COALESCE(SUM(oi.quantity::BIGINT * oi.unit_price)::BIGINT, 0) as revenue
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         JOIN products p ON p.id = oi.product_id
+         WHERE o.merchant_id = $1
+           AND o.status = $2
+           AND o.created_at >= $3
+           AND o.created_at < $4
+         GROUP BY p.id, p.name
+         ORDER BY revenue DESC",
+    )
+    .bind(merchant_id)
+    .bind(&OrderStatus::Delivered)
+    .bind(from)
+    .bind(to)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
 }

@@ -1287,6 +1287,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "thiserror",
+ "tokio",
  "tracing",
  "uuid",
 ]

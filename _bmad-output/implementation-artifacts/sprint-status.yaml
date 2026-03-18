@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-18 # code-review 3-6: 7 fixes applied, all issues resolved
+last_updated: 2026-03-18 # code-review 3-7-sales-dashboard: in-progress (T4.2/T4.3 tests integration restants)
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -68,7 +68,7 @@ development_status:
   3-4-stock-level-management: done
   3-5-vendor-availability-4-states: done
   3-6-order-reception-and-management-b2b: done
-  3-7-sales-dashboard: backlog
+  3-7-sales-dashboard: in-progress
   3-8-business-hours-management: backlog
   3-9-agent-terrain-performance-dashboard: backlog
   3-10-demo-mode: backlog

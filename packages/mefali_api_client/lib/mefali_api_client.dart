@@ -14,5 +14,6 @@ export 'providers/merchant_onboarding_provider.dart';
 export 'providers/product_catalogue_provider.dart';
 export 'providers/user_provider.dart';
 export 'providers/merchant_orders_provider.dart';
+export 'providers/sales_dashboard_provider.dart';
 export 'providers/vendor_status_provider.dart';
 export 'endpoints/product_endpoint.dart';

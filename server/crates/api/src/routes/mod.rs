@@ -59,6 +59,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/me", web::get().to(merchants::get_me))
                     .route("/me/status", web::put().to(merchants::update_status))
                     .route("/me/orders", web::get().to(orders::get_merchant_orders))
+                    .route("/me/stats/weekly", web::get().to(orders::get_weekly_stats))
                     .route("/me/stock-alerts", web::get().to(products::list_stock_alerts))
                     // Onboarding routes — Agent role required
                     .service(

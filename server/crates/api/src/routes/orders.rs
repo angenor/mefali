@@ -100,6 +100,21 @@ pub async fn mark_ready(
     Ok(HttpResponse::Ok().json(response))
 }
 
+/// GET /api/v1/merchants/me/stats/weekly
+///
+/// Merchant gets their weekly sales dashboard stats.
+pub async fn get_weekly_stats(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let stats = service::get_merchant_weekly_stats(&pool, auth.user_id).await?;
+
+    let response = ApiResponse::new(serde_json::json!(stats));
+    Ok(HttpResponse::Ok().json(response))
+}
+
 /// Parse comma-separated status filter into Vec<OrderStatus>.
 /// Defaults to active statuses if no filter provided.
 fn parse_status_filter(status_param: &Option<String>) -> Result<Vec<OrderStatus>, AppError> {
@@ -175,5 +190,88 @@ mod tests {
     fn test_parse_status_filter_empty() {
         let result = parse_status_filter(&Some("".into())).unwrap();
         assert_eq!(result.len(), 3); // defaults
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use actix_web::test;
+    use domain::test_fixtures::*;
+    use domain::users::model::UserRole;
+    use sqlx::PgPool;
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_weekly_stats_200_ok(pool: PgPool) {
+        let user_m = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
+        let merchant = create_test_merchant(&pool, user_m.id).await.unwrap();
+        let customer = create_test_user(&pool).await.unwrap();
+        let p = create_test_product_with_price(&pool, merchant.id, "Garba", 250000)
+            .await
+            .unwrap();
+        create_test_delivered_order(&pool, customer.id, merchant.id, &[(p.id, 2, 250000)])
+            .await
+            .unwrap();
+
+        let token = crate::test_helpers::create_test_jwt(user_m.id, "merchant");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/stats/weekly")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        // 1 order: 2x Garba @ 250000 = 500000 total
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(
+            body["data"]["current_week"]["total_sales"]
+                .as_i64()
+                .unwrap(),
+            500000
+        );
+        assert_eq!(
+            body["data"]["current_week"]["order_count"]
+                .as_i64()
+                .unwrap(),
+            1
+        );
+        assert!(
+            !body["data"]["product_breakdown"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_weekly_stats_401_no_token(pool: PgPool) {
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/stats/weekly")
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 401);
+    }
+
+    /// Verifies role check happens before DB lookup (handler ordering).
+    /// Uses a non-existent user_id — if handler order changes to DB-first, this will get 404.
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_weekly_stats_403_wrong_role(pool: PgPool) {
+        let token = crate::test_helpers::create_test_jwt(uuid::Uuid::new_v4(), "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/stats/weekly")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 403);
     }
 }

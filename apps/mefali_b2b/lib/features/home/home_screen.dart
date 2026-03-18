@@ -6,6 +6,7 @@ import 'package:mefali_design/mefali_design.dart';
 
 import '../catalogue/product_list_screen.dart';
 import '../orders/orders_screen.dart';
+import '../sales/sales_dashboard_screen.dart';
 
 /// Ecran principal B2B avec TabBar (Commandes | Catalogue | Stats).
 class B2bHomeScreen extends ConsumerStatefulWidget {
@@ -114,8 +115,8 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
                 OrdersScreen(),
                 // Catalogue — actif
                 ProductListScreen(),
-                // Stats — placeholder
-                Center(child: Text('Statistiques (bientot)')),
+                // Stats — dashboard ventes
+                SalesDashboardScreen(),
               ],
             ),
           ),
