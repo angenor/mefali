@@ -2,7 +2,10 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{CreateProductPayload, Product, UpdateProductPayload};
+use super::model::{
+    CreateProductPayload, DecrementStockPayload, Product, StockAlert, UpdateProductPayload,
+    UpdateStockPayload,
+};
 use super::repository;
 use crate::merchants;
 
@@ -107,6 +110,107 @@ pub async fn soft_delete_product(
     verify_ownership(&product, merchant_id)?;
 
     repository::soft_delete_product(pool, product_id).await
+}
+
+// --- Stock management methods (story 3.4) ---
+
+/// Check if stock is below 20% threshold and create alert if needed.
+pub async fn check_and_create_alert(
+    pool: &PgPool,
+    product: &Product,
+) -> Result<Option<StockAlert>, AppError> {
+    if product.initial_stock <= 0 {
+        return Ok(None);
+    }
+
+    let threshold = (product.initial_stock as f64 * 0.2) as i32;
+    if product.stock > threshold {
+        return Ok(None);
+    }
+
+    // Check if an unacknowledged alert already exists
+    let existing = repository::find_unacknowledged_alert(pool, product.id).await?;
+    if existing.is_some() {
+        return Ok(None);
+    }
+
+    let alert = repository::create_stock_alert(
+        pool,
+        product.merchant_id,
+        product.id,
+        product.stock,
+        product.initial_stock,
+    )
+    .await?;
+
+    Ok(Some(alert))
+}
+
+/// Update stock level for a product with ownership check.
+pub async fn update_stock(
+    pool: &PgPool,
+    merchant_id: Id,
+    product_id: Id,
+    payload: &UpdateStockPayload,
+) -> Result<Product, AppError> {
+    payload.validate()?;
+
+    let product = repository::find_by_id(pool, product_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
+
+    verify_ownership(&product, merchant_id)?;
+
+    let updated = repository::update_stock(pool, product_id, payload.stock).await?;
+    let _ = check_and_create_alert(pool, &updated).await;
+
+    Ok(updated)
+}
+
+/// Atomically decrement stock with ownership check.
+pub async fn decrement_stock(
+    pool: &PgPool,
+    merchant_id: Id,
+    product_id: Id,
+    payload: &DecrementStockPayload,
+) -> Result<Product, AppError> {
+    payload.validate()?;
+
+    let product = repository::find_by_id(pool, product_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Product not found".into()))?;
+
+    verify_ownership(&product, merchant_id)?;
+
+    let updated = repository::decrement_stock_atomic(pool, product_id, payload.quantity)
+        .await?
+        .ok_or_else(|| {
+            AppError::Conflict(format!(
+                "Insufficient stock: {} available, {} requested",
+                product.stock, payload.quantity
+            ))
+        })?;
+
+    let _ = check_and_create_alert(pool, &updated).await;
+
+    Ok(updated)
+}
+
+/// Get unacknowledged stock alerts for a merchant.
+pub async fn get_stock_alerts(
+    pool: &PgPool,
+    merchant_id: Id,
+) -> Result<Vec<StockAlert>, AppError> {
+    repository::find_alerts_by_merchant(pool, merchant_id).await
+}
+
+/// Acknowledge a stock alert (with merchant ownership check).
+pub async fn acknowledge_alert(
+    pool: &PgPool,
+    merchant_id: Id,
+    alert_id: Id,
+) -> Result<StockAlert, AppError> {
+    repository::acknowledge_alert(pool, alert_id, merchant_id).await
 }
 
 #[cfg(test)]
@@ -218,5 +322,31 @@ mod tests {
             photo_url: None,
         };
         assert!(invalid.validate().is_err());
+    }
+
+    // --- Stock management tests (story 3.4) ---
+
+    #[test]
+    fn test_update_stock_payload_valid() {
+        let p = UpdateStockPayload { stock: 50 };
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_stock_payload_negative() {
+        let p = UpdateStockPayload { stock: -1 };
+        assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn test_decrement_stock_payload_valid() {
+        let p = DecrementStockPayload { quantity: 5 };
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn test_decrement_stock_payload_zero() {
+        let p = DecrementStockPayload { quantity: 0 };
+        assert!(p.validate().is_err());
     }
 }

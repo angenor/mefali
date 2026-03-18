@@ -31,6 +31,23 @@ pub enum MerchantStatus {
     Closed,
 }
 
+impl MerchantStatus {
+    /// Returns the list of statuses this status can manually transition to.
+    pub fn valid_manual_transitions(&self) -> Vec<MerchantStatus> {
+        match self {
+            Self::Open => vec![Self::Overwhelmed, Self::Closed],
+            Self::Overwhelmed => vec![Self::Open, Self::Closed],
+            Self::Closed => vec![Self::Open],
+            Self::AutoPaused => vec![Self::Open],
+        }
+    }
+
+    /// Check if a manual transition to the target status is allowed.
+    pub fn can_transition_to(&self, target: &MerchantStatus) -> bool {
+        self.valid_manual_transitions().contains(target)
+    }
+}
+
 impl std::fmt::Display for MerchantStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -70,6 +87,19 @@ impl CreateMerchantPayload {
                 ));
             }
         }
+        Ok(())
+    }
+}
+
+/// Payload for updating merchant availability status.
+#[derive(Debug, Deserialize)]
+pub struct UpdateStatusPayload {
+    pub status: MerchantStatus,
+}
+
+impl UpdateStatusPayload {
+    pub fn validate(&self) -> Result<(), common::error::AppError> {
+        // Serde already validates that only valid enum values are accepted.
         Ok(())
     }
 }
@@ -165,6 +195,87 @@ mod tests {
             city_id: None,
         };
         assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn test_valid_transitions_from_open() {
+        let transitions = MerchantStatus::Open.valid_manual_transitions();
+        assert!(transitions.contains(&MerchantStatus::Overwhelmed));
+        assert!(transitions.contains(&MerchantStatus::Closed));
+        assert!(!transitions.contains(&MerchantStatus::AutoPaused));
+        assert_eq!(transitions.len(), 2);
+    }
+
+    #[test]
+    fn test_valid_transitions_from_overwhelmed() {
+        let transitions = MerchantStatus::Overwhelmed.valid_manual_transitions();
+        assert!(transitions.contains(&MerchantStatus::Open));
+        assert!(transitions.contains(&MerchantStatus::Closed));
+        assert!(!transitions.contains(&MerchantStatus::AutoPaused));
+        assert_eq!(transitions.len(), 2);
+    }
+
+    #[test]
+    fn test_valid_transitions_from_closed() {
+        let transitions = MerchantStatus::Closed.valid_manual_transitions();
+        assert!(transitions.contains(&MerchantStatus::Open));
+        assert!(!transitions.contains(&MerchantStatus::Overwhelmed));
+        assert!(!transitions.contains(&MerchantStatus::AutoPaused));
+        assert_eq!(transitions.len(), 1);
+    }
+
+    #[test]
+    fn test_valid_transitions_from_auto_paused() {
+        let transitions = MerchantStatus::AutoPaused.valid_manual_transitions();
+        assert!(transitions.contains(&MerchantStatus::Open));
+        assert!(!transitions.contains(&MerchantStatus::Overwhelmed));
+        assert!(!transitions.contains(&MerchantStatus::Closed));
+        assert_eq!(transitions.len(), 1);
+    }
+
+    #[test]
+    fn test_can_transition_to() {
+        assert!(MerchantStatus::Open.can_transition_to(&MerchantStatus::Overwhelmed));
+        assert!(MerchantStatus::Open.can_transition_to(&MerchantStatus::Closed));
+        assert!(!MerchantStatus::Open.can_transition_to(&MerchantStatus::AutoPaused));
+
+        assert!(MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Open));
+        assert!(!MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Closed));
+        assert!(!MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Overwhelmed));
+
+        assert!(MerchantStatus::Closed.can_transition_to(&MerchantStatus::Open));
+        assert!(!MerchantStatus::Closed.can_transition_to(&MerchantStatus::Overwhelmed));
+    }
+
+    #[test]
+    fn test_update_status_payload_serde() {
+        let json = r#"{"status": "open"}"#;
+        let payload: UpdateStatusPayload = serde_json::from_str(json).unwrap();
+        assert_eq!(payload.status, MerchantStatus::Open);
+
+        let json2 = r#"{"status": "auto_paused"}"#;
+        let payload2: UpdateStatusPayload = serde_json::from_str(json2).unwrap();
+        assert_eq!(payload2.status, MerchantStatus::AutoPaused);
+
+        let json3 = r#"{"status": "overwhelmed"}"#;
+        let payload3: UpdateStatusPayload = serde_json::from_str(json3).unwrap();
+        assert_eq!(payload3.status, MerchantStatus::Overwhelmed);
+
+        let json4 = r#"{"status": "closed"}"#;
+        let payload4: UpdateStatusPayload = serde_json::from_str(json4).unwrap();
+        assert_eq!(payload4.status, MerchantStatus::Closed);
+
+        // Invalid status should fail
+        let invalid = r#"{"status": "invalid"}"#;
+        assert!(serde_json::from_str::<UpdateStatusPayload>(invalid).is_err());
+    }
+
+    #[test]
+    fn test_update_status_payload_validate() {
+        let payload = UpdateStatusPayload {
+            status: MerchantStatus::Open,
+        };
+        assert!(payload.validate().is_ok());
     }
 
     #[test]

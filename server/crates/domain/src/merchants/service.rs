@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use tracing::info;
 
 use super::business_hours;
-use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, OnboardingStatus};
+use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, OnboardingStatus};
 use super::repository;
 use crate::products;
 use crate::products::model::CreateProductPayload;
@@ -217,9 +217,63 @@ pub async fn get_onboarding_status(
     })
 }
 
+/// Change the availability status of the current merchant.
+/// Validates the transition and resets no_response counter when reactivating from auto_paused.
+pub async fn change_status(
+    pool: &PgPool,
+    user_id: Id,
+    new_status: MerchantStatus,
+) -> Result<Merchant, AppError> {
+    let merchant = repository::find_by_user_id(pool, user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Merchant not found".into()))?;
+
+    if !merchant.status.can_transition_to(&new_status) {
+        return Err(AppError::BadRequest(format!(
+            "Transition de statut invalide: {} → {}",
+            merchant.status, new_status
+        )));
+    }
+
+    // If reactivating from auto_paused, reset the no-response counter
+    if merchant.status == MerchantStatus::AutoPaused && new_status == MerchantStatus::Open {
+        repository::reset_no_response(pool, merchant.id).await?;
+    }
+
+    repository::update_status(pool, merchant.id, &new_status).await
+}
+
+/// Check if a merchant should be auto-paused (>= 3 consecutive no-responses).
+/// Returns true if auto-pause was triggered.
+pub async fn check_auto_pause(pool: &PgPool, merchant_id: Id) -> Result<bool, AppError> {
+    let merchant = repository::find_by_id(pool, merchant_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Merchant not found".into()))?;
+
+    if merchant.consecutive_no_response >= 3 && merchant.status != MerchantStatus::AutoPaused {
+        repository::update_status(pool, merchant_id, &MerchantStatus::AutoPaused).await?;
+        info!(
+            merchant_id = merchant_id.to_string(),
+            no_response_count = merchant.consecutive_no_response,
+            "Merchant auto-paused after consecutive no-responses"
+        );
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+/// Get the current merchant for the authenticated user.
+pub async fn get_current_merchant(pool: &PgPool, user_id: Id) -> Result<Merchant, AppError> {
+    repository::find_by_user_id(pool, user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Merchant not found".into()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::model::MerchantStatus;
 
     #[test]
     fn test_create_merchant_payload_validation() {
@@ -238,5 +292,55 @@ mod tests {
             city_id: None,
         };
         assert!(empty.validate().is_err());
+    }
+
+    #[test]
+    fn test_open_to_overwhelmed_allowed() {
+        assert!(MerchantStatus::Open.can_transition_to(&MerchantStatus::Overwhelmed));
+    }
+
+    #[test]
+    fn test_open_to_closed_allowed() {
+        assert!(MerchantStatus::Open.can_transition_to(&MerchantStatus::Closed));
+    }
+
+    #[test]
+    fn test_open_to_auto_paused_forbidden() {
+        assert!(!MerchantStatus::Open.can_transition_to(&MerchantStatus::AutoPaused));
+    }
+
+    #[test]
+    fn test_overwhelmed_to_open_allowed() {
+        assert!(MerchantStatus::Overwhelmed.can_transition_to(&MerchantStatus::Open));
+    }
+
+    #[test]
+    fn test_overwhelmed_to_closed_allowed() {
+        assert!(MerchantStatus::Overwhelmed.can_transition_to(&MerchantStatus::Closed));
+    }
+
+    #[test]
+    fn test_closed_to_open_allowed() {
+        assert!(MerchantStatus::Closed.can_transition_to(&MerchantStatus::Open));
+    }
+
+    #[test]
+    fn test_closed_to_overwhelmed_forbidden() {
+        assert!(!MerchantStatus::Closed.can_transition_to(&MerchantStatus::Overwhelmed));
+    }
+
+    #[test]
+    fn test_auto_paused_to_open_allowed() {
+        assert!(MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Open));
+    }
+
+    #[test]
+    fn test_auto_paused_to_overwhelmed_forbidden() {
+        assert!(!MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Overwhelmed));
+    }
+
+    #[test]
+    fn test_auto_paused_to_closed_forbidden() {
+        assert!(!MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Closed));
     }
 }

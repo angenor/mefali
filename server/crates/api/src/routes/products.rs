@@ -4,7 +4,9 @@ use aws_sdk_s3::Client;
 use common::config::AppConfig;
 use common::error::AppError;
 use common::response::ApiResponse;
-use domain::products::model::{CreateProductPayload, Product, UpdateProductPayload};
+use domain::products::model::{
+    CreateProductPayload, DecrementStockPayload, Product, UpdateProductPayload, UpdateStockPayload,
+};
 use domain::products::service;
 use domain::users::model::UserRole;
 use futures_util::StreamExt;
@@ -251,5 +253,87 @@ pub async fn delete_product(
     service::soft_delete_product(&pool, merchant_id, product_id).await?;
 
     let response = ApiResponse::new(serde_json::json!({ "message": "Product deleted" }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+// --- Stock management handlers (story 3.4) ---
+
+/// PUT /api/v1/products/{id}/stock
+///
+/// Update stock level for a product (JSON body, not multipart).
+pub async fn update_stock(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    payload: web::Json<UpdateStockPayload>,
+    pool: web::Data<PgPool>,
+    config: web::Data<AppConfig>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let merchant_id = service::resolve_merchant_id(&pool, auth.user_id).await?;
+    let product_id = path.into_inner();
+
+    let product =
+        service::update_stock(&pool, merchant_id, product_id, &payload.into_inner()).await?;
+    let product = with_photo_url(product, &config);
+
+    let response = ApiResponse::new(serde_json::json!({ "product": product }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// POST /api/v1/products/{id}/decrement-stock
+///
+/// Atomically decrement stock. Returns 409 if insufficient.
+pub async fn decrement_stock(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    payload: web::Json<DecrementStockPayload>,
+    pool: web::Data<PgPool>,
+    config: web::Data<AppConfig>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let merchant_id = service::resolve_merchant_id(&pool, auth.user_id).await?;
+    let product_id = path.into_inner();
+
+    let product =
+        service::decrement_stock(&pool, merchant_id, product_id, &payload.into_inner()).await?;
+    let product = with_photo_url(product, &config);
+
+    let response = ApiResponse::new(serde_json::json!({ "product": product }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// GET /api/v1/merchants/me/stock-alerts
+///
+/// List unacknowledged stock alerts for the authenticated merchant.
+pub async fn list_stock_alerts(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let merchant_id = service::resolve_merchant_id(&pool, auth.user_id).await?;
+    let alerts = service::get_stock_alerts(&pool, merchant_id).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "alerts": alerts }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// POST /api/v1/stock-alerts/{id}/acknowledge
+///
+/// Acknowledge a stock alert.
+pub async fn acknowledge_alert(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let merchant_id = service::resolve_merchant_id(&pool, auth.user_id).await?;
+    let alert_id = path.into_inner();
+    let alert = service::acknowledge_alert(&pool, merchant_id, alert_id).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "alert": alert }));
     Ok(HttpResponse::Ok().json(response))
 }

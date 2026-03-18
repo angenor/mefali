@@ -164,4 +164,425 @@ void main() {
     expect(find.text('Le nom est requis'), findsOneWidget);
     expect(find.text('Le prix est requis'), findsOneWidget);
   });
+
+  // --- Stock management tests (story 3.4) ---
+
+  testWidgets('ProductListScreen shows green badge for OK stock', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Stock > 20% shows the stock count as badge text
+    expect(find.text('50'), findsOneWidget);
+    expect(find.text('Garba'), findsOneWidget);
+  });
+
+  testWidgets('ProductListScreen shows orange badge for low stock', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Alloco',
+        price: 300,
+        stock: 10,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // "Stock bas" appears in badge AND filter chip
+    expect(find.text('Stock bas'), findsWidgets);
+  });
+
+  testWidgets('ProductListScreen shows red badge for zero stock', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Thiep',
+        price: 1500,
+        stock: 0,
+        initialStock: 50,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // "Indisponible" appears in badge AND filter chip
+    expect(find.text('Indisponible'), findsWidgets);
+  });
+
+  testWidgets('ProductListScreen shows filter chips', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tous'), findsOneWidget);
+    expect(find.text('Stock bas'), findsWidgets);
+    expect(find.text('Indisponible'), findsWidgets);
+  });
+
+  testWidgets('ProductListScreen shows stock alerts section', (tester) async {
+    final products = [
+      Product(
+        id: 'prod-1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 5,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    final alerts = [
+      StockAlert(
+        id: 'alert-1',
+        merchantId: '2',
+        productId: 'prod-1',
+        alertType: 'below_20_percent',
+        currentStock: 5,
+        initialStock: 100,
+        triggeredAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(alerts),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alertes stock (1)'), findsOneWidget);
+    expect(find.text('Vu'), findsOneWidget);
+    expect(find.text('Stock: 5/100'), findsOneWidget);
+  });
+
+  testWidgets('Tapping "Indisponible" filter shows only zero-stock products', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Product(
+        id: '2',
+        merchantId: '2',
+        name: 'Alloco',
+        price: 300,
+        stock: 0,
+        initialStock: 50,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Both products visible initially
+    expect(find.text('Garba'), findsOneWidget);
+    expect(find.text('Alloco'), findsOneWidget);
+
+    // Tap "Indisponible" filter chip
+    await tester.tap(find.widgetWithText(FilterChip, 'Indisponible'));
+    await tester.pumpAndSettle();
+
+    // Only zero-stock product visible
+    expect(find.text('Alloco'), findsOneWidget);
+    expect(find.text('Garba'), findsNothing);
+  });
+
+  testWidgets('Tapping "Stock bas" filter shows only low-stock products', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Product(
+        id: '2',
+        merchantId: '2',
+        name: 'Alloco',
+        price: 300,
+        stock: 10,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Both products visible initially
+    expect(find.text('Garba'), findsOneWidget);
+    expect(find.text('Alloco'), findsOneWidget);
+
+    // Tap "Stock bas" filter chip
+    await tester.tap(find.widgetWithText(FilterChip, 'Stock bas'));
+    await tester.pumpAndSettle();
+
+    // Only low-stock product visible (10/100 = 10% <= 20%)
+    expect(find.text('Alloco'), findsOneWidget);
+    expect(find.text('Garba'), findsNothing);
+  });
+
+  testWidgets('Tapping "Tous" filter after filtering restores all products', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Product(
+        id: '2',
+        merchantId: '2',
+        name: 'Alloco',
+        price: 300,
+        stock: 0,
+        initialStock: 50,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Filter to "Indisponible"
+    await tester.tap(find.widgetWithText(FilterChip, 'Indisponible'));
+    await tester.pumpAndSettle();
+    expect(find.text('Garba'), findsNothing);
+
+    // Tap "Tous" to restore
+    await tester.tap(find.widgetWithText(FilterChip, 'Tous'));
+    await tester.pumpAndSettle();
+    expect(find.text('Garba'), findsOneWidget);
+    expect(find.text('Alloco'), findsOneWidget);
+  });
+
+  testWidgets('Alert section hidden when no alerts', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // No alerts section visible
+    expect(find.text('Alertes stock'), findsNothing);
+    expect(find.byIcon(Icons.notification_important), findsNothing);
+  });
+
+  testWidgets('Stock badge renders check icon for OK stock', (tester) async {
+    final products = [
+      Product(
+        id: '1',
+        merchantId: '2',
+        name: 'Garba',
+        price: 500,
+        stock: 50,
+        initialStock: 100,
+        isAvailable: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          merchantProductsProvider.overrideWith(
+            (ref) => Future.value(products),
+          ),
+          stockAlertsProvider.overrideWith(
+            (ref) => Future.value(<StockAlert>[]),
+          ),
+        ],
+        child: const MaterialApp(home: ProductListScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // OK stock shows check icon
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    // Low stock warning icon absent (all stock OK)
+    expect(find.byIcon(Icons.warning_amber), findsNothing);
+    // Error icon absent
+    expect(find.byIcon(Icons.error_outline), findsNothing);
+  });
 }

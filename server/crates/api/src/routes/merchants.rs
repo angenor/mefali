@@ -5,7 +5,7 @@ use common::config::AppConfig;
 use common::error::AppError;
 use common::response::ApiResponse;
 use domain::merchants::business_hours::SetBusinessHoursEntry;
-use domain::merchants::model::{InitiateOnboardingPayload, CreateMerchantPayload};
+use domain::merchants::model::{InitiateOnboardingPayload, CreateMerchantPayload, UpdateStatusPayload};
 use domain::merchants::service;
 use domain::products::model::CreateProductPayload;
 use domain::users::model::UserRole;
@@ -172,6 +172,38 @@ pub async fn onboarding_status(
     let status = service::get_onboarding_status(&pool, merchant_id, auth.user_id).await?;
 
     let response = ApiResponse::new(status);
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// GET /api/v1/merchants/me
+///
+/// Merchant gets their own profile data including availability status.
+pub async fn get_me(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let merchant = service::get_current_merchant(&pool, auth.user_id).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "merchant": merchant }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// PUT /api/v1/merchants/me/status
+///
+/// Merchant updates their availability status.
+pub async fn update_status(
+    auth: AuthenticatedUser,
+    body: web::Json<UpdateStatusPayload>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    body.validate()?;
+    let merchant = service::change_status(&pool, auth.user_id, body.into_inner().status).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "merchant": merchant }));
     Ok(HttpResponse::Ok().json(response))
 }
 

@@ -11,4 +11,5 @@ export 'models/business_hours.dart';
 export 'models/kyc_document.dart';
 export 'models/merchant.dart';
 export 'models/product.dart';
+export 'models/stock_alert.dart';
 export 'models/user.dart';

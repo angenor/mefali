@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-17 # code-review 3-3-product-catalogue-management → done
+last_updated: 2026-03-17 # dev-story 3-5-vendor-availability-4-states → in-progress
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -65,8 +65,8 @@ development_status:
   3-1-agent-terrain-merchant-onboarding-flow: done
   3-2-kyc-document-capture: done
   3-3-product-catalogue-management: done
-  3-4-stock-level-management: backlog
-  3-5-vendor-availability-4-states: backlog
+  3-4-stock-level-management: done
+  3-5-vendor-availability-4-states: in-progress
   3-6-order-reception-and-management-b2b: backlog
   3-7-sales-dashboard: backlog
   3-8-business-hours-management: backlog

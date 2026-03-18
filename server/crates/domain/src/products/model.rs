@@ -55,6 +55,53 @@ impl CreateProductPayload {
     }
 }
 
+/// Stock alert entity matching the `stock_alerts` table schema.
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct StockAlert {
+    pub id: Id,
+    pub merchant_id: Id,
+    pub product_id: Id,
+    pub alert_type: String,
+    pub current_stock: i32,
+    pub initial_stock: i32,
+    pub triggered_at: Timestamp,
+    pub acknowledged_at: Option<Timestamp>,
+}
+
+/// Payload for updating stock level directly.
+#[derive(Debug, Deserialize)]
+pub struct UpdateStockPayload {
+    pub stock: i32,
+}
+
+impl UpdateStockPayload {
+    pub fn validate(&self) -> Result<(), common::error::AppError> {
+        if self.stock < 0 {
+            return Err(common::error::AppError::BadRequest(
+                "Stock must be >= 0".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Payload for decrementing stock atomically.
+#[derive(Debug, Deserialize)]
+pub struct DecrementStockPayload {
+    pub quantity: i32,
+}
+
+impl DecrementStockPayload {
+    pub fn validate(&self) -> Result<(), common::error::AppError> {
+        if self.quantity <= 0 {
+            return Err(common::error::AppError::BadRequest(
+                "Quantity must be > 0".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Payload for updating a product.
 #[derive(Debug, Deserialize)]
 pub struct UpdateProductPayload {
@@ -207,6 +254,42 @@ mod tests {
             photo_url: None,
         };
         assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_stock_payload_valid() {
+        let p = UpdateStockPayload { stock: 50 };
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_stock_payload_zero() {
+        let p = UpdateStockPayload { stock: 0 };
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_stock_payload_negative() {
+        let p = UpdateStockPayload { stock: -1 };
+        assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn test_decrement_stock_payload_valid() {
+        let p = DecrementStockPayload { quantity: 5 };
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn test_decrement_stock_payload_zero() {
+        let p = DecrementStockPayload { quantity: 0 };
+        assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn test_decrement_stock_payload_negative() {
+        let p = DecrementStockPayload { quantity: -3 };
+        assert!(p.validate().is_err());
     }
 
     #[test]

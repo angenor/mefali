@@ -2,7 +2,7 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{CreateMerchantPayload, Merchant};
+use super::model::{CreateMerchantPayload, Merchant, MerchantStatus};
 
 /// Insert a new merchant record linked to a user.
 pub async fn create_merchant(
@@ -90,6 +90,62 @@ pub async fn update_onboarding_step(
                    created_by_agent_id, created_at, updated_at",
     )
     .bind(step)
+    .bind(merchant_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Update the availability status for a merchant.
+pub async fn update_status(
+    pool: &PgPool,
+    merchant_id: Id,
+    new_status: &MerchantStatus,
+) -> Result<Merchant, AppError> {
+    sqlx::query_as::<_, Merchant>(
+        "UPDATE merchants SET availability_status = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING id, user_id, name, address, availability_status, city_id,
+                   consecutive_no_response, photo_url, category, onboarding_step,
+                   created_by_agent_id, created_at, updated_at",
+    )
+    .bind(new_status)
+    .bind(merchant_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Increment the consecutive_no_response counter for a merchant.
+pub async fn increment_no_response(
+    pool: &PgPool,
+    merchant_id: Id,
+) -> Result<Merchant, AppError> {
+    sqlx::query_as::<_, Merchant>(
+        "UPDATE merchants SET consecutive_no_response = consecutive_no_response + 1, updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, user_id, name, address, availability_status, city_id,
+                   consecutive_no_response, photo_url, category, onboarding_step,
+                   created_by_agent_id, created_at, updated_at",
+    )
+    .bind(merchant_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Reset the consecutive_no_response counter to 0 for a merchant.
+pub async fn reset_no_response(
+    pool: &PgPool,
+    merchant_id: Id,
+) -> Result<Merchant, AppError> {
+    sqlx::query_as::<_, Merchant>(
+        "UPDATE merchants SET consecutive_no_response = 0, updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, user_id, name, address, availability_status, city_id,
+                   consecutive_no_response, photo_url, category, onboarding_step,
+                   created_by_agent_id, created_at, updated_at",
+    )
     .bind(merchant_id)
     .fetch_one(pool)
     .await

@@ -2,7 +2,7 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{CreateProductPayload, Product, UpdateProductPayload};
+use super::model::{CreateProductPayload, Product, StockAlert, UpdateProductPayload};
 
 /// Insert a new product for a merchant.
 pub async fn create_product(
@@ -103,6 +103,132 @@ pub async fn soft_delete_product(pool: &PgPool, product_id: Id) -> Result<(), Ap
         return Err(AppError::NotFound("Product not found".into()));
     }
     Ok(())
+}
+
+/// Update only the stock field of a product.
+pub async fn update_stock(pool: &PgPool, product_id: Id, stock: i32) -> Result<Product, AppError> {
+    sqlx::query_as::<_, Product>(
+        "UPDATE products SET stock = $2, updated_at = NOW()
+         WHERE id = $1 AND is_available = true
+         RETURNING id, merchant_id, name, description, price, stock, initial_stock,
+                   photo_url, is_available, created_at, updated_at",
+    )
+    .bind(product_id)
+    .bind(stock)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        if matches!(e, sqlx::Error::RowNotFound) {
+            AppError::NotFound("Product not found".into())
+        } else {
+            AppError::DatabaseError(e.to_string())
+        }
+    })
+}
+
+/// Atomically decrement stock. Returns None if insufficient stock.
+pub async fn decrement_stock_atomic(
+    pool: &PgPool,
+    product_id: Id,
+    quantity: i32,
+) -> Result<Option<Product>, AppError> {
+    sqlx::query_as::<_, Product>(
+        "UPDATE products SET stock = stock - $2, updated_at = NOW()
+         WHERE id = $1 AND stock >= $2 AND is_available = true
+         RETURNING id, merchant_id, name, description, price, stock, initial_stock,
+                   photo_url, is_available, created_at, updated_at",
+    )
+    .bind(product_id)
+    .bind(quantity)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+// --- Stock alerts ---
+
+/// Create a stock alert for a product.
+pub async fn create_stock_alert(
+    pool: &PgPool,
+    merchant_id: Id,
+    product_id: Id,
+    current_stock: i32,
+    initial_stock: i32,
+) -> Result<StockAlert, AppError> {
+    sqlx::query_as::<_, StockAlert>(
+        "INSERT INTO stock_alerts (merchant_id, product_id, current_stock, initial_stock)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, merchant_id, product_id, alert_type, current_stock, initial_stock,
+                   triggered_at, acknowledged_at",
+    )
+    .bind(merchant_id)
+    .bind(product_id)
+    .bind(current_stock)
+    .bind(initial_stock)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Find unacknowledged alerts for a merchant.
+pub async fn find_alerts_by_merchant(
+    pool: &PgPool,
+    merchant_id: Id,
+) -> Result<Vec<StockAlert>, AppError> {
+    sqlx::query_as::<_, StockAlert>(
+        "SELECT id, merchant_id, product_id, alert_type, current_stock, initial_stock,
+                triggered_at, acknowledged_at
+         FROM stock_alerts
+         WHERE merchant_id = $1 AND acknowledged_at IS NULL
+         ORDER BY triggered_at DESC",
+    )
+    .bind(merchant_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Check if an unacknowledged alert already exists for a product.
+pub async fn find_unacknowledged_alert(
+    pool: &PgPool,
+    product_id: Id,
+) -> Result<Option<StockAlert>, AppError> {
+    sqlx::query_as::<_, StockAlert>(
+        "SELECT id, merchant_id, product_id, alert_type, current_stock, initial_stock,
+                triggered_at, acknowledged_at
+         FROM stock_alerts
+         WHERE product_id = $1 AND acknowledged_at IS NULL
+         LIMIT 1",
+    )
+    .bind(product_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Acknowledge a stock alert (with merchant ownership check).
+pub async fn acknowledge_alert(
+    pool: &PgPool,
+    alert_id: Id,
+    merchant_id: Id,
+) -> Result<StockAlert, AppError> {
+    sqlx::query_as::<_, StockAlert>(
+        "UPDATE stock_alerts SET acknowledged_at = NOW()
+         WHERE id = $1 AND merchant_id = $2 AND acknowledged_at IS NULL
+         RETURNING id, merchant_id, product_id, alert_type, current_stock, initial_stock,
+                   triggered_at, acknowledged_at",
+    )
+    .bind(alert_id)
+    .bind(merchant_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        if matches!(e, sqlx::Error::RowNotFound) {
+            AppError::NotFound("Alert not found or already acknowledged".into())
+        } else {
+            AppError::DatabaseError(e.to_string())
+        }
+    })
 }
 
 /// Hard-delete a product by ID (used during onboarding only).

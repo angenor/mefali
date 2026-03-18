@@ -43,9 +43,14 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{user_id}/documents", web::post().to(kyc::upload_document))
                     .route("/{user_id}/activate", web::post().to(kyc::activate_driver)),
             )
-            // Merchant onboarding routes — Agent role required
+            // Merchant routes — mixed roles
             .service(
                 web::scope("/merchants")
+                    // Merchant self-service routes (must be before /{id} to avoid capture)
+                    .route("/me", web::get().to(merchants::get_me))
+                    .route("/me/status", web::put().to(merchants::update_status))
+                    .route("/me/stock-alerts", web::get().to(products::list_stock_alerts))
+                    // Onboarding routes — Agent role required
                     .service(
                         web::scope("/onboard")
                             .route("/request-otp", web::post().to(merchants::onboard_request_otp))
@@ -63,7 +68,20 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("", web::get().to(products::list_products))
                     .route("", web::post().to(products::create_product))
                     .route("/{id}", web::put().to(products::update_product))
-                    .route("/{id}", web::delete().to(products::delete_product)),
+                    .route("/{id}", web::delete().to(products::delete_product))
+                    .route("/{id}/stock", web::put().to(products::update_stock))
+                    .route(
+                        "/{id}/decrement-stock",
+                        web::post().to(products::decrement_stock),
+                    ),
+            )
+            // Stock alerts routes — Merchant role required
+            .service(
+                web::scope("/stock-alerts")
+                    .route(
+                        "/{id}/acknowledge",
+                        web::post().to(products::acknowledge_alert),
+                    ),
             ),
     );
 }

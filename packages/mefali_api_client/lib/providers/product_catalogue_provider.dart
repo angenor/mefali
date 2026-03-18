@@ -13,9 +13,16 @@ final merchantProductsProvider =
 
 /// Notifier pour les mutations catalogue (create, update, delete).
 class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
-  ProductCatalogueNotifier(this._endpoint) : super(const AsyncValue.data(null));
+  ProductCatalogueNotifier(this._endpoint, this._ref)
+      : super(const AsyncValue.data(null));
 
   final ProductEndpoint _endpoint;
+  final Ref _ref;
+
+  void _invalidateLists() {
+    _ref.invalidate(merchantProductsProvider);
+    _ref.invalidate(stockAlertsProvider);
+  }
 
   Future<void> createProduct({
     required String name,
@@ -34,6 +41,7 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
         imagePath: imagePath,
       );
     });
+    if (state is AsyncData) _invalidateLists();
   }
 
   Future<void> updateProduct({
@@ -55,6 +63,7 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
         imagePath: imagePath,
       );
     });
+    if (state is AsyncData) _invalidateLists();
   }
 
   Future<void> deleteProduct(String productId) async {
@@ -62,11 +71,40 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
     state = await AsyncValue.guard(() async {
       await _endpoint.deleteProduct(productId);
     });
+    if (state is AsyncData) _invalidateLists();
+  }
+
+  // --- Stock management (story 3.4) ---
+
+  Future<void> updateStock({
+    required String productId,
+    required int stock,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _endpoint.updateProductStock(productId, stock);
+    });
+    if (state is AsyncData) _invalidateLists();
+  }
+
+  Future<void> acknowledgeAlert(String alertId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _endpoint.acknowledgeAlert(alertId);
+    });
+    if (state is AsyncData) _invalidateLists();
   }
 }
 
 /// Provider pour le notifier catalogue.
 final productCatalogueProvider =
     StateNotifierProvider.autoDispose<ProductCatalogueNotifier, AsyncValue<void>>(
-  (ref) => ProductCatalogueNotifier(ProductEndpoint(ref.watch(dioProvider))),
+  (ref) => ProductCatalogueNotifier(ProductEndpoint(ref.watch(dioProvider)), ref),
 );
+
+/// Provider pour les alertes stock non-acquittees du marchand.
+final stockAlertsProvider =
+    FutureProvider.autoDispose<List<StockAlert>>((ref) async {
+  final endpoint = ProductEndpoint(ref.watch(dioProvider));
+  return endpoint.getStockAlerts();
+});
