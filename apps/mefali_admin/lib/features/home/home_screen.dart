@@ -38,6 +38,12 @@ class AdminHomeScreen extends ConsumerWidget {
               label: const Text('KYC Livreurs'),
               onPressed: () => context.push('/kyc'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.bar_chart),
+              label: const Text('Mes performances'),
+              onPressed: () => context.push('/dashboard/performance'),
+            ),
             const SizedBox(height: 24),
             Text(
               'Onboardings en cours',

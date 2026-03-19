@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod auth;
 pub mod health;
 pub mod kyc;
@@ -77,6 +78,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/hours", web::put().to(merchants::set_hours))
                     .route("/{id}/finalize", web::post().to(merchants::finalize))
                     .route("/{id}/onboarding-status", web::get().to(merchants::onboarding_status)),
+            )
+            // Agent routes — Agent/Admin role required
+            .service(
+                web::scope("/agents")
+                    .route("/me/stats", web::get().to(agents::get_my_stats)),
             )
             // Product catalogue routes — Merchant role required
             .service(

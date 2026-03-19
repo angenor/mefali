@@ -19,3 +19,5 @@ export 'providers/vendor_status_provider.dart';
 export 'providers/business_hours_provider.dart';
 export 'providers/exceptional_closures_provider.dart';
 export 'endpoints/product_endpoint.dart';
+export 'endpoints/agent_endpoint.dart';
+export 'providers/agent_performance_provider.dart';

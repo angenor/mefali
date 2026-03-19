@@ -72,6 +72,46 @@ pub async fn create_test_product_with_price(
     products::repository::create_product(pool, merchant_id, &payload).await
 }
 
+/// Create a test merchant linked to a specific agent with onboarding_step = 5 (finalized).
+pub async fn create_test_merchant_for_agent(
+    pool: &PgPool,
+    agent_id: Id,
+) -> Result<merchants::model::Merchant, AppError> {
+    let user = create_test_user_with_role(pool, UserRole::Merchant).await?;
+    let payload = CreateMerchantPayload {
+        name: "Agent Test Merchant".into(),
+        address: Some("Bouaké centre".into()),
+        category: Some("restaurant".into()),
+        city_id: None,
+    };
+    let merchant = merchants::repository::create_merchant(pool, user.id, agent_id, &payload).await?;
+    // Finalize onboarding (step 5) and set status to Open
+    merchants::repository::update_onboarding_step(pool, merchant.id, 5).await?;
+    merchants::repository::update_status(pool, merchant.id, &MerchantStatus::Open).await
+}
+
+/// Create a verified KYC document for a user, verified by a specific agent.
+pub async fn create_test_verified_kyc(
+    pool: &PgPool,
+    user_id: Id,
+    agent_id: Id,
+) -> Result<crate::kyc::model::KycDocument, AppError> {
+    let doc = crate::kyc::repository::create_document(
+        pool,
+        user_id,
+        crate::kyc::model::KycDocumentType::Cni,
+        "/encrypted/test.bin",
+    )
+    .await?;
+
+    // Verify the document
+    crate::kyc::repository::verify_all_for_user(pool, user_id, agent_id).await?;
+
+    // Re-fetch the updated document
+    let docs = crate::kyc::repository::find_by_user(pool, user_id).await?;
+    Ok(docs.into_iter().find(|d| d.id == doc.id).unwrap())
+}
+
 /// Create a test order with items and set status to Delivered.
 /// `items` is a slice of (product_id, quantity, unit_price).
 ///

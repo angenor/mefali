@@ -19,3 +19,4 @@ export 'models/stock_alert.dart';
 export 'models/user.dart';
 export 'models/exceptional_closure.dart';
 export 'models/weekly_sales.dart';
+export 'models/agent_stats.dart';

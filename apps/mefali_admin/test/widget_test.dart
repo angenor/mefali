@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,7 @@ import 'package:mefali_admin/app.dart';
 import 'package:mefali_admin/features/kyc/pending_drivers_screen.dart';
 import 'package:mefali_admin/features/kyc/kyc_capture_screen.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_admin/features/dashboard/agent_performance_screen.dart';
 import 'package:mefali_admin/features/onboarding/onboarding_wizard_screen.dart';
 import 'package:mefali_core/mefali_core.dart';
 
@@ -227,6 +230,149 @@ void main() {
     // Activate button is enabled (has document)
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(button.onPressed, isNotNull);
+  });
+
+  // --- Agent Performance Dashboard tests ---
+
+  testWidgets('AgentPerformanceScreen shows stats with data', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          agentPerformanceProvider.overrideWith(
+            (_) async => AgentPerformanceState(
+              stats: const AgentPerformanceStats(
+                merchantsOnboarded: PeriodCount(today: 3, thisWeek: 11, total: 47),
+                kycValidated: PeriodCount(today: 1, thisWeek: 4, total: 19),
+                merchantsWithFirstOrder: FirstOrderCount(thisWeek: 6, total: 38),
+                recentMerchants: [
+                  RecentMerchant(
+                    id: 'rm1',
+                    name: 'Chez Dramane',
+                    createdAt: '2026-03-19T09:00:00Z',
+                    hasFirstOrder: true,
+                  ),
+                  RecentMerchant(
+                    id: 'rm2',
+                    name: 'Maquis Central',
+                    createdAt: '2026-03-18T14:00:00Z',
+                    hasFirstOrder: false,
+                  ),
+                ],
+              ),
+              lastSync: DateTime.now(),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: AgentPerformanceScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Stats cards present
+    expect(find.text('Marchands onboardes'), findsOneWidget);
+    expect(find.text('KYC valides'), findsOneWidget);
+    expect(find.text('Premieres commandes'), findsOneWidget);
+
+    // Unique values from stats
+    expect(find.text('47'), findsOneWidget);
+    expect(find.text('19'), findsOneWidget);
+    expect(find.text('38'), findsOneWidget);
+
+    // Recent merchants
+    expect(find.text('Chez Dramane'), findsOneWidget);
+    expect(find.text('Maquis Central'), findsOneWidget);
+    expect(find.text('Commande recue'), findsOneWidget);
+    expect(find.text('En attente'), findsOneWidget);
+  });
+
+  testWidgets('AgentPerformanceScreen shows skeleton loading', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Use a Completer that never completes to keep loading state
+    final completer = Completer<AgentPerformanceState>();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          agentPerformanceProvider.overrideWith((_) => completer.future),
+        ],
+        child: const MaterialApp(home: AgentPerformanceScreen()),
+      ),
+    );
+    await tester.pump();
+
+    // Should NOT find a CircularProgressIndicator (skeleton instead)
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    // AppBar still visible
+    expect(find.text('Mes performances'), findsOneWidget);
+  });
+
+  testWidgets('AgentPerformanceScreen shows error with retry', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          agentPerformanceProvider.overrideWith(
+            (_) => Future<AgentPerformanceState>.error(
+              Exception('Network error'),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: AgentPerformanceScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Erreur'), findsOneWidget);
+    expect(find.text('Reessayer'), findsOneWidget);
+  });
+
+  testWidgets('AgentPerformanceScreen shows cache banner when offline', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final lastSync = DateTime.now().subtract(const Duration(minutes: 15));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          agentPerformanceProvider.overrideWith(
+            (_) async => AgentPerformanceState(
+              stats: const AgentPerformanceStats(
+                merchantsOnboarded: PeriodCount(today: 0, thisWeek: 5, total: 30),
+                kycValidated: PeriodCount(today: 0, thisWeek: 2, total: 13),
+                merchantsWithFirstOrder: FirstOrderCount(thisWeek: 1, total: 22),
+                recentMerchants: [],
+              ),
+              lastSync: lastSync,
+              isCached: true,
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: AgentPerformanceScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Cache banner visible
+    expect(find.textContaining('hors ligne'), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+
+    // Data still shows
+    expect(find.text('Marchands onboardes'), findsOneWidget);
   });
 
   testWidgets('Admin app phone screen validates input', (tester) async {

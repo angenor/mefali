@@ -8,6 +8,7 @@ import 'package:mefali_core/mefali_core.dart';
 import '../dio_client/auth_interceptor.dart';
 import '../dio_client/dio_client.dart';
 import '../endpoints/auth_endpoint.dart';
+import 'agent_performance_provider.dart';
 import 'sales_dashboard_provider.dart';
 
 const _keyAccessToken = 'access_token';
@@ -201,6 +202,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _storage.delete(key: _keyAccessToken);
     await _storage.delete(key: _keyRefreshToken);
     clearSalesCache();
+    clearAgentStatsCache();
     state = const AuthState();
   }
 

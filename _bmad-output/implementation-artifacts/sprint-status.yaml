@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-19 # 3-8-business-hours-management: done
+last_updated: 2026-03-19 # 3-9-agent-terrain-performance-dashboard: done
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -70,7 +70,7 @@ development_status:
   3-6-order-reception-and-management-b2b: done
   3-7-sales-dashboard: done
   3-8-business-hours-management: done
-  3-9-agent-terrain-performance-dashboard: backlog
+  3-9-agent-terrain-performance-dashboard: done
   3-10-demo-mode: backlog
   epic-3-retrospective: optional
 

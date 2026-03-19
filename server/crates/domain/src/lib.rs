@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod deliveries;
 pub mod disputes;
 pub mod kyc;
@@ -15,7 +16,7 @@ pub mod test_fixtures;
 mod tests {
     #[test]
     fn test_domain_modules_compile() {
-        // Validates that all 7 domain sub-modules compile correctly
+        // Validates that all 10 domain sub-modules compile correctly
         assert!(true);
     }
 }
