@@ -52,6 +52,40 @@ pub async fn list_merchants(
     Ok(HttpResponse::Ok().json(response))
 }
 
+/// Query params for GET /api/v1/merchants/{id}/products.
+#[derive(Debug, serde::Deserialize)]
+pub struct ListMerchantProductsQuery {
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+}
+
+/// GET /api/v1/merchants/{id}/products
+///
+/// B2C customer views a merchant's product catalogue.
+/// Requires Client or Admin role. Returns paginated product list.
+pub async fn list_merchant_products(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    query: web::Query<ListMerchantProductsQuery>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Client, UserRole::Admin])?;
+
+    let merchant_id = path.into_inner();
+    let page = query.page.unwrap_or(1);
+    let per_page = query.per_page.unwrap_or(50);
+
+    let result = service::list_merchant_products_public(&pool, merchant_id, page, per_page).await?;
+
+    let response = ApiResponse::with_pagination(
+        result.products,
+        result.page as i64,
+        result.per_page as i64,
+        result.total,
+    );
+    Ok(HttpResponse::Ok().json(response))
+}
+
 /// POST /api/v1/merchants/onboard/request-otp
 ///
 /// Agent initiates merchant onboarding by sending OTP to merchant's phone.
@@ -408,6 +442,89 @@ mod integration_tests {
 
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), 401);
+    }
+
+    // ---- Merchant Products B2C (T1 Story 4.2) ----
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchant_products_200(pool: PgPool) {
+        let agent = create_test_user_with_role(&pool, UserRole::Agent).await.unwrap();
+        let merchant = create_test_merchant_for_agent(&pool, agent.id).await.unwrap();
+        let _product = create_test_product(&pool, merchant.id).await.unwrap();
+
+        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let token = crate::test_helpers::create_test_jwt(client.id, "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/api/v1/merchants/{}/products", merchant.id))
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let products = body["data"].as_array().unwrap();
+        assert_eq!(products.len(), 1);
+        assert_eq!(body["meta"]["total"].as_i64().unwrap(), 1);
+        assert!(products[0]["name"].as_str().is_some());
+        assert!(products[0]["price"].as_i64().is_some());
+        assert!(products[0]["stock"].as_i64().is_some());
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchant_products_200_empty(pool: PgPool) {
+        let agent = create_test_user_with_role(&pool, UserRole::Agent).await.unwrap();
+        let merchant = create_test_merchant_for_agent(&pool, agent.id).await.unwrap();
+
+        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let token = crate::test_helpers::create_test_jwt(client.id, "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/api/v1/merchants/{}/products", merchant.id))
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert!(body["data"].as_array().unwrap().is_empty());
+        assert_eq!(body["meta"]["total"].as_i64().unwrap(), 0);
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchant_products_401_no_token(pool: PgPool) {
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/api/v1/merchants/{}/products", uuid::Uuid::new_v4()))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 401);
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchant_products_404_not_finalized(pool: PgPool) {
+        // Merchant with onboarding_step = 1 (not finalized) — should return 404
+        let merchant_user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let merchant = create_test_merchant(&pool, merchant_user.id).await.unwrap();
+
+        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let token = crate::test_helpers::create_test_jwt(client.id, "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        // Use the actual non-finalized merchant ID (onboarding_step = 1)
+        let req = test::TestRequest::get()
+            .uri(&format!("/api/v1/merchants/{}/products", merchant.id))
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 404);
     }
 
     // ---- Business Hours (T6.3) ----

@@ -25,4 +25,19 @@ class RestaurantEndpoint {
         .map((e) => RestaurantSummary.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  /// Liste les produits d'un marchand pour le catalogue B2C.
+  Future<List<ProductItem>> listProducts({
+    required String merchantId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/merchants/$merchantId/products',
+      queryParameters: {'per_page': 50},
+    );
+
+    final list = response.data!['data'] as List;
+    return list
+        .map((e) => ProductItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 }

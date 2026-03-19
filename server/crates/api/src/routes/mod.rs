@@ -49,6 +49,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/orders")
                     .route("", web::post().to(orders::create_order))
+                    .route("/me", web::get().to(orders::get_customer_orders))
+                    .route("/{id}", web::get().to(orders::get_customer_order))
                     .route("/{id}/accept", web::put().to(orders::accept_order))
                     .route("/{id}/reject", web::put().to(orders::reject_order))
                     .route("/{id}/ready", web::put().to(orders::mark_ready)),
@@ -76,6 +78,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                             .route("/verify-and-create", web::post().to(merchants::onboard_verify_and_create))
                             .route("/in-progress", web::get().to(merchants::in_progress)),
                     )
+                    .route("/{id}/products", web::get().to(merchants::list_merchant_products))
                     .route("/{id}/products", web::post().to(merchants::add_products))
                     .route("/{id}/hours", web::put().to(merchants::set_hours))
                     .route("/{id}/finalize", web::post().to(merchants::finalize))

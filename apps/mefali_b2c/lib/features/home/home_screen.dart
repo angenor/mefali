@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_design/mefali_design.dart';
 
+import '../order/orders_list_screen.dart';
 import '../profile/profile_screen.dart';
 
 /// Catégories de filtre affichées sur l'écran d'accueil (UX-DR spec AC5).
@@ -37,7 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             _HomeTab(userName: userName),
             const _PlaceholderTab(title: 'Recherche'),
-            const _PlaceholderTab(title: 'Commandes'),
+            const _OrdersTab(),
             const ProfileScreen(),
           ],
         ),
@@ -155,14 +157,16 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
         mainAxisExtent: 250,
       ),
       itemCount: restaurants.length,
-      itemBuilder: (_, index) => RestaurantCard(
-        restaurant: restaurants[index],
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Catalogue à venir')),
-          );
-        },
-      ),
+      itemBuilder: (_, index) {
+        final restaurant = restaurants[index];
+        return RestaurantCard(
+          restaurant: restaurant,
+          onTap: () => context.push(
+            '/restaurant/${restaurant.id}',
+            extra: restaurant,
+          ),
+        );
+      },
     );
   }
 
@@ -261,6 +265,104 @@ class _FilterChipsRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Onglet Commandes : reutilise le contenu de OrdersListScreen.
+class _OrdersTab extends ConsumerWidget {
+  const _OrdersTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ordersAsync = ref.watch(customerOrdersProvider);
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(customerOrdersProvider);
+        await ref.read(customerOrdersProvider.future);
+      },
+      child: ordersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: colorScheme.error),
+              const SizedBox(height: 16),
+              Text('Impossible de charger les commandes',
+                  style: textTheme.titleMedium),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => ref.invalidate(customerOrdersProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reessayer'),
+              ),
+            ],
+          ),
+        ),
+        data: (orders) {
+          if (orders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.receipt_long,
+                      size: 64, color: colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 16),
+                  Text('Aucune commande', style: textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Vos commandes apparaitront ici',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final active = orders
+              .where((o) =>
+                  o.status != OrderStatus.delivered &&
+                  o.status != OrderStatus.cancelled)
+              .toList();
+          final past = orders
+              .where((o) =>
+                  o.status == OrderStatus.delivered ||
+                  o.status == OrderStatus.cancelled)
+              .toList();
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (active.isNotEmpty) ...[
+                Text('En cours',
+                    style: textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                for (final order in active)
+                  OrderListItem(
+                    order: order,
+                    onTap: () =>
+                        context.push('/order/tracking/${order.id}'),
+                  ),
+                const SizedBox(height: 24),
+              ],
+              if (past.isNotEmpty) ...[
+                Text('Historique',
+                    style: textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                for (final order in past) OrderListItem(order: order),
+              ],
+            ],
+          );
+        },
       ),
     );
   }

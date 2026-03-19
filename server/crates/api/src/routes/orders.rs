@@ -26,6 +26,38 @@ pub async fn create_order(
     Ok(HttpResponse::Created().json(response))
 }
 
+/// GET /api/v1/orders/me
+///
+/// Client gets their own orders.
+pub async fn get_customer_orders(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Client])?;
+
+    let orders = service::get_customer_orders(&pool, auth.user_id).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "orders": orders }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// GET /api/v1/orders/{id}
+///
+/// Client gets a specific order by ID (ownership verified).
+pub async fn get_customer_order(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Client])?;
+
+    let order =
+        service::get_customer_order_by_id(&pool, auth.user_id, path.into_inner()).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "order": order }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
 /// Query parameters for merchant orders list.
 #[derive(Debug, serde::Deserialize)]
 pub struct MerchantOrdersQuery {

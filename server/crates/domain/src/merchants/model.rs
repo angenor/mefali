@@ -139,6 +139,18 @@ pub struct MerchantSummary {
     pub delivery_fee: i64,
 }
 
+/// Lightweight product summary for B2C customer catalogue (GET /api/v1/merchants/{id}/products).
+/// Excludes internal fields (initial_stock, is_available, timestamps).
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ProductSummary {
+    pub id: Id,
+    pub name: String,
+    pub price: i64,
+    pub stock: i32,
+    pub photo_url: Option<String>,
+    pub merchant_id: Id,
+}
+
 /// Onboarding status response combining merchant + related data.
 #[derive(Debug, Serialize)]
 pub struct OnboardingStatus {

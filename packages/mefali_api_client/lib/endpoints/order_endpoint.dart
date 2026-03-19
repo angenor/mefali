@@ -65,6 +65,27 @@ class OrderEndpoint {
     return WeeklySales.fromJson(data);
   }
 
+  /// Recupere les commandes du client connecte.
+  Future<List<Order>> getCustomerOrders() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/orders/me',
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    final list = data['orders'] as List;
+    return list.map((e) => Order.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Recupere une commande par ID (role client, verification ownership).
+  Future<Order> getOrderById(String orderId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/orders/$orderId',
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return Order.fromJson(data['order'] as Map<String, dynamic>);
+  }
+
   /// Cree une commande (role client, utilise pour les tests).
   Future<Order> createOrder({
     required String merchantId,
@@ -82,11 +103,11 @@ class OrderEndpoint {
         'merchant_id': merchantId,
         'items': items,
         'payment_type': paymentType,
-        'delivery_address': deliveryAddress,
-        'delivery_lat': deliveryLat,
-        'delivery_lng': deliveryLng,
-        'city_id': cityId,
-        'notes': notes,
+        if (deliveryAddress != null) 'delivery_address': deliveryAddress,
+        if (deliveryLat != null) 'delivery_lat': deliveryLat,
+        if (deliveryLng != null) 'delivery_lng': deliveryLng,
+        if (cityId != null) 'city_id': cityId,
+        if (notes != null) 'notes': notes,
       },
     );
 

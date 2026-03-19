@@ -24,3 +24,6 @@ export 'providers/agent_performance_provider.dart';
 export 'providers/demo_provider.dart';
 export 'endpoints/restaurant_endpoint.dart';
 export 'providers/restaurant_discovery_provider.dart';
+export 'providers/restaurant_products_provider.dart';
+export 'providers/cart_provider.dart';
+export 'providers/order_provider.dart';

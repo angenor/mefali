@@ -103,7 +103,7 @@ pub async fn find_by_id_with_items(
     match order {
         Some(order) => {
             let items = find_items_by_order(pool, order.id).await?;
-            Ok(Some(OrderWithItems { order, items }))
+            Ok(Some(OrderWithItems { order, items, merchant_name: None }))
         }
         None => Ok(None),
     }
@@ -181,7 +181,7 @@ pub async fn find_by_merchant_with_items(
         .into_iter()
         .map(|order| {
             let items = items_map.remove(&order.id).unwrap_or_default();
-            OrderWithItems { order, items }
+            OrderWithItems { order, items, merchant_name: None }
         })
         .collect();
 
@@ -236,6 +236,88 @@ pub async fn set_rejection_note<'e>(
             AppError::DatabaseError(e.to_string())
         }
     })
+}
+
+/// Find orders for a customer, sorted by created_at DESC.
+pub async fn find_by_customer(pool: &PgPool, customer_id: Id) -> Result<Vec<Order>, AppError> {
+    sqlx::query_as::<_, Order>(&format!(
+        "SELECT {ORDER_COLUMNS} FROM orders
+         WHERE customer_id = $1
+         ORDER BY created_at DESC
+         LIMIT 50"
+    ))
+    .bind(customer_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Find orders for a customer with items.
+/// Uses 2 queries instead of N+1: one for orders, one for all items.
+pub async fn find_by_customer_with_items(
+    pool: &PgPool,
+    customer_id: Id,
+) -> Result<Vec<OrderWithItems>, AppError> {
+    let orders = find_by_customer(pool, customer_id).await?;
+    if orders.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let order_ids: Vec<Id> = orders.iter().map(|o| o.id).collect();
+    let all_items = sqlx::query_as::<_, OrderItem>(
+        "SELECT oi.id, oi.order_id, oi.product_id, oi.quantity, oi.unit_price,
+                oi.created_at, p.name AS product_name
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.order_id = ANY($1)
+         ORDER BY oi.created_at",
+    )
+    .bind(&order_ids)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let mut items_map: std::collections::HashMap<Id, Vec<OrderItem>> =
+        std::collections::HashMap::new();
+    for item in all_items {
+        items_map.entry(item.order_id).or_default().push(item);
+    }
+
+    let result = orders
+        .into_iter()
+        .map(|order| {
+            let items = items_map.remove(&order.id).unwrap_or_default();
+            OrderWithItems { order, items, merchant_name: None }
+        })
+        .collect();
+
+    Ok(result)
+}
+
+/// Resolve merchant names for a list of merchant IDs.
+pub async fn resolve_merchant_names(
+    pool: &PgPool,
+    merchant_ids: &[Id],
+) -> Result<std::collections::HashMap<Id, String>, AppError> {
+    if merchant_ids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct MerchantNameRow {
+        id: Id,
+        name: String,
+    }
+
+    let rows = sqlx::query_as::<_, MerchantNameRow>(
+        "SELECT id, name FROM merchants WHERE id = ANY($1)",
+    )
+    .bind(merchant_ids)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok(rows.into_iter().map(|r| (r.id, r.name)).collect())
 }
 
 // --- Weekly sales aggregation queries ---

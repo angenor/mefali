@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_design/mefali_design.dart';
 
 import 'features/auth/name_screen.dart';
 import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/order/order_confirmation_screen.dart';
+import 'features/order/order_tracking_screen.dart';
+import 'features/order/orders_list_screen.dart';
+import 'features/restaurant/restaurant_catalogue_screen.dart';
 import 'features/profile/change_phone_screen.dart';
 import 'features/profile/edit_name_screen.dart';
 import 'features/profile/verify_phone_screen.dart';
@@ -74,6 +79,35 @@ final _routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/restaurant/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          final restaurant = state.extra as RestaurantSummary;
+          return RestaurantCatalogueScreen(
+            restaurantId: id,
+            restaurant: restaurant,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/order/confirmation',
+        builder: (context, state) {
+          final order = state.extra as Order;
+          return OrderConfirmationScreen(order: order);
+        },
+      ),
+      GoRoute(
+        path: '/order/tracking/:orderId',
+        builder: (context, state) {
+          final orderId = state.pathParameters['orderId']!;
+          return OrderTrackingScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/orders',
+        builder: (context, state) => const OrdersListScreen(),
+      ),
       GoRoute(
         path: '/profile/edit-name',
         builder: (context, state) => const EditNameScreen(),

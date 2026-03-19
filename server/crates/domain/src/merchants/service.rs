@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use tracing::info;
 
 use super::business_hours;
-use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, MerchantSummary, OnboardingStatus};
+use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, MerchantSummary, OnboardingStatus, ProductSummary};
 use super::repository;
 use crate::products;
 use crate::products::model::CreateProductPayload;
@@ -302,6 +302,51 @@ pub async fn list_active_merchants(
 
     Ok(MerchantListResult {
         merchants,
+        total,
+        page,
+        per_page,
+    })
+}
+
+// ---- B2C product catalogue (Story 4.2) ----
+
+/// Paginated result for merchant product catalogue.
+#[derive(Debug, Serialize)]
+pub struct ProductListResult {
+    pub products: Vec<ProductSummary>,
+    pub total: i64,
+    pub page: u32,
+    pub per_page: u32,
+}
+
+/// List products for a specific merchant for B2C catalogue view.
+/// Only returns products from finalized merchants (onboarding_step = 5).
+pub async fn list_merchant_products_public(
+    pool: &PgPool,
+    merchant_id: Id,
+    page: u32,
+    per_page: u32,
+) -> Result<ProductListResult, AppError> {
+    // Verify merchant exists and is finalized
+    let merchant = repository::find_by_id(pool, merchant_id).await?;
+    match merchant {
+        None => return Err(AppError::NotFound("Merchant not found".into())),
+        Some(m) if m.onboarding_step < 5 => {
+            return Err(AppError::NotFound("Merchant not found".into()));
+        }
+        _ => {}
+    }
+
+    let page = page.max(1);
+    let per_page = per_page.clamp(1, 100);
+    let offset = ((page - 1) * per_page) as i64;
+    let limit = per_page as i64;
+
+    let products = repository::find_products_for_discovery(pool, merchant_id, limit, offset).await?;
+    let total = repository::count_products_for_discovery(pool, merchant_id).await?;
+
+    Ok(ProductListResult {
+        products,
         total,
         page,
         per_page,

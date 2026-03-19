@@ -22,4 +22,6 @@ export 'models/weekly_sales.dart';
 export 'models/agent_stats.dart';
 export 'models/demo_data.dart';
 export 'models/restaurant_summary.dart';
+export 'models/product_item.dart';
+export 'models/cart_item.dart';
 export 'utils/formatting.dart';

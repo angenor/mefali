@@ -111,7 +111,7 @@ pub async fn create_order(
         "Order created"
     );
 
-    Ok(OrderWithItems { order, items })
+    Ok(OrderWithItems { order, items, merchant_name: None })
 }
 
 /// Merchant accepts a pending order.
@@ -150,6 +150,7 @@ pub async fn accept_order(
     Ok(OrderWithItems {
         order: updated,
         items,
+        merchant_name: None,
     })
 }
 
@@ -195,6 +196,7 @@ pub async fn reject_order(
     Ok(OrderWithItems {
         order: updated,
         items,
+        merchant_name: None,
     })
 }
 
@@ -220,6 +222,7 @@ pub async fn mark_ready(
     Ok(OrderWithItems {
         order: updated,
         items,
+        merchant_name: None,
     })
 }
 
@@ -336,6 +339,55 @@ pub async fn get_merchant_weekly_stats(
         },
         product_breakdown,
     })
+}
+
+/// Get all orders for the authenticated customer.
+pub async fn get_customer_orders(
+    pool: &PgPool,
+    customer_id: Id,
+) -> Result<Vec<OrderWithItems>, AppError> {
+    let mut orders = repository::find_by_customer_with_items(pool, customer_id).await?;
+
+    // Resolve merchant names in a single batch query
+    let merchant_ids: Vec<Id> = orders
+        .iter()
+        .map(|o| o.order.merchant_id)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    let names = repository::resolve_merchant_names(pool, &merchant_ids).await?;
+    for order in &mut orders {
+        order.merchant_name = names.get(&order.order.merchant_id).cloned();
+    }
+
+    Ok(orders)
+}
+
+/// Get a single order by ID for the authenticated customer.
+/// Returns 404 if not found, 403 if not owned by customer.
+pub async fn get_customer_order_by_id(
+    pool: &PgPool,
+    customer_id: Id,
+    order_id: Id,
+) -> Result<OrderWithItems, AppError> {
+    let mut order_with_items = repository::find_by_id_with_items(pool, order_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Order not found".into()))?;
+
+    if order_with_items.order.customer_id != customer_id {
+        return Err(AppError::Forbidden("Not your order".into()));
+    }
+
+    // Resolve merchant name
+    let names = repository::resolve_merchant_names(
+        pool,
+        &[order_with_items.order.merchant_id],
+    )
+    .await?;
+    order_with_items.merchant_name =
+        names.get(&order_with_items.order.merchant_id).cloned();
+
+    Ok(order_with_items)
 }
 
 /// Verify merchant owns the order. Returns (order, merchant).

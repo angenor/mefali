@@ -94,6 +94,8 @@ pub struct OrderWithItems {
     #[serde(flatten)]
     pub order: Order,
     pub items: Vec<OrderItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub merchant_name: Option<String>,
 }
 
 /// Item in a create-order request.

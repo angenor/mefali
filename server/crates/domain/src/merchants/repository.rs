@@ -2,7 +2,7 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{CreateMerchantPayload, Merchant, MerchantStatus, MerchantSummary};
+use super::model::{CreateMerchantPayload, Merchant, MerchantStatus, MerchantSummary, ProductSummary};
 
 /// Insert a new merchant record linked to a user.
 pub async fn create_merchant(
@@ -174,6 +174,47 @@ pub async fn count_active_for_discovery(
          WHERE onboarding_step = 5 AND ($1::text IS NULL OR category = $1)",
     )
     .bind(category)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// List available products for a finalized merchant (B2C discovery).
+/// Returns all products (including stock=0 for out-of-stock display).
+pub async fn find_products_for_discovery(
+    pool: &PgPool,
+    merchant_id: Id,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<ProductSummary>, AppError> {
+    sqlx::query_as::<_, ProductSummary>(
+        "SELECT p.id, p.name, p.price, p.stock, p.photo_url, p.merchant_id
+         FROM products p
+         INNER JOIN merchants m ON m.id = p.merchant_id
+         WHERE p.merchant_id = $1 AND m.onboarding_step = 5 AND p.is_available = true
+         ORDER BY p.name
+         LIMIT $2 OFFSET $3",
+    )
+    .bind(merchant_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Count available products for a finalized merchant.
+pub async fn count_products_for_discovery(
+    pool: &PgPool,
+    merchant_id: Id,
+) -> Result<i64, AppError> {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*)
+         FROM products p
+         INNER JOIN merchants m ON m.id = p.merchant_id
+         WHERE p.merchant_id = $1 AND m.onboarding_step = 5 AND p.is_available = true",
+    )
+    .bind(merchant_id)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))
