@@ -91,8 +91,8 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    final restaurantsAsync =
-        ref.watch(restaurantDiscoveryProvider(_selectedCategory));
+    // Toujours charger toutes les catégories — le filtrage se fait côté Flutter (AC5).
+    final restaurantsAsync = ref.watch(restaurantDiscoveryProvider(null));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,9 +114,16 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
         Expanded(
           child: restaurantsAsync.when(
             loading: _buildSkeletonGrid,
-            data: (restaurants) => restaurants.isEmpty
-                ? _buildEmptyState(context)
-                : _buildGrid(restaurants),
+            data: (restaurants) {
+              final filtered = _selectedCategory == null
+                  ? restaurants
+                  : restaurants
+                      .where((r) => r.category == _selectedCategory)
+                      .toList();
+              return filtered.isEmpty
+                  ? _buildEmptyState(context)
+                  : _buildGrid(filtered);
+            },
             error: (error, _) => _buildErrorState(context),
           ),
         ),
@@ -151,7 +158,9 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
       itemBuilder: (_, index) => RestaurantCard(
         restaurant: restaurants[index],
         onTap: () {
-          // TODO(4-2): navigation vers le catalogue restaurant
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Catalogue à venir')),
+          );
         },
       ),
     );
@@ -215,9 +224,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: () => ref.invalidate(
-                restaurantDiscoveryProvider(_selectedCategory),
-              ),
+              onPressed: () => ref.invalidate(restaurantDiscoveryProvider(null)),
               icon: const Icon(Icons.refresh),
               label: const Text('Réessayer'),
             ),

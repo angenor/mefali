@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-19 # 4-1-restaurant-discovery-and-home: in-progress
+last_updated: 2026-03-19 # 4-1-restaurant-discovery-and-home: done (code review)
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -76,7 +76,7 @@ development_status:
 
   # Epic 4: Customer Food Ordering & Payment
   epic-4: in-progress
-  4-1-restaurant-discovery-and-home: in-progress
+  4-1-restaurant-discovery-and-home: done
   4-2-restaurant-catalogue-view: backlog
   4-3-cart-and-order-placement: backlog
   4-4-cod-payment-flow: backlog

@@ -43,12 +43,12 @@ pub async fn list_merchants(
 
     let result = list_active_merchants(&pool, category, page, per_page).await?;
 
-    let response = ApiResponse::new(serde_json::json!({
-        "merchants": result.merchants,
-        "page": result.page,
-        "per_page": result.per_page,
-        "total": result.total
-    }));
+    let response = ApiResponse::with_pagination(
+        result.merchants,
+        result.page as i64,
+        result.per_page as i64,
+        result.total,
+    );
     Ok(HttpResponse::Ok().json(response))
 }
 
@@ -367,8 +367,8 @@ mod integration_tests {
         assert_eq!(resp.status(), 200);
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert!(body["data"]["merchants"].as_array().unwrap().is_empty());
-        assert_eq!(body["data"]["total"].as_i64().unwrap(), 0);
+        assert!(body["data"].as_array().unwrap().is_empty());
+        assert_eq!(body["meta"]["total"].as_i64().unwrap(), 0);
     }
 
     #[sqlx::test(migrations = "../../migrations")]
@@ -393,9 +393,9 @@ mod integration_tests {
         assert_eq!(resp.status(), 200);
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        let merchants = body["data"]["merchants"].as_array().unwrap();
+        let merchants = body["data"].as_array().unwrap();
         assert_eq!(merchants.len(), 1);
-        assert_eq!(body["data"]["total"].as_i64().unwrap(), 1);
+        assert_eq!(body["meta"]["total"].as_i64().unwrap(), 1);
     }
 
     #[sqlx::test(migrations = "../../migrations")]

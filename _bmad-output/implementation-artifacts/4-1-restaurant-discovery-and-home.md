@@ -1,6 +1,6 @@
 # Story 4.1: Restaurant Discovery & Home
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -340,3 +340,12 @@ Claude Sonnet 4.6
 ### Completion Notes List
 
 ### File List
+
+- packages/mefali_design/lib/components/restaurant_card.dart (créé)
+- packages/mefali_core/lib/models/restaurant_summary.dart (créé)
+- packages/mefali_api_client/lib/endpoints/restaurant_endpoint.dart (créé)
+- packages/mefali_api_client/lib/providers/restaurant_discovery_provider.dart (créé)
+- apps/mefali_b2c/lib/features/home/home_screen.dart (modifié — réécrit avec NavigationBar intégré)
+- apps/mefali_b2c/test/widget_test.dart (modifié — tests AC1-AC10 ajoutés)
+- server/crates/api/src/routes/merchants.rs (modifié — GET /api/v1/merchants + format pagination standard)
+- server/crates/domain/src/merchants/service.rs (modifié — list_active_merchants)

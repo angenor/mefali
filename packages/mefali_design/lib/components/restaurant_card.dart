@@ -21,48 +21,57 @@ class RestaurantCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final isClosed = restaurant.status == VendorStatus.closed ||
+        restaurant.status == VendorStatus.autoPaused;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _RestaurantPhoto(photoUrl: restaurant.photoUrl),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    restaurant.name,
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+    return AbsorbPointer(
+      absorbing: isClosed,
+      child: Opacity(
+        opacity: isClosed ? 0.5 : 1.0,
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _RestaurantPhoto(photoUrl: restaurant.photoUrl),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        restaurant.name,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      if (restaurant.avgRating > 0)
+                        _RatingRow(
+                          avgRating: restaurant.avgRating,
+                          totalRatings: restaurant.totalRatings,
+                        ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '~30 min • ${formatFcfa(restaurant.deliveryFee)} livraison',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      VendorStatusIndicator(status: restaurant.status),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  _RatingRow(
-                    avgRating: restaurant.avgRating,
-                    totalRatings: restaurant.totalRatings,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '~30 min • ${formatFcfa(restaurant.deliveryFee)} livraison',
-                    style: textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  VendorStatusIndicator(status: restaurant.status),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -78,7 +87,7 @@ class _RestaurantPhoto extends StatelessWidget {
   Widget build(BuildContext context) {
     if (photoUrl != null) {
       return SizedBox(
-        height: 100,
+        height: 120,
         width: double.infinity,
         child: CachedNetworkImage(
           imageUrl: photoUrl!,
@@ -98,7 +107,7 @@ class _Placeholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-      height: 100,
+      height: 120,
       width: double.infinity,
       child: ColoredBox(
         color: MefaliColors.primaryContainerLight,
@@ -181,9 +190,9 @@ class _RestaurantCardSkeletonState extends State<RestaurantCardSkeleton>
             mainAxisSize: MainAxisSize.min,
             children: [
               // Photo placeholder
-              SizedBox(height: 100, width: double.infinity, child: ColoredBox(color: color)),
+              SizedBox(height: 120, width: double.infinity, child: ColoredBox(color: color)),
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -194,7 +203,7 @@ class _RestaurantCardSkeletonState extends State<RestaurantCardSkeleton>
                     _SkeletonBox(width: 80, height: 12, color: color),
                     const SizedBox(height: 6),
                     _SkeletonBox(width: 130, height: 12, color: color),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     _SkeletonBox(
                       width: 80,
                       height: 28,

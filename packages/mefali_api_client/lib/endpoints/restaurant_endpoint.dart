@@ -20,8 +20,7 @@ class RestaurantEndpoint {
       },
     );
 
-    final data = response.data!['data'] as Map<String, dynamic>;
-    final list = data['merchants'] as List;
+    final list = response.data!['data'] as List;
     return list
         .map((e) => RestaurantSummary.fromJson(e as Map<String, dynamic>))
         .toList();

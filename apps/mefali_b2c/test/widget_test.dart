@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,6 +83,52 @@ void main() {
       await tester.tap(find.byType(InkWell).first);
       expect(tapped, isTrue);
     });
+
+    testWidgets('rating absent when avgRating == 0', (tester) async {
+      const noRatingRestaurant = RestaurantSummary(
+        id: 'a0000000-0000-0000-0000-000000000002',
+        name: 'Maquis Sans Note',
+        status: VendorStatus.open,
+        avgRating: 0.0,
+        totalRatings: 0,
+        deliveryFee: 30000,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RestaurantCard(restaurant: noRatingRestaurant, onTap: () {}),
+          ),
+        ),
+      );
+      expect(find.byIcon(Icons.star_rounded), findsNothing);
+    });
+
+    testWidgets('closed card is not tappable and has reduced opacity', (tester) async {
+      const closedRestaurant = RestaurantSummary(
+        id: 'a0000000-0000-0000-0000-000000000003',
+        name: 'Restaurant Fermé',
+        status: VendorStatus.closed,
+        avgRating: 0.0,
+        totalRatings: 0,
+        deliveryFee: 50000,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RestaurantCard(restaurant: closedRestaurant, onTap: () {}),
+          ),
+        ),
+      );
+
+      expect(
+        find.byWidgetPredicate((w) => w is AbsorbPointer && w.absorbing),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0.5),
+        findsOneWidget,
+      );
+    });
   });
 
   group('HomeScreen discovery', () {
@@ -96,10 +144,12 @@ void main() {
     ];
 
     testWidgets('shows skeleton cards while loading', (tester) async {
+      // Completer qui ne complete jamais = etat loading permanent, sans timer.
+      final neverCompletes = Completer<List<RestaurantSummary>>();
       final container = ProviderContainer(
         overrides: [
           restaurantDiscoveryProvider(null).overrideWith(
-            (ref) => Future.delayed(const Duration(seconds: 60), () => []),
+            (ref) => neverCompletes.future,
           ),
         ],
       );
@@ -154,6 +204,94 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(find.text('Maquis du Soleil'), findsOneWidget);
+    });
+
+    testWidgets('shows empty state when list is empty', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          restaurantDiscoveryProvider(null).overrideWith(
+            (ref) async => <RestaurantSummary>[],
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
+      container.read(authProvider.notifier).updateUser(
+        const User(
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+2250700000000',
+          name: 'Test',
+          role: UserRole.client,
+          status: UserStatus.active,
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.text('Aucun restaurant disponible'), findsOneWidget);
+    });
+
+    testWidgets('shows snackbar stub when tapping a restaurant card', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          restaurantDiscoveryProvider(null).overrideWith(
+            (ref) async => mockRestaurants,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
+      container.read(authProvider.notifier).updateUser(
+        const User(
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+2250700000000',
+          name: 'Test',
+          role: UserRole.client,
+          status: UserStatus.active,
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(RestaurantCard).first);
+      await tester.pump();
+
+      expect(find.text('Catalogue à venir'), findsOneWidget);
+    });
+
+    testWidgets('bottom navigation bar has 4 items with correct labels', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          restaurantDiscoveryProvider(null).overrideWith(
+            (ref) async => <RestaurantSummary>[],
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(find.text('Accueil'), findsOneWidget);
+      expect(find.text('Recherche'), findsOneWidget);
+      expect(find.text('Commandes'), findsOneWidget);
+      expect(find.text('Profil'), findsOneWidget);
     });
 
     testWidgets('shows error state on failure', (tester) async {
