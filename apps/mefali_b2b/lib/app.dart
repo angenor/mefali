@@ -9,6 +9,7 @@ import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/catalogue/product_form_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/settings/business_hours_screen.dart';
 
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(this._ref) {
@@ -72,6 +73,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           final product = state.extra as Product?;
           return ProductFormScreen(product: product);
         },
+      ),
+      GoRoute(
+        path: '/settings/hours',
+        builder: (context, state) => const BusinessHoursScreen(),
       ),
     ],
   );

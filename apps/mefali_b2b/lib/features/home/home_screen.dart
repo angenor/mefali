@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_design/mefali_design.dart';
@@ -49,7 +50,7 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Statut mis a jour'),
+              content: Text('Statut mis à jour'),
               backgroundColor: Color(0xFF4CAF50),
               duration: Duration(seconds: 3),
             ),
@@ -69,7 +70,7 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
         actions: [
           merchantAsync.when(
             data: (merchant) => VendorStatusIndicator(
-              status: merchant.status,
+              status: merchant.displayStatus,
               interactive: true,
               onStatusChanged: _onStatusChanged,
             ),
@@ -79,6 +80,11 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
               child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
             ),
             error: (_, _) => const SizedBox.shrink(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Horaires',
+            onPressed: () => context.push('/settings/hours'),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -99,7 +105,7 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
           // Bandeau auto-pause
           merchantAsync.whenOrNull(
                 data: (merchant) {
-                  if (merchant.status != VendorStatus.autoPaused) return null;
+                  if (merchant.displayStatus != VendorStatus.autoPaused) return null;
                   return _AutoPauseBanner(
                     onReactivate: () => _onStatusChanged(VendorStatus.open),
                   );
@@ -167,12 +173,12 @@ class _AutoPauseBanner extends StatelessWidget {
       backgroundColor: MefaliColors.warningLight.withValues(alpha: 0.15),
       leading: const Icon(Icons.pause_circle, color: MefaliColors.warningLight),
       content: const Text(
-        'Vous etes en pause automatique — 3 commandes sans reponse',
+        'Vous êtes en pause automatique — 3 commandes sans réponse',
       ),
       actions: [
         TextButton(
           onPressed: onReactivate,
-          child: const Text('Reactiver'),
+          child: const Text('Réactiver'),
         ),
       ],
     );

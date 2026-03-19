@@ -6,6 +6,7 @@ use domain::users::service::JwtClaims;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::PgPool;
 
+use crate::routes::merchants;
 use crate::routes::orders;
 
 pub fn test_config() -> AppConfig {
@@ -71,11 +72,17 @@ pub fn test_app(
                 )
                 .service(
                     web::scope("/merchants")
+                        .route("/me", web::get().to(merchants::get_me_with_status))
                         .route("/me/orders", web::get().to(orders::get_merchant_orders))
                         .route(
                             "/me/stats/weekly",
                             web::get().to(orders::get_weekly_stats),
-                        ),
+                        )
+                        .route("/me/hours", web::get().to(merchants::get_my_hours))
+                        .route("/me/hours", web::put().to(merchants::update_my_hours))
+                        .route("/me/closures", web::get().to(merchants::get_my_closures))
+                        .route("/me/closures", web::post().to(merchants::create_my_closure))
+                        .route("/me/closures/{id}", web::delete().to(merchants::delete_my_closure)),
                 ),
         )
 }

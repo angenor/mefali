@@ -12,6 +12,7 @@ class Merchant {
     required this.name,
     this.address,
     required this.status,
+    this.effectiveStatus,
     this.cityId,
     required this.consecutiveNoResponse,
     this.photoUrl,
@@ -30,6 +31,7 @@ class Merchant {
   final String name;
   final String? address;
   final VendorStatus status;
+  final VendorStatus? effectiveStatus;
   final String? cityId;
   final int consecutiveNoResponse;
   final String? photoUrl;
@@ -38,6 +40,9 @@ class Merchant {
   final String? createdByAgentId;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Returns the effective status if available, otherwise the actual status.
+  VendorStatus get displayStatus => effectiveStatus ?? status;
 
   Map<String, dynamic> toJson() => _$MerchantToJson(this);
 }

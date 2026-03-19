@@ -175,21 +175,6 @@ pub async fn onboarding_status(
     Ok(HttpResponse::Ok().json(response))
 }
 
-/// GET /api/v1/merchants/me
-///
-/// Merchant gets their own profile data including availability status.
-pub async fn get_me(
-    auth: AuthenticatedUser,
-    pool: web::Data<PgPool>,
-) -> Result<HttpResponse, AppError> {
-    require_role(&auth, &[UserRole::Merchant])?;
-
-    let merchant = service::get_current_merchant(&pool, auth.user_id).await?;
-
-    let response = ApiResponse::new(serde_json::json!({ "merchant": merchant }));
-    Ok(HttpResponse::Ok().json(response))
-}
-
 /// PUT /api/v1/merchants/me/status
 ///
 /// Merchant updates their availability status.
@@ -207,6 +192,106 @@ pub async fn update_status(
     Ok(HttpResponse::Ok().json(response))
 }
 
+// ---- Self-service business hours (Story 3.8) ----
+
+/// GET /api/v1/merchants/me/hours
+///
+/// Merchant reads their own business hours.
+pub async fn get_my_hours(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let hours = service::get_my_hours(&pool, auth.user_id).await?;
+
+    let response = ApiResponse::new(hours);
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// PUT /api/v1/merchants/me/hours
+///
+/// Merchant updates their own business hours.
+pub async fn update_my_hours(
+    auth: AuthenticatedUser,
+    body: web::Json<SetHoursPayload>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let hours = service::update_my_hours(&pool, auth.user_id, &body.hours).await?;
+
+    let response = ApiResponse::new(hours);
+    Ok(HttpResponse::Ok().json(response))
+}
+
+// ---- Self-service exceptional closures (Story 3.8) ----
+
+/// GET /api/v1/merchants/me/closures
+///
+/// Merchant lists their upcoming exceptional closures.
+pub async fn get_my_closures(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let closures = service::get_my_closures(&pool, auth.user_id).await?;
+
+    let response = ApiResponse::new(closures);
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// POST /api/v1/merchants/me/closures
+///
+/// Merchant creates an exceptional closure.
+pub async fn create_my_closure(
+    auth: AuthenticatedUser,
+    body: web::Json<domain::merchants::exceptional_closures::CreateClosurePayload>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let closure = service::create_my_closure(&pool, auth.user_id, &body).await?;
+
+    let response = ApiResponse::new(closure);
+    Ok(HttpResponse::Created().json(response))
+}
+
+/// DELETE /api/v1/merchants/me/closures/{id}
+///
+/// Merchant deletes an exceptional closure.
+pub async fn delete_my_closure(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let closure_id = path.into_inner();
+    service::delete_my_closure(&pool, auth.user_id, closure_id).await?;
+
+    Ok(HttpResponse::NoContent().finish())
+}
+
+// ---- Merchant profile with effective status (Story 3.8) ----
+
+/// GET /api/v1/merchants/me (enhanced with effective_status)
+///
+/// Merchant gets their own profile data including effective availability status.
+pub async fn get_me_with_status(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Merchant])?;
+
+    let result =
+        service::get_current_merchant_with_effective_status(&pool, auth.user_id).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "merchant": result }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
 /// GET /api/v1/merchants/onboard/in-progress
 ///
 /// Agent gets list of incomplete onboardings.
@@ -221,4 +306,192 @@ pub async fn in_progress(
 
     let response = ApiResponse::new(serde_json::json!({ "merchants": merchants }));
     Ok(HttpResponse::Ok().json(response))
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use actix_web::test;
+    use domain::test_fixtures::*;
+    use domain::users::model::UserRole;
+    use sqlx::PgPool;
+
+    // ---- Business Hours (T6.3) ----
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_get_hours_200(pool: PgPool) {
+        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
+
+        let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/hours")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert!(body["data"].as_array().is_some());
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_put_hours_200(pool: PgPool) {
+        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
+
+        let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let hours_payload = serde_json::json!({
+            "hours": [
+                {"day_of_week": 0, "open_time": "08:00", "close_time": "18:00", "is_closed": false},
+                {"day_of_week": 1, "open_time": "08:00", "close_time": "18:00", "is_closed": false},
+                {"day_of_week": 2, "open_time": "08:00", "close_time": "18:00", "is_closed": false},
+                {"day_of_week": 3, "open_time": "08:00", "close_time": "18:00", "is_closed": false},
+                {"day_of_week": 4, "open_time": "08:00", "close_time": "18:00", "is_closed": false},
+                {"day_of_week": 5, "open_time": "09:00", "close_time": "14:00", "is_closed": false},
+                {"day_of_week": 6, "open_time": "00:00", "close_time": "00:00", "is_closed": true}
+            ]
+        });
+
+        let req = test::TestRequest::put()
+            .uri("/api/v1/merchants/me/hours")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(&hours_payload)
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let data = body["data"].as_array().unwrap();
+        assert_eq!(data.len(), 7);
+    }
+
+    // ---- Exceptional Closures (T6.3) ----
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_get_closures_200_empty(pool: PgPool) {
+        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
+
+        let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/closures")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert!(body["data"].as_array().unwrap().is_empty());
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_post_closure_201(pool: PgPool) {
+        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
+
+        let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let payload = serde_json::json!({
+            "closure_date": "2027-01-01",
+            "reason": "Jour de l'An"
+        });
+
+        let req = test::TestRequest::post()
+            .uri("/api/v1/merchants/me/closures")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(&payload)
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 201);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert_eq!(body["data"]["closure_date"].as_str().unwrap(), "2027-01-01");
+        assert_eq!(body["data"]["reason"].as_str().unwrap(), "Jour de l'An");
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_delete_closure_204(pool: PgPool) {
+        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
+
+        let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        // Create a closure first
+        let payload = serde_json::json!({
+            "closure_date": "2027-06-15",
+            "reason": "Congé"
+        });
+        let req = test::TestRequest::post()
+            .uri("/api/v1/merchants/me/closures")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(&payload)
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 201);
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let closure_id = body["data"]["id"].as_str().unwrap();
+
+        // Delete it
+        let req = test::TestRequest::delete()
+            .uri(&format!("/api/v1/merchants/me/closures/{}", closure_id))
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 204);
+
+        // Verify it's gone
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/closures")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert!(body["data"].as_array().unwrap().is_empty());
+    }
+
+    // ---- Auth / Role checks (T6.3) ----
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_hours_401_no_token(pool: PgPool) {
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants/me/hours")
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 401);
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_closures_403_wrong_role(pool: PgPool) {
+        let token = crate::test_helpers::create_test_jwt(uuid::Uuid::new_v4(), "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let payload = serde_json::json!({
+            "closure_date": "2027-01-01",
+            "reason": "Test"
+        });
+
+        let req = test::TestRequest::post()
+            .uri("/api/v1/merchants/me/closures")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .set_json(&payload)
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 403);
+    }
 }

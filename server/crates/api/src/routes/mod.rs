@@ -56,11 +56,16 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/merchants")
                     // Merchant self-service routes (must be before /{id} to avoid capture)
-                    .route("/me", web::get().to(merchants::get_me))
+                    .route("/me", web::get().to(merchants::get_me_with_status))
                     .route("/me/status", web::put().to(merchants::update_status))
                     .route("/me/orders", web::get().to(orders::get_merchant_orders))
                     .route("/me/stats/weekly", web::get().to(orders::get_weekly_stats))
                     .route("/me/stock-alerts", web::get().to(products::list_stock_alerts))
+                    .route("/me/hours", web::get().to(merchants::get_my_hours))
+                    .route("/me/hours", web::put().to(merchants::update_my_hours))
+                    .route("/me/closures", web::get().to(merchants::get_my_closures))
+                    .route("/me/closures", web::post().to(merchants::create_my_closure))
+                    .route("/me/closures/{id}", web::delete().to(merchants::delete_my_closure))
                     // Onboarding routes — Agent role required
                     .service(
                         web::scope("/onboard")

@@ -9,6 +9,7 @@ import 'package:mefali_b2b/features/catalogue/product_form_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_list_screen.dart';
 import 'package:mefali_b2b/features/home/home_screen.dart';
 import 'package:mefali_b2b/features/sales/sales_dashboard_screen.dart';
+import 'package:mefali_b2b/features/settings/business_hours_screen.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
@@ -798,10 +799,10 @@ void main() {
 
     expect(find.text('Auto-pause'), findsOneWidget);
     expect(
-      find.text('Vous etes en pause automatique — 3 commandes sans reponse'),
+      find.text('Vous êtes en pause automatique — 3 commandes sans réponse'),
       findsOneWidget,
     );
-    expect(find.text('Reactiver'), findsOneWidget);
+    expect(find.text('Réactiver'), findsOneWidget);
   });
 
   testWidgets('B2bHomeScreen hides auto-pause banner when open', (tester) async {
@@ -818,7 +819,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Vous etes en pause automatique — 3 commandes sans reponse'),
+      find.text('Vous êtes en pause automatique — 3 commandes sans réponse'),
       findsNothing,
     );
   });
@@ -859,5 +860,192 @@ void main() {
     expect(find.byIcon(Icons.warning_amber), findsNothing);
     // Error icon absent
     expect(find.byIcon(Icons.error_outline), findsNothing);
+  });
+
+  // ============================================================
+  // Story 3.8: Business Hours Management Tests
+  // ============================================================
+
+  group('BusinessHoursScreen', () {
+    final now = DateTime.now();
+    final sampleHours = List.generate(
+      7,
+      (i) => BusinessHours(
+        id: 'bh-$i',
+        merchantId: 'merchant-1',
+        dayOfWeek: i,
+        openTime: '08:00',
+        closeTime: '18:00',
+        isClosed: i == 6, // Dimanche ferme
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    final sampleClosures = [
+      ExceptionalClosure(
+        id: 'ec-1',
+        merchantId: 'merchant-1',
+        closureDate: now.add(const Duration(days: 7)),
+        reason: 'Jour férié',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
+
+    testWidgets('displays days with hours pre-filled (AC1, AC7)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            merchantHoursProvider.overrideWith(
+              (ref) => Future.value(sampleHours),
+            ),
+            upcomingClosuresProvider.overrideWith(
+              (ref) => Future.value(sampleClosures),
+            ),
+          ],
+          child: const MaterialApp(home: BusinessHoursScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // First visible days
+      expect(find.text('Lundi'), findsOneWidget);
+      expect(find.text('Mardi'), findsOneWidget);
+
+      // Switch widgets for toggling open/closed (at least visible ones)
+      expect(find.byType(Switch), findsAtLeast(1));
+
+      // Save button visible
+      expect(find.text('Enregistrer'), findsOneWidget);
+    });
+
+    testWidgets('empty state shows guidance message (AC8)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            merchantHoursProvider.overrideWith(
+              (ref) => Future.value(<BusinessHours>[]),
+            ),
+            upcomingClosuresProvider.overrideWith(
+              (ref) => Future.value(<ExceptionalClosure>[]),
+            ),
+          ],
+          child: const MaterialApp(home: BusinessHoursScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Configurez vos horaires pour indiquer votre disponibilité'),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.schedule), findsOneWidget);
+    });
+
+    testWidgets('closed day shows Fermé text (AC1)', (tester) async {
+      // Make all days closed for easy testing
+      final allClosed = List.generate(
+        7,
+        (i) => BusinessHours(
+          id: 'bh-$i',
+          merchantId: 'merchant-1',
+          dayOfWeek: i,
+          openTime: '08:00',
+          closeTime: '18:00',
+          isClosed: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            merchantHoursProvider.overrideWith(
+              (ref) => Future.value(allClosed),
+            ),
+            upcomingClosuresProvider.overrideWith(
+              (ref) => Future.value(<ExceptionalClosure>[]),
+            ),
+          ],
+          child: const MaterialApp(home: BusinessHoursScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // At least some visible closed days show 'Fermé'
+      expect(find.text('Fermé'), findsAtLeast(1));
+    });
+
+    testWidgets('exceptional closure displayed in list (AC4)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            merchantHoursProvider.overrideWith(
+              (ref) => Future.value(<BusinessHours>[]),
+            ),
+            upcomingClosuresProvider.overrideWith(
+              (ref) => Future.value(sampleClosures),
+            ),
+          ],
+          child: const MaterialApp(home: BusinessHoursScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to bottom to see closures section
+      final listFinder = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Jour férié'),
+        200,
+        scrollable: listFinder,
+      );
+      await tester.pumpAndSettle();
+
+      // Closure reason visible
+      expect(find.text('Jour férié'), findsOneWidget);
+      // Delete icon visible
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    });
+
+    testWidgets('closure delete button is wired and tappable (AC5)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            merchantHoursProvider.overrideWith(
+              (ref) => Future.value(<BusinessHours>[]),
+            ),
+            upcomingClosuresProvider.overrideWith(
+              (ref) => Future.value(sampleClosures),
+            ),
+          ],
+          child: const MaterialApp(home: BusinessHoursScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to closures section
+      final listFinder = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.byIcon(Icons.delete_outline),
+        200,
+        scrollable: listFinder,
+      );
+      await tester.pumpAndSettle();
+
+      // Delete button exists alongside closure data
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+      expect(find.byIcon(Icons.event_busy), findsOneWidget);
+
+      // Verify the IconButton is enabled (onPressed is wired)
+      final deleteButton = find.ancestor(
+        of: find.byIcon(Icons.delete_outline),
+        matching: find.byType(IconButton),
+      );
+      expect(deleteButton, findsOneWidget);
+      final iconButton = tester.widget<IconButton>(deleteButton);
+      expect(iconButton.onPressed, isNotNull);
+    });
   });
 }

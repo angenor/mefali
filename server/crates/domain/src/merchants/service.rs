@@ -1,8 +1,10 @@
+use chrono::Datelike;
 use common::config::AppConfig;
 use common::error::AppError;
 use common::types::Id;
 use notification::sms::SmsProvider;
 use redis::aio::ConnectionManager;
+use serde::Serialize;
 use sqlx::PgPool;
 use tracing::info;
 
@@ -270,6 +272,132 @@ pub async fn get_current_merchant(pool: &PgPool, user_id: Id) -> Result<Merchant
         .ok_or_else(|| AppError::NotFound("Merchant not found".into()))
 }
 
+// ---- Self-service business hours (Story 3.8) ----
+
+/// Merchant reads their own business hours.
+pub async fn get_my_hours(
+    pool: &PgPool,
+    user_id: Id,
+) -> Result<Vec<business_hours::BusinessHours>, AppError> {
+    let merchant = get_current_merchant(pool, user_id).await?;
+    business_hours::find_by_merchant(pool, merchant.id).await
+}
+
+/// Merchant updates their own business hours.
+pub async fn update_my_hours(
+    pool: &PgPool,
+    user_id: Id,
+    entries: &[business_hours::SetBusinessHoursEntry],
+) -> Result<Vec<business_hours::BusinessHours>, AppError> {
+    let merchant = get_current_merchant(pool, user_id).await?;
+    business_hours::set_hours(pool, merchant.id, entries).await
+}
+
+// ---- Exceptional closures (Story 3.8) ----
+
+use super::exceptional_closures::{self, CreateClosurePayload, ExceptionalClosure};
+
+/// Merchant lists their upcoming exceptional closures.
+pub async fn get_my_closures(
+    pool: &PgPool,
+    user_id: Id,
+) -> Result<Vec<ExceptionalClosure>, AppError> {
+    let merchant = get_current_merchant(pool, user_id).await?;
+    exceptional_closures::find_upcoming(pool, merchant.id).await
+}
+
+/// Merchant creates an exceptional closure.
+pub async fn create_my_closure(
+    pool: &PgPool,
+    user_id: Id,
+    payload: &CreateClosurePayload,
+) -> Result<ExceptionalClosure, AppError> {
+    let merchant = get_current_merchant(pool, user_id).await?;
+    exceptional_closures::create(pool, merchant.id, payload).await
+}
+
+/// Merchant deletes an exceptional closure.
+pub async fn delete_my_closure(
+    pool: &PgPool,
+    user_id: Id,
+    closure_id: Id,
+) -> Result<(), AppError> {
+    let merchant = get_current_merchant(pool, user_id).await?;
+    exceptional_closures::delete(pool, closure_id, merchant.id).await
+}
+
+// ---- Effective status (Story 3.8) ----
+
+/// Pure computation of effective status — testable without database.
+/// Note: Côte d'Ivoire uses GMT+0 (= UTC), so `now` should be UTC.
+pub fn compute_effective_status_pure(
+    merchant_status: &MerchantStatus,
+    hours: &[business_hours::BusinessHours],
+    is_exceptional_closure_today: bool,
+    now: chrono::DateTime<chrono::Utc>,
+) -> MerchantStatus {
+    if is_exceptional_closure_today {
+        return MerchantStatus::Closed;
+    }
+
+    if hours.is_empty() {
+        return merchant_status.clone();
+    }
+
+    let weekday = now.weekday().num_days_from_monday() as i16;
+    let today_hours = hours.iter().find(|h| h.day_of_week == weekday);
+
+    match today_hours {
+        None => merchant_status.clone(),
+        Some(h) if h.is_closed => MerchantStatus::Closed,
+        Some(h) => {
+            let current_time = now.time();
+            if current_time >= h.open_time && current_time < h.close_time {
+                merchant_status.clone()
+            } else {
+                MerchantStatus::Closed
+            }
+        }
+    }
+}
+
+/// Compute the effective status of a merchant considering business hours and exceptional closures.
+/// Returns the merchant's real status if no hours are configured (AC8).
+/// Returns Closed if outside hours or on an exceptional closure day.
+pub async fn compute_effective_status(
+    pool: &PgPool,
+    merchant: &Merchant,
+) -> Result<MerchantStatus, AppError> {
+    let now = chrono::Utc::now();
+    let today = now.date_naive();
+
+    let is_closed_today = exceptional_closures::is_closed_on(pool, merchant.id, today).await?;
+    let hours = business_hours::find_by_merchant(pool, merchant.id).await?;
+
+    Ok(compute_effective_status_pure(&merchant.status, &hours, is_closed_today, now))
+}
+
+/// Response struct for GET /merchants/me with effective status.
+#[derive(Debug, Serialize)]
+pub struct MerchantWithEffectiveStatus {
+    #[serde(flatten)]
+    pub merchant: Merchant,
+    pub effective_status: MerchantStatus,
+}
+
+/// Get current merchant with computed effective status.
+pub async fn get_current_merchant_with_effective_status(
+    pool: &PgPool,
+    user_id: Id,
+) -> Result<MerchantWithEffectiveStatus, AppError> {
+    let merchant = get_current_merchant(pool, user_id).await?;
+    let effective_status = compute_effective_status(pool, &merchant).await?;
+    Ok(MerchantWithEffectiveStatus {
+        merchant,
+        effective_status,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -342,5 +470,114 @@ mod tests {
     #[test]
     fn test_auto_paused_to_closed_forbidden() {
         assert!(!MerchantStatus::AutoPaused.can_transition_to(&MerchantStatus::Closed));
+    }
+
+    // ---- compute_effective_status_pure tests (T6.2) ----
+
+    #[test]
+    fn test_effective_status_exceptional_closure_overrides_all() {
+        // AC6: Exceptional closure → Closed, even if within normal hours
+        let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T10:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let status = compute_effective_status_pure(
+            &MerchantStatus::Open,
+            &[],
+            true,
+            now,
+        );
+        assert_eq!(status, MerchantStatus::Closed);
+    }
+
+    #[test]
+    fn test_effective_status_no_hours_returns_actual() {
+        // AC8: No hours configured → return actual status (no auto-closed)
+        let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T10:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let status = compute_effective_status_pure(
+            &MerchantStatus::Open,
+            &[],
+            false,
+            now,
+        );
+        assert_eq!(status, MerchantStatus::Open);
+    }
+
+    #[test]
+    fn test_effective_status_within_hours_returns_actual() {
+        // AC3: Within business hours → return actual merchant status
+        // 2026-03-18 = Wednesday (weekday 2, 0=Mon)
+        let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T10:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let hours = vec![business_hours::BusinessHours {
+            id: uuid::Uuid::new_v4(),
+            merchant_id: uuid::Uuid::new_v4(),
+            day_of_week: 2,
+            open_time: chrono::NaiveTime::from_hms_opt(8, 0, 0).unwrap(),
+            close_time: chrono::NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
+            is_closed: false,
+            created_at: now,
+            updated_at: now,
+        }];
+        let status = compute_effective_status_pure(
+            &MerchantStatus::Overwhelmed,
+            &hours,
+            false,
+            now,
+        );
+        assert_eq!(status, MerchantStatus::Overwhelmed);
+    }
+
+    #[test]
+    fn test_effective_status_outside_hours_returns_closed() {
+        // AC3: Outside business hours → Closed
+        // 2026-03-18 = Wednesday, 20:00 is after 18:00 close
+        let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T20:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let hours = vec![business_hours::BusinessHours {
+            id: uuid::Uuid::new_v4(),
+            merchant_id: uuid::Uuid::new_v4(),
+            day_of_week: 2,
+            open_time: chrono::NaiveTime::from_hms_opt(8, 0, 0).unwrap(),
+            close_time: chrono::NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
+            is_closed: false,
+            created_at: now,
+            updated_at: now,
+        }];
+        let status = compute_effective_status_pure(
+            &MerchantStatus::Open,
+            &hours,
+            false,
+            now,
+        );
+        assert_eq!(status, MerchantStatus::Closed);
+    }
+
+    #[test]
+    fn test_effective_status_day_marked_closed() {
+        // Day with is_closed = true → Closed regardless of time
+        let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T10:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let hours = vec![business_hours::BusinessHours {
+            id: uuid::Uuid::new_v4(),
+            merchant_id: uuid::Uuid::new_v4(),
+            day_of_week: 2,
+            open_time: chrono::NaiveTime::from_hms_opt(8, 0, 0).unwrap(),
+            close_time: chrono::NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
+            is_closed: true,
+            created_at: now,
+            updated_at: now,
+        }];
+        let status = compute_effective_status_pure(
+            &MerchantStatus::Open,
+            &hours,
+            false,
+            now,
+        );
+        assert_eq!(status, MerchantStatus::Closed);
     }
 }

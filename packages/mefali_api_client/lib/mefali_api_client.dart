@@ -16,4 +16,6 @@ export 'providers/user_provider.dart';
 export 'providers/merchant_orders_provider.dart';
 export 'providers/sales_dashboard_provider.dart';
 export 'providers/vendor_status_provider.dart';
+export 'providers/business_hours_provider.dart';
+export 'providers/exceptional_closures_provider.dart';
 export 'endpoints/product_endpoint.dart';

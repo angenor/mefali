@@ -126,6 +126,71 @@ class MerchantEndpoint {
     return Merchant.fromJson(data['merchant'] as Map<String, dynamic>);
   }
 
+  // ---- Self-service business hours (Story 3.8) ----
+
+  /// Recupere les horaires du marchand connecte.
+  Future<List<BusinessHours>> getMyHours() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/merchants/me/hours',
+    );
+
+    final data = response.data!['data'] as List;
+    return data
+        .map((e) => BusinessHours.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Met a jour les horaires du marchand connecte.
+  Future<List<BusinessHours>> updateMyHours(
+    List<Map<String, dynamic>> hours,
+  ) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/merchants/me/hours',
+      data: {'hours': hours},
+    );
+
+    final data = response.data!['data'] as List;
+    return data
+        .map((e) => BusinessHours.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ---- Self-service exceptional closures (Story 3.8) ----
+
+  /// Recupere les fermetures exceptionnelles a venir.
+  Future<List<ExceptionalClosure>> getMyClosures() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/merchants/me/closures',
+    );
+
+    final data = response.data!['data'] as List;
+    return data
+        .map((e) => ExceptionalClosure.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Cree une fermeture exceptionnelle.
+  Future<ExceptionalClosure> createClosure({
+    required String closureDate,
+    String? reason,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/merchants/me/closures',
+      data: {
+        'closure_date': closureDate,
+        'reason': ?reason,
+      },
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return ExceptionalClosure.fromJson(data);
+  }
+
+  /// Supprime une fermeture exceptionnelle.
+  Future<void> deleteClosure(String closureId) async {
+    await _dio.delete<void>('/merchants/me/closures/$closureId');
+  }
+
   /// Liste les onboardings en cours de l'agent.
   Future<List<Merchant>> getInProgress() async {
     final response = await _dio.get<Map<String, dynamic>>(
