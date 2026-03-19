@@ -6,6 +6,7 @@ use common::error::AppError;
 use common::response::ApiResponse;
 use domain::merchants::business_hours::SetBusinessHoursEntry;
 use domain::merchants::model::{InitiateOnboardingPayload, CreateMerchantPayload, UpdateStatusPayload};
+use domain::merchants::service::list_active_merchants;
 use domain::merchants::service;
 use domain::products::model::CreateProductPayload;
 use domain::users::model::UserRole;
@@ -16,6 +17,40 @@ use uuid::Uuid;
 
 use crate::extractors::AuthenticatedUser;
 use crate::middleware::require_role;
+
+/// Query params for GET /api/v1/merchants.
+#[derive(Debug, serde::Deserialize)]
+pub struct ListMerchantsQuery {
+    pub category: Option<String>,
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+}
+
+/// GET /api/v1/merchants
+///
+/// B2C customer browses fully onboarded merchants (discovery screen).
+/// Requires Client or Admin role. Returns paginated list ordered by availability then name.
+pub async fn list_merchants(
+    auth: AuthenticatedUser,
+    query: web::Query<ListMerchantsQuery>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Client, UserRole::Admin])?;
+
+    let page = query.page.unwrap_or(1);
+    let per_page = query.per_page.unwrap_or(20);
+    let category = query.category.as_deref();
+
+    let result = list_active_merchants(&pool, category, page, per_page).await?;
+
+    let response = ApiResponse::new(serde_json::json!({
+        "merchants": result.merchants,
+        "page": result.page,
+        "per_page": result.per_page,
+        "total": result.total
+    }));
+    Ok(HttpResponse::Ok().json(response))
+}
 
 /// POST /api/v1/merchants/onboard/request-otp
 ///
@@ -314,6 +349,66 @@ mod integration_tests {
     use domain::test_fixtures::*;
     use domain::users::model::UserRole;
     use sqlx::PgPool;
+
+    // ---- Restaurant Discovery (T7.1) ----
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchants_200_empty(pool: PgPool) {
+        let user = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let token = crate::test_helpers::create_test_jwt(user.id, "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert!(body["data"]["merchants"].as_array().unwrap().is_empty());
+        assert_eq!(body["data"]["total"].as_i64().unwrap(), 0);
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchants_returns_only_finalized(pool: PgPool) {
+        let agent = create_test_user_with_role(&pool, UserRole::Agent).await.unwrap();
+        // Create finalized merchant (onboarding_step = 5) — should be returned
+        let _finalized = create_test_merchant_for_agent(&pool, agent.id).await.unwrap();
+        // Create merchant with step = 1 — should NOT be returned
+        let merchant_user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let _partial = create_test_merchant(&pool, merchant_user.id).await.unwrap();
+
+        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let token = crate::test_helpers::create_test_jwt(client.id, "client");
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants")
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 200);
+
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let merchants = body["data"]["merchants"].as_array().unwrap();
+        assert_eq!(merchants.len(), 1);
+        assert_eq!(body["data"]["total"].as_i64().unwrap(), 1);
+    }
+
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn test_list_merchants_401_no_token(pool: PgPool) {
+        let app = test::init_service(crate::test_helpers::test_app(pool)).await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/v1/merchants")
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 401);
+    }
 
     // ---- Business Hours (T6.3) ----
 

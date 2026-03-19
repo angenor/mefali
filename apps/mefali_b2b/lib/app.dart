@@ -8,6 +8,7 @@ import 'package:mefali_design/mefali_design.dart';
 import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/catalogue/product_form_screen.dart';
+import 'features/demo/demo_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/settings/business_hours_screen.dart';
 
@@ -42,7 +43,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuthenticated = notifier.isAuthenticated;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
+      final isDemoRoute = state.matchedLocation == '/demo';
 
+      // La route demo est accessible sans authentification
+      if (isDemoRoute) return null;
       if (isAuthenticated && isAuthRoute) return '/home';
       if (!isAuthenticated && !isAuthRoute) return '/auth/phone';
       return null;
@@ -77,6 +81,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/hours',
         builder: (context, state) => const BusinessHoursScreen(),
+      ),
+      GoRoute(
+        path: '/demo',
+        builder: (context, state) => const DemoScreen(),
       ),
     ],
   );

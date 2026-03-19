@@ -24,12 +24,9 @@ final kycSummaryProvider = FutureProvider.autoDispose
 });
 
 /// Notifier pour les actions KYC (upload, activation).
-class KycNotifier extends StateNotifier<AsyncValue<void>> {
-  KycNotifier(this._endpoint, this._ref)
-      : super(const AsyncValue.data(null));
-
-  final KycEndpoint _endpoint;
-  final Ref _ref;
+class KycNotifier extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
 
   /// Upload un document KYC.
   Future<KycDocument> uploadDocument({
@@ -40,14 +37,14 @@ class KycNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      final doc = await _endpoint.uploadDocument(
-        userId: userId,
-        documentType: documentType,
-        fileBytes: fileBytes,
-        fileName: fileName,
-      );
+      final doc = await ref.read(kycEndpointProvider).uploadDocument(
+            userId: userId,
+            documentType: documentType,
+            fileBytes: fileBytes,
+            fileName: fileName,
+          );
       state = const AsyncValue.data(null);
-      _ref.invalidate(kycSummaryProvider(userId));
+      ref.invalidate(kycSummaryProvider(userId));
       return doc;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -59,10 +56,10 @@ class KycNotifier extends StateNotifier<AsyncValue<void>> {
   Future<User> activateDriver(String userId) async {
     state = const AsyncValue.loading();
     try {
-      final user = await _endpoint.activateDriver(userId);
+      final user = await ref.read(kycEndpointProvider).activateDriver(userId);
       state = const AsyncValue.data(null);
-      _ref.invalidate(pendingDriversProvider);
-      _ref.invalidate(kycSummaryProvider(userId));
+      ref.invalidate(pendingDriversProvider);
+      ref.invalidate(kycSummaryProvider(userId));
       return user;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -73,6 +70,6 @@ class KycNotifier extends StateNotifier<AsyncValue<void>> {
 
 /// Provider pour le notifier KYC.
 final kycNotifierProvider =
-    StateNotifierProvider.autoDispose<KycNotifier, AsyncValue<void>>((ref) {
-  return KycNotifier(ref.watch(kycEndpointProvider), ref);
-});
+    NotifierProvider.autoDispose<KycNotifier, AsyncValue<void>>(
+  KycNotifier.new,
+);

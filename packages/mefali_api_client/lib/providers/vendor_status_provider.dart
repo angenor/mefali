@@ -11,25 +11,23 @@ final currentMerchantProvider =
 });
 
 /// Notifier pour changer le statut de disponibilite du marchand.
-class VendorStatusNotifier extends StateNotifier<AsyncValue<void>> {
-  VendorStatusNotifier(this._ref)
-      : super(const AsyncValue.data(null));
-
-  final Ref _ref;
+class VendorStatusNotifier extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
 
   /// Change le statut de disponibilite.
   Future<void> changeStatus(VendorStatus newStatus) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(merchantEndpointProvider);
+      final endpoint = ref.read(merchantEndpointProvider);
       await endpoint.updateStatus(newStatus);
-      _ref.invalidate(currentMerchantProvider);
+      ref.invalidate(currentMerchantProvider);
     });
   }
 }
 
 /// Provider pour le notifier de statut marchand.
 final vendorStatusProvider =
-    StateNotifierProvider.autoDispose<VendorStatusNotifier, AsyncValue<void>>(
+    NotifierProvider.autoDispose<VendorStatusNotifier, AsyncValue<void>>(
   VendorStatusNotifier.new,
 );

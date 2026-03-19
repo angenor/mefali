@@ -121,6 +121,24 @@ pub struct VerifyOnboardingPayload {
     pub otp: String,
 }
 
+/// Lightweight merchant summary for customer discovery (GET /api/v1/merchants).
+/// Only fully onboarded merchants (onboarding_step = 5) are returned.
+/// avg_rating and delivery_fee are hardcoded for MVP (no ratings table yet).
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct MerchantSummary {
+    pub id: Id,
+    pub name: String,
+    pub address: Option<String>,
+    #[sqlx(rename = "availability_status")]
+    pub status: MerchantStatus,
+    pub category: Option<String>,
+    pub photo_url: Option<String>,
+    pub city_id: Option<Id>,
+    pub avg_rating: f64,
+    pub total_ratings: i64,
+    pub delivery_fee: i64,
+}
+
 /// Onboarding status response combining merchant + related data.
 #[derive(Debug, Serialize)]
 pub struct OnboardingStatus {

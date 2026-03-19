@@ -12,16 +12,14 @@ final merchantProductsProvider =
 });
 
 /// Notifier pour les mutations catalogue (create, update, delete).
-class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
-  ProductCatalogueNotifier(this._endpoint, this._ref)
-      : super(const AsyncValue.data(null));
-
-  final ProductEndpoint _endpoint;
-  final Ref _ref;
+class ProductCatalogueNotifier
+    extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
 
   void _invalidateLists() {
-    _ref.invalidate(merchantProductsProvider);
-    _ref.invalidate(stockAlertsProvider);
+    ref.invalidate(merchantProductsProvider);
+    ref.invalidate(stockAlertsProvider);
   }
 
   Future<void> createProduct({
@@ -33,7 +31,7 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _endpoint.createProduct(
+      await ProductEndpoint(ref.read(dioProvider)).createProduct(
         name: name,
         price: price,
         description: description,
@@ -54,7 +52,7 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _endpoint.updateProduct(
+      await ProductEndpoint(ref.read(dioProvider)).updateProduct(
         productId: productId,
         name: name,
         price: price,
@@ -69,7 +67,7 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> deleteProduct(String productId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _endpoint.deleteProduct(productId);
+      await ProductEndpoint(ref.read(dioProvider)).deleteProduct(productId);
     });
     if (state is AsyncData) _invalidateLists();
   }
@@ -82,7 +80,8 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _endpoint.updateProductStock(productId, stock);
+      await ProductEndpoint(ref.read(dioProvider))
+          .updateProductStock(productId, stock);
     });
     if (state is AsyncData) _invalidateLists();
   }
@@ -90,7 +89,7 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> acknowledgeAlert(String alertId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _endpoint.acknowledgeAlert(alertId);
+      await ProductEndpoint(ref.read(dioProvider)).acknowledgeAlert(alertId);
     });
     if (state is AsyncData) _invalidateLists();
   }
@@ -98,8 +97,8 @@ class ProductCatalogueNotifier extends StateNotifier<AsyncValue<void>> {
 
 /// Provider pour le notifier catalogue.
 final productCatalogueProvider =
-    StateNotifierProvider.autoDispose<ProductCatalogueNotifier, AsyncValue<void>>(
-  (ref) => ProductCatalogueNotifier(ProductEndpoint(ref.watch(dioProvider)), ref),
+    NotifierProvider.autoDispose<ProductCatalogueNotifier, AsyncValue<void>>(
+  ProductCatalogueNotifier.new,
 );
 
 /// Provider pour les alertes stock non-acquittees du marchand.

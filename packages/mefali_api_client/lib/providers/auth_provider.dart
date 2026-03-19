@@ -56,15 +56,19 @@ class AuthState {
 }
 
 /// Notifier gerant l'etat d'authentification et le stockage securise.
-class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._authEndpoint, this._dio) : super(const AuthState()) {
-    _setupInterceptor();
-    _init();
-  }
-
-  final AuthEndpoint _authEndpoint;
-  final Dio _dio;
+class AuthNotifier extends Notifier<AuthState> {
+  late AuthEndpoint _authEndpoint;
+  late Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  @override
+  AuthState build() {
+    _authEndpoint = ref.watch(authEndpointProvider);
+    _dio = ref.watch(dioProvider);
+    _setupInterceptor();
+    Future.microtask(_init);
+    return const AuthState();
+  }
 
   /// Configure l'intercepteur d'authentification sur l'instance Dio.
   void _setupInterceptor() {
@@ -235,7 +239,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 /// Provider Riverpod pour l'etat d'authentification.
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (ref) =>
-      AuthNotifier(ref.watch(authEndpointProvider), ref.watch(dioProvider)),
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
 );

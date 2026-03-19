@@ -11,10 +11,10 @@ final upcomingClosuresProvider =
 });
 
 /// Notifier pour creer/supprimer des fermetures exceptionnelles.
-class ExceptionalClosuresNotifier extends StateNotifier<AsyncValue<void>> {
-  ExceptionalClosuresNotifier(this._ref) : super(const AsyncValue.data(null));
-
-  final Ref _ref;
+class ExceptionalClosuresNotifier
+    extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
 
   /// Cree une fermeture exceptionnelle.
   Future<void> createClosure({
@@ -23,9 +23,9 @@ class ExceptionalClosuresNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(merchantEndpointProvider);
+      final endpoint = ref.read(merchantEndpointProvider);
       await endpoint.createClosure(closureDate: closureDate, reason: reason);
-      _ref.invalidate(upcomingClosuresProvider);
+      ref.invalidate(upcomingClosuresProvider);
     });
   }
 
@@ -33,15 +33,15 @@ class ExceptionalClosuresNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> deleteClosure(String closureId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(merchantEndpointProvider);
+      final endpoint = ref.read(merchantEndpointProvider);
       await endpoint.deleteClosure(closureId);
-      _ref.invalidate(upcomingClosuresProvider);
+      ref.invalidate(upcomingClosuresProvider);
     });
   }
 }
 
 /// Provider pour le notifier de fermetures exceptionnelles.
-final exceptionalClosuresNotifierProvider = StateNotifierProvider.autoDispose<
-    ExceptionalClosuresNotifier, AsyncValue<void>>(
+final exceptionalClosuresNotifierProvider =
+    NotifierProvider.autoDispose<ExceptionalClosuresNotifier, AsyncValue<void>>(
   ExceptionalClosuresNotifier.new,
 );

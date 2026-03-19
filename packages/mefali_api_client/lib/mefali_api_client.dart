@@ -21,3 +21,6 @@ export 'providers/exceptional_closures_provider.dart';
 export 'endpoints/product_endpoint.dart';
 export 'endpoints/agent_endpoint.dart';
 export 'providers/agent_performance_provider.dart';
+export 'providers/demo_provider.dart';
+export 'endpoints/restaurant_endpoint.dart';
+export 'providers/restaurant_discovery_provider.dart';

@@ -6,14 +6,15 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.10.0
-  flutter: '>=3.0.0'
+  sdk: ^3.11.0
+  flutter: '>=3.27.0'
 
 dependencies:
   flutter:
     sdk: flutter
   mefali_core:
     path: ../mefali_core
+  cached_network_image: ^3.3.0
 
 dev_dependencies:
   flutter_test:

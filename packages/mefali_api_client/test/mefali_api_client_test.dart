@@ -353,9 +353,10 @@ void main() {
 
   group('AuthNotifier.updateUser', () {
     test('updateUser updates user in notifier state', () {
-      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
-      final notifier = AuthNotifier(AuthEndpoint(dio), dio);
-      expect(notifier.state.user, isNull);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(authProvider);
+      expect(container.read(authProvider).user, isNull);
 
       const user = User(
         id: '00000000-0000-0000-0000-000000000001',
@@ -365,9 +366,9 @@ void main() {
         status: UserStatus.active,
       );
 
-      notifier.updateUser(user);
-      expect(notifier.state.user?.name, 'Updated');
-      expect(notifier.state.user?.phone, '+2250700000000');
+      container.read(authProvider.notifier).updateUser(user);
+      expect(container.read(authProvider).user?.name, 'Updated');
+      expect(container.read(authProvider).user?.phone, '+2250700000000');
     });
   });
 
@@ -420,7 +421,6 @@ void main() {
     );
 
     ProviderContainer createTestContainer({Dio? mockDio, User? user}) {
-      final authDio = Dio(BaseOptions(baseUrl: 'http://localhost'));
       final container = ProviderContainer(
         overrides: [
           userEndpointProvider.overrideWith(
@@ -428,16 +428,11 @@ void main() {
               mockDio ?? Dio(BaseOptions(baseUrl: 'http://localhost')),
             ),
           ),
-          authProvider.overrideWith((ref) {
-            final n = AuthNotifier(AuthEndpoint(authDio), authDio);
-            if (user != null) n.updateUser(user);
-            return n;
-          }),
         ],
       );
-      // Pre-initialize authProvider to avoid debug assertion when
-      // userProfileProvider reads it during construction.
+      // Pre-initialize authProvider, then seed user if needed.
       container.read(authProvider);
+      if (user != null) container.read(authProvider.notifier).updateUser(user);
       return container;
     }
 

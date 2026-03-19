@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,28 +31,20 @@ void main() {
     testWidgets('displays user info and KYC pending badge', (
       WidgetTester tester,
     ) async {
-      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
-
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authProvider.overrideWith((ref) {
-              final n = AuthNotifier(AuthEndpoint(dio), dio);
-              n.updateUser(
-                const User(
-                  id: '00000000-0000-0000-0000-000000000001',
-                  phone: '+2250700000000',
-                  name: 'Moussa',
-                  role: UserRole.driver,
-                  status: UserStatus.pendingKyc,
-                ),
-              );
-              return n;
-            }),
-          ],
-          child: const MaterialApp(home: ProfileScreen()),
-        ),
+        const ProviderScope(child: MaterialApp(home: ProfileScreen())),
       );
+      ProviderScope.containerOf(tester.element(find.byType(ProfileScreen)))
+          .read(authProvider.notifier)
+          .updateUser(
+            const User(
+              id: '00000000-0000-0000-0000-000000000001',
+              phone: '+2250700000000',
+              name: 'Moussa',
+              role: UserRole.driver,
+              status: UserStatus.pendingKyc,
+            ),
+          );
       await tester.pumpAndSettle();
 
       expect(find.text('Moussa'), findsOneWidget);
@@ -65,28 +56,20 @@ void main() {
     testWidgets('displays active KYC badge when user is active', (
       WidgetTester tester,
     ) async {
-      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
-
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authProvider.overrideWith((ref) {
-              final n = AuthNotifier(AuthEndpoint(dio), dio);
-              n.updateUser(
-                const User(
-                  id: '00000000-0000-0000-0000-000000000001',
-                  phone: '+2250700000000',
-                  name: 'Moussa',
-                  role: UserRole.driver,
-                  status: UserStatus.active,
-                ),
-              );
-              return n;
-            }),
-          ],
-          child: const MaterialApp(home: ProfileScreen()),
-        ),
+        const ProviderScope(child: MaterialApp(home: ProfileScreen())),
       );
+      ProviderScope.containerOf(tester.element(find.byType(ProfileScreen)))
+          .read(authProvider.notifier)
+          .updateUser(
+            const User(
+              id: '00000000-0000-0000-0000-000000000001',
+              phone: '+2250700000000',
+              name: 'Moussa',
+              role: UserRole.driver,
+              status: UserStatus.active,
+            ),
+          );
       await tester.pumpAndSettle();
 
       expect(find.text('Actif'), findsOneWidget);

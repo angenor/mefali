@@ -7,11 +7,18 @@ import 'package:mefali_b2b/app.dart';
 import 'package:mefali_b2b/features/auth/phone_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_form_screen.dart';
 import 'package:mefali_b2b/features/catalogue/product_list_screen.dart';
+import 'package:mefali_b2b/features/demo/demo_screen.dart';
 import 'package:mefali_b2b/features/home/home_screen.dart';
 import 'package:mefali_b2b/features/sales/sales_dashboard_screen.dart';
 import 'package:mefali_b2b/features/settings/business_hours_screen.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+
+/// Helper: DemoNotifier deja en phase active pour les overrides de tests.
+class _ActiveDemoNotifier extends DemoNotifier {
+  @override
+  DemoState build() => const DemoState(phase: DemoPhase.active);
+}
 
 void main() {
   testWidgets('MefaliB2bApp renders login screen', (tester) async {
@@ -1046,6 +1053,201 @@ void main() {
       expect(deleteButton, findsOneWidget);
       final iconButton = tester.widget<IconButton>(deleteButton);
       expect(iconButton.onPressed, isNotNull);
+    });
+  });
+
+  // ============================================================
+  // Story 3.10: Demo Mode Tests
+  // ============================================================
+
+  group('Demo Mode', () {
+    testWidgets('login screen shows "Voir la demo" button (AC1)', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(home: B2bPhoneScreen()),
+        ),
+      );
+
+      expect(find.text('Voir la demo'), findsOneWidget);
+      expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
+    });
+
+    testWidgets('DemoScreen shows catalogue with 4 products (AC2)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            demoProvider.overrideWith(
+              _ActiveDemoNotifier.new,
+            ),
+          ],
+          child: const MaterialApp(home: DemoScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Catalogue tab
+      await tester.tap(find.text('Catalogue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Garba'), findsOneWidget);
+      expect(find.text('Alloco-Poisson'), findsOneWidget);
+      expect(find.text('Attieke-Poisson'), findsOneWidget);
+      expect(find.text('Jus Bissap'), findsOneWidget);
+    });
+
+    testWidgets('DemoScreen shows DEMO badge and restaurant name (AC2)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            demoProvider.overrideWith(
+              _ActiveDemoNotifier.new,
+            ),
+          ],
+          child: const MaterialApp(home: DemoScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chez Dramane'), findsOneWidget);
+      expect(find.text('DEMO'), findsOneWidget);
+    });
+
+    testWidgets('DemoScreen shows simulate button and order cycle (AC3, AC4)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            demoProvider.overrideWith(
+              _ActiveDemoNotifier.new,
+            ),
+          ],
+          child: const MaterialApp(home: DemoScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Commandes tab is first — should show empty state with simulate button
+      expect(find.text('Simuler une commande'), findsOneWidget);
+      expect(find.text('Aucune commande pour le moment'), findsOneWidget);
+
+      // Tap simulate
+      await tester.tap(find.text('Simuler une commande'));
+      await tester.pump();
+
+      // Should show arriving state
+      expect(find.text('Un client passe commande...'), findsOneWidget);
+
+      // Advance 3s timer
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      // Order arrived — ACCEPTER button visible
+      expect(find.text('Nouvelle commande !'), findsOneWidget);
+      expect(find.text('ACCEPTER'), findsOneWidget);
+      expect(find.text('Garba'), findsOneWidget);
+      expect(find.text('Jus Bissap'), findsOneWidget);
+
+      // Tap ACCEPTER
+      await tester.tap(find.text('ACCEPTER'));
+      await tester.pumpAndSettle();
+
+      // Order accepted — PRETE button visible
+      expect(find.text('PRETE'), findsOneWidget);
+
+      // Tap PRETE
+      await tester.tap(find.text('PRETE'));
+      await tester.pump();
+
+      // Wait for delivery timer
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      // Order delivered — success message
+      expect(find.text('Livree !'), findsOneWidget);
+      expect(find.textContaining('credite sur votre wallet'), findsOneWidget);
+      expect(find.text('Relancer la demo'), findsOneWidget);
+    });
+
+    testWidgets('DemoScreen shows stats dashboard (AC5)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            demoProvider.overrideWith(
+              _ActiveDemoNotifier.new,
+            ),
+          ],
+          child: const MaterialApp(home: DemoScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Stats tab
+      await tester.tap(find.text('Stats'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Total ventes'), findsOneWidget);
+      // "Commandes" appears in tab + stats card
+      expect(find.text('Commandes'), findsAtLeast(1));
+      expect(find.text('47'), findsOneWidget);
+      expect(find.text('Comparaison'), findsOneWidget);
+      expect(find.text('Repartition par produit'), findsOneWidget);
+      expect(find.text('Garba'), findsOneWidget);
+    });
+
+    testWidgets('DemoScreen has exit button and resets state (AC6)', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            demoProvider.overrideWith(_ActiveDemoNotifier.new),
+          ],
+          child: const MaterialApp(home: DemoScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(DemoScreen)),
+      );
+
+      // Verify demo is active
+      expect(container.read(demoProvider).phase, DemoPhase.active);
+
+      // Exit button exists with close icon
+      expect(find.byIcon(Icons.close), findsOneWidget);
+      expect(find.byTooltip('Quitter la demo'), findsOneWidget);
+
+      // Test state reset directly (navigation needs GoRouter context)
+      container.read(demoProvider.notifier).exitDemo();
+      expect(container.read(demoProvider).phase, DemoPhase.inactive);
+    });
+
+    testWidgets('DemoNotifier synchronous state transitions (AC7)', (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      // Keep the autoDispose provider alive for the duration of the test.
+      final sub = container.listen(demoProvider, (_, _) {});
+      addTearDown(sub.close);
+
+      // Initial state
+      expect(container.read(demoProvider).phase, DemoPhase.inactive);
+      expect(container.read(demoProvider).order, isNull);
+
+      // Activate — no API call
+      container.read(demoProvider.notifier).activateDemo();
+      expect(container.read(demoProvider).phase, DemoPhase.active);
+
+      // Accept without order — no crash
+      container.read(demoProvider.notifier).acceptOrder();
+      expect(container.read(demoProvider).phase, DemoPhase.active);
+
+      // Reset cycle
+      container.read(demoProvider.notifier).resetCycle();
+      expect(container.read(demoProvider).phase, DemoPhase.active);
+      expect(container.read(demoProvider).order, isNull);
+
+      // Exit
+      container.read(demoProvider.notifier).exitDemo();
+      expect(container.read(demoProvider).phase, DemoPhase.inactive);
+      expect(container.read(demoProvider).order, isNull);
     });
   });
 }

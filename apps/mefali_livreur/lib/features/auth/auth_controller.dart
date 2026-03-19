@@ -5,7 +5,7 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 /// Controleur orchestrant le flow d'authentification livreur :
 /// requestOtp → verifyOtp (role=driver, sponsorPhone) → home.
-class AuthController extends AutoDisposeAsyncNotifier<void> {
+class AuthController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
@@ -41,4 +41,4 @@ class AuthController extends AutoDisposeAsyncNotifier<void> {
 
 /// Provider pour le controleur d'authentification livreur.
 final authControllerProvider =
-    AutoDisposeAsyncNotifierProvider<AuthController, void>(AuthController.new);
+    AsyncNotifierProvider.autoDispose<AuthController, void>(AuthController.new);

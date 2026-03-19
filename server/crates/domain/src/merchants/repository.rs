@@ -2,7 +2,7 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{CreateMerchantPayload, Merchant, MerchantStatus};
+use super::model::{CreateMerchantPayload, Merchant, MerchantStatus, MerchantSummary};
 
 /// Insert a new merchant record linked to a user.
 pub async fn create_merchant(
@@ -130,6 +130,51 @@ pub async fn increment_no_response<'e>(
     )
     .bind(merchant_id)
     .fetch_one(executor)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// List fully onboarded merchants for customer discovery, ordered by availability then name.
+/// Only merchants with onboarding_step = 5 are returned.
+/// avg_rating / total_ratings / delivery_fee are hardcoded for MVP (no ratings table yet).
+pub async fn find_active_for_discovery(
+    pool: &PgPool,
+    category: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<MerchantSummary>, AppError> {
+    sqlx::query_as::<_, MerchantSummary>(
+        "SELECT id, name, address, availability_status, category, photo_url, city_id,
+                0.0::float8 AS avg_rating, 0::bigint AS total_ratings, 50000::bigint AS delivery_fee
+         FROM merchants
+         WHERE onboarding_step = 5 AND ($1::text IS NULL OR category = $1)
+         ORDER BY CASE availability_status
+                    WHEN 'open' THEN 1
+                    WHEN 'overwhelmed' THEN 2
+                    WHEN 'auto_paused' THEN 3
+                    WHEN 'closed' THEN 4
+                  END, name
+         LIMIT $2 OFFSET $3",
+    )
+    .bind(category)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Count fully onboarded merchants matching the optional category filter.
+pub async fn count_active_for_discovery(
+    pool: &PgPool,
+    category: Option<&str>,
+) -> Result<i64, AppError> {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM merchants
+         WHERE onboarding_step = 5 AND ($1::text IS NULL OR category = $1)",
+    )
+    .bind(category)
+    .fetch_one(pool)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))
 }

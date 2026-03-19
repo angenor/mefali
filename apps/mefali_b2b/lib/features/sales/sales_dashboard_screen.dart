@@ -115,7 +115,7 @@ class _SummaryCards extends StatelessWidget {
         Expanded(
           child: _SummaryCard(
             label: 'Total ventes',
-            value: _formatFcfa(current.totalSales),
+            value: formatFcfa(current.totalSales),
             growth: _growthPercent(current.totalSales, previous.totalSales),
             successColor: customColors?.success,
             errorColor: Theme.of(context).colorScheme.error,
@@ -221,14 +221,14 @@ class _WeekComparison extends StatelessWidget {
             const SizedBox(height: 12),
             _ComparisonRow(
               label: 'Semaine courante',
-              amount: _formatFcfa(current.totalSales),
+              amount: formatFcfa(current.totalSales),
               orders: '${current.orderCount} cmd',
               isCurrent: true,
             ),
             const Divider(height: 16),
             _ComparisonRow(
               label: 'Semaine precedente',
-              amount: _formatFcfa(previous.totalSales),
+              amount: formatFcfa(previous.totalSales),
               orders: '${previous.orderCount} cmd',
               isCurrent: false,
             ),
@@ -238,7 +238,7 @@ class _WeekComparison extends StatelessWidget {
                 Text('Croissance', style: Theme.of(context).textTheme.bodyMedium),
                 const Spacer(),
                 Text(
-                  '${isPositive ? '+' : ''}${_formatFcfa(diff)} (${isPositive ? '+' : ''}${_growthPercent(current.totalSales, previous.totalSales).toStringAsFixed(0)}%)',
+                  '${isPositive ? '+' : ''}${formatFcfa(diff)} (${isPositive ? '+' : ''}${_growthPercent(current.totalSales, previous.totalSales).toStringAsFixed(0)}%)',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: growthColor,
                         fontWeight: FontWeight.bold,
@@ -362,7 +362,7 @@ class _ProductRow extends StatelessWidget {
                 ),
               ),
               Text(
-                _formatFcfa(product.revenue),
+                formatFcfa(product.revenue),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -553,22 +553,6 @@ class _SkeletonCard extends StatelessWidget {
       ),
     );
   }
-}
-
-// --- Utilitaires ---
-
-/// Formate un montant en centimes vers FCFA avec separateur milliers.
-String _formatFcfa(int centimes) {
-  final fcfa = (centimes / 100).round();
-  final negative = fcfa < 0;
-  final str = fcfa.abs().toString();
-  final buffer = StringBuffer();
-  if (negative) buffer.write('-');
-  for (var i = 0; i < str.length; i++) {
-    if (i > 0 && (str.length - i) % 3 == 0) buffer.write(' ');
-    buffer.write(str[i]);
-  }
-  return '${buffer.toString()} FCFA';
 }
 
 /// Calcule le pourcentage de croissance entre deux valeurs.

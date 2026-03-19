@@ -45,10 +45,11 @@ final merchantEndpointProvider = Provider<MerchantEndpoint>((ref) {
 });
 
 /// Notifier gerant le flux d'onboarding marchand.
-class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
-  OnboardingNotifier(this._endpoint) : super(const AsyncValue.data(OnboardingState()));
-
-  final MerchantEndpoint _endpoint;
+class OnboardingNotifier
+    extends Notifier<AsyncValue<OnboardingState>> {
+  @override
+  AsyncValue<OnboardingState> build() =>
+      const AsyncValue.data(OnboardingState());
 
   /// Etape 1a: Envoie OTP au marchand.
   Future<void> requestOtp({
@@ -59,12 +60,12 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _endpoint.requestOtp(
-        phone: phone,
-        name: name,
-        address: address,
-        category: category,
-      );
+      await ref.read(merchantEndpointProvider).requestOtp(
+            phone: phone,
+            name: name,
+            address: address,
+            category: category,
+          );
       return state.value ?? const OnboardingState();
     });
   }
@@ -79,13 +80,13 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final merchant = await _endpoint.verifyAndCreate(
-        phone: phone,
-        otp: otp,
-        name: name,
-        address: address,
-        category: category,
-      );
+      final merchant = await ref.read(merchantEndpointProvider).verifyAndCreate(
+            phone: phone,
+            otp: otp,
+            name: name,
+            address: address,
+            category: category,
+          );
       return OnboardingState(
         currentStep: 1,
         merchant: merchant,
@@ -101,10 +102,10 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
 
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final created = await _endpoint.addProducts(
-        merchantId: merchantId,
-        products: products,
-      );
+      final created = await ref.read(merchantEndpointProvider).addProducts(
+            merchantId: merchantId,
+            products: products,
+          );
       return (state.value ?? const OnboardingState()).copyWith(
         currentStep: 2,
         products: created,
@@ -119,10 +120,10 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
 
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final saved = await _endpoint.setHours(
-        merchantId: merchantId,
-        hours: hours,
-      );
+      final saved = await ref.read(merchantEndpointProvider).setHours(
+            merchantId: merchantId,
+            hours: hours,
+          );
       return (state.value ?? const OnboardingState()).copyWith(
         currentStep: 3,
         businessHours: saved,
@@ -137,7 +138,9 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
 
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final merchant = await _endpoint.finalize(merchantId: merchantId);
+      final merchant = await ref
+          .read(merchantEndpointProvider)
+          .finalize(merchantId: merchantId);
       return (state.value ?? const OnboardingState()).copyWith(
         currentStep: 5,
         merchant: merchant,
@@ -149,7 +152,8 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
   Future<void> loadOnboardingStatus(String merchantId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final status = await _endpoint.getOnboardingStatus(merchantId);
+      final status =
+          await ref.read(merchantEndpointProvider).getOnboardingStatus(merchantId);
       return OnboardingState(
         currentStep: status.merchant.onboardingStep,
         merchant: status.merchant,
@@ -167,10 +171,10 @@ class OnboardingNotifier extends StateNotifier<AsyncValue<OnboardingState>> {
 }
 
 /// Provider pour le notifier d'onboarding.
-final onboardingProvider =
-    StateNotifierProvider.autoDispose<OnboardingNotifier, AsyncValue<OnboardingState>>((ref) {
-  return OnboardingNotifier(ref.watch(merchantEndpointProvider));
-});
+final onboardingProvider = NotifierProvider.autoDispose<OnboardingNotifier,
+    AsyncValue<OnboardingState>>(
+  OnboardingNotifier.new,
+);
 
 /// Provider pour la liste des onboardings en cours de l'agent.
 final inProgressMerchantsProvider =

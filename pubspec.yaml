@@ -2,7 +2,7 @@ name: mefali_workspace
 publish_to: none
 
 environment:
-  sdk: '>=3.10.0 <4.0.0'
+  sdk: '>=3.11.0 <4.0.0'
 
 workspace:
   - apps/mefali_b2c
@@ -15,7 +15,7 @@ workspace:
   - packages/mefali_offline
 
 dev_dependencies:
-  melos: ^7.0.0
+  melos: ^7.4.1
 
 melos:
   scripts:

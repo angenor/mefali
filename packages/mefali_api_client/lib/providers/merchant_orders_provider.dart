@@ -19,18 +19,17 @@ final merchantOrdersProvider =
 });
 
 /// Notifier pour les actions sur les commandes (accepter, refuser, prete).
-class OrderActionNotifier extends StateNotifier<AsyncValue<void>> {
-  OrderActionNotifier(this._ref) : super(const AsyncValue.data(null));
-
-  final Ref _ref;
+class OrderActionNotifier extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
 
   /// Accepte une commande.
   Future<void> acceptOrder(String orderId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(orderEndpointProvider);
+      final endpoint = ref.read(orderEndpointProvider);
       await endpoint.acceptOrder(orderId);
-      _ref.invalidate(merchantOrdersProvider);
+      ref.invalidate(merchantOrdersProvider);
     });
   }
 
@@ -38,9 +37,9 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> rejectOrder(String orderId, String reason) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(orderEndpointProvider);
+      final endpoint = ref.read(orderEndpointProvider);
       await endpoint.rejectOrder(orderId, reason);
-      _ref.invalidate(merchantOrdersProvider);
+      ref.invalidate(merchantOrdersProvider);
     });
   }
 
@@ -48,15 +47,15 @@ class OrderActionNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> markReady(String orderId) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(orderEndpointProvider);
+      final endpoint = ref.read(orderEndpointProvider);
       await endpoint.markReady(orderId);
-      _ref.invalidate(merchantOrdersProvider);
+      ref.invalidate(merchantOrdersProvider);
     });
   }
 }
 
 /// Provider pour les actions sur les commandes.
 final orderActionProvider =
-    StateNotifierProvider.autoDispose<OrderActionNotifier, AsyncValue<void>>(
+    NotifierProvider.autoDispose<OrderActionNotifier, AsyncValue<void>>(
   OrderActionNotifier.new,
 );

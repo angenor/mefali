@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_design/mefali_design.dart';
 
 /// Ecran de login marchand — saisie du numero de telephone.
 class B2bPhoneScreen extends ConsumerStatefulWidget {
@@ -112,6 +113,21 @@ class _B2bPhoneScreenState extends ConsumerState<B2bPhoneScreen> {
                           ),
                         )
                       : const Text('Continuer'),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () {
+                    ref.read(demoProvider.notifier).activateDemo();
+                    context.go('/demo');
+                  },
+                  icon: const Icon(
+                    Icons.play_circle_outline,
+                    color: MefaliColors.warningLight,
+                  ),
+                  label: const Text(
+                    'Voir la demo',
+                    style: TextStyle(color: MefaliColors.warningLight),
+                  ),
                 ),
               ],
             ),

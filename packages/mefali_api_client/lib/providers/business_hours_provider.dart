@@ -11,24 +11,23 @@ final merchantHoursProvider =
 });
 
 /// Notifier pour sauvegarder les horaires du marchand.
-class BusinessHoursNotifier extends StateNotifier<AsyncValue<void>> {
-  BusinessHoursNotifier(this._ref) : super(const AsyncValue.data(null));
-
-  final Ref _ref;
+class BusinessHoursNotifier extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
 
   /// Sauvegarde les horaires (7 jours).
   Future<void> saveHours(List<Map<String, dynamic>> hours) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final endpoint = _ref.read(merchantEndpointProvider);
+      final endpoint = ref.read(merchantEndpointProvider);
       await endpoint.updateMyHours(hours);
-      _ref.invalidate(merchantHoursProvider);
+      ref.invalidate(merchantHoursProvider);
     });
   }
 }
 
 /// Provider pour le notifier de sauvegarde horaires.
 final businessHoursNotifierProvider =
-    StateNotifierProvider.autoDispose<BusinessHoursNotifier, AsyncValue<void>>(
+    NotifierProvider.autoDispose<BusinessHoursNotifier, AsyncValue<void>>(
   BusinessHoursNotifier.new,
 );

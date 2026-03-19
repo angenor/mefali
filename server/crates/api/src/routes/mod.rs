@@ -56,6 +56,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             // Merchant routes — mixed roles
             .service(
                 web::scope("/merchants")
+                    // Discovery — Client role (must be before /{id} to avoid capture)
+                    .route("", web::get().to(merchants::list_merchants))
                     // Merchant self-service routes (must be before /{id} to avoid capture)
                     .route("/me", web::get().to(merchants::get_me_with_status))
                     .route("/me/status", web::put().to(merchants::update_status))

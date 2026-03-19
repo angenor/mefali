@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use tracing::info;
 
 use super::business_hours;
-use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, OnboardingStatus};
+use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, MerchantSummary, OnboardingStatus};
 use super::repository;
 use crate::products;
 use crate::products::model::CreateProductPayload;
@@ -270,6 +270,42 @@ pub async fn get_current_merchant(pool: &PgPool, user_id: Id) -> Result<Merchant
     repository::find_by_user_id(pool, user_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Merchant not found".into()))
+}
+
+// ---- Restaurant discovery for B2C customers (Story 4.1) ----
+
+/// Paginated result for customer merchant discovery.
+#[derive(Debug, Serialize)]
+pub struct MerchantListResult {
+    pub merchants: Vec<MerchantSummary>,
+    pub total: i64,
+    pub page: u32,
+    pub per_page: u32,
+}
+
+/// List fully onboarded merchants for B2C customer discovery.
+/// Only merchants with onboarding_step = 5 are returned.
+/// Ordered by availability status (open first) then name.
+pub async fn list_active_merchants(
+    pool: &PgPool,
+    category: Option<&str>,
+    page: u32,
+    per_page: u32,
+) -> Result<MerchantListResult, AppError> {
+    let page = page.max(1);
+    let per_page = per_page.clamp(1, 100);
+    let offset = ((page - 1) * per_page) as i64;
+    let limit = per_page as i64;
+
+    let merchants = repository::find_active_for_discovery(pool, category, limit, offset).await?;
+    let total = repository::count_active_for_discovery(pool, category).await?;
+
+    Ok(MerchantListResult {
+        merchants,
+        total,
+        page,
+        per_page,
+    })
 }
 
 // ---- Self-service business hours (Story 3.8) ----
