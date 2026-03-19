@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
@@ -67,6 +68,7 @@ class _B2bOtpScreenState extends ConsumerState<B2bOtpScreen> {
               TextField(
                 controller: _otpController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 maxLength: 6,
                 textAlign: TextAlign.center,
                 style: Theme.of(context)
