@@ -25,8 +25,8 @@ void main() {
 
   testWidgets('B2bPhoneScreen has phone field and submit button', (tester) async {
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(home: const B2bPhoneScreen()),
+      const ProviderScope(
+        child: MaterialApp(home: B2bPhoneScreen()),
       ),
     );
 
@@ -37,8 +37,8 @@ void main() {
 
   testWidgets('B2bPhoneScreen validates empty phone', (tester) async {
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(home: const B2bPhoneScreen()),
+      const ProviderScope(
+        child: MaterialApp(home: B2bPhoneScreen()),
       ),
     );
 
@@ -114,8 +114,8 @@ void main() {
 
   testWidgets('ProductFormScreen create mode has correct fields', (tester) async {
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(home: const ProductFormScreen()),
+      const ProviderScope(
+        child: MaterialApp(home: ProductFormScreen()),
       ),
     );
 
@@ -155,8 +155,8 @@ void main() {
 
   testWidgets('ProductFormScreen validates empty name', (tester) async {
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(home: const ProductFormScreen()),
+      const ProviderScope(
+        child: MaterialApp(home: ProductFormScreen()),
       ),
     );
 
@@ -577,14 +577,14 @@ void main() {
         ),
         productBreakdown: currentTotal > 0
             ? [
-                ProductSales(
+                const ProductSales(
                   productId: '1',
                   productName: 'Garba',
                   quantitySold: 23,
                   revenue: 2300000,
                   percentage: 48.9,
                 ),
-                ProductSales(
+                const ProductSales(
                   productId: '2',
                   productName: 'Alloco-poisson',
                   quantitySold: 15,

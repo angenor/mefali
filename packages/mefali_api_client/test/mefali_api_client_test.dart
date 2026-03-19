@@ -471,7 +471,7 @@ void main() {
 
     test('initial state loads user from authProvider', () {
       final container = createTestContainer(user: testUser);
-      final sub = container.listen(userProfileProvider, (_, __) {});
+      final sub = container.listen(userProfileProvider, (_, _) {});
       addTearDown(() {
         sub.close();
         container.dispose();
@@ -483,7 +483,7 @@ void main() {
 
     test('initial state is loading when no user in authProvider', () {
       final container = createTestContainer();
-      final sub = container.listen(userProfileProvider, (_, __) {});
+      final sub = container.listen(userProfileProvider, (_, _) {});
       addTearDown(() {
         sub.close();
         container.dispose();
@@ -498,7 +498,7 @@ void main() {
         user: testUser,
         mockDio: mockDioWithUserResponse(),
       );
-      final sub = container.listen(userProfileProvider, (_, __) {});
+      final sub = container.listen(userProfileProvider, (_, _) {});
       addTearDown(() {
         sub.close();
         container.dispose();
@@ -517,7 +517,7 @@ void main() {
         user: testUser,
         mockDio: mockDioWithUserResponse(),
       );
-      final sub = container.listen(userProfileProvider, (_, __) {});
+      final sub = container.listen(userProfileProvider, (_, _) {});
       addTearDown(() {
         sub.close();
         container.dispose();
