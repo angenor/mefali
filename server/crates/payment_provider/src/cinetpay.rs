@@ -230,12 +230,65 @@ impl PaymentProvider for CinetPayAdapter {
 
     async fn initiate_withdrawal(
         &self,
-        _request: WithdrawalRequest,
+        request: WithdrawalRequest,
     ) -> Result<WithdrawalResponse, PaymentError> {
-        // CinetPay withdrawal will be implemented in Epic 6
-        Err(PaymentError::WithdrawalFailed(
-            "CinetPay withdrawal not yet implemented".into(),
-        ))
+        let transaction_id = uuid::Uuid::new_v4().to_string();
+        let amount_fcfa = request.amount / 100; // centimes -> FCFA
+
+        let body = serde_json::json!({
+            "apikey": self.api_key,
+            "site_id": self.site_id,
+            "transaction_id": transaction_id,
+            "amount": amount_fcfa,
+            "currency": request.currency,
+            "receiver": request.destination_phone,
+            "payment_method": "MOBILE_MONEY",
+            "notify_url": self.notify_url,
+        });
+
+        let url = format!("{}/transfer", self.base_url);
+
+        let response = self
+            .client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    error!(error = %e, "CinetPay timeout during withdrawal");
+                    PaymentError::NetworkError("CinetPay timeout (>10s)".into())
+                } else {
+                    error!(error = %e, "CinetPay network error during withdrawal");
+                    PaymentError::NetworkError(format!("CinetPay unreachable: {e}"))
+                }
+            })?;
+
+        let status_code = response.status();
+        let resp_text = response.text().await.unwrap_or_default();
+
+        if !status_code.is_success() {
+            error!(
+                status = %status_code,
+                body = %resp_text,
+                "CinetPay withdrawal failed"
+            );
+            return Err(PaymentError::WithdrawalFailed(format!(
+                "CinetPay transfer error {status_code}: {resp_text}"
+            )));
+        }
+
+        info!(
+            transaction_id = %transaction_id,
+            amount_fcfa = amount_fcfa,
+            destination = %request.destination_phone,
+            "CinetPay withdrawal initiated"
+        );
+
+        Ok(WithdrawalResponse {
+            transaction_id,
+            status: PaymentStatus::Pending,
+        })
     }
 }
 

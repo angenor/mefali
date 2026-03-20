@@ -92,10 +92,11 @@ class _ClientAbsentScreenState extends ConsumerState<ClientAbsentScreen> {
     }
   }
 
-  /// Client est arrive pendant le timer — retour au flow normal.
+  /// Client est arrive pendant le timer — retour au flow normal (AC #3).
+  /// Pop back to collection_navigation_screen where driver can tap LIVRE.
   void _handleClientArrived() {
     if (mounted) {
-      context.go('/home');
+      context.pop();
     }
   }
 

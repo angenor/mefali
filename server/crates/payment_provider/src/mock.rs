@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mock_withdrawal() {
+    async fn test_mock_withdrawal_success() {
         let provider = MockPaymentProvider::new();
         let request = WithdrawalRequest {
             user_id: Id::new_v4(),
@@ -189,5 +189,24 @@ mod tests {
         };
         let result = provider.initiate_withdrawal(request).await;
         assert!(result.is_ok());
+        let resp = result.unwrap();
+        assert_eq!(resp.status, PaymentStatus::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_mock_withdrawal_failure() {
+        let provider = MockPaymentProvider::failing();
+        let request = WithdrawalRequest {
+            user_id: Id::new_v4(),
+            amount: 10000,
+            currency: "XOF".into(),
+            destination_phone: "+2250700000000".into(),
+        };
+        let result = provider.initiate_withdrawal(request).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            PaymentError::WithdrawalFailed(_) => {}
+            other => panic!("Expected WithdrawalFailed, got: {other:?}"),
+        }
     }
 }

@@ -12,6 +12,25 @@ use crate::merchants;
 use crate::orders;
 use crate::wallets;
 
+/// Toggle driver availability status.
+pub async fn toggle_driver_availability(
+    pool: &PgPool,
+    driver_id: Id,
+    is_available: bool,
+) -> Result<bool, AppError> {
+    let status = repository::set_driver_availability(pool, driver_id, is_available).await?;
+    info!(driver_id = %driver_id, is_available = status, "Driver availability toggled");
+    Ok(status)
+}
+
+/// Get driver availability status.
+pub async fn get_driver_availability(
+    pool: &PgPool,
+    driver_id: Id,
+) -> Result<bool, AppError> {
+    repository::get_driver_availability(pool, driver_id).await
+}
+
 /// Notify an available driver about a ready order.
 /// Creates a delivery record, sends push notification, and falls back to SMS if push fails.
 pub async fn notify_driver_for_order(
@@ -237,6 +256,12 @@ async fn build_mission_payload(
         order.delivery_lng,
     );
 
+    // Get customer phone for driver-to-client call (AC #2 story 5.7)
+    let customer_phone = match crate::users::repository::find_by_id(pool, order.customer_id).await {
+        Ok(Some(u)) => Some(u.phone),
+        _ => None,
+    };
+
     Ok(DeliveryMission {
         delivery_id: delivery.id,
         order_id,
@@ -253,6 +278,7 @@ async fn build_mission_payload(
             orders::model::PaymentType::MobileMoney => "mobile_money".into(),
         },
         order_total: order.total,
+        customer_phone,
         created_at: delivery.created_at,
     })
 }
@@ -367,7 +393,7 @@ pub async fn refuse_mission(
            AND NOT EXISTS (
              SELECT 1 FROM deliveries d
              WHERE d.driver_id = u.id
-               AND d.status IN ('pending', 'assigned', 'picked_up', 'in_transit')
+               AND d.status IN ('pending', 'assigned', 'picked_up', 'in_transit', 'client_absent')
            )
          ORDER BY u.created_at ASC
          LIMIT 1",
@@ -720,9 +746,11 @@ pub async fn confirm_delivery(
     let driver_earnings =
         wallets::service::credit_driver_for_delivery(pool, &confirmed, &order).await?;
 
-    // For prepaid orders: credit merchant wallet + release escrow
+    // Credit merchant wallet for ALL order types (COD + prepaid)
+    wallets::service::credit_merchant_for_delivery(pool, &order).await?;
+
+    // For prepaid orders: release escrow
     if order.payment_type == orders::model::PaymentType::MobileMoney {
-        wallets::service::credit_merchant_for_delivery(pool, &order).await?;
         orders::repository::release_escrow(pool, order.id).await?;
     }
 
@@ -737,8 +765,9 @@ pub async fn confirm_delivery(
         "Delivery confirmed and wallets credited"
     );
 
-    // Best-effort: notify customer
+    // Best-effort: notify customer and merchant
     notify_customer_delivery_confirmed(pool, &order, fcm_client).await;
+    notify_merchant_wallet_credited(pool, &order, fcm_client).await;
 
     let confirmed_at = confirmed.delivered_at.unwrap_or_else(common::types::now);
 
@@ -759,6 +788,65 @@ fn haversine_distance_m(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     let a = (d_lat / 2.0).sin().powi(2)
         + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lng / 2.0).sin().powi(2);
     2.0 * r * a.sqrt().asin()
+}
+
+/// Notify merchant that their wallet was credited (best-effort).
+/// Follows the pattern of notify_merchant_pickup().
+async fn notify_merchant_wallet_credited(
+    pool: &PgPool,
+    order: &orders::model::Order,
+    fcm_client: Option<&FcmClient>,
+) {
+    let fcm = match fcm_client {
+        Some(c) => c,
+        None => return,
+    };
+
+    let merchant = match merchants::repository::find_by_id(pool, order.merchant_id).await {
+        Ok(Some(m)) => m,
+        _ => {
+            warn!(merchant_id = %order.merchant_id, "Could not find merchant for wallet notification");
+            return;
+        }
+    };
+
+    let user = match crate::users::repository::find_by_id(pool, merchant.user_id).await {
+        Ok(Some(u)) => u,
+        _ => return,
+    };
+
+    if let Some(ref token) = user.fcm_token {
+        if !token.is_empty() {
+            let amount_fcfa = order.subtotal / 100;
+            let order_short = &order.id.to_string()[..8];
+            let notification = PushNotification {
+                device_token: token.clone(),
+                title: "Paiement recu".into(),
+                body: format!("+{amount_fcfa} FCFA - Commande #{order_short}"),
+                data: {
+                    let mut map = serde_json::Map::new();
+                    map.insert("event".into(), "wallet.credited".into());
+                    map.insert("order_id".into(), order.id.to_string().into());
+                    map.insert("amount".into(), order.subtotal.to_string().into());
+                    Some(serde_json::Value::Object(map))
+                },
+            };
+            if let Err(e) = fcm.send_push(&notification).await {
+                warn!(
+                    merchant_id = %order.merchant_id,
+                    error = %e,
+                    "Failed to notify merchant of wallet credit"
+                );
+            } else {
+                info!(
+                    merchant_id = %order.merchant_id,
+                    order_id = %order.id,
+                    amount_fcfa = amount_fcfa,
+                    "Merchant notified of wallet credit"
+                );
+            }
+        }
+    }
 }
 
 /// Notify customer that delivery is confirmed (best-effort).
@@ -1118,6 +1206,7 @@ mod tests {
             items_summary: "Garba x1, Alloco x1".into(),
             payment_type: "cod".into(),
             order_total: 300000,
+            customer_phone: Some("+2250700000000".into()),
             created_at: Utc::now(),
         }
     }

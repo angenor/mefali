@@ -15,6 +15,7 @@ class DeliveryMission {
     required this.itemsSummary,
     this.paymentType,
     this.orderTotal,
+    this.customerPhone,
     required this.createdAt,
   });
 
@@ -30,6 +31,7 @@ class DeliveryMission {
   final String itemsSummary;
   final String? paymentType;
   final int? orderTotal;
+  final String? customerPhone;
   final String createdAt;
 
   factory DeliveryMission.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class DeliveryMission {
       itemsSummary: json['items_summary'] as String,
       paymentType: json['payment_type'] as String?,
       orderTotal: json['order_total'] as int?,
+      customerPhone: json['customer_phone'] as String?,
       createdAt: json['created_at'] as String,
     );
   }
@@ -67,6 +70,7 @@ class DeliveryMission {
       itemsSummary: json['items_summary']?.toString() ?? '',
       paymentType: json['payment_type']?.toString(),
       orderTotal: _parseInt(json['order_total']),
+      customerPhone: json['customer_phone']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
     );
   }
@@ -84,6 +88,7 @@ class DeliveryMission {
         'items_summary': itemsSummary,
         'payment_type': paymentType,
         'order_total': orderTotal,
+        'customer_phone': customerPhone,
         'created_at': createdAt,
       };
 

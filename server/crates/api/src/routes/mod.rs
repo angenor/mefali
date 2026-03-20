@@ -1,12 +1,14 @@
 pub mod agents;
 pub mod auth;
 pub mod deliveries;
+pub mod drivers;
 pub mod health;
 pub mod kyc;
 pub mod merchants;
 pub mod orders;
 pub mod products;
 pub mod users;
+pub mod wallets;
 pub mod ws;
 
 use actix_web::web;
@@ -53,6 +55,18 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{delivery_id}/client-absent", web::post().to(deliveries::report_client_absent))
                     .route("/{delivery_id}/resolve-absent", web::post().to(deliveries::resolve_client_absent))
                     .route("/tracking/{order_id}", web::get().to(deliveries::get_tracking)),
+            )
+            // Driver routes — Driver role required
+            .service(
+                web::scope("/drivers")
+                    .route("/availability", web::put().to(drivers::set_availability))
+                    .route("/availability", web::get().to(drivers::get_availability)),
+            )
+            // Wallet routes — Driver/Merchant role required
+            .service(
+                web::scope("/wallets")
+                    .route("/me", web::get().to(wallets::get_wallet))
+                    .route("/withdraw", web::post().to(wallets::withdraw)),
             )
             // WebSocket routes — JWT via query param
             .service(

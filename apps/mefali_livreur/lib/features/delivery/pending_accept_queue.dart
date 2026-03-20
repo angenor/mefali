@@ -44,6 +44,10 @@ class PendingAcceptQueue {
   }) async {
     return _withLock(() async {
       final entries = await _readEntriesUnsafe();
+      // Collapse toggle_availability: only keep the latest desired state
+      if (action == 'toggle_availability') {
+        entries.removeWhere((e) => e['action'] == 'toggle_availability');
+      }
       entries.add({
         'delivery_id': deliveryId,
         'order_id': orderId,
@@ -117,6 +121,10 @@ class PendingAcceptQueue {
           final lat = (missionData?['lat'] as num?)?.toDouble() ?? 0;
           final lng = (missionData?['lng'] as num?)?.toDouble() ?? 0;
           await endpoint.resolveClientAbsent(deliveryId, resolution, lat, lng);
+        } else if (action == 'toggle_availability') {
+          final missionData = entry['mission_data'] as Map<String, dynamic>?;
+          final isAvailable = missionData?['is_available'] as bool? ?? true;
+          await endpoint.setAvailability(isAvailable);
         }
         toRemove.add(deliveryId);
         // Brief delay between requests to avoid server rate-limiting

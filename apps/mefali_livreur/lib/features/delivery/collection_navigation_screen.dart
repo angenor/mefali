@@ -772,11 +772,12 @@ class _CollectionNavigationScreenState
 
         if (mounted) {
           setState(() => _isLoading = false);
-          context.go('/delivery/client-absent', extra: {
+          context.push('/delivery/client-absent', extra: {
             'deliveryId': widget.mission.deliveryId,
             'orderId': widget.mission.orderId,
             'paymentType': widget.mission.paymentType,
             'deliveryFee': widget.mission.deliveryFee,
+            'customerPhone': widget.mission.customerPhone,
           });
         }
       } on DioException catch (e) {
@@ -827,11 +828,12 @@ class _CollectionNavigationScreenState
           ),
         );
         setState(() => _isLoading = false);
-        context.go('/delivery/client-absent', extra: {
+        context.push('/delivery/client-absent', extra: {
           'deliveryId': widget.mission.deliveryId,
           'orderId': widget.mission.orderId,
           'paymentType': widget.mission.paymentType,
           'deliveryFee': widget.mission.deliveryFee,
+          'customerPhone': widget.mission.customerPhone,
         });
       }
     }

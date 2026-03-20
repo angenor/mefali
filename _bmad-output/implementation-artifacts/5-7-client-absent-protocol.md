@@ -1,6 +1,6 @@
 # Story 5.7: Client Absent Protocol
 
-Status: review
+Status: in-progress
 
 ## Story
 
@@ -65,10 +65,10 @@ so that I'm protected, paid for my effort, and know exactly what to do.
   - [x]6.3 — Enregistrer les 2 routes dans `routes/mod.rs` (même scope deliveries)
   - [x]6.4 — Redis publish dans les handlers (même pattern que `update_location` et `confirm_delivery`)
 
-- [x]Task 7: Tests backend (AC: tous)
-  - [x]7.1 — Test `report_client_absent` : picked_up → client_absent OK, assigned → erreur
-  - [x]7.2 — Test `resolve_client_absent` : driver payé, order cancelled, correct earnings calculation
-  - [x]7.3 — Test `confirm_delivery` depuis `client_absent` status (client arrivé pendant timer)
+- [ ]Task 7: Tests backend (AC: tous)
+  - [ ]7.1 — Test `report_client_absent` : picked_up → client_absent OK, assigned → erreur
+  - [ ]7.2 — Test `resolve_client_absent` : driver payé, order cancelled, correct earnings calculation
+  - [ ]7.3 — Test `confirm_delivery` depuis `client_absent` status (client arrivé pendant timer)
   - [x]7.4 — Test AbsentResolution serde (serialize/deserialize snake_case)
 
 ### Frontend Flutter — App Livreur
@@ -301,6 +301,7 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-03-20: Story 5.7 implemented — client absent protocol (report, timer, resolve, wallet credit, notifications)
+- 2026-03-20: Code review fixes — AC #3 navigation (push/pop), customer_phone flow (AC #2), client_absent in driver availability queries
 
 ### File List
 
@@ -308,18 +309,26 @@ Claude Opus 4.6 (1M context)
 - apps/mefali_livreur/lib/features/delivery/client_absent_screen.dart
 
 **Modified (Backend Rust):**
-- server/crates/domain/src/deliveries/model.rs — Added AbsentResolution enum + serde test
-- server/crates/domain/src/deliveries/repository.rs — Added mark_client_absent(), updated confirm_delivery WHERE clause, updated tracking/location queries to include client_absent
-- server/crates/domain/src/deliveries/service.rs — Added report_client_absent(), resolve_client_absent(), notify_customer_client_absent(), notify_customer_absent_resolved(), updated confirm_delivery to accept client_absent
+- server/crates/domain/src/deliveries/model.rs — Added AbsentResolution enum + serde test, added customer_phone to DeliveryMission
+- server/crates/domain/src/deliveries/repository.rs — Added mark_client_absent(), updated confirm_delivery WHERE clause, updated tracking/location/availability queries to include client_absent
+- server/crates/domain/src/deliveries/service.rs — Added report_client_absent(), resolve_client_absent(), notify_customer_client_absent(), notify_customer_absent_resolved(), updated confirm_delivery to accept client_absent, added customer_phone to build_mission_payload, fixed client_absent in refuse_mission availability query
 - server/crates/domain/src/orders/repository.rs — Added cancel_order()
 - server/crates/api/src/routes/deliveries.rs — Added report_client_absent and resolve_client_absent handlers with Redis publish
 - server/crates/api/src/routes/mod.rs — Registered /{delivery_id}/client-absent and /{delivery_id}/resolve-absent routes
 
 **Modified (Frontend Flutter):**
-- apps/mefali_livreur/lib/features/delivery/collection_navigation_screen.dart — Added CLIENT ABSENT button + _handleClientAbsent()
+- apps/mefali_livreur/lib/features/delivery/collection_navigation_screen.dart — Added CLIENT ABSENT button + _handleClientAbsent(), passes customerPhone, uses context.push
+- apps/mefali_livreur/lib/features/delivery/client_absent_screen.dart — Fixed _handleClientArrived to use context.pop (AC #3)
 - apps/mefali_livreur/lib/app.dart — Added /delivery/client-absent route + import
 - apps/mefali_livreur/lib/features/delivery/pending_accept_queue.dart — Added client_absent and resolve_absent sync actions
 - apps/mefali_livreur/pubspec.yaml — Added url_launcher dependency
 - packages/mefali_api_client/lib/endpoints/delivery_endpoint.dart — Added reportClientAbsent() and resolveClientAbsent()
 - packages/mefali_api_client/lib/websocket/delivery_tracking_ws.dart — Handle delivery.client_absent and delivery.absent_resolved events
+- packages/mefali_core/lib/models/delivery_mission.dart — Added customerPhone field
 - apps/mefali_b2c/lib/features/order/delivery_tracking_screen.dart — Handle client_absent/absent_resolved status, show orange message, navigate home
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][MEDIUM] resolve_client_absent() — credit_driver + cancel_order pas dans une transaction. Risque d'etat inconsistant si cancel_order echoue apres wallet credit. Necessite refactoring cross-cutting de wallets::service pour accepter impl PgExecutor. [service.rs:965-986]
+- [ ] [AI-Review][MEDIUM] Tasks 7.1-7.3 — Tests d'integration pour report_client_absent, resolve_client_absent, confirm_delivery depuis client_absent. Necessitent infra de test avec DB (non disponible actuellement). [service.rs:tests]
+- [ ] [AI-Review][LOW] resolve_client_absent handler — driver_location dans le body est accepte mais non utilise par le service. Dead data dans l'API contract. [routes/deliveries.rs:323-325]

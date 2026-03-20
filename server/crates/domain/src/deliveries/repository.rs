@@ -133,12 +133,12 @@ pub async fn find_next_available_driver(
     // Use ANY($3) with a UUID array for exclusion
     sqlx::query_as::<_, AvailableDriver>(
         "SELECT u.id, u.phone, u.fcm_token FROM users u
-         WHERE u.role = 'driver' AND u.status = 'active'
+         WHERE u.role = 'driver' AND u.status = 'active' AND u.is_available = true
            AND u.id != ALL($1)
            AND NOT EXISTS (
              SELECT 1 FROM deliveries d
              WHERE d.driver_id = u.id
-               AND d.status IN ('pending', 'assigned', 'picked_up', 'in_transit')
+               AND d.status IN ('pending', 'assigned', 'picked_up', 'in_transit', 'client_absent')
            )
          ORDER BY u.created_at ASC
          LIMIT 1",
@@ -164,17 +164,17 @@ pub async fn get_refused_driver_ids(
     Ok(rows)
 }
 
-/// Find an available driver: role=driver, status=active, has fcm_token,
+/// Find an available driver: role=driver, status=active, is_available=true,
 /// and not already assigned to an active delivery.
 /// Returns the first one found (no proximity sorting in MVP).
 pub async fn find_available_driver(pool: &PgPool) -> Result<Option<AvailableDriver>, AppError> {
     sqlx::query_as::<_, AvailableDriver>(
         "SELECT u.id, u.phone, u.fcm_token FROM users u
-         WHERE u.role = 'driver' AND u.status = 'active'
+         WHERE u.role = 'driver' AND u.status = 'active' AND u.is_available = true
            AND NOT EXISTS (
              SELECT 1 FROM deliveries d
              WHERE d.driver_id = u.id
-               AND d.status IN ('pending', 'assigned', 'picked_up', 'in_transit')
+               AND d.status IN ('pending', 'assigned', 'picked_up', 'in_transit', 'client_absent')
            )
          ORDER BY u.created_at ASC
          LIMIT 1",
@@ -268,6 +268,42 @@ pub async fn mark_client_absent(
     .fetch_optional(pool)
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to mark client absent: {e}")))
+}
+
+/// Set driver availability status.
+pub async fn set_driver_availability(
+    pool: &PgPool,
+    driver_id: Id,
+    is_available: bool,
+) -> Result<bool, AppError> {
+    let result = sqlx::query_scalar::<_, bool>(
+        "UPDATE users SET is_available = $2, updated_at = NOW()
+         WHERE id = $1 AND role = 'driver'
+         RETURNING is_available",
+    )
+    .bind(driver_id)
+    .bind(is_available)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to set driver availability: {e}")))?;
+
+    result.ok_or_else(|| AppError::NotFound(format!("Driver not found: {driver_id}")))
+}
+
+/// Get driver availability status.
+pub async fn get_driver_availability(
+    pool: &PgPool,
+    driver_id: Id,
+) -> Result<bool, AppError> {
+    let result = sqlx::query_scalar::<_, bool>(
+        "SELECT is_available FROM users WHERE id = $1 AND role = 'driver'",
+    )
+    .bind(driver_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to get driver availability: {e}")))?;
+
+    result.ok_or_else(|| AppError::NotFound(format!("Driver not found: {driver_id}")))
 }
 
 /// Minimal driver info for assignment.

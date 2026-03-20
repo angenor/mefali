@@ -8,8 +8,9 @@ import 'package:mefali_design/mefali_design.dart';
 import '../catalogue/product_list_screen.dart';
 import '../orders/orders_screen.dart';
 import '../sales/sales_dashboard_screen.dart';
+import '../wallet/wallet_screen.dart';
 
-/// Ecran principal B2B avec TabBar (Commandes | Catalogue | Stats).
+/// Ecran principal B2B avec TabBar (Commandes | Catalogue | Stats | Wallet).
 class B2bHomeScreen extends ConsumerStatefulWidget {
   const B2bHomeScreen({super.key});
 
@@ -24,7 +25,7 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
+    _tabController = TabController(length: 4, vsync: this, initialIndex: 1);
   }
 
   @override
@@ -97,6 +98,7 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
             _OrdersTabWithBadge(ref: ref),
             const Tab(text: 'Catalogue'),
             const Tab(text: 'Stats'),
+            const Tab(text: 'Wallet'),
           ],
         ),
       ),
@@ -123,6 +125,8 @@ class _B2bHomeScreenState extends ConsumerState<B2bHomeScreen>
                 ProductListScreen(),
                 // Stats — dashboard ventes
                 SalesDashboardScreen(),
+                // Wallet — solde et historique paiements
+                MerchantWalletScreen(),
               ],
             ),
           ),

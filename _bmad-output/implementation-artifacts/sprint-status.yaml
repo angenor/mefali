@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-20 # 5-8-driver-availability-and-wallet-withdrawal: in-progress
+last_updated: 2026-03-20 # 6-1-merchant-wallet-and-escrow-release: review
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -92,13 +92,13 @@ development_status:
   5-4-order-collection-and-navigation: done
   5-5-real-time-tracking-client-side: done
   5-6-delivery-confirmation-and-instant-payment: done
-  5-7-client-absent-protocol: review
-  5-8-driver-availability-and-wallet-withdrawal: in-progress
+  5-7-client-absent-protocol: in-progress
+  5-8-driver-availability-and-wallet-withdrawal: done
   epic-5-retrospective: optional
 
   # Epic 6: Wallet & Financial Operations
-  epic-6: backlog
-  6-1-merchant-wallet-and-escrow-release: backlog
+  epic-6: in-progress
+  6-1-merchant-wallet-and-escrow-release: review
   6-2-merchant-withdrawal: backlog
   6-3-daily-reconciliation: backlog
   6-4-admin-credit-refund: backlog

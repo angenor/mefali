@@ -119,6 +119,25 @@ class DeliveryEndpoint {
     return response.data!['data'] as Map<String, dynamic>;
   }
 
+  /// Definir le statut de disponibilite du livreur (actif / en pause).
+  Future<bool> setAvailability(bool isAvailable) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/drivers/availability',
+      data: {'is_available': isAvailable},
+    );
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return data['is_available'] as bool;
+  }
+
+  /// Recuperer le statut de disponibilite du livreur.
+  Future<bool> getAvailability() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/drivers/availability',
+    );
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return data['is_available'] as bool;
+  }
+
   /// Recuperer les donnees de tracking temps reel (fallback REST).
   /// Retourne null si pas de livraison active pour cette commande.
   Future<DeliveryLocationUpdate?> getDeliveryTracking(

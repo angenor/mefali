@@ -87,6 +87,7 @@ pub struct DeliveryMission {
     pub items_summary: String,
     pub payment_type: String,
     pub order_total: i64,
+    pub customer_phone: Option<String>,
     pub created_at: Timestamp,
 }
 
@@ -171,6 +172,7 @@ mod tests {
             items_summary: "Garba x1, Alloco x1".into(),
             payment_type: "cod".into(),
             order_total: 300000,
+            customer_phone: Some("+2250700000000".into()),
             created_at: chrono::Utc::now(),
         };
         let json = serde_json::to_string(&mission).unwrap();

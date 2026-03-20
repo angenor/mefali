@@ -18,6 +18,7 @@ import 'features/profile/profile_screen.dart';
 import 'features/delivery/client_absent_screen.dart';
 import 'features/delivery/collection_navigation_screen.dart';
 import 'features/delivery/incoming_mission_screen.dart';
+import 'features/wallet/wallet_screen.dart';
 import 'features/profile/verify_phone_screen.dart';
 
 /// Ecoute les changements d'authentification pour declencher
@@ -85,6 +86,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(path: '/wallet', builder: (context, state) => const WalletScreen()),
       GoRoute(
         path: '/delivery/incoming-mission',
         builder: (context, state) {

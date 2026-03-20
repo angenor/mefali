@@ -33,6 +33,38 @@ pub async fn credit_wallet(pool: &PgPool, wallet_id: Id, amount: i64) -> Result<
     .map_err(|e| AppError::DatabaseError(format!("Failed to credit wallet: {e}")))
 }
 
+/// Debit a wallet atomically (balance -= amount). Returns error if insufficient balance.
+pub async fn debit_wallet(pool: &PgPool, wallet_id: Id, amount: i64) -> Result<Wallet, AppError> {
+    sqlx::query_as::<_, Wallet>(&format!(
+        "UPDATE wallets SET balance = balance - $2, updated_at = NOW()
+         WHERE id = $1 AND balance >= $2
+         RETURNING {WALLET_COLUMNS}"
+    ))
+    .bind(wallet_id)
+    .bind(amount)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to debit wallet: {e}")))?
+    .ok_or_else(|| AppError::BadRequest("Solde insuffisant pour ce retrait".into()))
+}
+
+/// Get recent wallet transactions (last 50).
+pub async fn get_transactions(
+    pool: &PgPool,
+    wallet_id: Id,
+) -> Result<Vec<WalletTransaction>, AppError> {
+    sqlx::query_as::<_, WalletTransaction>(&format!(
+        "SELECT {TX_COLUMNS} FROM wallet_transactions
+         WHERE wallet_id = $1
+         ORDER BY created_at DESC
+         LIMIT 50"
+    ))
+    .bind(wallet_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to get wallet transactions: {e}")))
+}
+
 /// Record a wallet transaction for audit trail.
 pub async fn create_transaction(
     pool: &PgPool,
