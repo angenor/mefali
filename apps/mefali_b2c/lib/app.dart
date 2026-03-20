@@ -12,6 +12,8 @@ import 'features/home/home_screen.dart';
 import 'features/order/order_confirmation_screen.dart';
 import 'features/order/order_tracking_screen.dart';
 import 'features/order/orders_list_screen.dart';
+import 'features/order/address_selection_screen.dart';
+import 'features/order/payment_status_screen.dart';
 import 'features/restaurant/restaurant_catalogue_screen.dart';
 import 'features/profile/change_phone_screen.dart';
 import 'features/profile/edit_name_screen.dart';
@@ -91,10 +93,21 @@ final _routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/order/address-selection',
+        builder: (context, state) => const AddressSelectionScreen(),
+      ),
+      GoRoute(
         path: '/order/confirmation',
         builder: (context, state) {
           final order = state.extra as Order;
           return OrderConfirmationScreen(order: order);
+        },
+      ),
+      GoRoute(
+        path: '/order/payment-status/:orderId',
+        builder: (context, state) {
+          final orderId = state.pathParameters['orderId']!;
+          return PaymentStatusScreen(orderId: orderId);
         },
       ),
       GoRoute(

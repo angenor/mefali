@@ -2,12 +2,12 @@ use common::error::AppError;
 use common::types::{Id, Timestamp};
 use sqlx::PgPool;
 
-use super::model::{Order, OrderItem, OrderStatus, OrderWithItems, PaymentType};
+use super::model::{Order, OrderItem, OrderStatus, OrderWithItems, PaymentStatus, PaymentType};
 
 const ORDER_COLUMNS: &str =
     "id, customer_id, merchant_id, driver_id, status, payment_type, payment_status,
      subtotal, delivery_fee, total, delivery_address, delivery_lat, delivery_lng,
-     city_id, notes, created_at, updated_at";
+     city_id, notes, external_transaction_id, created_at, updated_at";
 
 /// Insert a new order.
 pub async fn create_order<'e>(
@@ -396,4 +396,46 @@ pub async fn get_product_breakdown(
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::DatabaseError(e.to_string()))
+}
+
+/// Save external transaction ID (CinetPay) for audit/reconciliation.
+pub async fn set_external_transaction_id(
+    pool: &PgPool,
+    order_id: Id,
+    transaction_id: &str,
+) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE orders SET external_transaction_id = $2, updated_at = NOW()
+         WHERE id = $1"
+    )
+    .bind(order_id)
+    .bind(transaction_id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    Ok(())
+}
+
+/// Update payment status for an order.
+pub async fn update_payment_status(
+    pool: &PgPool,
+    order_id: Id,
+    payment_status: &PaymentStatus,
+) -> Result<Order, AppError> {
+    sqlx::query_as::<_, Order>(&format!(
+        "UPDATE orders SET payment_status = $2, updated_at = NOW()
+         WHERE id = $1
+         RETURNING {ORDER_COLUMNS}"
+    ))
+    .bind(order_id)
+    .bind(payment_status)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        if matches!(e, sqlx::Error::RowNotFound) {
+            AppError::NotFound("Order not found".into())
+        } else {
+            AppError::DatabaseError(e.to_string())
+        }
+    })
 }

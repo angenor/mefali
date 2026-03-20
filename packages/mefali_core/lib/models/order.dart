@@ -27,6 +27,7 @@ class Order {
     required this.updatedAt,
     this.items = const [],
     this.merchantName,
+    this.paymentUrl,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
@@ -50,6 +51,7 @@ class Order {
   final DateTime updatedAt;
   final List<OrderItem> items;
   final String? merchantName;
+  final String? paymentUrl;
 
   Map<String, dynamic> toJson() => _$OrderToJson(this);
 

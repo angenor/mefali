@@ -1,27 +1,41 @@
+use std::sync::Arc;
+
 use common::error::AppError;
 use common::types::Id;
+use payment_provider::provider::{PaymentError, PaymentProvider, PaymentRequest, PaymentStatus as ProviderPaymentStatus};
 use sqlx::PgPool;
-use tracing::info;
+use tracing::{error, info, warn};
 
 use chrono::{Datelike, Duration, NaiveTime, Utc};
 
 use super::model::{
-    CreateOrderPayload, OrderStatus, OrderWithItems, ProductBreakdown, WeekPeriod, WeekSummary,
-    WeeklyStats,
+    CreateOrderPayload, OrderStatus, OrderWithItems, PaymentStatus, PaymentType,
+    ProductBreakdown, WeekPeriod, WeekSummary, WeeklyStats,
 };
 use super::repository;
 use crate::merchants;
 use crate::merchants::model::MerchantStatus;
 use crate::products;
 
+/// Result of order creation — includes optional payment_url for mobile money.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CreateOrderResult {
+    #[serde(flatten)]
+    pub order: OrderWithItems,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_url: Option<String>,
+}
+
 /// Create a new order from a client.
 /// Validates merchant availability, product existence, and computes totals from DB prices.
 /// All writes (order + items) are wrapped in a single transaction.
+/// For MobileMoney orders, initiates payment via PaymentProvider and returns payment_url.
 pub async fn create_order(
     pool: &PgPool,
     customer_id: Id,
     payload: &CreateOrderPayload,
-) -> Result<OrderWithItems, AppError> {
+    payment_provider: &Arc<dyn PaymentProvider>,
+) -> Result<CreateOrderResult, AppError> {
     payload.validate()?;
 
     // Verify merchant exists and is accepting orders
@@ -108,10 +122,132 @@ pub async fn create_order(
         merchant_id = merchant.id.to_string(),
         total = total,
         items_count = items.len(),
+        payment_type = ?payload.payment_type,
         "Order created"
     );
 
-    Ok(OrderWithItems { order, items, merchant_name: None })
+    // For MobileMoney: initiate payment via PaymentProvider
+    let payment_url = if payload.payment_type == PaymentType::MobileMoney {
+        // Resolve customer phone from DB
+        let customer = crate::users::repository::find_by_id(pool, customer_id)
+            .await?
+            .ok_or_else(|| AppError::InternalError("Customer not found".into()))?;
+
+        let payment_request = PaymentRequest {
+            order_id: order.id,
+            amount: total,
+            currency: "XOF".into(),
+            customer_phone: customer.phone,
+            description: format!("Commande mefali {}", &order.id.to_string()[..8]),
+        };
+
+        match payment_provider.initiate_payment(payment_request).await {
+            Ok(response) => {
+                // M3: persist external transaction ID for audit
+                if let Err(e) = repository::set_external_transaction_id(
+                    pool,
+                    order.id,
+                    &response.transaction_id,
+                ).await {
+                    warn!(
+                        order_id = order.id.to_string(),
+                        error = %e,
+                        "Failed to persist external_transaction_id — non-blocking"
+                    );
+                }
+                info!(
+                    order_id = order.id.to_string(),
+                    transaction_id = %response.transaction_id,
+                    "Mobile Money payment initiated"
+                );
+                response.payment_url
+            }
+            Err(e) => {
+                // Order is created but payment initiation failed.
+                // Order stays with payment_status: pending, client can retry.
+                warn!(
+                    order_id = order.id.to_string(),
+                    error = %e,
+                    "Payment initiation failed — order created, client can retry"
+                );
+                return Err(map_payment_error(e));
+            }
+        }
+    } else {
+        None
+    };
+
+    Ok(CreateOrderResult {
+        order: OrderWithItems { order, items, merchant_name: None },
+        payment_url,
+    })
+}
+
+/// M4: Retry payment for a mobile_money order stuck in pending.
+/// Re-initiates payment via PaymentProvider and returns a new payment_url.
+pub async fn retry_payment(
+    pool: &PgPool,
+    customer_id: Id,
+    order_id: Id,
+    payment_provider: &Arc<dyn PaymentProvider>,
+) -> Result<Option<String>, AppError> {
+    let order = repository::find_by_id(pool, order_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Order not found".into()))?;
+
+    // Ownership check
+    if order.customer_id != customer_id {
+        return Err(AppError::Forbidden("Not your order".into()));
+    }
+
+    // Only retry for mobile_money orders still pending
+    if order.payment_type != PaymentType::MobileMoney {
+        return Err(AppError::BadRequest("Only mobile_money orders can retry payment".into()));
+    }
+    if order.payment_status != PaymentStatus::Pending {
+        return Err(AppError::BadRequest(format!(
+            "Cannot retry payment — status is already {:?}",
+            order.payment_status
+        )));
+    }
+
+    let customer = crate::users::repository::find_by_id(pool, customer_id)
+        .await?
+        .ok_or_else(|| AppError::InternalError("Customer not found".into()))?;
+
+    let payment_request = PaymentRequest {
+        order_id: order.id,
+        amount: order.total,
+        currency: "XOF".into(),
+        customer_phone: customer.phone,
+        description: format!("Commande mefali {}", &order.id.to_string()[..8]),
+    };
+
+    let response = payment_provider
+        .initiate_payment(payment_request)
+        .await
+        .map_err(map_payment_error)?;
+
+    // Persist external transaction ID
+    if let Err(e) = repository::set_external_transaction_id(
+        pool,
+        order.id,
+        &response.transaction_id,
+    ).await {
+        warn!(
+            order_id = order.id.to_string(),
+            error = %e,
+            "Failed to persist external_transaction_id on retry"
+        );
+    }
+
+    info!(
+        order_id = order.id.to_string(),
+        transaction_id = %response.transaction_id,
+        "Payment retry initiated"
+    );
+
+    Ok(response.payment_url)
 }
 
 /// Merchant accepts a pending order.
@@ -442,6 +578,86 @@ fn validate_ready(status: &OrderStatus) -> Result<(), AppError> {
         )));
     }
     Ok(())
+}
+
+/// Map payment provider errors to AppError.
+fn map_payment_error(e: PaymentError) -> AppError {
+    match e {
+        PaymentError::NetworkError(_) => {
+            AppError::ExternalServiceError(format!("Payment service unavailable: {e}"))
+        }
+        PaymentError::InitiationFailed(_) => {
+            AppError::ExternalServiceError(format!("Payment initiation failed: {e}"))
+        }
+        PaymentError::VerificationFailed(_) => {
+            AppError::ExternalServiceError(format!("Payment verification failed: {e}"))
+        }
+        PaymentError::WithdrawalFailed(_) => {
+            AppError::ExternalServiceError(format!("Withdrawal failed: {e}"))
+        }
+    }
+}
+
+/// Process a CinetPay webhook notification.
+/// Verifies the payment via PaymentProvider and updates order payment_status.
+/// Idempotent: if payment_status is already escrow_held, returns Ok without changes.
+pub async fn process_payment_webhook(
+    pool: &PgPool,
+    order_id: Id,
+    payment_provider: &Arc<dyn PaymentProvider>,
+) -> Result<super::model::Order, AppError> {
+    // Find the order
+    let order = repository::find_by_id(pool, order_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Order not found".into()))?;
+
+    // Idempotence: if already escrow_held, return immediately
+    if order.payment_status == PaymentStatus::EscrowHeld {
+        info!(
+            order_id = order_id.to_string(),
+            "Webhook idempotent — payment already escrow_held"
+        );
+        return Ok(order);
+    }
+
+    // Verify payment status with CinetPay
+    let provider_status = payment_provider
+        .verify_payment(&order_id.to_string())
+        .await
+        .map_err(|e| {
+            error!(
+                order_id = order_id.to_string(),
+                error = %e,
+                "Payment verification failed during webhook processing"
+            );
+            map_payment_error(e)
+        })?;
+
+    let new_status = match provider_status {
+        ProviderPaymentStatus::Completed => PaymentStatus::EscrowHeld,
+        ProviderPaymentStatus::Failed | ProviderPaymentStatus::Cancelled => {
+            // Leave payment_status as pending — client can retry
+            info!(
+                order_id = order_id.to_string(),
+                provider_status = ?provider_status,
+                "Payment not successful — keeping pending status"
+            );
+            return Ok(order);
+        }
+        ProviderPaymentStatus::Pending => {
+            return Ok(order);
+        }
+    };
+
+    let updated = repository::update_payment_status(pool, order_id, &new_status).await?;
+
+    info!(
+        order_id = order_id.to_string(),
+        new_payment_status = ?new_status,
+        "Payment webhook processed — status updated"
+    );
+
+    Ok(updated)
 }
 
 #[cfg(test)]

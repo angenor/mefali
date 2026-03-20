@@ -20,6 +20,7 @@ pub struct Order {
     pub delivery_lng: Option<f64>,
     pub city_id: Option<Id>,
     pub notes: Option<String>,
+    pub external_transaction_id: Option<String>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }
@@ -334,6 +335,7 @@ mod tests {
             delivery_lng: Some(-5.03),
             city_id: None,
             notes: Some("Sans piment".into()),
+            external_transaction_id: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         };

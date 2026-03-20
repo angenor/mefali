@@ -15,6 +15,7 @@ dependencies:
   mefali_core:
     path: ../mefali_core
   cached_network_image: ^3.3.0
+  google_maps_flutter: ^2.10.0
 
 dev_dependencies:
   flutter_test:

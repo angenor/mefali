@@ -27,6 +27,12 @@ pub fn test_config() -> AppConfig {
         otp_expiry_seconds: 300,
         otp_max_attempts: 3,
         otp_rate_limit_per_minute: 3,
+        cinetpay_api_key: "mock".into(),
+        cinetpay_site_id: "mock".into(),
+        cinetpay_base_url: "https://api-checkout.cinetpay.com/v2".into(),
+        cinetpay_notify_url: "http://localhost:8090/api/v1/payments/webhook".into(),
+        cinetpay_return_url: "http://localhost:8090/payment/return".into(),
+        cinetpay_webhook_secret: "test-webhook-secret".into(),
     }
 }
 

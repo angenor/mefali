@@ -3,6 +3,8 @@ use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
 use notification::sms::dev_provider::DevSmsProvider;
 use notification::sms::SmsProvider;
+use payment_provider::cinetpay::CinetPayAdapter;
+use payment_provider::provider::PaymentProvider;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -50,6 +52,16 @@ async fn main() -> std::io::Result<()> {
     // SMS provider — swap DevSmsProvider for a real provider in production
     let sms_provider: Arc<dyn SmsProvider> = Arc::new(DevSmsProvider);
 
+    // Payment provider — CinetPay adapter (swap for Mock in dev if needed)
+    let payment_provider: Arc<dyn PaymentProvider> = Arc::new(CinetPayAdapter::new(
+        config.cinetpay_api_key.clone(),
+        config.cinetpay_site_id.clone(),
+        config.cinetpay_base_url.clone(),
+        config.cinetpay_notify_url.clone(),
+        config.cinetpay_return_url.clone(),
+    ));
+    info!("CinetPay payment provider initialized");
+
     // Initialize MinIO/S3 client
     let s3_client = infrastructure::storage::create_s3_client(
         &config.minio_endpoint,
@@ -64,6 +76,7 @@ async fn main() -> std::io::Result<()> {
     let db_data = web::Data::new(db_pool);
     let redis_data = web::Data::new(redis_conn);
     let sms_data = web::Data::new(sms_provider);
+    let payment_data = web::Data::new(payment_provider);
     let s3_data = web::Data::new(s3_client);
 
     HttpServer::new(move || {
@@ -72,6 +85,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(db_data.clone())
             .app_data(redis_data.clone())
             .app_data(sms_data.clone())
+            .app_data(payment_data.clone())
             .app_data(s3_data.clone())
             .configure(routes::configure)
     })

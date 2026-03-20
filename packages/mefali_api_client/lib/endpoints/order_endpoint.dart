@@ -86,8 +86,10 @@ class OrderEndpoint {
     return Order.fromJson(data['order'] as Map<String, dynamic>);
   }
 
-  /// Cree une commande (role client, utilise pour les tests).
-  Future<Order> createOrder({
+  /// Resultat de creation de commande — inclut payment_url pour mobile money.
+  /// Cree une commande (role client).
+  /// Retourne un [CreateOrderResult] contenant l'ordre et un eventuel payment_url.
+  Future<CreateOrderResult> createOrder({
     required String merchantId,
     required List<Map<String, dynamic>> items,
     required String paymentType,
@@ -112,6 +114,27 @@ class OrderEndpoint {
     );
 
     final data = response.data!['data'] as Map<String, dynamic>;
-    return Order.fromJson(data['order'] as Map<String, dynamic>);
+    final order = Order.fromJson(data['order'] as Map<String, dynamic>);
+    final paymentUrl = data['payment_url'] as String?;
+    return CreateOrderResult(order: order, paymentUrl: paymentUrl);
+  }
+  /// M4: Retry payment for a mobile_money order stuck in pending.
+  /// Returns a new payment_url from CinetPay.
+  Future<String?> retryPayment(String orderId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/orders/$orderId/retry-payment',
+    );
+
+    final data = response.data!['data'] as Map<String, dynamic>;
+    return data['payment_url'] as String?;
   }
 }
+
+/// Resultat de creation de commande.
+class CreateOrderResult {
+  const CreateOrderResult({required this.order, this.paymentUrl});
+
+  final Order order;
+  final String? paymentUrl;
+}
+

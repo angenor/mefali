@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_design/mefali_design.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../order/saved_addresses_provider.dart';
 
 class _IsOrderingNotifier extends Notifier<bool> {
   @override
@@ -96,19 +99,19 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
   }
 
   void _showPriceBreakdown(
-    BuildContext context,
+    BuildContext screenContext,
     WidgetRef ref,
     RestaurantSummary restaurant,
   ) {
     showModalBottomSheet<void>(
-      context: context,
+      context: screenContext,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) {
         return Consumer(
-          builder: (context, sheetRef, _) {
+          builder: (_, sheetRef, _) {
             final cart = sheetRef.watch(cartProvider);
             final isOrdering = sheetRef.watch(_isOrderingProvider);
             if (cart.isEmpty) {
@@ -127,7 +130,8 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
               onIncrement: notifier.incrementProduct,
               onDecrement: notifier.decrementProduct,
               isOrdering: isOrdering,
-              onOrder: (paymentType) => _placeOrder(
+              onOrder: (paymentType) => _selectAddressAndOrder(
+                screenContext,
                 sheetContext,
                 sheetRef,
                 restaurant,
@@ -141,12 +145,51 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _selectAddressAndOrder(
+    BuildContext screenContext,
+    BuildContext sheetContext,
+    WidgetRef ref,
+    RestaurantSummary restaurant,
+    List<CartItem> items,
+    String paymentType,
+  ) async {
+    if (!sheetContext.mounted) return;
+    // Fermer le bottom sheet avant de naviguer
+    Navigator.of(sheetContext).pop();
+    if (!screenContext.mounted) return;
+    final addressResult = await GoRouter.of(screenContext)
+        .push<AddressResult>('/order/address-selection');
+    if (addressResult == null || !screenContext.mounted) return;
+
+    // Sauvegarder l'adresse pour reutilisation future
+    final db = ref.read(mefaliDatabaseProvider);
+    await saveAddress(
+      db,
+      id: '${addressResult.lat}_${addressResult.lng}',
+      address: addressResult.address,
+      lat: addressResult.lat,
+      lng: addressResult.lng,
+    );
+    ref.invalidate(savedAddressesProvider);
+
+    if (!screenContext.mounted) return;
+    await _placeOrder(
+      screenContext,
+      ref,
+      restaurant,
+      items,
+      paymentType,
+      addressResult,
+    );
+  }
+
   Future<void> _placeOrder(
     BuildContext context,
     WidgetRef ref,
     RestaurantSummary restaurant,
     List<CartItem> items,
     String paymentType,
+    AddressResult address,
   ) async {
     if (!context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -158,7 +201,7 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
       final orderEndpoint = OrderEndpoint(
         ref.read(dioProvider),
       );
-      final order = await orderEndpoint.createOrder(
+      final result = await orderEndpoint.createOrder(
         merchantId: restaurant.id,
         items: items
             .map((item) => {
@@ -167,23 +210,57 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
                 })
             .toList(),
         paymentType: paymentType,
-        deliveryAddress: 'Bouake',
+        deliveryAddress: address.address,
+        deliveryLat: address.lat,
+        deliveryLng: address.lng,
       );
 
       ref.read(_isOrderingProvider.notifier).setOrdering(false);
+
+      // Mobile Money: open CinetPay payment URL and navigate to payment status
+      if (paymentType == 'mobile_money' && result.paymentUrl != null) {
+        // H1: validate URL scheme before launching
+        final uri = Uri.parse(result.paymentUrl!);
+        if (uri.scheme != 'https') {
+          messenger.showSnackBar(
+            SnackBar(
+              content: const Text('Erreur: URL de paiement invalide'),
+              backgroundColor: colorScheme.error,
+            ),
+          );
+          return;
+        }
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        // C3: cart is cleared in PaymentStatusScreen on success, not here
+        if (!context.mounted) return;
+        router.go('/order/payment-status/${result.order.id}');
+        return;
+      }
+
+      // COD: clear cart and navigate to tracking
       ref.read(cartProvider.notifier).clear();
-      router.go('/order/tracking/${order.id}');
+      router.go('/order/tracking/${result.order.id}');
     } on Exception catch (e) {
       ref.read(_isOrderingProvider.notifier).setOrdering(false);
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      // Check if it's a payment service error (CinetPay unavailable)
+      final isCinetPayError = errorMsg.contains('service') ||
+          errorMsg.contains('payment') ||
+          errorMsg.contains('502');
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text(
+            isCinetPayError
+                ? 'Service de paiement temporairement indisponible. Vous pouvez payer en cash a la livraison ou reessayer.'
+                : 'Erreur: $errorMsg',
+          ),
           backgroundColor: colorScheme.error,
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'Reessayer',
             textColor: colorScheme.onError,
             onPressed: () =>
-                _placeOrder(context, ref, restaurant, items, paymentType),
+                _placeOrder(context, ref, restaurant, items, paymentType, address),
           ),
         ),
       );

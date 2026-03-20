@@ -8,6 +8,7 @@ export 'components/order_card.dart';
 export 'components/price_breakdown_sheet.dart';
 export 'components/product_list_tile.dart';
 export 'components/restaurant_card.dart';
+export 'components/map_address_picker.dart';
 export 'components/vendor_status_indicator.dart';
 export 'mefali_colors.dart';
 export 'mefali_theme.dart';

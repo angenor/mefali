@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Selecteur de mode de paiement (story 4.4).
-/// COD pre-selectionne, Mobile Money desactive.
+/// Selecteur de mode de paiement.
+/// COD pre-selectionne, Mobile Money actif.
 class PaymentMethodSelector extends StatelessWidget {
   const PaymentMethodSelector({
     required this.selectedMethod,
@@ -36,9 +36,8 @@ class PaymentMethodSelector extends StatelessWidget {
         ),
         _PaymentOption(
           label: 'Mobile Money',
-          subtitle: 'Bientot disponible',
-          isSelected: false,
-          enabled: false,
+          isSelected: selectedMethod == 'mobile_money',
+          onTap: () => onChanged('mobile_money'),
           textTheme: textTheme,
           colorScheme: colorScheme,
         ),
@@ -53,15 +52,11 @@ class _PaymentOption extends StatelessWidget {
     required this.isSelected,
     required this.textTheme,
     required this.colorScheme,
-    this.subtitle,
     this.onTap,
-    this.enabled = true,
   });
 
   final String label;
-  final String? subtitle;
   final bool isSelected;
-  final bool enabled;
   final VoidCallback? onTap;
   final TextTheme textTheme;
   final ColorScheme colorScheme;
@@ -69,7 +64,7 @@ class _PaymentOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: enabled ? onTap : null,
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
@@ -79,33 +74,12 @@ class _PaymentOption extends StatelessWidget {
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
               size: 20,
-              color: enabled
-                  ? (isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant)
-                  : colorScheme.onSurfaceVariant.withAlpha(80),
+              color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: enabled
-                          ? null
-                          : colorScheme.onSurfaceVariant.withAlpha(120),
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant.withAlpha(100),
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                ],
-              ),
+            Text(
+              label,
+              style: textTheme.bodyMedium,
             ),
           ],
         ),

@@ -53,7 +53,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}", web::get().to(orders::get_customer_order))
                     .route("/{id}/accept", web::put().to(orders::accept_order))
                     .route("/{id}/reject", web::put().to(orders::reject_order))
-                    .route("/{id}/ready", web::put().to(orders::mark_ready)),
+                    .route("/{id}/ready", web::put().to(orders::mark_ready))
+                    .route("/{id}/retry-payment", web::post().to(orders::retry_payment)),
+            )
+            // Payment webhook — NO JWT auth (CinetPay calls directly)
+            .service(
+                web::scope("/payments")
+                    .route("/webhook", web::post().to(orders::payment_webhook)),
             )
             // Merchant routes — mixed roles
             .service(

@@ -1,10 +1,14 @@
+use std::sync::Arc;
+
 use actix_web::{web, HttpResponse};
 use common::error::AppError;
 use common::response::ApiResponse;
 use domain::orders::model::{CreateOrderPayload, OrderStatus, RejectOrderPayload};
 use domain::orders::service;
 use domain::users::model::UserRole;
+use payment_provider::provider::PaymentProvider;
 use sqlx::PgPool;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::extractors::AuthenticatedUser;
@@ -13,16 +17,27 @@ use crate::middleware::require_role;
 /// POST /api/v1/orders
 ///
 /// Client creates a new order.
+/// For MobileMoney orders, the response includes a payment_url for CinetPay redirect.
 pub async fn create_order(
     auth: AuthenticatedUser,
     body: web::Json<CreateOrderPayload>,
     pool: web::Data<PgPool>,
+    payment_provider: web::Data<Arc<dyn PaymentProvider>>,
 ) -> Result<HttpResponse, AppError> {
     require_role(&auth, &[UserRole::Client])?;
 
-    let order = service::create_order(&pool, auth.user_id, &body).await?;
+    let result = service::create_order(
+        &pool,
+        auth.user_id,
+        &body,
+        &payment_provider,
+    )
+    .await?;
 
-    let response = ApiResponse::new(serde_json::json!({ "order": order }));
+    let response = ApiResponse::new(serde_json::json!({
+        "order": result.order,
+        "payment_url": result.payment_url,
+    }));
     Ok(HttpResponse::Created().json(response))
 }
 
@@ -145,6 +160,94 @@ pub async fn get_weekly_stats(
 
     let response = ApiResponse::new(serde_json::json!(stats));
     Ok(HttpResponse::Ok().json(response))
+}
+
+/// POST /api/v1/orders/{id}/retry-payment
+///
+/// Client retries payment for a mobile_money order stuck in pending.
+pub async fn retry_payment(
+    auth: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+    payment_provider: web::Data<Arc<dyn PaymentProvider>>,
+) -> Result<HttpResponse, AppError> {
+    require_role(&auth, &[UserRole::Client])?;
+
+    let payment_url =
+        service::retry_payment(&pool, auth.user_id, path.into_inner(), &payment_provider).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "data": { "payment_url": payment_url }
+    })))
+}
+
+/// CinetPay webhook payload.
+#[derive(Debug, serde::Deserialize)]
+pub struct WebhookPayload {
+    /// CinetPay sends the transaction_id (= our order_id UUID)
+    pub cpm_trans_id: Option<String>,
+}
+
+/// Query parameters for webhook (secret verification).
+#[derive(Debug, serde::Deserialize)]
+pub struct WebhookQuery {
+    pub secret: Option<String>,
+}
+
+/// POST /api/v1/payments/webhook?secret=xxx
+///
+/// CinetPay webhook endpoint — NO JWT auth required.
+/// Verifies webhook secret, then verifies payment via PaymentProvider.
+/// Idempotent: duplicate webhooks for completed payments return 200.
+pub async fn payment_webhook(
+    query: web::Query<WebhookQuery>,
+    body: web::Json<WebhookPayload>,
+    pool: web::Data<PgPool>,
+    config: web::Data<common::config::AppConfig>,
+    payment_provider: web::Data<Arc<dyn PaymentProvider>>,
+) -> Result<HttpResponse, AppError> {
+    // C1: verify webhook secret before processing
+    let provided_secret = query.secret.as_deref().unwrap_or_default();
+    if provided_secret != config.cinetpay_webhook_secret {
+        warn!("Webhook received with invalid or missing secret");
+        return Ok(HttpResponse::Unauthorized().json(serde_json::json!({
+            "error": {"code": "UNAUTHORIZED", "message": "Invalid webhook secret"}
+        })));
+    }
+
+    let transaction_id = body
+        .cpm_trans_id
+        .as_deref()
+        .unwrap_or_default();
+
+    if transaction_id.is_empty() {
+        warn!("Webhook received with empty transaction_id");
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": {"code": "BAD_REQUEST", "message": "Missing cpm_trans_id"}
+        })));
+    }
+
+    let order_id: Uuid = transaction_id.parse().map_err(|_| {
+        warn!(transaction_id = %transaction_id, "Webhook: invalid transaction_id format");
+        AppError::BadRequest(format!("Invalid transaction_id: {transaction_id}"))
+    })?;
+
+    info!(
+        order_id = %order_id,
+        "Processing CinetPay webhook"
+    );
+
+    let order = service::process_payment_webhook(&pool, order_id, &payment_provider).await?;
+
+    info!(
+        order_id = %order_id,
+        payment_status = ?order.payment_status,
+        "Webhook processed successfully"
+    );
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "ok"
+    })))
 }
 
 /// Parse comma-separated status filter into Vec<OrderStatus>.

@@ -18,6 +18,12 @@ pub struct AppConfig {
     pub otp_expiry_seconds: u64,
     pub otp_max_attempts: u32,
     pub otp_rate_limit_per_minute: u32,
+    pub cinetpay_api_key: String,
+    pub cinetpay_site_id: String,
+    pub cinetpay_base_url: String,
+    pub cinetpay_notify_url: String,
+    pub cinetpay_return_url: String,
+    pub cinetpay_webhook_secret: String,
 }
 
 fn parse_or_default<T: std::str::FromStr>(var_name: &str, raw: &str, default: T) -> T {
@@ -62,6 +68,24 @@ impl AppConfig {
                 &otp_rate_raw,
                 3,
             ),
+            cinetpay_api_key: env::var("CINETPAY_API_KEY").unwrap_or_else(|_| {
+                warn!("CINETPAY_API_KEY not set — using mock value");
+                "mock".into()
+            }),
+            cinetpay_site_id: env::var("CINETPAY_SITE_ID").unwrap_or_else(|_| {
+                warn!("CINETPAY_SITE_ID not set — using mock value");
+                "mock".into()
+            }),
+            cinetpay_base_url: env::var("CINETPAY_BASE_URL")
+                .unwrap_or_else(|_| "https://api-checkout.cinetpay.com/v2".into()),
+            cinetpay_notify_url: env::var("CINETPAY_NOTIFY_URL")
+                .unwrap_or_else(|_| "http://localhost:8090/api/v1/payments/webhook".into()),
+            cinetpay_return_url: env::var("CINETPAY_RETURN_URL")
+                .unwrap_or_else(|_| "http://localhost:8090/payment/return".into()),
+            cinetpay_webhook_secret: env::var("CINETPAY_WEBHOOK_SECRET").unwrap_or_else(|_| {
+                warn!("CINETPAY_WEBHOOK_SECRET not set — using dev default");
+                "dev-webhook-secret".into()
+            }),
         })
     }
 }

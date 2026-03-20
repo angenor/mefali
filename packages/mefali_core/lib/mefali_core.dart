@@ -24,4 +24,5 @@ export 'models/demo_data.dart';
 export 'models/restaurant_summary.dart';
 export 'models/product_item.dart';
 export 'models/cart_item.dart';
+export 'models/saved_address.dart';
 export 'utils/formatting.dart';

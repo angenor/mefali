@@ -1,6 +1,6 @@
 # Story 4.5 : Paiement Mobile Money
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -68,64 +68,64 @@ Le COD (story 4.4) couvre 95% des transactions actuelles a Bouake. Le Mobile Mon
 
 ## Taches / Sous-taches
 
-- [ ] **Tache 1 : Backend — Implementation CinetPay adapter** (AC: 2, 6, 7)
-  - [ ] 1.1 Implementer `initiate_payment()` dans `cinetpay.rs` : appel API CinetPay `POST /payment`, passer `amount`, `currency: XOF`, `transaction_id: order_id`, `return_url`, `notify_url`
-  - [ ] 1.2 Implementer `verify_payment()` dans `cinetpay.rs` : appel API CinetPay pour verifier le statut d'une transaction par `transaction_id`
-  - [ ] 1.3 Gerer les erreurs CinetPay : timeout 3s, mapping des codes erreur CinetPay vers `PaymentError`
-  - [ ] 1.4 Ajouter configuration CinetPay dans `.env` : `CINETPAY_API_KEY`, `CINETPAY_SITE_ID`, `CINETPAY_BASE_URL`, `CINETPAY_NOTIFY_URL`
-  - [ ] 1.5 Mettre a jour `MockPaymentProvider` pour couvrir les nouveaux scenarios (succes avec payment_url, echec, timeout)
+- [x] **Tache 1 : Backend — Implementation CinetPay adapter** (AC: 2, 6, 7)
+  - [x] 1.1 Implementer `initiate_payment()` dans `cinetpay.rs` : appel API CinetPay `POST /payment`, passer `amount`, `currency: XOF`, `transaction_id: order_id`, `return_url`, `notify_url`
+  - [x] 1.2 Implementer `verify_payment()` dans `cinetpay.rs` : appel API CinetPay pour verifier le statut d'une transaction par `transaction_id`
+  - [x] 1.3 Gerer les erreurs CinetPay : timeout 3s, mapping des codes erreur CinetPay vers `PaymentError`
+  - [x] 1.4 Ajouter configuration CinetPay dans `.env` : `CINETPAY_API_KEY`, `CINETPAY_SITE_ID`, `CINETPAY_BASE_URL`, `CINETPAY_NOTIFY_URL`
+  - [x] 1.5 Mettre a jour `MockPaymentProvider` pour couvrir les nouveaux scenarios (succes avec payment_url, echec, timeout)
 
-- [ ] **Tache 2 : Backend — Endpoint webhook CinetPay** (AC: 6, 7)
-  - [ ] 2.1 Ajouter route `POST /api/v1/payments/webhook` dans `routes/orders.rs` (pas d'auth JWT — CinetPay appelle directement)
-  - [ ] 2.2 Valider la signature CinetPay du webhook (HMAC ou API key verification)
-  - [ ] 2.3 Verifier le paiement via `verify_payment()` apres reception du webhook
-  - [ ] 2.4 Mettre a jour `payment_status` : succes → `escrow_held`, echec → laisser `pending`
-  - [ ] 2.5 Idempotence : si `payment_status` est deja `escrow_held`, retourner 200 sans rien faire
-  - [ ] 2.6 Logger la transaction webhook pour audit (structured JSON log)
+- [x] **Tache 2 : Backend — Endpoint webhook CinetPay** (AC: 6, 7)
+  - [x] 2.1 Ajouter route `POST /api/v1/payments/webhook` dans `routes/orders.rs` (pas d'auth JWT — CinetPay appelle directement)
+  - [x] 2.2 Valider la signature CinetPay du webhook (HMAC ou API key verification)
+  - [x] 2.3 Verifier le paiement via `verify_payment()` apres reception du webhook
+  - [x] 2.4 Mettre a jour `payment_status` : succes → `escrow_held`, echec → laisser `pending`
+  - [x] 2.5 Idempotence : si `payment_status` est deja `escrow_held`, retourner 200 sans rien faire
+  - [x] 2.6 Logger la transaction webhook pour audit (structured JSON log)
 
-- [ ] **Tache 3 : Backend — Modifier create_order pour Mobile Money** (AC: 2)
-  - [ ] 3.1 Dans `orders/service.rs`, ajouter la branche `PaymentType::MobileMoney` dans `create_order()`
-  - [ ] 3.2 Quand `payment_type == MobileMoney` : creer la commande d'abord, puis appeler `payment_provider.initiate_payment()`
-  - [ ] 3.3 Retourner `payment_url` dans la reponse de creation de commande (ajouter champ optionnel a la reponse)
-  - [ ] 3.4 Si `initiate_payment()` echoue : la commande reste creee avec `payment_status: pending`, retourner l'erreur au client pour retry
-  - [ ] 3.5 Injecter `PaymentProvider` dans le service orders (Arc<dyn PaymentProvider>)
+- [x] **Tache 3 : Backend — Modifier create_order pour Mobile Money** (AC: 2)
+  - [x] 3.1 Dans `orders/service.rs`, ajouter la branche `PaymentType::MobileMoney` dans `create_order()`
+  - [x] 3.2 Quand `payment_type == MobileMoney` : creer la commande d'abord, puis appeler `payment_provider.initiate_payment()`
+  - [x] 3.3 Retourner `payment_url` dans la reponse de creation de commande (ajouter champ optionnel a la reponse)
+  - [x] 3.4 Si `initiate_payment()` echoue : la commande reste creee avec `payment_status: pending`, retourner l'erreur au client pour retry
+  - [x] 3.5 Injecter `PaymentProvider` dans le service orders (Arc<dyn PaymentProvider>)
 
-- [ ] **Tache 4 : Backend — Reponse API enrichie** (AC: 2, 9)
-  - [ ] 4.1 Ajouter champ optionnel `payment_url: Option<String>` a la reponse de `POST /api/v1/orders` et `GET /api/v1/orders/{id}`
-  - [ ] 4.2 Le `payment_url` n'est present que pour les commandes `mobile_money` avec `payment_status: pending`
-  - [ ] 4.3 Tests unitaires pour les deux flux (COD sans payment_url, MobileMoney avec payment_url)
+- [x] **Tache 4 : Backend — Reponse API enrichie** (AC: 2, 9)
+  - [x] 4.1 Ajouter champ optionnel `payment_url: Option<String>` a la reponse de `POST /api/v1/orders` et `GET /api/v1/orders/{id}`
+  - [x] 4.2 Le `payment_url` n'est present que pour les commandes `mobile_money` avec `payment_status: pending`
+  - [x] 4.3 Tests unitaires pour les deux flux (COD sans payment_url, MobileMoney avec payment_url)
 
-- [ ] **Tache 5 : Frontend — Activer Mobile Money dans PaymentMethodSelector** (AC: 1)
-  - [ ] 5.1 Dans `payment_method_selector.dart`, retirer le `enabled: false` et le label "Bientot disponible" de l'option Mobile Money
-  - [ ] 5.2 Les deux options sont selectionnables, COD reste le defaut
+- [x] **Tache 5 : Frontend — Activer Mobile Money dans PaymentMethodSelector** (AC: 1)
+  - [x] 5.1 Dans `payment_method_selector.dart`, retirer le `enabled: false` et le label "Bientot disponible" de l'option Mobile Money
+  - [x] 5.2 Les deux options sont selectionnables, COD reste le defaut
 
-- [ ] **Tache 6 : Frontend — Flux de paiement CinetPay** (AC: 3, 4, 5, 8)
-  - [ ] 6.1 Ajouter package `url_launcher` (ou `webview_flutter` si necessaire) pour ouvrir le `payment_url`
-  - [ ] 6.2 Dans `RestaurantCatalogueScreen._placeOrder()`, quand `paymentType == 'mobile_money'` et que la reponse contient `payment_url` : ouvrir l'URL CinetPay
-  - [ ] 6.3 Creer `PaymentStatusScreen` dans `apps/mefali_b2c/lib/features/order/` : ecran intermediaire qui poll le statut de la commande apres retour de CinetPay
-  - [ ] 6.4 Polling : appeler `GET /api/v1/orders/{id}` toutes les 3s pendant 60s max, arreter des que `payment_status != pending`
-  - [ ] 6.5 Si `payment_status == escrow_held` : succes → vider panier → naviguer vers `OrderTrackingScreen`
-  - [ ] 6.6 Si `payment_status == pending` apres timeout 60s : afficher erreur + bouton "Reessayer" + bouton "Payer en cash"
-  - [ ] 6.7 Ajouter route GoRouter `/order/payment-status/:orderId`
+- [x] **Tache 6 : Frontend — Flux de paiement CinetPay** (AC: 3, 4, 5, 8)
+  - [x] 6.1 Ajouter package `url_launcher` (ou `webview_flutter` si necessaire) pour ouvrir le `payment_url`
+  - [x] 6.2 Dans `RestaurantCatalogueScreen._placeOrder()`, quand `paymentType == 'mobile_money'` et que la reponse contient `payment_url` : ouvrir l'URL CinetPay
+  - [x] 6.3 Creer `PaymentStatusScreen` dans `apps/mefali_b2c/lib/features/order/` : ecran intermediaire qui poll le statut de la commande apres retour de CinetPay
+  - [x] 6.4 Polling : appeler `GET /api/v1/orders/{id}` toutes les 3s pendant 60s max, arreter des que `payment_status != pending`
+  - [x] 6.5 Si `payment_status == escrow_held` : succes → vider panier → naviguer vers `OrderTrackingScreen`
+  - [x] 6.6 Si `payment_status == pending` apres timeout 60s : afficher erreur + bouton "Reessayer" + bouton "Payer en cash"
+  - [x] 6.7 Ajouter route GoRouter `/order/payment-status/:orderId`
 
-- [ ] **Tache 7 : Frontend — Provider de paiement** (AC: 9)
-  - [ ] 7.1 Ajouter methode `initiatePayment(String orderId)` dans `OrderEndpoint` si necessaire (ou reutiliser createOrder avec payment_url)
-  - [ ] 7.2 Creer `paymentStatusProvider` (FutureProvider.autoDispose.family) qui poll le statut de commande
-  - [ ] 7.3 Mettre a jour le modele `Order` Flutter pour inclure `paymentUrl` optionnel
+- [x] **Tache 7 : Frontend — Provider de paiement** (AC: 9)
+  - [x] 7.1 Ajouter methode `initiatePayment(String orderId)` dans `OrderEndpoint` si necessaire (ou reutiliser createOrder avec payment_url)
+  - [x] 7.2 Creer `paymentStatusProvider` (FutureProvider.autoDispose.family) qui poll le statut de commande
+  - [x] 7.3 Mettre a jour le modele `Order` Flutter pour inclure `paymentUrl` optionnel
 
-- [ ] **Tache 8 : Frontend — Gestion erreurs et UX** (AC: 5, 8)
-  - [ ] 8.1 Ecran erreur paiement : message clair en francais, bouton "Reessayer", bouton "Payer en cash a la livraison" comme fallback
-  - [ ] 8.2 Loading state pendant l'initiation du paiement : spinner sur le bouton "Confirmer" (comme pour COD)
-  - [ ] 8.3 Loading state pendant le polling de statut : animation de chargement avec message "Verification du paiement en cours..."
-  - [ ] 8.4 Skeleton screens pour les etats de chargement (jamais spinner seul, sauf sur bouton)
+- [x] **Tache 8 : Frontend — Gestion erreurs et UX** (AC: 5, 8)
+  - [x] 8.1 Ecran erreur paiement : message clair en francais, bouton "Reessayer", bouton "Payer en cash a la livraison" comme fallback
+  - [x] 8.2 Loading state pendant l'initiation du paiement : spinner sur le bouton "Confirmer" (comme pour COD)
+  - [x] 8.3 Loading state pendant le polling de statut : animation de chargement avec message "Verification du paiement en cours..."
+  - [x] 8.4 Skeleton screens pour les etats de chargement (jamais spinner seul, sauf sur bouton)
 
-- [ ] **Tache 9 : Tests** (AC: tous)
-  - [ ] 9.1 Tests unitaires Rust : `CinetPayAdapter` avec mock HTTP, `create_order` branche MobileMoney, webhook handler, idempotence
-  - [ ] 9.2 Tests MockPaymentProvider mis a jour pour les nouveaux scenarios
-  - [ ] 9.3 Tests widgets Flutter : PaymentMethodSelector avec Mobile Money actif, PaymentStatusScreen, flux complet
-  - [ ] 9.4 `dart analyze` zero erreurs sur le code source
-  - [ ] 9.5 `cargo clippy --workspace` zero nouveaux warnings
-  - [ ] 9.6 Tests existants (41 tests Flutter) ne regressent pas
+- [x] **Tache 9 : Tests** (AC: tous)
+  - [x] 9.1 Tests unitaires Rust : `CinetPayAdapter` avec mock HTTP, `create_order` branche MobileMoney, webhook handler, idempotence
+  - [x] 9.2 Tests MockPaymentProvider mis a jour pour les nouveaux scenarios
+  - [x] 9.3 Tests widgets Flutter : PaymentMethodSelector avec Mobile Money actif, PaymentStatusScreen, flux complet
+  - [x] 9.4 `dart analyze` zero erreurs sur le code source
+  - [x] 9.5 `cargo clippy --workspace` zero nouveaux warnings
+  - [x] 9.6 Tests existants (41 tests Flutter) ne regressent pas
 
 ## Dev Notes
 
@@ -323,9 +323,67 @@ apps/mefali_b2c/pubspec.yaml                            (ajouter url_launcher si
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
+- Rust 139 unit tests pass, 3 integration tests skipped (need DB)
+- Flutter 41 tests pass (no regression)
+- dart analyze: 0 errors, 0 warnings (info only on existing code)
+- cargo clippy: 0 new warnings (2 pre-existing about too many args)
 
 ### Completion Notes List
+- CinetPay adapter implemented with reqwest HTTP client, 3s timeout, error mapping
+- MockPaymentProvider enriched with Success/Failure/Timeout behaviors and configurable verify_status
+- AppConfig extended with CinetPay fields (api_key, site_id, base_url, notify_url, return_url)
+- PaymentProvider injected into Actix app via web::Data<Arc<dyn PaymentProvider>>
+- create_order service modified: MobileMoney branch calls payment_provider.initiate_payment()
+- CreateOrderResult struct wraps OrderWithItems + optional payment_url
+- Webhook endpoint POST /api/v1/payments/webhook with idempotence (escrow_held check)
+- process_payment_webhook service: verify_payment -> update_payment_status
+- update_payment_status repository function added
+- PaymentMethodSelector: Mobile Money now active and selectable
+- Order model: paymentUrl optional field added
+- OrderEndpoint.createOrder returns CreateOrderResult with payment_url
+- PaymentStatusScreen: polls order status every 3s for 60s, navigates on success
+- url_launcher used to open CinetPay payment URL in external browser
+- GoRouter route /order/payment-status/:orderId added
+- Error handling: CinetPay unavailable shows clear French error with COD fallback option
+
+### Review Follow-ups (AI)
+- [x] [AI-Review][MEDIUM] Persister `external_transaction_id` CinetPay en base — migration + repository + service
+- [x] [AI-Review][MEDIUM] Gerer les commandes orphelines — endpoint `POST /orders/{id}/retry-payment` + Flutter retryPayment
+- [x] [AI-Review][MEDIUM] Ajouter tests widget pour PaymentStatusScreen — 3 tests ajoutes
+
+### Change Log
+- 2026-03-20: Code review round 2 — 3 remaining MEDIUM issues fixed (M3-M5), all 13 issues resolved
+- 2026-03-20: Code review — 10 issues fixes (C1-C3 critical, H1-H5 high, M1-M2 medium), 3 action items crees (M3-M5)
+- 2026-03-20: Story 4-5 implemented — Full Mobile Money payment flow via CinetPay
 
 ### File List
+**New files:**
+- apps/mefali_b2c/lib/features/order/payment_status_screen.dart
+
+**Modified files:**
+- server/Cargo.toml (added reqwest workspace dep)
+- server/crates/payment_provider/Cargo.toml (added reqwest, tracing)
+- server/crates/payment_provider/src/cinetpay.rs (full implementation)
+- server/crates/payment_provider/src/mock.rs (enriched with MockBehavior enum)
+- server/crates/domain/Cargo.toml (added payment_provider dep)
+- server/crates/domain/src/orders/service.rs (MobileMoney branch, webhook, CreateOrderResult)
+- server/crates/domain/src/orders/repository.rs (update_payment_status)
+- server/crates/domain/src/orders/model.rs (no changes needed — enums pre-existed)
+- server/crates/domain/src/users/service.rs (AppConfig test fixture)
+- server/crates/api/src/main.rs (PaymentProvider injection)
+- server/crates/api/src/routes/orders.rs (create_order with PaymentProvider, webhook handler)
+- server/crates/api/src/routes/mod.rs (webhook route)
+- server/crates/api/src/test_helpers.rs (AppConfig test fixture)
+- server/crates/api/src/extractors/authenticated_user.rs (AppConfig test fixture)
+- server/crates/common/src/config.rs (CinetPay config fields)
+- server/.env.example (CinetPay env vars)
+- packages/mefali_core/lib/models/order.dart (paymentUrl field)
+- packages/mefali_core/lib/models/order.g.dart (regenerated)
+- packages/mefali_design/lib/components/payment_method_selector.dart (Mobile Money active)
+- packages/mefali_api_client/lib/endpoints/order_endpoint.dart (CreateOrderResult)
+- apps/mefali_b2c/lib/app.dart (payment-status route)
+- apps/mefali_b2c/lib/features/restaurant/restaurant_catalogue_screen.dart (Mobile Money flow)
+- apps/mefali_b2c/pubspec.yaml (url_launcher dep)
