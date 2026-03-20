@@ -49,8 +49,17 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to create Redis connection");
     info!("Redis connection established");
 
-    // SMS provider — swap DevSmsProvider for a real provider in production
+    // SMS provider (single) — used for OTP and other direct SMS
     let sms_provider: Arc<dyn SmsProvider> = Arc::new(DevSmsProvider);
+
+    // SMS router (dual-provider with failover) — used for delivery mission fallback
+    // Swap DevSmsProvider for real providers (Infobip/Twilio) in production
+    let sms_router: Option<notification::sms::SmsRouter> =
+        Some(notification::sms::SmsRouter::new(
+            Box::new(DevSmsProvider),
+            Box::new(DevSmsProvider),
+        ));
+    info!("SMS router initialized with dual-provider failover (dev providers)");
 
     // Payment provider — CinetPay adapter (swap for Mock in dev if needed)
     let payment_provider: Arc<dyn PaymentProvider> = Arc::new(CinetPayAdapter::new(
@@ -61,6 +70,14 @@ async fn main() -> std::io::Result<()> {
         config.cinetpay_return_url.clone(),
     ));
     info!("CinetPay payment provider initialized");
+
+    // FCM push notification client (optional — disabled if Firebase credentials not set)
+    let fcm_client: Option<notification::fcm::FcmClient> =
+        notification::fcm::FcmClient::from_env();
+    match &fcm_client {
+        Some(_) => info!("FCM push notification client initialized"),
+        None => info!("FCM not configured — push notifications disabled (set FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_JSON)"),
+    }
 
     // Initialize MinIO/S3 client
     let s3_client = infrastructure::storage::create_s3_client(
@@ -78,6 +95,8 @@ async fn main() -> std::io::Result<()> {
     let sms_data = web::Data::new(sms_provider);
     let payment_data = web::Data::new(payment_provider);
     let s3_data = web::Data::new(s3_client);
+    let fcm_data = web::Data::new(fcm_client);
+    let sms_router_data = web::Data::new(sms_router);
 
     HttpServer::new(move || {
         App::new()
@@ -87,6 +106,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(sms_data.clone())
             .app_data(payment_data.clone())
             .app_data(s3_data.clone())
+            .app_data(fcm_data.clone())
+            .app_data(sms_router_data.clone())
             .configure(routes::configure)
     })
     .bind(&bind_addr)?

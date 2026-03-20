@@ -74,6 +74,21 @@ pub async fn update_status(
     .map_err(|e| AppError::DatabaseError(format!("Failed to update user status: {}", e)))
 }
 
+/// Update a user's FCM token.
+pub async fn update_fcm_token(
+    pool: &PgPool,
+    user_id: Id,
+    token: Option<&str>,
+) -> Result<(), AppError> {
+    sqlx::query("UPDATE users SET fcm_token = $2, updated_at = now() WHERE id = $1")
+        .bind(user_id)
+        .bind(token)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to update FCM token: {e}")))?;
+    Ok(())
+}
+
 /// Create a new user with the given role and status.
 pub async fn create_user(
     pool: &PgPool,

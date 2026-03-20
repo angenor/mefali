@@ -134,14 +134,24 @@ pub async fn reject_order(
 /// PUT /api/v1/orders/{id}/ready
 ///
 /// Merchant marks a confirmed order as ready for pickup.
+/// Triggers driver notification via FCM with SMS fallback.
 pub async fn mark_ready(
     auth: AuthenticatedUser,
     path: web::Path<Uuid>,
     pool: web::Data<PgPool>,
+    fcm_client: web::Data<Option<notification::fcm::FcmClient>>,
+    sms_router: web::Data<Option<notification::sms::SmsRouter>>,
 ) -> Result<HttpResponse, AppError> {
     require_role(&auth, &[UserRole::Merchant])?;
 
-    let order = service::mark_ready(&pool, auth.user_id, path.into_inner()).await?;
+    let order = service::mark_ready(
+        &pool,
+        auth.user_id,
+        path.into_inner(),
+        fcm_client.get_ref().as_ref(),
+        sms_router.get_ref().as_ref(),
+    )
+    .await?;
 
     let response = ApiResponse::new(serde_json::json!({ "order": order }));
     Ok(HttpResponse::Ok().json(response))

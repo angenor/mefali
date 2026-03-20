@@ -25,4 +25,5 @@ export 'models/restaurant_summary.dart';
 export 'models/product_item.dart';
 export 'models/cart_item.dart';
 export 'models/saved_address.dart';
+export 'models/delivery_mission.dart';
 export 'utils/formatting.dart';

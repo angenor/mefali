@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_design/mefali_design.dart';
 
 import 'features/auth/otp_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/auth/registration_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/notification/deep_link_handler.dart';
 import 'features/profile/change_phone_screen.dart';
 import 'features/profile/edit_name_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/delivery/incoming_mission_screen.dart';
 import 'features/profile/verify_phone_screen.dart';
 
 /// Ecoute les changements d'authentification pour declencher
@@ -79,6 +84,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
+        path: '/delivery/incoming-mission',
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>?;
+          return IncomingMissionScreen(missionData: data);
+        },
+      ),
+      GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
       ),
@@ -101,11 +113,58 @@ final _routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class MefaliLivreurApp extends ConsumerWidget {
+class MefaliLivreurApp extends ConsumerStatefulWidget {
   const MefaliLivreurApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MefaliLivreurApp> createState() => _MefaliLivreurAppState();
+}
+
+class _MefaliLivreurAppState extends ConsumerState<MefaliLivreurApp> {
+  StreamSubscription<Uri>? _deepLinkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _handleInitialDeepLink();
+    _listenDeepLinks();
+  }
+
+  void _handleInitialDeepLink() {
+    final initial = DeepLinkHandler.instance.initialLink;
+    if (initial != null) {
+      // Delay to allow router to initialize
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _processDeepLink(initial);
+      });
+    }
+  }
+
+  void _listenDeepLinks() {
+    _deepLinkSub = DeepLinkHandler.instance.linkStream.listen(_processDeepLink);
+  }
+
+  void _processDeepLink(Uri uri) {
+    final base64Data = DeepLinkHandler.extractMissionData(uri);
+    if (base64Data == null) return;
+
+    try {
+      final mission = DeliveryMission.fromDeepLink(base64Data);
+      final router = ref.read(_routerProvider);
+      router.go('/delivery/incoming-mission', extra: mission.toJson());
+    } catch (e) {
+      debugPrint('Failed to parse deep link mission data: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _deepLinkSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(_routerProvider);
 
     return MaterialApp.router(

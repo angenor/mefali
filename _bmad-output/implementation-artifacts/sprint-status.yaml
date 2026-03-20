@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-20 # 4-6-address-selection: done
+last_updated: 2026-03-20 # 5-2-sms-fallback-for-offline: in-progress (review fixes applied, tasks 5.2/6.2/6.4 remain)
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -85,9 +85,9 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Delivery Operations & Real-Time Tracking
-  epic-5: backlog
-  5-1-delivery-mission-notification-push: backlog
-  5-2-sms-fallback-for-offline: backlog
+  epic-5: in-progress
+  5-1-delivery-mission-notification-push: done
+  5-2-sms-fallback-for-offline: in-progress
   5-3-mission-accept-refuse-and-assignment: backlog
   5-4-order-collection-and-navigation: backlog
   5-5-real-time-tracking-client-side: backlog

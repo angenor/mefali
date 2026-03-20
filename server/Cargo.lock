@@ -2309,7 +2309,10 @@ name = "notification"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "common",
+ "jsonwebtoken",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror",

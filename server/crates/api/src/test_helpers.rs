@@ -65,9 +65,14 @@ pub fn test_app(
         InitError = (),
     >,
 > {
+    let fcm_client: Option<notification::fcm::FcmClient> = None;
+    let sms_router: Option<notification::sms::SmsRouter> = None;
+
     App::new()
         .app_data(web::Data::new(test_config()))
         .app_data(web::Data::new(pool))
+        .app_data(web::Data::new(fcm_client))
+        .app_data(web::Data::new(sms_router))
         .service(
             web::scope("/api/v1")
                 .service(

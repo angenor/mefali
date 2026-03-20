@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod auth;
+pub mod deliveries;
 pub mod health;
 pub mod kyc;
 pub mod merchants;
@@ -35,7 +36,14 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route(
                         "/me/change-phone/verify",
                         web::post().to(users::change_phone_verify),
-                    ),
+                    )
+                    .route("/me/fcm-token", web::put().to(users::register_fcm_token))
+                    .route("/me/fcm-token", web::delete().to(users::clear_fcm_token)),
+            )
+            // Delivery routes — Driver role required
+            .service(
+                web::scope("/deliveries")
+                    .route("/pending", web::get().to(deliveries::get_pending_mission)),
             )
             // KYC routes — Agent role required
             .service(

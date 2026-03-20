@@ -398,6 +398,17 @@ pub async fn get_product_breakdown(
     .map_err(|e| AppError::DatabaseError(e.to_string()))
 }
 
+/// Assign a driver to an order.
+pub async fn set_driver(pool: &PgPool, order_id: Id, driver_id: Id) -> Result<(), AppError> {
+    sqlx::query("UPDATE orders SET driver_id = $2, updated_at = NOW() WHERE id = $1")
+        .bind(order_id)
+        .bind(driver_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to set driver: {e}")))?;
+    Ok(())
+}
+
 /// Save external transaction ID (CinetPay) for audit/reconciliation.
 pub async fn set_external_transaction_id(
     pool: &PgPool,

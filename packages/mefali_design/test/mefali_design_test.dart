@@ -460,4 +460,146 @@ void main() {
       expect(ratio, greaterThanOrEqualTo(4.5));
     });
   });
+
+  // ─── DeliveryMissionCard (UX-DR5) ──────────────────────
+  group('DeliveryMissionCard', () {
+    DeliveryMission createTestMission() => DeliveryMission(
+          deliveryId: 'del-1',
+          orderId: 'ord-1',
+          merchantName: 'Maman Adjoua',
+          merchantAddress: 'Marche central',
+          deliveryAddress: 'Quartier Commerce',
+          deliveryLat: 7.69,
+          deliveryLng: -5.03,
+          estimatedDistanceM: 800,
+          deliveryFee: 35000,
+          itemsSummary: 'Garba x1, Alloco x1',
+          createdAt: '2026-03-20T12:00:00Z',
+        );
+
+    testWidgets('renders merchant name and delivery address', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Maman Adjoua'), findsOneWidget);
+      expect(find.text('Quartier Commerce'), findsOneWidget);
+      expect(find.text('Garba x1, Alloco x1'), findsOneWidget);
+    });
+
+    testWidgets('renders ACCEPTER button with minimum 56dp height',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('ACCEPTER'), findsOneWidget);
+      // Check the SizedBox wrapping the button
+      final sizedBox = tester.widget<SizedBox>(
+        find.ancestor(
+          of: find.byType(FilledButton),
+          matching: find.byType(SizedBox),
+        ).first,
+      );
+      expect(sizedBox.height, 56);
+    });
+
+    testWidgets('calls onAccept when ACCEPTER tapped', (tester) async {
+      var accepted = false;
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () => accepted = true,
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('ACCEPTER'));
+      expect(accepted, isTrue);
+    });
+
+    testWidgets('shows countdown timer', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+            autoDismissSeconds: 10,
+          ),
+        ),
+      ));
+
+      expect(find.text('10s'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('8s'), findsOneWidget);
+    });
+
+    testWidgets('calls onDismiss after timeout', (tester) async {
+      var dismissed = false;
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+            onDismiss: () => dismissed = true,
+            autoDismissSeconds: 3,
+          ),
+        ),
+      ));
+
+      // Advance timer to just before timeout
+      await tester.pump(const Duration(seconds: 2));
+      expect(dismissed, isFalse);
+
+      // Advance to timeout
+      await tester.pump(const Duration(seconds: 1));
+      expect(dismissed, isTrue);
+    });
+
+    testWidgets('displays gain in FCFA', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+          ),
+        ),
+      ));
+
+      // 35000 centimes = 350 FCFA
+      expect(find.textContaining('350'), findsOneWidget);
+    });
+
+    testWidgets('shows distance when available', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+          ),
+        ),
+      ));
+
+      // 800m = ~0.8 km
+      expect(find.text('~0.8 km'), findsOneWidget);
+    });
+  });
 }

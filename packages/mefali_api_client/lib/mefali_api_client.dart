@@ -27,3 +27,5 @@ export 'providers/restaurant_discovery_provider.dart';
 export 'providers/restaurant_products_provider.dart';
 export 'providers/cart_provider.dart';
 export 'providers/order_provider.dart';
+export 'endpoints/delivery_endpoint.dart';
+export 'providers/delivery_provider.dart';

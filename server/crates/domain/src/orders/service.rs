@@ -337,10 +337,13 @@ pub async fn reject_order(
 }
 
 /// Merchant marks an accepted order as ready for pickup.
+/// Triggers driver notification via FCM with SMS fallback.
 pub async fn mark_ready(
     pool: &PgPool,
     merchant_user_id: Id,
     order_id: Id,
+    fcm_client: Option<&notification::fcm::FcmClient>,
+    sms_router: Option<&notification::sms::SmsRouter>,
 ) -> Result<OrderWithItems, AppError> {
     let (order, merchant) = verify_merchant_order(pool, merchant_user_id, order_id).await?;
 
@@ -354,6 +357,17 @@ pub async fn mark_ready(
         merchant_id = merchant.id.to_string(),
         "Order marked ready"
     );
+
+    // Trigger driver notification (non-blocking: failure does not fail the order)
+    if let Err(e) = crate::deliveries::service::notify_driver_for_order(
+        pool, order_id, fcm_client, sms_router,
+    ).await {
+        warn!(
+            order_id = order_id.to_string(),
+            error = %e,
+            "Failed to notify driver for ready order"
+        );
+    }
 
     Ok(OrderWithItems {
         order: updated,

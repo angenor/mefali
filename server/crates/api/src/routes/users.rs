@@ -14,6 +14,38 @@ use sqlx::PgPool;
 
 use crate::extractors::AuthenticatedUser;
 
+#[derive(Debug, serde::Deserialize)]
+pub struct FcmTokenPayload {
+    pub token: String,
+}
+
+/// PUT /api/v1/users/me/fcm-token
+///
+/// Register or update the authenticated user's FCM token for push notifications.
+pub async fn register_fcm_token(
+    auth: AuthenticatedUser,
+    body: web::Json<FcmTokenPayload>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    repository::update_fcm_token(&pool, auth.user_id, Some(&body.token)).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "message": "FCM token enregistre" }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// DELETE /api/v1/users/me/fcm-token
+///
+/// Clear the authenticated user's FCM token (e.g., on logout).
+pub async fn clear_fcm_token(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    repository::update_fcm_token(&pool, auth.user_id, None).await?;
+
+    let response = ApiResponse::new(serde_json::json!({ "message": "FCM token supprime" }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
 /// GET /api/v1/users/me
 ///
 /// Returns the authenticated user's profile.

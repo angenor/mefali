@@ -4,9 +4,35 @@ import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 
+import '../notification/fcm_token_provider.dart';
+import '../notification/push_notification_handler.dart';
+
 /// Ecran d'accueil livreur — placeholder en attente de validation KYC.
-class HomeScreen extends ConsumerWidget {
+/// Initialise le token FCM et ecoute les missions entrantes.
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Listen for incoming delivery missions from push notifications
+    PushNotificationHandler.instance.onMissionReceived((data) {
+      if (mounted) {
+        context.push('/delivery/incoming-mission', extra: data);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    PushNotificationHandler.instance.removeMissionListener();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -14,6 +40,9 @@ class HomeScreen extends ConsumerWidget {
     final userName = authState.user?.name ?? 'Livreur';
     final status = authState.user?.status;
     final isPendingKyc = status == UserStatus.pendingKyc;
+
+    // Register FCM token with backend (non-blocking)
+    ref.watch(fcmTokenProvider);
 
     return Scaffold(
       appBar: AppBar(
