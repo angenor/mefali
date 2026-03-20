@@ -63,4 +63,17 @@ mod tests {
         ];
         assert!(require_role(&user, &all).is_ok());
     }
+
+    #[test]
+    fn test_merchant_withdrawal_authorized() {
+        // Story 6-2: Merchant must be allowed to withdraw (alongside Driver)
+        let withdraw_roles = [UserRole::Driver, UserRole::Merchant];
+        let merchant = make_user(UserRole::Merchant);
+        assert!(require_role(&merchant, &withdraw_roles).is_ok());
+        let driver = make_user(UserRole::Driver);
+        assert!(require_role(&driver, &withdraw_roles).is_ok());
+        // Client should NOT be allowed
+        let client = make_user(UserRole::Client);
+        assert!(require_role(&client, &withdraw_roles).is_err());
+    }
 }

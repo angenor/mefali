@@ -1,6 +1,6 @@
 # Story 6.1: Merchant Wallet & Escrow Release
 
-Status: review
+Status: done
 
 ## Story
 
@@ -242,8 +242,24 @@ Claude Opus 4.6 (1M context)
 
 **Modified (Backend Rust):**
 - server/crates/domain/src/deliveries/service.rs -- FIX: credit marchand pour COD + prepaid, ajout notify_merchant_wallet_credited()
-- server/crates/domain/src/wallets/service.rs -- doc + description transaction generique
+- server/crates/domain/src/wallets/service.rs -- doc + description transaction generique + FIX REVIEW: atomicite credit+transaction via DB transaction
 - server/crates/domain/src/wallets/model.rs -- ajout test_merchant_credit_transaction_format
 
 **Modified (Frontend Flutter):**
 - apps/mefali_b2b/lib/features/home/home_screen.dart -- 4eme tab Wallet, TabController length 4
+
+### Code Review (AI) — 2026-03-20
+
+**Reviewer:** Claude Opus 4.6 (1M context)
+**Outcome:** Approve avec corrections appliquees
+
+**Issues trouvees et corrigees:**
+- [M1] `credit_driver_for_delivery()` et `credit_merchant_for_delivery()` dans wallets/service.rs: credit_wallet + create_transaction n'etaient pas dans une DB transaction. Risque d'incoherence du ledger si la 2e requete echoue. FIX: wrap dans pool.begin()/commit() (pattern identique au withdrawal existant).
+- [M2] wallet_screen.dart: montants FCFA affiches sans separateur de milliers (15000 au lieu de 15 000). FIX: ajout _formatAmount() avec separateur espace.
+- [L1] wallet_screen.dart: reference.substring(6, 14) sans garde de longueur. FIX: ajout check reference.length >= 14.
+- [L2] wallet_screen.dart: dates non zero-paddees (5/1 au lieu de 05/01). FIX: padLeft(2, '0') sur jour et mois.
+- [L3 non corrige] Tab "Wallet" en anglais — terme courant en fintech africaine, laisse tel quel.
+
+**Verification post-fix:**
+- `cargo check --workspace`: OK (1 warning pre-existant dead_code non lie)
+- `dart analyze apps/mefali_b2b`: 0 issues

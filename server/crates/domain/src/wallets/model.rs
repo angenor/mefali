@@ -82,6 +82,25 @@ mod tests {
     }
 
     #[test]
+    fn test_withdrawal_transaction_format() {
+        let phone = "+2250700112233";
+        let tx = WalletTransaction {
+            id: uuid::Uuid::new_v4(),
+            wallet_id: uuid::Uuid::new_v4(),
+            amount: 200000, // 2000 FCFA
+            transaction_type: WalletTransactionType::Withdrawal,
+            reference: Some(format!("withdrawal:{}", uuid::Uuid::new_v4())),
+            description: Some(format!("Retrait vers {phone}")),
+            created_at: chrono::Utc::now(),
+        };
+        let json = serde_json::to_value(&tx).unwrap();
+        assert_eq!(json["transaction_type"], "withdrawal");
+        assert!(json["reference"].as_str().unwrap().starts_with("withdrawal:"));
+        assert!(json["description"].as_str().unwrap().contains(phone));
+        assert_eq!(json["amount"], 200000);
+    }
+
+    #[test]
     fn test_merchant_credit_transaction_format() {
         let order_id = uuid::Uuid::new_v4();
         let tx = WalletTransaction {
