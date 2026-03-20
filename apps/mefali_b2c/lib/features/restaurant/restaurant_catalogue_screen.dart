@@ -163,9 +163,8 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
 
     // Sauvegarder l'adresse pour reutilisation future
     final db = ref.read(mefaliDatabaseProvider);
-    await saveAddress(
-      db,
-      id: '${addressResult.lat}_${addressResult.lng}',
+    await db.saveAddress(
+      id: '${addressResult.lat.toStringAsFixed(4)}_${addressResult.lng.toStringAsFixed(4)}',
       address: addressResult.address,
       lat: addressResult.lat,
       lng: addressResult.lng,

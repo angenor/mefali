@@ -42,6 +42,24 @@ class MefaliDatabase extends _$MefaliDatabase {
   Future<void> upsertAddress(SavedAddressEntriesCompanion entry) {
     return into(savedAddressEntries).insertOnConflictUpdate(entry);
   }
+
+  /// Sauvegarde une adresse avec des parametres simples (sans exposer Drift).
+  Future<void> saveAddress({
+    required String id,
+    required String address,
+    required double lat,
+    required double lng,
+  }) {
+    return upsertAddress(
+      SavedAddressEntriesCompanion(
+        id: Value(id),
+        address: Value(address),
+        lat: Value(lat),
+        lng: Value(lng),
+        lastUsedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 }
 
 LazyDatabase _openConnection() {

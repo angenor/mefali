@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
@@ -21,6 +23,13 @@ class _AddressSelectionScreenState
     extends ConsumerState<AddressSelectionScreen> {
   String? _currentAddress;
   LatLng? _resolvedPosition;
+  Timer? _debounceTimer;
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +95,10 @@ class _AddressSelectionScreenState
   }
 
   Future<void> _onCameraIdle(double lat, double lng) async {
-    await _reverseGeocode(lat, lng);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      _reverseGeocode(lat, lng);
+    });
   }
 
   Future<void> _reverseGeocode(double lat, double lng) async {

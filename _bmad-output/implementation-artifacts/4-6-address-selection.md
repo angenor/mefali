@@ -1,6 +1,6 @@
 # Story 4.6: Sélection d'adresse de livraison
 
-Status: review
+Status: done
 
 ## Story
 
@@ -228,6 +228,7 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-03-20: Story 4-6 implementee — Selection d'adresse de livraison avec MapAddressPicker, Drift, et integration dans le flow de commande
+- 2026-03-20: Code review — 2 HIGH + 3 MEDIUM corrigees: cle API Google Maps externalisee (local.properties + Secrets.xcconfig), debounce 400ms sur reverse geocoding, abstraction drift (saveAddress dans MefaliDatabase), ID adresse arrondi a 4 decimales. M3 (AC4 autocomplete partiel) note comme limitation connue Bouake.
 
 ### File List
 
@@ -239,14 +240,19 @@ Claude Opus 4.6 (1M context)
 - packages/mefali_core/lib/models/saved_address.dart (new)
 - packages/mefali_offline/pubspec.yaml (modified — added path)
 - packages/mefali_offline/lib/mefali_offline.dart (modified — export database)
-- packages/mefali_offline/lib/database/mefali_database.dart (new)
+- packages/mefali_offline/lib/database/mefali_database.dart (new — review: added saveAddress method)
 - packages/mefali_offline/lib/database/mefali_database.g.dart (generated)
-- apps/mefali_b2c/pubspec.yaml (modified — added geolocator, geocoding, google_maps_flutter, drift)
+- apps/mefali_b2c/pubspec.yaml (modified — added geolocator, geocoding, google_maps_flutter; review: removed drift)
 - apps/mefali_b2c/lib/app.dart (modified — added address-selection route)
-- apps/mefali_b2c/lib/features/order/address_selection_screen.dart (new)
-- apps/mefali_b2c/lib/features/order/saved_addresses_provider.dart (new)
-- apps/mefali_b2c/lib/features/restaurant/restaurant_catalogue_screen.dart (modified — address selection flow)
-- apps/mefali_b2c/android/app/src/main/AndroidManifest.xml (modified — permissions + API key)
-- apps/mefali_b2c/ios/Runner/Info.plist (modified — location usage description)
-- apps/mefali_b2c/ios/Runner/AppDelegate.swift (modified — GoogleMaps import + API key)
+- apps/mefali_b2c/lib/features/order/address_selection_screen.dart (new — review: added debounce timer)
+- apps/mefali_b2c/lib/features/order/saved_addresses_provider.dart (new — review: removed drift import, simplified)
+- apps/mefali_b2c/lib/features/restaurant/restaurant_catalogue_screen.dart (modified — review: db.saveAddress + ID arrondi)
+- apps/mefali_b2c/android/app/src/main/AndroidManifest.xml (modified — review: API key via manifestPlaceholders)
+- apps/mefali_b2c/android/app/build.gradle.kts (modified — review: read API key from local.properties)
+- apps/mefali_b2c/ios/Runner/Info.plist (modified — review: GOOGLE_MAPS_API_KEY from xcconfig)
+- apps/mefali_b2c/ios/Runner/AppDelegate.swift (modified — review: API key from Bundle)
+- apps/mefali_b2c/ios/Runner/Secrets.xcconfig (new — gitignored, API key)
+- apps/mefali_b2c/ios/Flutter/Debug.xcconfig (modified — review: include Secrets.xcconfig)
+- apps/mefali_b2c/ios/Flutter/Release.xcconfig (modified — review: include Secrets.xcconfig)
+- .gitignore (modified — review: added Secrets.xcconfig exclusion)
 - apps/mefali_b2c/test/widget_test.dart (modified — 8 new tests)
