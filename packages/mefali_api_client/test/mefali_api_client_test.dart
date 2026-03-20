@@ -351,6 +351,210 @@ void main() {
     });
   });
 
+  group('DeliveryEndpoint', () {
+    test('confirmPickup sends POST /deliveries/{id}/confirm-pickup', () async {
+      String? method;
+      String? path;
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            method = options.method;
+            path = options.path;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{
+                  'data': {
+                    'delivery_id': 'test-delivery-id',
+                    'status': 'picked_up',
+                    'picked_up_at': '2026-03-20T12:00:00Z',
+                  },
+                },
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = DeliveryEndpoint(dio);
+      final result = await endpoint.confirmPickup('test-delivery-id');
+      expect(method, 'POST');
+      expect(path, '/deliveries/test-delivery-id/confirm-pickup');
+      expect(result['status'], 'picked_up');
+    });
+
+    test('updateLocation sends POST /deliveries/{id}/location with lat/lng', () async {
+      String? method;
+      String? path;
+      Map<String, dynamic>? body;
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            method = options.method;
+            path = options.path;
+            body = options.data as Map<String, dynamic>?;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: <String, dynamic>{
+                  'data': {'status': 'location_updated'},
+                },
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = DeliveryEndpoint(dio);
+      await endpoint.updateLocation('test-delivery-id', 7.69, -5.03);
+      expect(method, 'POST');
+      expect(path, '/deliveries/test-delivery-id/location');
+      expect(body!['lat'], 7.69);
+      expect(body!['lng'], -5.03);
+    });
+
+    test('confirmPickup throws on 409 Conflict', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 409,
+                  data: <String, dynamic>{
+                    'error': {
+                      'code': 'CONFLICT',
+                      'message': 'Not in assigned status',
+                    },
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = DeliveryEndpoint(dio);
+      expect(
+        () => endpoint.confirmPickup('test-id'),
+        throwsA(isA<DioException>()),
+      );
+    });
+
+    test('confirmPickup throws on 403 Forbidden', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 403,
+                  data: <String, dynamic>{
+                    'error': {
+                      'code': 'FORBIDDEN',
+                      'message': 'This delivery is not assigned to you',
+                    },
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = DeliveryEndpoint(dio);
+      expect(
+        () => endpoint.confirmPickup('test-id'),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'statusCode',
+            403,
+          ),
+        ),
+      );
+    });
+
+    test('confirmPickup throws on 404 Not Found', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 404,
+                  data: <String, dynamic>{
+                    'error': {
+                      'code': 'NOT_FOUND',
+                      'message': 'Delivery not found',
+                    },
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = DeliveryEndpoint(dio);
+      expect(
+        () => endpoint.confirmPickup('nonexistent-id'),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'statusCode',
+            404,
+          ),
+        ),
+      );
+    });
+
+    test('updateLocation throws on 409 when delivery not active', () async {
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 409,
+                  data: <String, dynamic>{
+                    'error': {
+                      'code': 'CONFLICT',
+                      'message':
+                          'Delivery is not in an active status for location updates',
+                    },
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final endpoint = DeliveryEndpoint(dio);
+      expect(
+        () => endpoint.updateLocation('test-id', 7.69, -5.03),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'statusCode',
+            409,
+          ),
+        ),
+      );
+    });
+  });
+
   group('AuthNotifier.updateUser', () {
     test('updateUser updates user in notifier state', () {
       final container = ProviderContainer();
@@ -524,6 +728,61 @@ void main() {
 
       final authState = container.read(authProvider);
       expect(authState.user?.name, 'Koffi Updated');
+    });
+  });
+
+  group('DeliveryEndpoint - getDeliveryTracking', () {
+    test('returns DeliveryLocationUpdate on success', () async {
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          expect(options.method, 'GET');
+          expect(options.path, contains('/deliveries/tracking/'));
+          handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'data': {
+                'lat': 7.69,
+                'lng': -5.03,
+                'eta_seconds': 120,
+                'status': 'picked_up',
+                'driver_name': 'Kone',
+                'driver_phone': '+2250700000000',
+                'updated_at': '2026-03-20T10:00:00Z',
+              }
+            },
+          ));
+        },
+      ));
+
+      final endpoint = DeliveryEndpoint(dio);
+      final result = await endpoint.getDeliveryTracking('order-123');
+      expect(result, isNotNull);
+      expect(result!.lat, 7.69);
+      expect(result.etaSeconds, 120);
+      expect(result.driverName, 'Kone');
+    });
+
+    test('returns null on 404', () async {
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.reject(DioException(
+            requestOptions: options,
+            response: Response(
+              requestOptions: options,
+              statusCode: 404,
+              data: {'error': {'code': 'NOT_FOUND', 'message': 'Not found'}},
+            ),
+            type: DioExceptionType.badResponse,
+          ));
+        },
+      ));
+
+      final endpoint = DeliveryEndpoint(dio);
+      final result = await endpoint.getDeliveryTracking('order-123');
+      expect(result, isNull);
     });
   });
 }

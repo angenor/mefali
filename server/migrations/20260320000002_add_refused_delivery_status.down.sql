@@ -1,0 +1,3 @@
+-- PostgreSQL does not support removing values from enums.
+-- To revert, recreate the type without 'refused' (requires dropping/recreating dependent columns).
+-- This is intentionally left as a no-op for safety.

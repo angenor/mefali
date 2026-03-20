@@ -114,4 +114,65 @@ void main() {
       expect(mission.orderTotal, 300000);
     });
   });
+
+  group('DeliveryLocationUpdate', () {
+    test('fromJson creates update with all fields', () {
+      final json = {
+        'lat': 7.6900,
+        'lng': -5.0300,
+        'eta_seconds': 120,
+        'updated_at': '2026-03-20T10:00:00Z',
+        'driver_name': 'Kone',
+        'driver_phone': '+2250700000000',
+        'status': 'picked_up',
+      };
+      final update = DeliveryLocationUpdate.fromJson(json);
+      expect(update.lat, 7.69);
+      expect(update.lng, -5.03);
+      expect(update.etaSeconds, 120);
+      expect(update.driverName, 'Kone');
+      expect(update.driverPhone, '+2250700000000');
+      expect(update.status, 'picked_up');
+    });
+
+    test('fromJson handles missing optional fields', () {
+      final json = {
+        'lat': 7.69,
+        'lng': -5.03,
+        'eta_seconds': 60,
+        'updated_at': '2026-03-20T10:00:00Z',
+      };
+      final update = DeliveryLocationUpdate.fromJson(json);
+      expect(update.driverName, isNull);
+      expect(update.driverPhone, isNull);
+      expect(update.status, isNull);
+    });
+
+    test('fromJson handles null eta_seconds', () {
+      final json = {
+        'lat': 7.69,
+        'lng': -5.03,
+        'updated_at': '',
+      };
+      final update = DeliveryLocationUpdate.fromJson(json);
+      expect(update.etaSeconds, 0);
+    });
+
+    test('toJson roundtrips correctly', () {
+      const update = DeliveryLocationUpdate(
+        lat: 7.69,
+        lng: -5.03,
+        etaSeconds: 300,
+        updatedAt: '2026-03-20T10:00:00Z',
+        driverName: 'Kone',
+      );
+      final json = update.toJson();
+      expect(json['lat'], 7.69);
+      expect(json['lng'], -5.03);
+      expect(json['eta_seconds'], 300);
+      expect(json['driver_name'], 'Kone');
+      expect(json.containsKey('driver_phone'), isFalse);
+      expect(json['is_fallback'], isFalse);
+    });
+  });
 }

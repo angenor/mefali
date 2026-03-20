@@ -61,7 +61,25 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
           error: (error, _) => _ErrorBody(
             onRetry: () => ref.invalidate(orderProvider(widget.orderId)),
           ),
-          data: (order) => ListView(
+          data: (order) {
+            // Naviguer vers le tracking temps reel si livraison active
+            if (order.status == OrderStatus.collected ||
+                order.status == OrderStatus.inTransit) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  context.go(
+                    '/order/delivery-tracking/${widget.orderId}',
+                    extra: {
+                      'delivery_lat': order.deliveryLat,
+                      'delivery_lng': order.deliveryLng,
+                      'delivery_address': order.deliveryAddress,
+                    },
+                  );
+                }
+              });
+            }
+
+            return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               // Order header
@@ -92,7 +110,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                 ),
               ),
             ],
-          ),
+          );
+          },
         ),
       ),
     );

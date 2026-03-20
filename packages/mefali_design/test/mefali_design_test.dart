@@ -601,5 +601,80 @@ void main() {
       // 800m = ~0.8 km
       expect(find.text('~0.8 km'), findsOneWidget);
     });
+
+    testWidgets('renders REFUSER button when onRefuse provided',
+        (tester) async {
+      var refused = false;
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+            onRefuse: () => refused = true,
+          ),
+        ),
+      ));
+
+      expect(find.text('REFUSER'), findsOneWidget);
+      await tester.tap(find.text('REFUSER'));
+      expect(refused, isTrue);
+    });
+
+    testWidgets('does not render REFUSER button when onRefuse is null',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+          ),
+        ),
+      ));
+
+      expect(find.text('REFUSER'), findsNothing);
+    });
+
+    testWidgets('shows loading indicator when isLoading is true',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () {},
+            isLoading: true,
+          ),
+        ),
+      ));
+
+      expect(find.text('ACCEPTER'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('disables buttons when isLoading is true', (tester) async {
+      var accepted = false;
+      var refused = false;
+      await tester.pumpWidget(MaterialApp(
+        theme: MefaliTheme.light(),
+        home: Scaffold(
+          body: DeliveryMissionCard(
+            mission: createTestMission(),
+            onAccept: () => accepted = true,
+            onRefuse: () => refused = true,
+            isLoading: true,
+          ),
+        ),
+      ));
+
+      // Tap the filled button (loading state)
+      await tester.tap(find.byType(FilledButton));
+      expect(accepted, isFalse);
+
+      // Tap the outlined button (refuse)
+      await tester.tap(find.byType(OutlinedButton));
+      expect(refused, isFalse);
+    });
   });
 }

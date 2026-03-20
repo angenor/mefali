@@ -15,6 +15,8 @@ import 'features/notification/deep_link_handler.dart';
 import 'features/profile/change_phone_screen.dart';
 import 'features/profile/edit_name_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/delivery/client_absent_screen.dart';
+import 'features/delivery/collection_navigation_screen.dart';
 import 'features/delivery/incoming_mission_screen.dart';
 import 'features/profile/verify_phone_screen.dart';
 
@@ -88,6 +90,26 @@ final _routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final data = state.extra as Map<String, dynamic>?;
           return IncomingMissionScreen(missionData: data);
+        },
+      ),
+      GoRoute(
+        path: '/delivery/collection-navigation',
+        builder: (context, state) {
+          final mission = state.extra! as DeliveryMission;
+          return CollectionNavigationScreen(mission: mission);
+        },
+      ),
+      GoRoute(
+        path: '/delivery/client-absent',
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>? ?? {};
+          return ClientAbsentScreen(
+            deliveryId: data['deliveryId'] as String? ?? '',
+            orderId: data['orderId'] as String? ?? '',
+            paymentType: data['paymentType'] as String? ?? 'cod',
+            deliveryFee: (data['deliveryFee'] as num?)?.toInt() ?? 0,
+            customerPhone: data['customerPhone'] as String?,
+          );
         },
       ),
       GoRoute(

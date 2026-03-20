@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-20 # 5-2-sms-fallback-for-offline: in-progress (review fixes applied, tasks 5.2/6.2/6.4 remain)
+last_updated: 2026-03-20 # 5-8-driver-availability-and-wallet-withdrawal: in-progress
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -87,13 +87,13 @@ development_status:
   # Epic 5: Delivery Operations & Real-Time Tracking
   epic-5: in-progress
   5-1-delivery-mission-notification-push: done
-  5-2-sms-fallback-for-offline: in-progress
-  5-3-mission-accept-refuse-and-assignment: backlog
-  5-4-order-collection-and-navigation: backlog
-  5-5-real-time-tracking-client-side: backlog
-  5-6-delivery-confirmation-and-instant-payment: backlog
-  5-7-client-absent-protocol: backlog
-  5-8-driver-availability-and-wallet-withdrawal: backlog
+  5-2-sms-fallback-for-offline: in-progress-keep-for-later
+  5-3-mission-accept-refuse-and-assignment: done
+  5-4-order-collection-and-navigation: done
+  5-5-real-time-tracking-client-side: done
+  5-6-delivery-confirmation-and-instant-payment: done
+  5-7-client-absent-protocol: review
+  5-8-driver-availability-and-wallet-withdrawal: in-progress
   epic-5-retrospective: optional
 
   # Epic 6: Wallet & Financial Operations

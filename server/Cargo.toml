@@ -14,6 +14,7 @@ members = [
 actix-web = "4"
 actix-rt = "2"
 actix-multipart = "0.7"
+actix-ws = "0.3"
 futures-util = "0.3"
 
 # Serialization

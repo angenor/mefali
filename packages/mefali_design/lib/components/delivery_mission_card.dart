@@ -9,14 +9,18 @@ class DeliveryMissionCard extends StatefulWidget {
   const DeliveryMissionCard({
     required this.mission,
     required this.onAccept,
+    this.onRefuse,
     this.onDismiss,
+    this.isLoading = false,
     this.autoDismissSeconds = 30,
     super.key,
   });
 
   final DeliveryMission mission;
   final VoidCallback onAccept;
+  final VoidCallback? onRefuse;
   final VoidCallback? onDismiss;
+  final bool isLoading;
   final int autoDismissSeconds;
 
   @override
@@ -39,6 +43,14 @@ class _DeliveryMissionCardState extends State<DeliveryMissionCard> {
         setState(() => _secondsRemaining--);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(DeliveryMissionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoading && !oldWidget.isLoading) {
+      _timer?.cancel();
+    }
   }
 
   @override
@@ -150,13 +162,35 @@ class _DeliveryMissionCardState extends State<DeliveryMissionCard> {
             SizedBox(
               height: 56,
               child: FilledButton(
-                onPressed: widget.onAccept,
-                child: const Text(
-                  'ACCEPTER',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                onPressed: widget.isLoading ? null : widget.onAccept,
+                child: widget.isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'ACCEPTER',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
+
+            if (widget.onRefuse != null) ...[
+              const SizedBox(height: 8),
+
+              // REFUSER button — secondary, smaller (avoid accidental taps)
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: widget.isLoading ? null : widget.onRefuse,
+                  child: const Text('REFUSER'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

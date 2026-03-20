@@ -8,6 +8,7 @@ pub struct Delivery {
     pub order_id: Id,
     pub driver_id: Id,
     pub status: DeliveryStatus,
+    pub refusal_reason: Option<String>,
     pub current_lat: Option<f64>,
     pub current_lng: Option<f64>,
     pub picked_up_at: Option<Timestamp>,
@@ -27,6 +28,7 @@ pub enum DeliveryStatus {
     InTransit,
     Delivered,
     Failed,
+    Refused,
     ClientAbsent,
 }
 
@@ -39,7 +41,33 @@ impl std::fmt::Display for DeliveryStatus {
             DeliveryStatus::InTransit => write!(f, "in_transit"),
             DeliveryStatus::Delivered => write!(f, "delivered"),
             DeliveryStatus::Failed => write!(f, "failed"),
+            DeliveryStatus::Refused => write!(f, "refused"),
             DeliveryStatus::ClientAbsent => write!(f, "client_absent"),
+        }
+    }
+}
+
+/// Reason for refusing a delivery mission.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DeliveryRefusalReason {
+    TooFar,
+    NotEnoughTime,
+    WrongDirection,
+    VehicleIssue,
+    Timeout,
+    Other,
+}
+
+impl std::fmt::Display for DeliveryRefusalReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DeliveryRefusalReason::TooFar => write!(f, "too_far"),
+            DeliveryRefusalReason::NotEnoughTime => write!(f, "not_enough_time"),
+            DeliveryRefusalReason::WrongDirection => write!(f, "wrong_direction"),
+            DeliveryRefusalReason::VehicleIssue => write!(f, "vehicle_issue"),
+            DeliveryRefusalReason::Timeout => write!(f, "timeout"),
+            DeliveryRefusalReason::Other => write!(f, "other"),
         }
     }
 }
@@ -62,6 +90,24 @@ pub struct DeliveryMission {
     pub created_at: Timestamp,
 }
 
+/// Response returned after confirming a delivery or resolving client absent.
+#[derive(Debug, Clone, Serialize)]
+pub struct ConfirmDeliveryResponse {
+    pub delivery_id: Id,
+    pub order_id: Id,
+    pub status: DeliveryStatus,
+    pub driver_earnings_fcfa: i64,
+    pub confirmed_at: Timestamp,
+}
+
+/// Resolution for client absent protocol.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AbsentResolution {
+    ReturnedToRestaurant,
+    ReturnedToBase,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,6 +120,7 @@ mod tests {
         assert_eq!(DeliveryStatus::InTransit.to_string(), "in_transit");
         assert_eq!(DeliveryStatus::Delivered.to_string(), "delivered");
         assert_eq!(DeliveryStatus::Failed.to_string(), "failed");
+        assert_eq!(DeliveryStatus::Refused.to_string(), "refused");
         assert_eq!(DeliveryStatus::ClientAbsent.to_string(), "client_absent");
     }
 
@@ -85,6 +132,28 @@ mod tests {
         assert_eq!(back, DeliveryStatus::PickedUp);
         let back2: DeliveryStatus = serde_json::from_str("\"client_absent\"").unwrap();
         assert_eq!(back2, DeliveryStatus::ClientAbsent);
+        let back3: DeliveryStatus = serde_json::from_str("\"refused\"").unwrap();
+        assert_eq!(back3, DeliveryStatus::Refused);
+    }
+
+    #[test]
+    fn test_refusal_reason_serde() {
+        let json = serde_json::to_string(&DeliveryRefusalReason::TooFar).unwrap();
+        assert_eq!(json, "\"too_far\"");
+        let back: DeliveryRefusalReason = serde_json::from_str("\"timeout\"").unwrap();
+        assert_eq!(back, DeliveryRefusalReason::Timeout);
+        let back2: DeliveryRefusalReason = serde_json::from_str("\"vehicle_issue\"").unwrap();
+        assert_eq!(back2, DeliveryRefusalReason::VehicleIssue);
+    }
+
+    #[test]
+    fn test_refusal_reason_display() {
+        assert_eq!(DeliveryRefusalReason::TooFar.to_string(), "too_far");
+        assert_eq!(DeliveryRefusalReason::NotEnoughTime.to_string(), "not_enough_time");
+        assert_eq!(DeliveryRefusalReason::WrongDirection.to_string(), "wrong_direction");
+        assert_eq!(DeliveryRefusalReason::VehicleIssue.to_string(), "vehicle_issue");
+        assert_eq!(DeliveryRefusalReason::Timeout.to_string(), "timeout");
+        assert_eq!(DeliveryRefusalReason::Other.to_string(), "other");
     }
 
     #[test]
@@ -107,5 +176,17 @@ mod tests {
         let json = serde_json::to_string(&mission).unwrap();
         assert!(json.contains("Maman Adjoua"));
         assert!(json.contains("50000"));
+    }
+
+    #[test]
+    fn test_absent_resolution_serde() {
+        let json = serde_json::to_string(&AbsentResolution::ReturnedToRestaurant).unwrap();
+        assert_eq!(json, "\"returned_to_restaurant\"");
+        let json2 = serde_json::to_string(&AbsentResolution::ReturnedToBase).unwrap();
+        assert_eq!(json2, "\"returned_to_base\"");
+        let back: AbsentResolution = serde_json::from_str("\"returned_to_base\"").unwrap();
+        assert_eq!(back, AbsentResolution::ReturnedToBase);
+        let back2: AbsentResolution = serde_json::from_str("\"returned_to_restaurant\"").unwrap();
+        assert_eq!(back2, AbsentResolution::ReturnedToRestaurant);
     }
 }

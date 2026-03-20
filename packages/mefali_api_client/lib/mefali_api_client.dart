@@ -29,3 +29,5 @@ export 'providers/cart_provider.dart';
 export 'providers/order_provider.dart';
 export 'endpoints/delivery_endpoint.dart';
 export 'providers/delivery_provider.dart';
+export 'providers/delivery_tracking_provider.dart';
+export 'websocket/delivery_tracking_ws.dart';

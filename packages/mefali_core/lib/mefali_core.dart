@@ -26,4 +26,5 @@ export 'models/product_item.dart';
 export 'models/cart_item.dart';
 export 'models/saved_address.dart';
 export 'models/delivery_mission.dart';
+export 'models/delivery_location_update.dart';
 export 'utils/formatting.dart';

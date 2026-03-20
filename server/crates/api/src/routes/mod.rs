@@ -7,6 +7,7 @@ pub mod merchants;
 pub mod orders;
 pub mod products;
 pub mod users;
+pub mod ws;
 
 use actix_web::web;
 
@@ -40,10 +41,23 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/me/fcm-token", web::put().to(users::register_fcm_token))
                     .route("/me/fcm-token", web::delete().to(users::clear_fcm_token)),
             )
-            // Delivery routes — Driver role required
+            // Delivery routes — Driver role required (except tracking: Client role)
             .service(
                 web::scope("/deliveries")
-                    .route("/pending", web::get().to(deliveries::get_pending_mission)),
+                    .route("/pending", web::get().to(deliveries::get_pending_mission))
+                    .route("/{delivery_id}/accept", web::post().to(deliveries::accept_mission))
+                    .route("/{delivery_id}/refuse", web::post().to(deliveries::refuse_mission))
+                    .route("/{delivery_id}/confirm-pickup", web::post().to(deliveries::confirm_pickup))
+                    .route("/{delivery_id}/location", web::post().to(deliveries::update_location))
+                    .route("/{delivery_id}/confirm", web::post().to(deliveries::confirm_delivery))
+                    .route("/{delivery_id}/client-absent", web::post().to(deliveries::report_client_absent))
+                    .route("/{delivery_id}/resolve-absent", web::post().to(deliveries::resolve_client_absent))
+                    .route("/tracking/{order_id}", web::get().to(deliveries::get_tracking)),
+            )
+            // WebSocket routes — JWT via query param
+            .service(
+                web::scope("/ws/deliveries")
+                    .route("/{order_id}/track", web::get().to(ws::delivery_tracking_ws)),
             )
             // KYC routes — Agent role required
             .service(

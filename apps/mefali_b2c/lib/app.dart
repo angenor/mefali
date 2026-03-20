@@ -11,6 +11,7 @@ import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/order/order_confirmation_screen.dart';
 import 'features/order/order_tracking_screen.dart';
+import 'features/order/delivery_tracking_screen.dart';
 import 'features/order/orders_list_screen.dart';
 import 'features/order/address_selection_screen.dart';
 import 'features/order/payment_status_screen.dart';
@@ -115,6 +116,19 @@ final _routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final orderId = state.pathParameters['orderId']!;
           return OrderTrackingScreen(orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/order/delivery-tracking/:orderId',
+        builder: (context, state) {
+          final orderId = state.pathParameters['orderId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return DeliveryTrackingScreen(
+            orderId: orderId,
+            deliveryLat: extra?['delivery_lat'] as double?,
+            deliveryLng: extra?['delivery_lng'] as double?,
+            deliveryAddress: extra?['delivery_address'] as String?,
+          );
         },
       ),
       GoRoute(

@@ -1,5 +1,5 @@
-import 'dart:io';
-
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,22 +11,26 @@ import 'pending_accept_queue.dart';
 
 /// Ecran plein ecran pour afficher une mission de livraison entrante.
 /// Le livreur voit le DeliveryMissionCard avec auto-dismiss 30s.
-class IncomingMissionScreen extends ConsumerWidget {
+class IncomingMissionScreen extends ConsumerStatefulWidget {
   const IncomingMissionScreen({this.missionData, super.key});
 
-  /// Mission data from push notification payload (optional).
-  /// If null, loads from the pending mission API endpoint.
   final Map<String, dynamic>? missionData;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // If mission data is provided via push payload, use it directly
-    if (missionData != null) {
-      final mission = _missionFromPushData(missionData!);
+  ConsumerState<IncomingMissionScreen> createState() =>
+      _IncomingMissionScreenState();
+}
+
+class _IncomingMissionScreenState extends ConsumerState<IncomingMissionScreen> {
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.missionData != null) {
+      final mission = _missionFromPushData(widget.missionData!);
       return _buildMissionView(context, mission);
     }
 
-    // Otherwise load from API
     final asyncMission = ref.watch(pendingMissionProvider);
     return asyncMission.when(
       loading: () => const Scaffold(
@@ -51,7 +55,6 @@ class IncomingMissionScreen extends ConsumerWidget {
       ),
       data: (mission) {
         if (mission == null) {
-          // No pending mission — go back
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) context.go('/home');
           });
@@ -77,48 +80,77 @@ class IncomingMissionScreen extends ConsumerWidget {
         child: Center(
           child: DeliveryMissionCard(
             mission: mission,
+            isLoading: _isLoading,
             onAccept: () => _handleAccept(context, mission),
-            onDismiss: () {
-              if (context.mounted) context.go('/home');
-            },
+            onRefuse: () => _showRefuseDialog(context, mission),
+            onDismiss: () => _handleTimeout(context, mission),
           ),
         ),
       ),
     );
   }
 
+  Future<bool> _checkOnline() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return !result.contains(ConnectivityResult.none);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _handleAccept(
     BuildContext context,
     DeliveryMission mission,
   ) async {
-    // Check connectivity (use example.com — universally resolvable, unlike
-    // google.com which some African networks may block or throttle)
-    bool isOnline;
-    try {
-      final result = await InternetAddress.lookup('example.com')
-          .timeout(const Duration(seconds: 3));
-      isOnline = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (_) {
-      isOnline = false;
-    }
+    setState(() => _isLoading = true);
+    final isOnline = await _checkOnline();
 
     if (isOnline) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Mission acceptee !'),
-            backgroundColor: Color(0xFF4CAF50),
-          ),
-        );
-        // Full accept API call will be in story 5.3
-        context.go('/home');
+      try {
+        final endpoint = DeliveryEndpoint(ref.read(dioProvider));
+        final acceptedMission = await endpoint.acceptMission(mission.deliveryId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mission acceptee !'),
+              backgroundColor: Color(0xFF4CAF50),
+            ),
+          );
+          context.go('/delivery/collection-navigation', extra: acceptedMission);
+        }
+      } on DioException catch (e) {
+        setState(() => _isLoading = false);
+        if (e.response?.statusCode == 409 && context.mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Mission indisponible'),
+              content: const Text('Mission prise par un autre livreur.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          if (context.mounted) context.go('/home');
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: ${e.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } else {
-      // Offline: queue for sync (full mission data for recovery)
+      setState(() => _isLoading = false);
       await PendingAcceptQueue.instance.enqueue(
         mission.deliveryId,
         mission.orderId,
-        mission.toJson(),
+        missionData: mission.toJson(),
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +165,122 @@ class IncomingMissionScreen extends ConsumerWidget {
     }
   }
 
-  /// Parse a DeliveryMission from push notification or deep link data payload.
+  Future<void> _showRefuseDialog(
+    BuildContext context,
+    DeliveryMission mission,
+  ) async {
+    final reasons = {
+      'too_far': 'Trop loin',
+      'not_enough_time': 'Pas assez de temps',
+      'wrong_direction': 'Mauvaise direction',
+      'vehicle_issue': 'Probleme vehicule',
+      'other': 'Autre raison',
+    };
+
+    String? selectedReason;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Pourquoi refusez-vous ?'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: reasons.entries.map((entry) {
+              return ListTile(
+                leading: Radio<String>(
+                  value: entry.key,
+                  groupValue: selectedReason,
+                  onChanged: (v) => setDialogState(() => selectedReason = v),
+                ),
+                title: Text(entry.value),
+                onTap: () => setDialogState(() => selectedReason = entry.key),
+              );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('ANNULER'),
+            ),
+            FilledButton(
+              onPressed: selectedReason == null
+                  ? null
+                  : () => Navigator.pop(ctx, true),
+              child: const Text('CONFIRMER REFUS'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && selectedReason != null && context.mounted) {
+      await _handleRefuse(context, mission, selectedReason!);
+    }
+  }
+
+  Future<void> _handleRefuse(
+    BuildContext context,
+    DeliveryMission mission,
+    String reason,
+  ) async {
+    final isOnline = await _checkOnline();
+
+    if (isOnline) {
+      try {
+        final endpoint = DeliveryEndpoint(ref.read(dioProvider));
+        await endpoint.refuseMission(mission.deliveryId, reason);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 409 && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mission deja prise par un autre livreur'),
+              backgroundColor: Color(0xFFFF9800),
+            ),
+          );
+        }
+      }
+    } else {
+      await PendingAcceptQueue.instance.enqueue(
+        mission.deliveryId,
+        mission.orderId,
+        missionData: mission.toJson(),
+        action: 'refuse',
+        reason: reason,
+      );
+    }
+
+    if (context.mounted) context.go('/home');
+  }
+
+  Future<void> _handleTimeout(
+    BuildContext context,
+    DeliveryMission mission,
+  ) async {
+    final isOnline = await _checkOnline();
+
+    if (isOnline) {
+      try {
+        final endpoint = DeliveryEndpoint(ref.read(dioProvider));
+        await endpoint.refuseMission(mission.deliveryId, 'timeout');
+      } on DioException catch (_) {
+        // Best effort
+      }
+    } else {
+      await PendingAcceptQueue.instance.enqueue(
+        mission.deliveryId,
+        mission.orderId,
+        missionData: mission.toJson(),
+        action: 'refuse',
+        reason: 'timeout',
+      );
+    }
+
+    if (context.mounted) context.go('/home');
+  }
+
   DeliveryMission _missionFromPushData(Map<String, dynamic> data) {
     return DeliveryMission(
       deliveryId: data['delivery_id']?.toString() ?? '',

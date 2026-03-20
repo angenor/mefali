@@ -398,6 +398,43 @@ pub async fn get_product_breakdown(
     .map_err(|e| AppError::DatabaseError(e.to_string()))
 }
 
+/// Mark order as delivered.
+pub async fn mark_delivered(pool: &PgPool, order_id: Id) -> Result<(), AppError> {
+    sqlx::query("UPDATE orders SET status = 'delivered', updated_at = NOW() WHERE id = $1")
+        .bind(order_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to mark order delivered: {e}")))?;
+    Ok(())
+}
+
+/// Release escrow: update payment_status from escrow_held to released.
+pub async fn release_escrow(pool: &PgPool, order_id: Id) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE orders SET payment_status = 'released', updated_at = NOW()
+         WHERE id = $1 AND payment_status = 'escrow_held'"
+    )
+    .bind(order_id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to release escrow: {e}")))?;
+    Ok(())
+}
+
+/// Cancel an order with a reason stored in notes.
+/// Used by client absent protocol to mark order as cancelled.
+pub async fn cancel_order(pool: &PgPool, order_id: Id, reason: &str) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE orders SET status = 'cancelled', notes = $2, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(order_id)
+    .bind(reason)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to cancel order: {e}")))?;
+    Ok(())
+}
+
 /// Assign a driver to an order.
 pub async fn set_driver(pool: &PgPool, order_id: Id, driver_id: Id) -> Result<(), AppError> {
     sqlx::query("UPDATE orders SET driver_id = $2, updated_at = NOW() WHERE id = $1")
