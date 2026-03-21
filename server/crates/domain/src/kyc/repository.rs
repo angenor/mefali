@@ -2,8 +2,8 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use crate::users::model::User;
 use super::model::{KycDocument, KycDocumentType};
+use crate::users::model::User;
 
 /// Create a new KYC document record.
 pub async fn create_document(

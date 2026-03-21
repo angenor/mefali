@@ -7,6 +7,7 @@ pub mod kyc;
 pub mod merchants;
 pub mod orders;
 pub mod products;
+pub mod reconciliation;
 pub mod users;
 pub mod wallets;
 pub mod ws;
@@ -47,14 +48,38 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/deliveries")
                     .route("/pending", web::get().to(deliveries::get_pending_mission))
-                    .route("/{delivery_id}/accept", web::post().to(deliveries::accept_mission))
-                    .route("/{delivery_id}/refuse", web::post().to(deliveries::refuse_mission))
-                    .route("/{delivery_id}/confirm-pickup", web::post().to(deliveries::confirm_pickup))
-                    .route("/{delivery_id}/location", web::post().to(deliveries::update_location))
-                    .route("/{delivery_id}/confirm", web::post().to(deliveries::confirm_delivery))
-                    .route("/{delivery_id}/client-absent", web::post().to(deliveries::report_client_absent))
-                    .route("/{delivery_id}/resolve-absent", web::post().to(deliveries::resolve_client_absent))
-                    .route("/tracking/{order_id}", web::get().to(deliveries::get_tracking)),
+                    .route(
+                        "/{delivery_id}/accept",
+                        web::post().to(deliveries::accept_mission),
+                    )
+                    .route(
+                        "/{delivery_id}/refuse",
+                        web::post().to(deliveries::refuse_mission),
+                    )
+                    .route(
+                        "/{delivery_id}/confirm-pickup",
+                        web::post().to(deliveries::confirm_pickup),
+                    )
+                    .route(
+                        "/{delivery_id}/location",
+                        web::post().to(deliveries::update_location),
+                    )
+                    .route(
+                        "/{delivery_id}/confirm",
+                        web::post().to(deliveries::confirm_delivery),
+                    )
+                    .route(
+                        "/{delivery_id}/client-absent",
+                        web::post().to(deliveries::report_client_absent),
+                    )
+                    .route(
+                        "/{delivery_id}/resolve-absent",
+                        web::post().to(deliveries::resolve_client_absent),
+                    )
+                    .route(
+                        "/tracking/{order_id}",
+                        web::get().to(deliveries::get_tracking),
+                    ),
             )
             // Driver routes — Driver role required
             .service(
@@ -94,8 +119,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             )
             // Payment webhook — NO JWT auth (CinetPay calls directly)
             .service(
-                web::scope("/payments")
-                    .route("/webhook", web::post().to(orders::payment_webhook)),
+                web::scope("/payments").route("/webhook", web::post().to(orders::payment_webhook)),
             )
             // Merchant routes — mixed roles
             .service(
@@ -107,30 +131,45 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/me/status", web::put().to(merchants::update_status))
                     .route("/me/orders", web::get().to(orders::get_merchant_orders))
                     .route("/me/stats/weekly", web::get().to(orders::get_weekly_stats))
-                    .route("/me/stock-alerts", web::get().to(products::list_stock_alerts))
+                    .route(
+                        "/me/stock-alerts",
+                        web::get().to(products::list_stock_alerts),
+                    )
                     .route("/me/hours", web::get().to(merchants::get_my_hours))
                     .route("/me/hours", web::put().to(merchants::update_my_hours))
                     .route("/me/closures", web::get().to(merchants::get_my_closures))
                     .route("/me/closures", web::post().to(merchants::create_my_closure))
-                    .route("/me/closures/{id}", web::delete().to(merchants::delete_my_closure))
+                    .route(
+                        "/me/closures/{id}",
+                        web::delete().to(merchants::delete_my_closure),
+                    )
                     // Onboarding routes — Agent role required
                     .service(
                         web::scope("/onboard")
-                            .route("/request-otp", web::post().to(merchants::onboard_request_otp))
-                            .route("/verify-and-create", web::post().to(merchants::onboard_verify_and_create))
+                            .route(
+                                "/request-otp",
+                                web::post().to(merchants::onboard_request_otp),
+                            )
+                            .route(
+                                "/verify-and-create",
+                                web::post().to(merchants::onboard_verify_and_create),
+                            )
                             .route("/in-progress", web::get().to(merchants::in_progress)),
                     )
-                    .route("/{id}/products", web::get().to(merchants::list_merchant_products))
+                    .route(
+                        "/{id}/products",
+                        web::get().to(merchants::list_merchant_products),
+                    )
                     .route("/{id}/products", web::post().to(merchants::add_products))
                     .route("/{id}/hours", web::put().to(merchants::set_hours))
                     .route("/{id}/finalize", web::post().to(merchants::finalize))
-                    .route("/{id}/onboarding-status", web::get().to(merchants::onboarding_status)),
+                    .route(
+                        "/{id}/onboarding-status",
+                        web::get().to(merchants::onboarding_status),
+                    ),
             )
             // Agent routes — Agent/Admin role required
-            .service(
-                web::scope("/agents")
-                    .route("/me/stats", web::get().to(agents::get_my_stats)),
-            )
+            .service(web::scope("/agents").route("/me/stats", web::get().to(agents::get_my_stats)))
             // Product catalogue routes — Merchant role required
             .service(
                 web::scope("/products")
@@ -145,11 +184,22 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     ),
             )
             // Stock alerts routes — Merchant role required
+            .service(web::scope("/stock-alerts").route(
+                "/{id}/acknowledge",
+                web::post().to(products::acknowledge_alert),
+            ))
+            // Admin routes — Admin role required
             .service(
-                web::scope("/stock-alerts")
+                web::scope("/admin")
+                    .service(
+                        web::scope("/reconciliation")
+                            .route("/run", web::post().to(reconciliation::run_reconciliation))
+                            .route("/reports", web::get().to(reconciliation::list_reports))
+                            .route("/reports/{date}", web::get().to(reconciliation::get_report)),
+                    )
                     .route(
-                        "/{id}/acknowledge",
-                        web::post().to(products::acknowledge_alert),
+                        "/wallets/{user_id}/credit",
+                        web::post().to(wallets::admin_credit_wallet),
                     ),
             ),
     );

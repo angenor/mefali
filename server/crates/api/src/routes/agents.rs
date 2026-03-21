@@ -54,7 +54,10 @@ mod integration_tests {
         assert_eq!(body["data"]["merchants_onboarded"]["total"], 0);
         assert_eq!(body["data"]["kyc_validated"]["total"], 0);
         assert_eq!(body["data"]["merchants_with_first_order"]["total"], 0);
-        assert!(body["data"]["recent_merchants"].as_array().unwrap().is_empty());
+        assert!(body["data"]["recent_merchants"]
+            .as_array()
+            .unwrap()
+            .is_empty());
     }
 
     /// Agent gets correct counts with onboarded merchants and KYC.
@@ -106,7 +109,10 @@ mod integration_tests {
         // 1 merchant with first order
         assert_eq!(body["data"]["merchants_with_first_order"]["total"], 1);
         // Recent merchants list should have 2
-        assert_eq!(body["data"]["recent_merchants"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            body["data"]["recent_merchants"].as_array().unwrap().len(),
+            2
+        );
     }
 
     /// Non-agent role gets 403 Forbidden.
@@ -167,12 +173,20 @@ mod integration_tests {
             .unwrap();
 
         // Agent A onboards 3 merchants
-        create_test_merchant_for_agent(&pool, agent_a.id).await.unwrap();
-        create_test_merchant_for_agent(&pool, agent_a.id).await.unwrap();
-        create_test_merchant_for_agent(&pool, agent_a.id).await.unwrap();
+        create_test_merchant_for_agent(&pool, agent_a.id)
+            .await
+            .unwrap();
+        create_test_merchant_for_agent(&pool, agent_a.id)
+            .await
+            .unwrap();
+        create_test_merchant_for_agent(&pool, agent_a.id)
+            .await
+            .unwrap();
 
         // Agent B onboards 1 merchant
-        create_test_merchant_for_agent(&pool, agent_b.id).await.unwrap();
+        create_test_merchant_for_agent(&pool, agent_b.id)
+            .await
+            .unwrap();
 
         // Agent B should see only 1
         let token_b = crate::test_helpers::create_test_jwt(agent_b.id, "agent");
@@ -188,6 +202,9 @@ mod integration_tests {
 
         let body: serde_json::Value = test::read_body_json(resp).await;
         assert_eq!(body["data"]["merchants_onboarded"]["total"], 1);
-        assert_eq!(body["data"]["recent_merchants"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            body["data"]["recent_merchants"].as_array().unwrap().len(),
+            1
+        );
     }
 }

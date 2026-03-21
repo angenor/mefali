@@ -6,7 +6,9 @@ use notification::sms::SmsRouter;
 use sqlx::PgPool;
 use tracing::{info, warn};
 
-use super::model::{AbsentResolution, ConfirmDeliveryResponse, Delivery, DeliveryMission, DeliveryRefusalReason};
+use super::model::{
+    AbsentResolution, ConfirmDeliveryResponse, Delivery, DeliveryMission, DeliveryRefusalReason,
+};
 use super::repository;
 use crate::merchants;
 use crate::orders;
@@ -24,10 +26,7 @@ pub async fn toggle_driver_availability(
 }
 
 /// Get driver availability status.
-pub async fn get_driver_availability(
-    pool: &PgPool,
-    driver_id: Id,
-) -> Result<bool, AppError> {
+pub async fn get_driver_availability(pool: &PgPool, driver_id: Id) -> Result<bool, AppError> {
     repository::get_driver_availability(pool, driver_id).await
 }
 
@@ -139,7 +138,10 @@ async fn try_send_push(
         body: format!(
             "{} -> {}",
             mission.merchant_name,
-            mission.delivery_address.as_deref().unwrap_or("adresse inconnue")
+            mission
+                .delivery_address
+                .as_deref()
+                .unwrap_or("adresse inconnue")
         ),
         data: {
             let mut map = serde_json::Map::new();
@@ -162,7 +164,10 @@ async fn try_send_push(
             if let Some(v) = mission.estimated_distance_m {
                 map.insert("estimated_distance_m".into(), v.to_string().into());
             }
-            map.insert("delivery_fee".into(), mission.delivery_fee.to_string().into());
+            map.insert(
+                "delivery_fee".into(),
+                mission.delivery_fee.to_string().into(),
+            );
             map.insert("items_summary".into(), mission.items_summary.clone().into());
             map.insert("payment_type".into(), mission.payment_type.clone().into());
             map.insert("order_total".into(), mission.order_total.to_string().into());
@@ -197,8 +202,15 @@ fn build_sms_mission_text(mission: &DeliveryMission) -> String {
     let link = format!("mefali://delivery/mission?data={encoded}");
 
     let order_short = &mission.order_id.to_string()[..8];
-    let address = mission.delivery_address.as_deref().unwrap_or("Adresse a confirmer");
-    let payment_label = if mission.payment_type == "cod" { "COD" } else { "MM" };
+    let address = mission
+        .delivery_address
+        .as_deref()
+        .unwrap_or("Adresse a confirmer");
+    let payment_label = if mission.payment_type == "cod" {
+        "COD"
+    } else {
+        "MM"
+    };
     let amount_fcfa = mission.order_total / 100;
 
     // Truncate readable text to keep SMS compact (deep link is never truncated)
@@ -418,16 +430,14 @@ pub async fn refuse_mission(
             .map_err(|e| AppError::DatabaseError(format!("Failed to create delivery: {e}")))?;
 
             // Update order with new driver
-            sqlx::query(
-                "UPDATE orders SET driver_id = $2, updated_at = now() WHERE id = $1",
-            )
-            .bind(order_id)
-            .bind(next.id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                AppError::DatabaseError(format!("Failed to update order driver: {e}"))
-            })?;
+            sqlx::query("UPDATE orders SET driver_id = $2, updated_at = now() WHERE id = $1")
+                .bind(order_id)
+                .bind(next.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    AppError::DatabaseError(format!("Failed to update order driver: {e}"))
+                })?;
 
             info!(
                 order_id = %order_id,
@@ -479,11 +489,7 @@ pub async fn refuse_mission(
 }
 
 /// Notify admin users when no driver is available for an order (AC #6, NFR28).
-async fn notify_admins_no_driver(
-    pool: &PgPool,
-    order_id: Id,
-    fcm_client: Option<&FcmClient>,
-) {
+async fn notify_admins_no_driver(pool: &PgPool, order_id: Id, fcm_client: Option<&FcmClient>) {
     let fcm = match fcm_client {
         Some(c) => c,
         None => return,
@@ -575,7 +581,10 @@ pub async fn update_driver_location(
     lng: f64,
 ) -> Result<Delivery, AppError> {
     // Validate GPS coordinates bounds
-    if lat.is_nan() || lat.is_infinite() || lng.is_nan() || lng.is_infinite()
+    if lat.is_nan()
+        || lat.is_infinite()
+        || lng.is_nan()
+        || lng.is_infinite()
         || !(-90.0..=90.0).contains(&lat)
         || !(-180.0..=180.0).contains(&lng)
     {
@@ -648,7 +657,10 @@ async fn notify_merchant_pickup(
             let notification = PushNotification {
                 device_token: token.clone(),
                 title: "Commande collectee".into(),
-                body: format!("Le livreur a collecte votre commande #{}", &delivery.order_id.to_string()[..8]),
+                body: format!(
+                    "Le livreur a collecte votre commande #{}",
+                    &delivery.order_id.to_string()[..8]
+                ),
                 data: {
                     let mut map = serde_json::Map::new();
                     map.insert("event".into(), "order.collected".into());
@@ -709,7 +721,10 @@ pub async fn confirm_delivery(
     }
 
     // Validate GPS coordinates bounds
-    if lat.is_nan() || lat.is_infinite() || lng.is_nan() || lng.is_infinite()
+    if lat.is_nan()
+        || lat.is_infinite()
+        || lng.is_nan()
+        || lng.is_infinite()
         || !(-90.0..=90.0).contains(&lat)
         || !(-180.0..=180.0).contains(&lng)
     {
@@ -738,7 +753,8 @@ pub async fn confirm_delivery(
         .await?
         .ok_or_else(|| {
             AppError::Conflict(
-                "Delivery is not in picked_up or client_absent status — cannot confirm delivery".into(),
+                "Delivery is not in picked_up or client_absent status — cannot confirm delivery"
+                    .into(),
             )
         })?;
 
@@ -1000,13 +1016,14 @@ pub async fn report_client_absent(
     }
 
     // Validate GPS coordinates bounds
-    if lat.is_nan() || lat.is_infinite() || lng.is_nan() || lng.is_infinite()
+    if lat.is_nan()
+        || lat.is_infinite()
+        || lng.is_nan()
+        || lng.is_infinite()
         || !(-90.0..=90.0).contains(&lat)
         || !(-180.0..=180.0).contains(&lng)
     {
-        return Err(AppError::BadRequest(
-            "Invalid GPS coordinates".into(),
-        ));
+        return Err(AppError::BadRequest("Invalid GPS coordinates".into()));
     }
 
     // Atomically mark client absent (only if picked_up)
@@ -1123,7 +1140,8 @@ async fn notify_customer_client_absent(
             let notification = PushNotification {
                 device_token: token.clone(),
                 title: "Livreur ne vous trouve pas".into(),
-                body: "Le livreur ne vous trouve pas a l'adresse indiquee. Il attend 10 minutes.".into(),
+                body: "Le livreur ne vous trouve pas a l'adresse indiquee. Il attend 10 minutes."
+                    .into(),
                 data: {
                     let mut map = serde_json::Map::new();
                     map.insert("event".into(), "delivery.client_absent".into());
@@ -1300,7 +1318,10 @@ mod tests {
         // ~1 km distance (Bouake center to nearby point)
         let eta = calculate_eta_seconds(7.6900, -5.0300, 7.6990, -5.0300);
         // 1 km at 25 km/h = 144 seconds
-        assert!(eta > 100 && eta < 200, "ETA {eta}s should be ~144s for ~1km");
+        assert!(
+            eta > 100 && eta < 200,
+            "ETA {eta}s should be ~144s for ~1km"
+        );
     }
 
     #[test]
@@ -1322,7 +1343,10 @@ mod tests {
         // ~830m = approx 2 min at 25 km/h (ETA notification threshold)
         let eta = calculate_eta_seconds(7.6900, -5.0300, 7.6975, -5.0300);
         // 830m at 25 km/h ≈ 120s
-        assert!(eta > 80 && eta < 160, "ETA {eta}s should be ~120s for ~830m");
+        assert!(
+            eta > 80 && eta < 160,
+            "ETA {eta}s should be ~120s for ~830m"
+        );
     }
 
     // --- Story 5.6: Delivery confirmation tests ---

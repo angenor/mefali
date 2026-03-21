@@ -2,7 +2,9 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{CreateMerchantPayload, Merchant, MerchantStatus, MerchantSummary, ProductSummary};
+use super::model::{
+    CreateMerchantPayload, Merchant, MerchantStatus, MerchantSummary, ProductSummary,
+};
 
 /// Insert a new merchant record linked to a user.
 pub async fn create_merchant(
@@ -204,10 +206,7 @@ pub async fn find_products_for_discovery(
 }
 
 /// Count available products for a finalized merchant.
-pub async fn count_products_for_discovery(
-    pool: &PgPool,
-    merchant_id: Id,
-) -> Result<i64, AppError> {
+pub async fn count_products_for_discovery(pool: &PgPool, merchant_id: Id) -> Result<i64, AppError> {
     sqlx::query_scalar::<_, i64>(
         "SELECT COUNT(*)
          FROM products p

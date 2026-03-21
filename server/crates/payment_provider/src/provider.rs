@@ -69,6 +69,19 @@ pub trait PaymentProvider: Send + Sync {
         &self,
         request: WithdrawalRequest,
     ) -> Result<WithdrawalResponse, PaymentError>;
+
+    /// Verify multiple payments in batch. Default implementation calls verify_payment sequentially.
+    async fn verify_payment_batch(
+        &self,
+        transaction_ids: &[String],
+    ) -> Result<Vec<(String, PaymentStatus)>, PaymentError> {
+        let mut results = Vec::with_capacity(transaction_ids.len());
+        for txn_id in transaction_ids {
+            let status = self.verify_payment(txn_id).await?;
+            results.push((txn_id.clone(), status));
+        }
+        Ok(results)
+    }
 }
 
 #[cfg(test)]

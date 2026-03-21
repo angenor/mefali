@@ -5,9 +5,11 @@ use common::config::AppConfig;
 use common::error::AppError;
 use common::response::ApiResponse;
 use domain::merchants::business_hours::SetBusinessHoursEntry;
-use domain::merchants::model::{InitiateOnboardingPayload, CreateMerchantPayload, UpdateStatusPayload};
-use domain::merchants::service::list_active_merchants;
+use domain::merchants::model::{
+    CreateMerchantPayload, InitiateOnboardingPayload, UpdateStatusPayload,
+};
 use domain::merchants::service;
+use domain::merchants::service::list_active_merchants;
 use domain::products::model::CreateProductPayload;
 use domain::users::model::UserRole;
 use notification::sms::SmsProvider;
@@ -354,8 +356,7 @@ pub async fn get_me_with_status(
 ) -> Result<HttpResponse, AppError> {
     require_role(&auth, &[UserRole::Merchant])?;
 
-    let result =
-        service::get_current_merchant_with_effective_status(&pool, auth.user_id).await?;
+    let result = service::get_current_merchant_with_effective_status(&pool, auth.user_id).await?;
 
     let response = ApiResponse::new(serde_json::json!({ "merchant": result }));
     Ok(HttpResponse::Ok().json(response))
@@ -388,7 +389,9 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_list_merchants_200_empty(pool: PgPool) {
-        let user = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let user = create_test_user_with_role(&pool, UserRole::Client)
+            .await
+            .unwrap();
         let token = crate::test_helpers::create_test_jwt(user.id, "client");
         let app = test::init_service(crate::test_helpers::test_app(pool)).await;
 
@@ -407,14 +410,22 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_list_merchants_returns_only_finalized(pool: PgPool) {
-        let agent = create_test_user_with_role(&pool, UserRole::Agent).await.unwrap();
+        let agent = create_test_user_with_role(&pool, UserRole::Agent)
+            .await
+            .unwrap();
         // Create finalized merchant (onboarding_step = 5) — should be returned
-        let _finalized = create_test_merchant_for_agent(&pool, agent.id).await.unwrap();
+        let _finalized = create_test_merchant_for_agent(&pool, agent.id)
+            .await
+            .unwrap();
         // Create merchant with step = 1 — should NOT be returned
-        let merchant_user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let merchant_user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let _partial = create_test_merchant(&pool, merchant_user.id).await.unwrap();
 
-        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let client = create_test_user_with_role(&pool, UserRole::Client)
+            .await
+            .unwrap();
         let token = crate::test_helpers::create_test_jwt(client.id, "client");
         let app = test::init_service(crate::test_helpers::test_app(pool)).await;
 
@@ -448,11 +459,17 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_list_merchant_products_200(pool: PgPool) {
-        let agent = create_test_user_with_role(&pool, UserRole::Agent).await.unwrap();
-        let merchant = create_test_merchant_for_agent(&pool, agent.id).await.unwrap();
+        let agent = create_test_user_with_role(&pool, UserRole::Agent)
+            .await
+            .unwrap();
+        let merchant = create_test_merchant_for_agent(&pool, agent.id)
+            .await
+            .unwrap();
         let _product = create_test_product(&pool, merchant.id).await.unwrap();
 
-        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let client = create_test_user_with_role(&pool, UserRole::Client)
+            .await
+            .unwrap();
         let token = crate::test_helpers::create_test_jwt(client.id, "client");
         let app = test::init_service(crate::test_helpers::test_app(pool)).await;
 
@@ -475,10 +492,16 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_list_merchant_products_200_empty(pool: PgPool) {
-        let agent = create_test_user_with_role(&pool, UserRole::Agent).await.unwrap();
-        let merchant = create_test_merchant_for_agent(&pool, agent.id).await.unwrap();
+        let agent = create_test_user_with_role(&pool, UserRole::Agent)
+            .await
+            .unwrap();
+        let merchant = create_test_merchant_for_agent(&pool, agent.id)
+            .await
+            .unwrap();
 
-        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let client = create_test_user_with_role(&pool, UserRole::Client)
+            .await
+            .unwrap();
         let token = crate::test_helpers::create_test_jwt(client.id, "client");
         let app = test::init_service(crate::test_helpers::test_app(pool)).await;
 
@@ -500,7 +523,10 @@ mod integration_tests {
         let app = test::init_service(crate::test_helpers::test_app(pool)).await;
 
         let req = test::TestRequest::get()
-            .uri(&format!("/api/v1/merchants/{}/products", uuid::Uuid::new_v4()))
+            .uri(&format!(
+                "/api/v1/merchants/{}/products",
+                uuid::Uuid::new_v4()
+            ))
             .to_request();
 
         let resp = test::call_service(&app, req).await;
@@ -510,10 +536,14 @@ mod integration_tests {
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_list_merchant_products_404_not_finalized(pool: PgPool) {
         // Merchant with onboarding_step = 1 (not finalized) — should return 404
-        let merchant_user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let merchant_user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let merchant = create_test_merchant(&pool, merchant_user.id).await.unwrap();
 
-        let client = create_test_user_with_role(&pool, UserRole::Client).await.unwrap();
+        let client = create_test_user_with_role(&pool, UserRole::Client)
+            .await
+            .unwrap();
         let token = crate::test_helpers::create_test_jwt(client.id, "client");
         let app = test::init_service(crate::test_helpers::test_app(pool)).await;
 
@@ -531,7 +561,9 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_get_hours_200(pool: PgPool) {
-        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
 
         let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
@@ -551,7 +583,9 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_put_hours_200(pool: PgPool) {
-        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
 
         let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
@@ -587,7 +621,9 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_get_closures_200_empty(pool: PgPool) {
-        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
 
         let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
@@ -607,7 +643,9 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_post_closure_201(pool: PgPool) {
-        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
 
         let token = crate::test_helpers::create_test_jwt(user.id, "merchant");
@@ -634,7 +672,9 @@ mod integration_tests {
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn test_delete_closure_204(pool: PgPool) {
-        let user = create_test_user_with_role(&pool, UserRole::Merchant).await.unwrap();
+        let user = create_test_user_with_role(&pool, UserRole::Merchant)
+            .await
+            .unwrap();
         let _merchant = create_test_merchant(&pool, user.id).await.unwrap();
 
         let token = crate::test_helpers::create_test_jwt(user.id, "merchant");

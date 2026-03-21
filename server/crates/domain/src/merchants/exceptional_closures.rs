@@ -87,22 +87,18 @@ pub async fn find_upcoming(
 }
 
 /// Delete an exceptional closure (ownership check via merchant_id).
-pub async fn delete(
-    pool: &sqlx::PgPool,
-    closure_id: Id,
-    merchant_id: Id,
-) -> Result<(), AppError> {
-    let result = sqlx::query(
-        "DELETE FROM exceptional_closures WHERE id = $1 AND merchant_id = $2",
-    )
-    .bind(closure_id)
-    .bind(merchant_id)
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+pub async fn delete(pool: &sqlx::PgPool, closure_id: Id, merchant_id: Id) -> Result<(), AppError> {
+    let result = sqlx::query("DELETE FROM exceptional_closures WHERE id = $1 AND merchant_id = $2")
+        .bind(closure_id)
+        .bind(merchant_id)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound("Fermeture exceptionnelle non trouvée".into()));
+        return Err(AppError::NotFound(
+            "Fermeture exceptionnelle non trouvée".into(),
+        ));
     }
     Ok(())
 }

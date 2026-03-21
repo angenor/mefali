@@ -1,6 +1,6 @@
 # Story 6.2: Merchant Withdrawal
 
-Status: review
+Status: done
 
 ## Story
 
@@ -162,10 +162,16 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-03-20: Implementation complete story 6-2 merchant withdrawal
+- 2026-03-20: Code review (adversarial) — 2 HIGH, 2 MEDIUM, 1 LOW trouvees. Fixes appliques:
+  - H1/M2: Revert scope-creep refactorisation dans service.rs (inline SQL → repository layer restaure)
+  - H2: Extraction message erreur API reel via DioException dans wallet_screen.dart
+  - M1: Notification retrait en fire-and-forget (actix_web::rt::spawn) pour ne pas bloquer la reponse HTTP
+  - Ajout re-export DioException dans mefali_api_client barrel
 
 ### File List
 
-- server/crates/api/src/routes/wallets.rs (modified — role authorization + notification)
+- server/crates/api/src/routes/wallets.rs (modified — role authorization + notification + spawn async)
 - server/crates/api/src/middleware/role_guard.rs (modified — added test_merchant_withdrawal_authorized)
 - server/crates/domain/src/wallets/model.rs (modified — added test_withdrawal_transaction_format)
-- apps/mefali_b2b/lib/features/wallet/wallet_screen.dart (modified — withdraw button, bottom sheet, API integration)
+- apps/mefali_b2b/lib/features/wallet/wallet_screen.dart (modified — withdraw button, bottom sheet, API integration, DioException error extraction)
+- packages/mefali_api_client/lib/mefali_api_client.dart (modified — re-export DioException)

@@ -83,22 +83,21 @@ pub fn test_app(
                         .route("/{id}/ready", web::put().to(orders::mark_ready)),
                 )
                 .service(
-                    web::scope("/agents")
-                        .route("/me/stats", web::get().to(agents::get_my_stats)),
+                    web::scope("/agents").route("/me/stats", web::get().to(agents::get_my_stats)),
                 )
                 .service(
                     web::scope("/merchants")
                         .route("/me", web::get().to(merchants::get_me_with_status))
                         .route("/me/orders", web::get().to(orders::get_merchant_orders))
-                        .route(
-                            "/me/stats/weekly",
-                            web::get().to(orders::get_weekly_stats),
-                        )
+                        .route("/me/stats/weekly", web::get().to(orders::get_weekly_stats))
                         .route("/me/hours", web::get().to(merchants::get_my_hours))
                         .route("/me/hours", web::put().to(merchants::update_my_hours))
                         .route("/me/closures", web::get().to(merchants::get_my_closures))
                         .route("/me/closures", web::post().to(merchants::create_my_closure))
-                        .route("/me/closures/{id}", web::delete().to(merchants::delete_my_closure)),
+                        .route(
+                            "/me/closures/{id}",
+                            web::delete().to(merchants::delete_my_closure),
+                        ),
                 ),
         )
 }

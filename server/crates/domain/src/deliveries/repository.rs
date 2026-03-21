@@ -150,10 +150,7 @@ pub async fn find_next_available_driver(
 }
 
 /// Get all driver IDs who have refused deliveries for a specific order.
-pub async fn get_refused_driver_ids(
-    pool: &PgPool,
-    order_id: Id,
-) -> Result<Vec<Id>, AppError> {
+pub async fn get_refused_driver_ids(pool: &PgPool, order_id: Id) -> Result<Vec<Id>, AppError> {
     let rows = sqlx::query_scalar::<_, Id>(
         "SELECT driver_id FROM deliveries WHERE order_id = $1 AND status = 'refused'",
     )
@@ -291,10 +288,7 @@ pub async fn set_driver_availability(
 }
 
 /// Get driver availability status.
-pub async fn get_driver_availability(
-    pool: &PgPool,
-    driver_id: Id,
-) -> Result<bool, AppError> {
+pub async fn get_driver_availability(pool: &PgPool, driver_id: Id) -> Result<bool, AppError> {
     let result = sqlx::query_scalar::<_, bool>(
         "SELECT is_available FROM users WHERE id = $1 AND role = 'driver'",
     )

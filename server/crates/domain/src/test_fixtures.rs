@@ -42,7 +42,8 @@ pub async fn create_test_merchant(
         category: Some("restaurant".into()),
         city_id: None,
     };
-    let merchant = merchants::repository::create_merchant(pool, user_id, agent.id, &payload).await?;
+    let merchant =
+        merchants::repository::create_merchant(pool, user_id, agent.id, &payload).await?;
     // Default DB status is Closed — must update to Open for order creation to succeed
     merchants::repository::update_status(pool, merchant.id, &MerchantStatus::Open).await
 }
@@ -84,7 +85,8 @@ pub async fn create_test_merchant_for_agent(
         category: Some("restaurant".into()),
         city_id: None,
     };
-    let merchant = merchants::repository::create_merchant(pool, user.id, agent_id, &payload).await?;
+    let merchant =
+        merchants::repository::create_merchant(pool, user.id, agent_id, &payload).await?;
     // Finalize onboarding (step 5) and set status to Open
     merchants::repository::update_onboarding_step(pool, merchant.id, 5).await?;
     merchants::repository::update_status(pool, merchant.id, &MerchantStatus::Open).await
@@ -124,7 +126,10 @@ pub async fn create_test_delivered_order(
     merchant_id: Id,
     items: &[(Id, i32, i64)],
 ) -> Result<orders::model::Order, AppError> {
-    let subtotal: i64 = items.iter().map(|(_, qty, price)| *qty as i64 * price).sum();
+    let subtotal: i64 = items
+        .iter()
+        .map(|(_, qty, price)| *qty as i64 * price)
+        .sum();
     let delivery_fee = 0i64;
     let total = subtotal + delivery_fee;
 

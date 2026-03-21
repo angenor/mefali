@@ -213,6 +213,21 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
           ),
         );
       }
+    } on DioException catch (e) {
+      if (mounted) {
+        var message = 'Echec du retrait. Veuillez reessayer.';
+        final data = e.response?.data;
+        if (data is Map<String, dynamic>) {
+          final error = data['error'];
+          if (error is Map<String, dynamic> && error['message'] is String) {
+            message = error['message'] as String;
+          }
+        }
+        setState(() {
+          _error = message;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {

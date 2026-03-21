@@ -35,10 +35,7 @@ pub async fn add_products(
 }
 
 /// Get all available products for a merchant.
-pub async fn get_products(
-    pool: &PgPool,
-    merchant_id: Id,
-) -> Result<Vec<Product>, AppError> {
+pub async fn get_products(pool: &PgPool, merchant_id: Id) -> Result<Vec<Product>, AppError> {
     repository::find_by_merchant(pool, merchant_id).await
 }
 
@@ -197,10 +194,7 @@ pub async fn decrement_stock(
 }
 
 /// Get unacknowledged stock alerts for a merchant.
-pub async fn get_stock_alerts(
-    pool: &PgPool,
-    merchant_id: Id,
-) -> Result<Vec<StockAlert>, AppError> {
+pub async fn get_stock_alerts(pool: &PgPool, merchant_id: Id) -> Result<Vec<StockAlert>, AppError> {
     repository::find_alerts_by_merchant(pool, merchant_id).await
 }
 

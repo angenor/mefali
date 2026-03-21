@@ -5,7 +5,7 @@ use notification::sms::dev_provider::DevSmsProvider;
 use notification::sms::SmsProvider;
 use payment_provider::cinetpay::CinetPayAdapter;
 use payment_provider::provider::PaymentProvider;
-use tracing::info;
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 mod extractors;
@@ -54,11 +54,10 @@ async fn main() -> std::io::Result<()> {
 
     // SMS router (dual-provider with failover) — used for delivery mission fallback
     // Swap DevSmsProvider for real providers (Infobip/Twilio) in production
-    let sms_router: Option<notification::sms::SmsRouter> =
-        Some(notification::sms::SmsRouter::new(
-            Box::new(DevSmsProvider),
-            Box::new(DevSmsProvider),
-        ));
+    let sms_router: Option<notification::sms::SmsRouter> = Some(notification::sms::SmsRouter::new(
+        Box::new(DevSmsProvider),
+        Box::new(DevSmsProvider),
+    ));
     info!("SMS router initialized with dual-provider failover (dev providers)");
 
     // Payment provider — CinetPay adapter (swap for Mock in dev if needed)
@@ -72,8 +71,7 @@ async fn main() -> std::io::Result<()> {
     info!("CinetPay payment provider initialized");
 
     // FCM push notification client (optional — disabled if Firebase credentials not set)
-    let fcm_client: Option<notification::fcm::FcmClient> =
-        notification::fcm::FcmClient::from_env();
+    let fcm_client: Option<notification::fcm::FcmClient> = notification::fcm::FcmClient::from_env();
     match &fcm_client {
         Some(_) => info!("FCM push notification client initialized"),
         None => info!("FCM not configured — push notifications disabled (set FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_JSON)"),
@@ -87,6 +85,16 @@ async fn main() -> std::io::Result<()> {
     )
     .await;
     info!("MinIO/S3 client initialized");
+
+    // Start daily reconciliation scheduler (awaited so startup failure is caught)
+    let cron_expr =
+        std::env::var("RECONCILIATION_CRON").unwrap_or_else(|_| "0 0 1 * * *".into()); // default: 01:00 UTC daily
+    match start_reconciliation_scheduler(db_pool.clone(), payment_provider.clone(), &cron_expr)
+        .await
+    {
+        Ok(_) => info!("Reconciliation scheduler started (cron: {})", cron_expr),
+        Err(e) => error!("Failed to start reconciliation scheduler: {}", e),
+    }
 
     // Shared application state injected via web::Data<>
     let app_config = web::Data::new(config.clone());
@@ -113,4 +121,61 @@ async fn main() -> std::io::Result<()> {
     .bind(&bind_addr)?
     .run()
     .await
+}
+
+/// Start the daily reconciliation cron job.
+async fn start_reconciliation_scheduler(
+    pool: sqlx::PgPool,
+    payment_provider: Arc<dyn PaymentProvider>,
+    cron_expr: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use tokio_cron_scheduler::{Job, JobScheduler};
+
+    let sched = JobScheduler::new().await?;
+
+    let cron_owned = cron_expr.to_string();
+    sched
+        .add(Job::new_async(cron_owned.as_str(), move |_uuid, _lock| {
+            let pool = pool.clone();
+            let provider = payment_provider.clone();
+            Box::pin(async move {
+                let yesterday = chrono::Utc::now().date_naive() - chrono::Duration::days(1);
+                info!(date = %yesterday, "Running scheduled reconciliation");
+                match domain::reconciliation::service::run_daily_reconciliation(
+                    &pool,
+                    provider.as_ref(),
+                    yesterday,
+                    false,
+                )
+                .await
+                {
+                    Ok(report) => match report.status {
+                        domain::reconciliation::model::ReconciliationStatus::Ok => {
+                            info!(date = %yesterday, "Scheduled reconciliation: OK");
+                        }
+                        domain::reconciliation::model::ReconciliationStatus::Warnings => {
+                            warn!(
+                                date = %yesterday,
+                                discrepancies = report.discrepancy_count,
+                                "Scheduled reconciliation: warnings"
+                            );
+                        }
+                        domain::reconciliation::model::ReconciliationStatus::Critical => {
+                            error!(
+                                date = %yesterday,
+                                discrepancies = report.discrepancy_count,
+                                "Scheduled reconciliation: CRITICAL"
+                            );
+                        }
+                    },
+                    Err(e) => {
+                        error!(date = %yesterday, error = %e, "Scheduled reconciliation failed");
+                    }
+                }
+            })
+        })?)
+        .await?;
+
+    sched.start().await?;
+    Ok(())
 }

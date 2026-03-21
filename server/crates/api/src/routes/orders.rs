@@ -26,13 +26,7 @@ pub async fn create_order(
 ) -> Result<HttpResponse, AppError> {
     require_role(&auth, &[UserRole::Client])?;
 
-    let result = service::create_order(
-        &pool,
-        auth.user_id,
-        &body,
-        &payment_provider,
-    )
-    .await?;
+    let result = service::create_order(&pool, auth.user_id, &body, &payment_provider).await?;
 
     let response = ApiResponse::new(serde_json::json!({
         "order": result.order,
@@ -66,8 +60,7 @@ pub async fn get_customer_order(
 ) -> Result<HttpResponse, AppError> {
     require_role(&auth, &[UserRole::Client])?;
 
-    let order =
-        service::get_customer_order_by_id(&pool, auth.user_id, path.into_inner()).await?;
+    let order = service::get_customer_order_by_id(&pool, auth.user_id, path.into_inner()).await?;
 
     let response = ApiResponse::new(serde_json::json!({ "order": order }));
     Ok(HttpResponse::Ok().json(response))
@@ -124,8 +117,7 @@ pub async fn reject_order(
     require_role(&auth, &[UserRole::Merchant])?;
 
     body.validate()?;
-    let order =
-        service::reject_order(&pool, auth.user_id, path.into_inner(), &body.reason).await?;
+    let order = service::reject_order(&pool, auth.user_id, path.into_inner(), &body.reason).await?;
 
     let response = ApiResponse::new(serde_json::json!({ "order": order }));
     Ok(HttpResponse::Ok().json(response))
@@ -225,10 +217,7 @@ pub async fn payment_webhook(
         })));
     }
 
-    let transaction_id = body
-        .cpm_trans_id
-        .as_deref()
-        .unwrap_or_default();
+    let transaction_id = body.cpm_trans_id.as_deref().unwrap_or_default();
 
     if transaction_id.is_empty() {
         warn!("Webhook received with empty transaction_id");
@@ -384,12 +373,10 @@ mod integration_tests {
                 .unwrap(),
             1
         );
-        assert!(
-            !body["data"]["product_breakdown"]
-                .as_array()
-                .unwrap()
-                .is_empty()
-        );
+        assert!(!body["data"]["product_breakdown"]
+            .as_array()
+            .unwrap()
+            .is_empty());
     }
 
     #[sqlx::test(migrations = "../../migrations")]

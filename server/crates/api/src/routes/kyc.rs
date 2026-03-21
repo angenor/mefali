@@ -94,17 +94,16 @@ pub async fn upload_document(
         }
     }
 
-    let doc_type_str = document_type
-        .ok_or_else(|| AppError::BadRequest("Missing document_type field".into()))?;
-    let doc_type: KycDocumentType =
-        serde_json::from_str(&format!("\"{}\"", doc_type_str)).map_err(|_| {
+    let doc_type_str =
+        document_type.ok_or_else(|| AppError::BadRequest("Missing document_type field".into()))?;
+    let doc_type: KycDocumentType = serde_json::from_str(&format!("\"{}\"", doc_type_str))
+        .map_err(|_| {
             AppError::BadRequest(format!(
                 "Invalid document_type: '{}'. Allowed: cni, permis",
                 doc_type_str
             ))
         })?;
-    let ct = content_type
-        .ok_or_else(|| AppError::BadRequest("Missing file field".into()))?;
+    let ct = content_type.ok_or_else(|| AppError::BadRequest("Missing file field".into()))?;
 
     if file_bytes.is_empty() {
         return Err(AppError::BadRequest("File is empty".into()));

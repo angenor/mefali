@@ -11,7 +11,7 @@ use crate::orders::model::Order;
 
 /// Delivery commission percentage (driver keeps delivery_fee - commission).
 /// TODO: make configurable per city via city_config table.
-const DELIVERY_COMMISSION_PERCENT: i64 = 14;
+pub const DELIVERY_COMMISSION_PERCENT: i64 = 14;
 
 /// Credit driver wallet after delivery confirmation.
 /// Returns the driver earnings amount in centimes.
@@ -24,35 +24,16 @@ pub async fn credit_driver_for_delivery(
     let driver_earnings = order.delivery_fee - commission;
 
     let wallet = repository::find_wallet_by_user(pool, delivery.driver_id).await?;
-
-    // Atomic: credit + transaction record in a single DB transaction
-    let mut tx = pool.begin().await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to begin transaction: {e}")))?;
-
-    sqlx::query(
-        "UPDATE wallets SET balance = balance + $2, updated_at = NOW() WHERE id = $1"
+    repository::credit_wallet(pool, wallet.id, driver_earnings).await?;
+    repository::create_transaction(
+        pool,
+        wallet.id,
+        driver_earnings,
+        WalletTransactionType::Credit,
+        &format!("delivery:{}", delivery.id),
+        Some("Gains livraison"),
     )
-    .bind(wallet.id)
-    .bind(driver_earnings)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::DatabaseError(format!("Failed to credit driver wallet: {e}")))?;
-
-    sqlx::query(
-        "INSERT INTO wallet_transactions (wallet_id, amount, transaction_type, reference, description)
-         VALUES ($1, $2, $3, $4, $5)"
-    )
-    .bind(wallet.id)
-    .bind(driver_earnings)
-    .bind(WalletTransactionType::Credit)
-    .bind(format!("delivery:{}", delivery.id))
-    .bind(Some("Gains livraison"))
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::DatabaseError(format!("Failed to create driver wallet transaction: {e}")))?;
-
-    tx.commit().await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to commit driver credit: {e}")))?;
+    .await?;
 
     info!(
         driver_id = %delivery.driver_id,
@@ -92,12 +73,14 @@ pub async fn request_withdrawal(
     let withdrawal_ref = format!("withdrawal:{}", uuid::Uuid::new_v4());
 
     // Atomic debit + transaction record in a single DB transaction
-    let mut db_tx = pool.begin().await
+    let mut db_tx = pool
+        .begin()
+        .await
         .map_err(|e| AppError::DatabaseError(format!("Failed to begin transaction: {e}")))?;
 
     let debit_result = sqlx::query(
         "UPDATE wallets SET balance = balance - $2, updated_at = NOW()
-         WHERE id = $1 AND balance >= $2"
+         WHERE id = $1 AND balance >= $2",
     )
     .bind(wallet.id)
     .bind(amount)
@@ -106,7 +89,9 @@ pub async fn request_withdrawal(
     .map_err(|e| AppError::DatabaseError(format!("Failed to debit wallet: {e}")))?;
 
     if debit_result.rows_affected() == 0 {
-        return Err(AppError::BadRequest("Solde insuffisant pour ce retrait".into()));
+        return Err(AppError::BadRequest(
+            "Solde insuffisant pour ce retrait".into(),
+        ));
     }
 
     let tx = sqlx::query_as::<_, WalletTransaction>(
@@ -123,7 +108,9 @@ pub async fn request_withdrawal(
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to create wallet transaction: {e}")))?;
 
-    db_tx.commit().await
+    db_tx
+        .commit()
+        .await
         .map_err(|e| AppError::DatabaseError(format!("Failed to commit withdrawal: {e}")))?;
 
     // Attempt external transfer via payment provider (outside DB transaction)
@@ -192,45 +179,78 @@ pub async fn request_withdrawal(
     Ok(tx)
 }
 
+/// Admin credits a user's wallet for dispute resolution.
+/// Uses WalletTransactionType::Refund to avoid reconciliation false positives.
+pub async fn admin_credit_wallet(
+    pool: &PgPool,
+    admin_id: Id,
+    target_user_id: Id,
+    amount: i64,
+    reason: &str,
+    order_id: Option<Id>,
+) -> Result<(Wallet, WalletTransaction), AppError> {
+    if amount <= 0 {
+        return Err(AppError::BadRequest("Le montant doit etre positif".into()));
+    }
+    if reason.trim().is_empty() {
+        return Err(AppError::BadRequest("La raison est obligatoire".into()));
+    }
+
+    // Verify target user exists
+    crate::users::repository::find_by_id(pool, target_user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Utilisateur non trouve: {target_user_id}")))?;
+
+    // Find or create wallet (clients may not have one)
+    let wallet = repository::find_or_create_wallet(pool, target_user_id).await?;
+
+    // Credit wallet atomically
+    let updated_wallet = repository::credit_wallet(pool, wallet.id, amount).await?;
+
+    // Build description with optional order reference
+    let description = match order_id {
+        Some(oid) => format!("Credit admin ({reason}) - commande {oid}"),
+        None => format!("Credit admin ({reason})"),
+    };
+
+    let tx = repository::create_transaction(
+        pool,
+        wallet.id,
+        amount,
+        WalletTransactionType::Refund,
+        &format!("admin_credit:{admin_id}"),
+        Some(&description),
+    )
+    .await?;
+
+    info!(
+        admin_id = %admin_id,
+        target_user_id = %target_user_id,
+        amount = amount,
+        reason = %reason,
+        "Admin credited user wallet"
+    );
+
+    Ok((updated_wallet, tx))
+}
+
 /// Credit merchant wallet after delivery confirmation (all order types).
 /// Merchant receives the subtotal (product price, no delivery fee).
-pub async fn credit_merchant_for_delivery(
-    pool: &PgPool,
-    order: &Order,
-) -> Result<(), AppError> {
+pub async fn credit_merchant_for_delivery(pool: &PgPool, order: &Order) -> Result<(), AppError> {
     let merchant = crate::merchants::repository::find_by_id(pool, order.merchant_id)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Merchant not found: {}", order.merchant_id)))?;
     let wallet = repository::find_wallet_by_user(pool, merchant.user_id).await?;
-
-    // Atomic: credit + transaction record in a single DB transaction
-    let mut tx = pool.begin().await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to begin transaction: {e}")))?;
-
-    sqlx::query(
-        "UPDATE wallets SET balance = balance + $2, updated_at = NOW() WHERE id = $1"
+    repository::credit_wallet(pool, wallet.id, order.subtotal).await?;
+    repository::create_transaction(
+        pool,
+        wallet.id,
+        order.subtotal,
+        WalletTransactionType::Credit,
+        &format!("order:{}", order.id),
+        Some("Paiement commande"),
     )
-    .bind(wallet.id)
-    .bind(order.subtotal)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::DatabaseError(format!("Failed to credit merchant wallet: {e}")))?;
-
-    sqlx::query(
-        "INSERT INTO wallet_transactions (wallet_id, amount, transaction_type, reference, description)
-         VALUES ($1, $2, $3, $4, $5)"
-    )
-    .bind(wallet.id)
-    .bind(order.subtotal)
-    .bind(WalletTransactionType::Credit)
-    .bind(format!("order:{}", order.id))
-    .bind(Some("Paiement commande"))
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::DatabaseError(format!("Failed to create merchant wallet transaction: {e}")))?;
-
-    tx.commit().await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to commit merchant credit: {e}")))?;
+    .await?;
 
     info!(
         merchant_id = %order.merchant_id,

@@ -70,13 +70,11 @@ pub async fn create_order_item<'e>(
 
 /// Find an order by ID.
 pub async fn find_by_id(pool: &PgPool, order_id: Id) -> Result<Option<Order>, AppError> {
-    sqlx::query_as::<_, Order>(&format!(
-        "SELECT {ORDER_COLUMNS} FROM orders WHERE id = $1"
-    ))
-    .bind(order_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::DatabaseError(e.to_string()))
+    sqlx::query_as::<_, Order>(&format!("SELECT {ORDER_COLUMNS} FROM orders WHERE id = $1"))
+        .bind(order_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(e.to_string()))
 }
 
 /// Find items for an order, with product names resolved via JOIN.
@@ -103,7 +101,11 @@ pub async fn find_by_id_with_items(
     match order {
         Some(order) => {
             let items = find_items_by_order(pool, order.id).await?;
-            Ok(Some(OrderWithItems { order, items, merchant_name: None }))
+            Ok(Some(OrderWithItems {
+                order,
+                items,
+                merchant_name: None,
+            }))
         }
         None => Ok(None),
     }
@@ -181,7 +183,11 @@ pub async fn find_by_merchant_with_items(
         .into_iter()
         .map(|order| {
             let items = items_map.remove(&order.id).unwrap_or_default();
-            OrderWithItems { order, items, merchant_name: None }
+            OrderWithItems {
+                order,
+                items,
+                merchant_name: None,
+            }
         })
         .collect();
 
@@ -287,7 +293,11 @@ pub async fn find_by_customer_with_items(
         .into_iter()
         .map(|order| {
             let items = items_map.remove(&order.id).unwrap_or_default();
-            OrderWithItems { order, items, merchant_name: None }
+            OrderWithItems {
+                order,
+                items,
+                merchant_name: None,
+            }
         })
         .collect();
 
@@ -309,13 +319,12 @@ pub async fn resolve_merchant_names(
         name: String,
     }
 
-    let rows = sqlx::query_as::<_, MerchantNameRow>(
-        "SELECT id, name FROM merchants WHERE id = ANY($1)",
-    )
-    .bind(merchant_ids)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    let rows =
+        sqlx::query_as::<_, MerchantNameRow>("SELECT id, name FROM merchants WHERE id = ANY($1)")
+            .bind(merchant_ids)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
     Ok(rows.into_iter().map(|r| (r.id, r.name)).collect())
 }
@@ -412,7 +421,7 @@ pub async fn mark_delivered(pool: &PgPool, order_id: Id) -> Result<(), AppError>
 pub async fn release_escrow(pool: &PgPool, order_id: Id) -> Result<(), AppError> {
     sqlx::query(
         "UPDATE orders SET payment_status = 'released', updated_at = NOW()
-         WHERE id = $1 AND payment_status = 'escrow_held'"
+         WHERE id = $1 AND payment_status = 'escrow_held'",
     )
     .bind(order_id)
     .execute(pool)
@@ -454,7 +463,7 @@ pub async fn set_external_transaction_id(
 ) -> Result<(), AppError> {
     sqlx::query(
         "UPDATE orders SET external_transaction_id = $2, updated_at = NOW()
-         WHERE id = $1"
+         WHERE id = $1",
     )
     .bind(order_id)
     .bind(transaction_id)

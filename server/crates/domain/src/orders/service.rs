@@ -2,15 +2,17 @@ use std::sync::Arc;
 
 use common::error::AppError;
 use common::types::Id;
-use payment_provider::provider::{PaymentError, PaymentProvider, PaymentRequest, PaymentStatus as ProviderPaymentStatus};
+use payment_provider::provider::{
+    PaymentError, PaymentProvider, PaymentRequest, PaymentStatus as ProviderPaymentStatus,
+};
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 
 use chrono::{Datelike, Duration, NaiveTime, Utc};
 
 use super::model::{
-    CreateOrderPayload, OrderStatus, OrderWithItems, PaymentStatus, PaymentType,
-    ProductBreakdown, WeekPeriod, WeekSummary, WeeklyStats,
+    CreateOrderPayload, OrderStatus, OrderWithItems, PaymentStatus, PaymentType, ProductBreakdown,
+    WeekPeriod, WeekSummary, WeeklyStats,
 };
 use super::repository;
 use crate::merchants;
@@ -61,9 +63,7 @@ pub async fn create_order(
     for item in &payload.items {
         let product = products::repository::find_by_id(pool, item.product_id)
             .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!("Product {} not found", item.product_id))
-            })?;
+            .ok_or_else(|| AppError::NotFound(format!("Product {} not found", item.product_id)))?;
         if product.merchant_id != payload.merchant_id {
             return Err(AppError::BadRequest(
                 "Product does not belong to this merchant".into(),
@@ -148,7 +148,9 @@ pub async fn create_order(
                     pool,
                     order.id,
                     &response.transaction_id,
-                ).await {
+                )
+                .await
+                {
                     warn!(
                         order_id = order.id.to_string(),
                         error = %e,
@@ -178,7 +180,11 @@ pub async fn create_order(
     };
 
     Ok(CreateOrderResult {
-        order: OrderWithItems { order, items, merchant_name: None },
+        order: OrderWithItems {
+            order,
+            items,
+            merchant_name: None,
+        },
         payment_url,
     })
 }
@@ -202,7 +208,9 @@ pub async fn retry_payment(
 
     // Only retry for mobile_money orders still pending
     if order.payment_type != PaymentType::MobileMoney {
-        return Err(AppError::BadRequest("Only mobile_money orders can retry payment".into()));
+        return Err(AppError::BadRequest(
+            "Only mobile_money orders can retry payment".into(),
+        ));
     }
     if order.payment_status != PaymentStatus::Pending {
         return Err(AppError::BadRequest(format!(
@@ -229,11 +237,9 @@ pub async fn retry_payment(
         .map_err(map_payment_error)?;
 
     // Persist external transaction ID
-    if let Err(e) = repository::set_external_transaction_id(
-        pool,
-        order.id,
-        &response.transaction_id,
-    ).await {
+    if let Err(e) =
+        repository::set_external_transaction_id(pool, order.id, &response.transaction_id).await
+    {
         warn!(
             order_id = order.id.to_string(),
             error = %e,
@@ -359,9 +365,10 @@ pub async fn mark_ready(
     );
 
     // Trigger driver notification (non-blocking: failure does not fail the order)
-    if let Err(e) = crate::deliveries::service::notify_driver_for_order(
-        pool, order_id, fcm_client, sms_router,
-    ).await {
+    if let Err(e) =
+        crate::deliveries::service::notify_driver_for_order(pool, order_id, fcm_client, sms_router)
+            .await
+    {
         warn!(
             order_id = order_id.to_string(),
             error = %e,
@@ -410,27 +417,16 @@ pub async fn get_merchant_weekly_stats(
     let to_ts = |d: chrono::NaiveDate| d.and_time(NaiveTime::MIN).and_utc();
 
     // Fetch current + previous week sales + breakdown in parallel
-    let ((current_total, current_count), (prev_total, prev_count), breakdown_rows) =
-        tokio::try_join!(
-            repository::get_weekly_sales(
-                pool,
-                merchant.id,
-                to_ts(current_monday),
-                to_ts(next_monday)
-            ),
-            repository::get_weekly_sales(
-                pool,
-                merchant.id,
-                to_ts(prev_monday),
-                to_ts(current_monday)
-            ),
-            repository::get_product_breakdown(
-                pool,
-                merchant.id,
-                to_ts(current_monday),
-                to_ts(next_monday)
-            ),
-        )?;
+    let ((current_total, current_count), (prev_total, prev_count), breakdown_rows) = tokio::try_join!(
+        repository::get_weekly_sales(pool, merchant.id, to_ts(current_monday), to_ts(next_monday)),
+        repository::get_weekly_sales(pool, merchant.id, to_ts(prev_monday), to_ts(current_monday)),
+        repository::get_product_breakdown(
+            pool,
+            merchant.id,
+            to_ts(current_monday),
+            to_ts(next_monday)
+        ),
+    )?;
 
     // Build response with averages and percentages
     // Rounded integer division for averages
@@ -529,13 +525,9 @@ pub async fn get_customer_order_by_id(
     }
 
     // Resolve merchant name
-    let names = repository::resolve_merchant_names(
-        pool,
-        &[order_with_items.order.merchant_id],
-    )
-    .await?;
-    order_with_items.merchant_name =
-        names.get(&order_with_items.order.merchant_id).cloned();
+    let names =
+        repository::resolve_merchant_names(pool, &[order_with_items.order.merchant_id]).await?;
+    order_with_items.merchant_name = names.get(&order_with_items.order.merchant_id).cloned();
 
     Ok(order_with_items)
 }

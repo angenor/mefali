@@ -36,10 +36,7 @@ pub async fn count_merchants_onboarded(
 }
 
 /// Count all merchants fully onboarded by this agent (no time filter).
-pub async fn count_merchants_onboarded_total(
-    pool: &PgPool,
-    agent_id: Id,
-) -> Result<i64, AppError> {
+pub async fn count_merchants_onboarded_total(pool: &PgPool, agent_id: Id) -> Result<i64, AppError> {
     let row = sqlx::query_as::<_, CountRow>(
         "SELECT COALESCE(COUNT(*)::BIGINT, 0) as count
          FROM merchants
@@ -80,10 +77,7 @@ pub async fn count_kyc_validated(
 }
 
 /// Count all KYC documents verified by this agent (no time filter).
-pub async fn count_kyc_validated_total(
-    pool: &PgPool,
-    agent_id: Id,
-) -> Result<i64, AppError> {
+pub async fn count_kyc_validated_total(pool: &PgPool, agent_id: Id) -> Result<i64, AppError> {
     let row = sqlx::query_as::<_, CountRow>(
         "SELECT COALESCE(COUNT(*)::BIGINT, 0) as count
          FROM kyc_documents

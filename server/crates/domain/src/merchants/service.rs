@@ -9,7 +9,10 @@ use sqlx::PgPool;
 use tracing::info;
 
 use super::business_hours;
-use super::model::{CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, MerchantSummary, OnboardingStatus, ProductSummary};
+use super::model::{
+    CreateMerchantPayload, InitiateOnboardingPayload, Merchant, MerchantStatus, MerchantSummary,
+    OnboardingStatus, ProductSummary,
+};
 use super::repository;
 use crate::products;
 use crate::products::model::CreateProductPayload;
@@ -36,9 +39,7 @@ pub async fn initiate_onboarding(
     // Check phone uniqueness BEFORE sending OTP (race condition prevention)
     let existing = users::repository::find_by_phone(pool, &payload.phone).await?;
     if existing.is_some() {
-        return Err(AppError::Conflict(
-            "Phone number already in use".into(),
-        ));
+        return Err(AppError::Conflict("Phone number already in use".into()));
     }
 
     // Reuse existing OTP infrastructure
@@ -67,9 +68,7 @@ pub async fn verify_and_create_merchant(
     // Re-check phone uniqueness (race condition between OTP send and verify)
     let existing = users::repository::find_by_phone(pool, phone).await?;
     if existing.is_some() {
-        return Err(AppError::Conflict(
-            "Phone number already in use".into(),
-        ));
+        return Err(AppError::Conflict("Phone number already in use".into()));
     }
 
     // Verify OTP
@@ -205,11 +204,12 @@ pub async fn get_onboarding_status(
     let hours = business_hours::find_by_merchant(pool, merchant_id).await?;
 
     // Check if wallet exists for this merchant's user
-    let wallet_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM wallets WHERE user_id = $1)")
-        .bind(merchant.user_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    let wallet_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM wallets WHERE user_id = $1)")
+            .bind(merchant.user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
     Ok(OnboardingStatus {
         merchant,
@@ -342,7 +342,8 @@ pub async fn list_merchant_products_public(
     let offset = ((page - 1) * per_page) as i64;
     let limit = per_page as i64;
 
-    let products = repository::find_products_for_discovery(pool, merchant_id, limit, offset).await?;
+    let products =
+        repository::find_products_for_discovery(pool, merchant_id, limit, offset).await?;
     let total = repository::count_products_for_discovery(pool, merchant_id).await?;
 
     Ok(ProductListResult {
@@ -398,11 +399,7 @@ pub async fn create_my_closure(
 }
 
 /// Merchant deletes an exceptional closure.
-pub async fn delete_my_closure(
-    pool: &PgPool,
-    user_id: Id,
-    closure_id: Id,
-) -> Result<(), AppError> {
+pub async fn delete_my_closure(pool: &PgPool, user_id: Id, closure_id: Id) -> Result<(), AppError> {
     let merchant = get_current_merchant(pool, user_id).await?;
     exceptional_closures::delete(pool, closure_id, merchant.id).await
 }
@@ -455,7 +452,12 @@ pub async fn compute_effective_status(
     let is_closed_today = exceptional_closures::is_closed_on(pool, merchant.id, today).await?;
     let hours = business_hours::find_by_merchant(pool, merchant.id).await?;
 
-    Ok(compute_effective_status_pure(&merchant.status, &hours, is_closed_today, now))
+    Ok(compute_effective_status_pure(
+        &merchant.status,
+        &hours,
+        is_closed_today,
+        now,
+    ))
 }
 
 /// Response struct for GET /merchants/me with effective status.
@@ -481,8 +483,8 @@ pub async fn get_current_merchant_with_effective_status(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::model::MerchantStatus;
+    use super::*;
 
     #[test]
     fn test_create_merchant_payload_validation() {
@@ -561,12 +563,7 @@ mod tests {
         let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T10:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
-        let status = compute_effective_status_pure(
-            &MerchantStatus::Open,
-            &[],
-            true,
-            now,
-        );
+        let status = compute_effective_status_pure(&MerchantStatus::Open, &[], true, now);
         assert_eq!(status, MerchantStatus::Closed);
     }
 
@@ -576,12 +573,7 @@ mod tests {
         let now = chrono::DateTime::parse_from_rfc3339("2026-03-18T10:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
-        let status = compute_effective_status_pure(
-            &MerchantStatus::Open,
-            &[],
-            false,
-            now,
-        );
+        let status = compute_effective_status_pure(&MerchantStatus::Open, &[], false, now);
         assert_eq!(status, MerchantStatus::Open);
     }
 
@@ -602,12 +594,8 @@ mod tests {
             created_at: now,
             updated_at: now,
         }];
-        let status = compute_effective_status_pure(
-            &MerchantStatus::Overwhelmed,
-            &hours,
-            false,
-            now,
-        );
+        let status =
+            compute_effective_status_pure(&MerchantStatus::Overwhelmed, &hours, false, now);
         assert_eq!(status, MerchantStatus::Overwhelmed);
     }
 
@@ -628,12 +616,7 @@ mod tests {
             created_at: now,
             updated_at: now,
         }];
-        let status = compute_effective_status_pure(
-            &MerchantStatus::Open,
-            &hours,
-            false,
-            now,
-        );
+        let status = compute_effective_status_pure(&MerchantStatus::Open, &hours, false, now);
         assert_eq!(status, MerchantStatus::Closed);
     }
 
@@ -653,12 +636,7 @@ mod tests {
             created_at: now,
             updated_at: now,
         }];
-        let status = compute_effective_status_pure(
-            &MerchantStatus::Open,
-            &hours,
-            false,
-            now,
-        );
+        let status = compute_effective_status_pure(&MerchantStatus::Open, &hours, false, now);
         assert_eq!(status, MerchantStatus::Closed);
     }
 }

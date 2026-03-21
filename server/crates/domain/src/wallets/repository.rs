@@ -5,7 +5,25 @@ use sqlx::PgPool;
 use super::model::{Wallet, WalletTransaction, WalletTransactionType};
 
 const WALLET_COLUMNS: &str = "id, user_id, balance, created_at, updated_at";
-const TX_COLUMNS: &str = "id, wallet_id, amount, transaction_type, reference, description, created_at";
+const TX_COLUMNS: &str =
+    "id, wallet_id, amount, transaction_type, reference, description, created_at";
+
+/// Find or create a wallet for a user (atomic, race-condition safe).
+/// Clients may not have a wallet created at registration — this creates one on the fly.
+pub async fn find_or_create_wallet(pool: &PgPool, user_id: Id) -> Result<Wallet, AppError> {
+    sqlx::query(
+        "INSERT INTO wallets (id, user_id, balance)
+         VALUES ($1, $2, 0)
+         ON CONFLICT (user_id) DO NOTHING",
+    )
+    .bind(common::types::new_id())
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to find_or_create wallet: {e}")))?;
+
+    find_wallet_by_user(pool, user_id).await
+}
 
 /// Find a wallet by user ID.
 pub async fn find_wallet_by_user(pool: &PgPool, user_id: Id) -> Result<Wallet, AppError> {

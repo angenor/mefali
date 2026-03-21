@@ -151,9 +151,7 @@ impl PaymentProvider for CinetPayAdapter {
             )));
         }
 
-        let payment_url = cinetpay_resp
-            .data
-            .and_then(|d| d.payment_url);
+        let payment_url = cinetpay_resp.data.and_then(|d| d.payment_url);
 
         info!(
             transaction_id = %transaction_id,
@@ -311,17 +309,11 @@ mod tests {
 
     #[test]
     fn test_cinetpay_status_mapping() {
-        assert_eq!(
-            map_cinetpay_status("ACCEPTED"),
-            PaymentStatus::Completed
-        );
+        assert_eq!(map_cinetpay_status("ACCEPTED"), PaymentStatus::Completed);
         assert_eq!(map_cinetpay_status("REFUSED"), PaymentStatus::Failed);
         assert_eq!(map_cinetpay_status("ERROR"), PaymentStatus::Failed);
         assert_eq!(map_cinetpay_status("EXPIRED"), PaymentStatus::Failed);
-        assert_eq!(
-            map_cinetpay_status("CANCELLED"),
-            PaymentStatus::Cancelled
-        );
+        assert_eq!(map_cinetpay_status("CANCELLED"), PaymentStatus::Cancelled);
         assert_eq!(map_cinetpay_status(""), PaymentStatus::Pending);
         assert_eq!(map_cinetpay_status("UNKNOWN"), PaymentStatus::Pending);
     }

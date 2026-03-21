@@ -61,8 +61,9 @@ async fn parse_product_multipart(mut payload: Multipart) -> Result<ProductMultip
             "file" => {
                 data.content_type = field.content_type().map(|ct| ct.to_string());
                 while let Some(chunk) = field.next().await {
-                    data.file_bytes
-                        .extend_from_slice(&chunk.map_err(|e| AppError::BadRequest(e.to_string()))?);
+                    data.file_bytes.extend_from_slice(
+                        &chunk.map_err(|e| AppError::BadRequest(e.to_string()))?,
+                    );
                 }
             }
             _ => {}
@@ -88,11 +89,7 @@ async fn upload_photo(
     file_bytes: Vec<u8>,
     content_type: &str,
 ) -> Result<String, AppError> {
-    let key = format!(
-        "merchants/{}/products/{}.webp",
-        merchant_id,
-        Uuid::new_v4()
-    );
+    let key = format!("merchants/{}/products/{}.webp", merchant_id, Uuid::new_v4());
     infrastructure::storage::upload::upload_image(
         s3_client,
         &config.minio_bucket,
@@ -153,16 +150,27 @@ pub async fn create_product(
     let merchant_id = service::resolve_merchant_id(&pool, auth.user_id).await?;
     let data = parse_product_multipart(payload).await?;
 
-    let product_name =
-        data.name.ok_or_else(|| AppError::BadRequest("Missing 'name' field".into()))?;
-    let product_price =
-        data.price.ok_or_else(|| AppError::BadRequest("Missing 'price' field".into()))?;
+    let product_name = data
+        .name
+        .ok_or_else(|| AppError::BadRequest("Missing 'name' field".into()))?;
+    let product_price = data
+        .price
+        .ok_or_else(|| AppError::BadRequest("Missing 'price' field".into()))?;
 
     let photo_url = if !data.file_bytes.is_empty() {
         let ct = data
             .content_type
             .ok_or_else(|| AppError::BadRequest("Missing file content type".into()))?;
-        Some(upload_photo(s3_client.get_ref(), &config, merchant_id, data.file_bytes, &ct).await?)
+        Some(
+            upload_photo(
+                s3_client.get_ref(),
+                &config,
+                merchant_id,
+                data.file_bytes,
+                &ct,
+            )
+            .await?,
+        )
     } else {
         None
     };
@@ -203,7 +211,16 @@ pub async fn update_product(
         let ct = data
             .content_type
             .ok_or_else(|| AppError::BadRequest("Missing file content type".into()))?;
-        Some(upload_photo(s3_client.get_ref(), &config, merchant_id, data.file_bytes, &ct).await?)
+        Some(
+            upload_photo(
+                s3_client.get_ref(),
+                &config,
+                merchant_id,
+                data.file_bytes,
+                &ct,
+            )
+            .await?,
+        )
     } else {
         None
     };

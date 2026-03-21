@@ -95,7 +95,10 @@ mod tests {
         };
         let json = serde_json::to_value(&tx).unwrap();
         assert_eq!(json["transaction_type"], "withdrawal");
-        assert!(json["reference"].as_str().unwrap().starts_with("withdrawal:"));
+        assert!(json["reference"]
+            .as_str()
+            .unwrap()
+            .starts_with("withdrawal:"));
         assert!(json["description"].as_str().unwrap().contains(phone));
         assert_eq!(json["amount"], 200000);
     }
@@ -117,5 +120,64 @@ mod tests {
         assert!(json["reference"].as_str().unwrap().starts_with("order:"));
         assert_eq!(json["description"], "Paiement commande");
         assert_eq!(json["amount"], 150000);
+    }
+
+    #[test]
+    fn test_refund_transaction_type_serde() {
+        let json = serde_json::to_string(&WalletTransactionType::Refund).unwrap();
+        assert_eq!(json, "\"refund\"");
+        let parsed: WalletTransactionType = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, WalletTransactionType::Refund);
+    }
+
+    #[test]
+    fn test_admin_credit_transaction_format() {
+        let admin_id = uuid::Uuid::new_v4();
+        let tx = WalletTransaction {
+            id: uuid::Uuid::new_v4(),
+            wallet_id: uuid::Uuid::new_v4(),
+            amount: 50000, // 500 FCFA
+            transaction_type: WalletTransactionType::Refund,
+            reference: Some(format!("admin_credit:{admin_id}")),
+            description: Some("Credit admin (commande incomplete)".into()),
+            created_at: chrono::Utc::now(),
+        };
+        let json = serde_json::to_value(&tx).unwrap();
+        assert_eq!(json["transaction_type"], "refund");
+        assert!(json["reference"]
+            .as_str()
+            .unwrap()
+            .starts_with("admin_credit:"));
+        assert!(json["description"]
+            .as_str()
+            .unwrap()
+            .starts_with("Credit admin"));
+        assert_eq!(json["amount"], 50000);
+    }
+
+    #[test]
+    fn test_admin_credit_with_order_description() {
+        let admin_id = uuid::Uuid::new_v4();
+        let order_id = uuid::Uuid::new_v4();
+        let reason = "commande incomplete";
+        let description = format!("Credit admin ({reason}) - commande {order_id}");
+        let tx = WalletTransaction {
+            id: uuid::Uuid::new_v4(),
+            wallet_id: uuid::Uuid::new_v4(),
+            amount: 50000,
+            transaction_type: WalletTransactionType::Refund,
+            reference: Some(format!("admin_credit:{admin_id}")),
+            description: Some(description.clone()),
+            created_at: chrono::Utc::now(),
+        };
+        let json = serde_json::to_value(&tx).unwrap();
+        assert!(json["description"]
+            .as_str()
+            .unwrap()
+            .contains(&order_id.to_string()));
+        assert!(json["description"]
+            .as_str()
+            .unwrap()
+            .contains("commande incomplete"));
     }
 }

@@ -82,11 +82,7 @@ pub async fn upload_kyc_document(
 ///
 /// Verifies at least one document exists, marks all documents as verified,
 /// and updates user status from pending_kyc to active.
-pub async fn activate_driver(
-    pool: &PgPool,
-    user_id: Id,
-    agent_id: Id,
-) -> Result<User, AppError> {
+pub async fn activate_driver(pool: &PgPool, user_id: Id, agent_id: Id) -> Result<User, AppError> {
     // Verify user exists and is pending_kyc
     let user = users_repo::find_by_id(pool, user_id)
         .await?
@@ -99,13 +95,13 @@ pub async fn activate_driver(
     // Verify at least one document exists
     let documents = repository::find_by_user(pool, user_id).await?;
     if documents.is_empty() {
-        return Err(AppError::BadRequest(
-            "No KYC documents uploaded".into(),
-        ));
+        return Err(AppError::BadRequest("No KYC documents uploaded".into()));
     }
 
     // Transaction: verify documents + activate user atomically
-    let mut tx = pool.begin().await
+    let mut tx = pool
+        .begin()
+        .await
         .map_err(|e| AppError::DatabaseError(format!("Failed to begin transaction: {}", e)))?;
 
     sqlx::query(
@@ -129,7 +125,8 @@ pub async fn activate_driver(
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to update user status: {}", e)))?;
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::DatabaseError(format!("Failed to commit transaction: {}", e)))?;
 
     Ok(user)
@@ -143,7 +140,12 @@ mod tests {
     fn test_kyc_key_format() {
         let user_id = uuid::Uuid::new_v4();
         let file_uuid = uuid::Uuid::new_v4();
-        let key = format!("kyc/{}/{}_{}.jpeg", user_id, KycDocumentType::Cni, file_uuid);
+        let key = format!(
+            "kyc/{}/{}_{}.jpeg",
+            user_id,
+            KycDocumentType::Cni,
+            file_uuid
+        );
         assert!(key.starts_with("kyc/"));
         assert!(key.contains("/cni_"));
         assert!(key.ends_with(".jpeg"));
@@ -153,7 +155,12 @@ mod tests {
     fn test_kyc_key_format_permis() {
         let user_id = uuid::Uuid::new_v4();
         let file_uuid = uuid::Uuid::new_v4();
-        let key = format!("kyc/{}/{}_{}.png", user_id, KycDocumentType::Permis, file_uuid);
+        let key = format!(
+            "kyc/{}/{}_{}.png",
+            user_id,
+            KycDocumentType::Permis,
+            file_uuid
+        );
         assert!(key.contains("/permis_"));
         assert!(key.ends_with(".png"));
     }

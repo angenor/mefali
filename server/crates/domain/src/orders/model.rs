@@ -128,9 +128,7 @@ impl CreateOrderPayload {
         }
         for item in &self.items {
             if item.quantity <= 0 {
-                return Err(AppError::BadRequest(
-                    "Item quantity must be > 0".into(),
-                ));
+                return Err(AppError::BadRequest("Item quantity must be > 0".into()));
             }
         }
         Ok(())

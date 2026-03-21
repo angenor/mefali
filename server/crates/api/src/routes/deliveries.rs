@@ -1,3 +1,5 @@
+use crate::extractors::AuthenticatedUser;
+use crate::middleware::require_role;
 use actix_web::{web, HttpResponse};
 use common::error::AppError;
 use common::response::ApiResponse;
@@ -10,8 +12,6 @@ use redis::aio::ConnectionManager;
 use redis::AsyncCommands;
 use serde::Deserialize;
 use sqlx::PgPool;
-use crate::extractors::AuthenticatedUser;
-use crate::middleware::require_role;
 
 /// GET /api/v1/deliveries/pending
 ///
@@ -136,14 +136,9 @@ pub async fn update_location(
     require_role(&auth, &[UserRole::Driver])?;
 
     let delivery_id = path.into_inner();
-    let delivery = service::update_driver_location(
-        &pool,
-        delivery_id,
-        auth.user_id,
-        body.lat,
-        body.lng,
-    )
-    .await?;
+    let delivery =
+        service::update_driver_location(&pool, delivery_id, auth.user_id, body.lat, body.lng)
+            .await?;
 
     // Best-effort: Redis publish + ETA notification (don't block 200 response)
     let order_id = delivery.order_id;
@@ -162,7 +157,9 @@ pub async fn update_location(
                 "updated_at": chrono::Utc::now().to_rfc3339(),
             });
             let channel = format!("delivery:{order_id}");
-            let _: Result<(), _> = conn.publish::<_, _, ()>(&channel, payload.to_string()).await;
+            let _: Result<(), _> = conn
+                .publish::<_, _, ()>(&channel, payload.to_string())
+                .await;
 
             // ETA notification: send push when driver is ~2 min away (120s)
             if eta <= 120 {
@@ -198,7 +195,9 @@ pub async fn update_location(
                 "updated_at": chrono::Utc::now().to_rfc3339(),
             });
             let channel = format!("delivery:{order_id}");
-            let _: Result<(), _> = conn.publish::<_, _, ()>(&channel, payload.to_string()).await;
+            let _: Result<(), _> = conn
+                .publish::<_, _, ()>(&channel, payload.to_string())
+                .await;
         }
     }
 
@@ -393,10 +392,15 @@ pub async fn get_tracking(
         .ok_or_else(|| AppError::NotFound("No active delivery found for this order".into()))?;
 
     // Calculate ETA if driver has GPS coords and destination is known
-    let eta_seconds = match (info.driver_lat, info.driver_lng, info.dest_lat, info.dest_lng) {
-        (Some(d_lat), Some(d_lng), Some(dest_lat), Some(dest_lng)) => {
-            Some(service::calculate_eta_seconds(d_lat, d_lng, dest_lat, dest_lng))
-        }
+    let eta_seconds = match (
+        info.driver_lat,
+        info.driver_lng,
+        info.dest_lat,
+        info.dest_lng,
+    ) {
+        (Some(d_lat), Some(d_lng), Some(dest_lat), Some(dest_lng)) => Some(
+            service::calculate_eta_seconds(d_lat, d_lng, dest_lat, dest_lng),
+        ),
         _ => None,
     };
 

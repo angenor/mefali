@@ -69,12 +69,8 @@ impl PaymentProvider for MockPaymentProvider {
                 payment_url: Some("https://mock-payment.test/pay".into()),
                 status: PaymentStatus::Pending,
             }),
-            MockBehavior::Failure => {
-                Err(PaymentError::InitiationFailed("Mock failure".into()))
-            }
-            MockBehavior::Timeout => {
-                Err(PaymentError::NetworkError("Mock timeout (>3s)".into()))
-            }
+            MockBehavior::Failure => Err(PaymentError::InitiationFailed("Mock failure".into())),
+            MockBehavior::Timeout => Err(PaymentError::NetworkError("Mock timeout (>3s)".into())),
         }
     }
 
@@ -191,6 +187,34 @@ mod tests {
         assert!(result.is_ok());
         let resp = result.unwrap();
         assert_eq!(resp.status, PaymentStatus::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_verify_payment_batch_success() {
+        let provider = MockPaymentProvider::new();
+        let ids = vec!["txn_001".into(), "txn_002".into(), "txn_003".into()];
+        let results = provider.verify_payment_batch(&ids).await.unwrap();
+        assert_eq!(results.len(), 3);
+        for (id, status) in &results {
+            assert_eq!(*status, PaymentStatus::Completed);
+            assert!(ids.contains(id));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_verify_payment_batch_with_failure() {
+        let provider = MockPaymentProvider::failing();
+        let ids = vec!["txn_001".into()];
+        let result = provider.verify_payment_batch(&ids).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_verify_payment_batch_empty() {
+        let provider = MockPaymentProvider::new();
+        let ids: Vec<String> = vec![];
+        let results = provider.verify_payment_batch(&ids).await.unwrap();
+        assert!(results.is_empty());
     }
 
     #[tokio::test]

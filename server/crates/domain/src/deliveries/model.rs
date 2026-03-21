@@ -150,9 +150,18 @@ mod tests {
     #[test]
     fn test_refusal_reason_display() {
         assert_eq!(DeliveryRefusalReason::TooFar.to_string(), "too_far");
-        assert_eq!(DeliveryRefusalReason::NotEnoughTime.to_string(), "not_enough_time");
-        assert_eq!(DeliveryRefusalReason::WrongDirection.to_string(), "wrong_direction");
-        assert_eq!(DeliveryRefusalReason::VehicleIssue.to_string(), "vehicle_issue");
+        assert_eq!(
+            DeliveryRefusalReason::NotEnoughTime.to_string(),
+            "not_enough_time"
+        );
+        assert_eq!(
+            DeliveryRefusalReason::WrongDirection.to_string(),
+            "wrong_direction"
+        );
+        assert_eq!(
+            DeliveryRefusalReason::VehicleIssue.to_string(),
+            "vehicle_issue"
+        );
         assert_eq!(DeliveryRefusalReason::Timeout.to_string(), "timeout");
         assert_eq!(DeliveryRefusalReason::Other.to_string(), "other");
     }
