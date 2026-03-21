@@ -59,6 +59,7 @@ pub struct VerifyOtpPayload {
     pub name: Option<String>,
     pub role: Option<String>,
     pub sponsor_phone: Option<String>,
+    pub referral_code: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

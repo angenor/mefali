@@ -90,7 +90,11 @@ pub async fn run_daily_reconciliation(
                                         // MobileMoney: verify external_transaction_id
                                         match &order.external_transaction_id {
                                             Some(ext_id) => {
-                                                mobile_money_txns.push((idx, ext_id.clone(), amount_ok));
+                                                mobile_money_txns.push((
+                                                    idx,
+                                                    ext_id.clone(),
+                                                    amount_ok,
+                                                ));
                                             }
                                             None => {
                                                 discrepancies.push(PendingDiscrepancy {
@@ -301,7 +305,10 @@ pub async fn run_daily_reconciliation(
 
     // Second pass: batch verify MobileMoney transactions with CinetPay
     if !mobile_money_txns.is_empty() {
-        let ext_ids: Vec<String> = mobile_money_txns.iter().map(|(_, id, _)| id.clone()).collect();
+        let ext_ids: Vec<String> = mobile_money_txns
+            .iter()
+            .map(|(_, id, _)| id.clone())
+            .collect();
 
         match payment_provider.verify_payment_batch(&ext_ids).await {
             Ok(results) => {

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-21 # 6-3-daily-reconciliation: done (code review passed)
+last_updated: 2026-03-21 # 7-3-dispute-reporting: review
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -101,14 +101,14 @@ development_status:
   6-1-merchant-wallet-and-escrow-release: done
   6-2-merchant-withdrawal: done
   6-3-daily-reconciliation: done
-  6-4-admin-credit-refund: review
+  6-4-admin-credit-refund: done
   epic-6-retrospective: optional
 
   # Epic 7: Ratings, Sharing & Customer Feedback
-  epic-7: backlog
-  7-1-double-rating: backlog
-  7-2-whatsapp-sharing: backlog
-  7-3-dispute-reporting: backlog
+  epic-7: in-progress
+  7-1-double-rating: done
+  7-2-whatsapp-sharing: done
+  7-3-dispute-reporting: review
   epic-7-retrospective: optional
 
   # Epic 8: Admin Dashboard & Operations

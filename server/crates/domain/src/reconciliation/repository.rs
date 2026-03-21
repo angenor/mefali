@@ -133,7 +133,9 @@ pub async fn delete_report_by_date(
         .bind(date)
         .execute(pool)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to delete reconciliation report: {e}")))?;
+        .map_err(|e| {
+            AppError::DatabaseError(format!("Failed to delete reconciliation report: {e}"))
+        })?;
     Ok(result.rows_affected() > 0)
 }
 

@@ -87,6 +87,7 @@ pub fn test_app(
                 )
                 .service(
                     web::scope("/merchants")
+                        .route("", web::get().to(merchants::list_merchants))
                         .route("/me", web::get().to(merchants::get_me_with_status))
                         .route("/me/orders", web::get().to(orders::get_merchant_orders))
                         .route("/me/stats/weekly", web::get().to(orders::get_weekly_stats))
@@ -97,6 +98,10 @@ pub fn test_app(
                         .route(
                             "/me/closures/{id}",
                             web::delete().to(merchants::delete_my_closure),
+                        )
+                        .route(
+                            "/{id}/products",
+                            web::get().to(merchants::list_merchant_products),
                         ),
                 ),
         )

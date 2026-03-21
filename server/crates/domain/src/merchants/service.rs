@@ -75,12 +75,14 @@ pub async fn verify_and_create_merchant(
     users::otp_service::verify_otp(redis, phone, otp_code, config.otp_max_attempts).await?;
 
     // Create user with role=merchant, status=active
+    let referral_code = users::service::generate_referral_code();
     let user = users::repository::create_user(
         pool,
         phone,
         Some(&payload.name),
         users::model::UserRole::Merchant,
         users::model::UserStatus::Active,
+        &referral_code,
     )
     .await?;
 

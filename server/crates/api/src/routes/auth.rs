@@ -72,6 +72,7 @@ pub async fn verify_otp(
         body.name.as_deref(),
         body.role.as_deref(),
         body.sponsor_phone.as_deref(),
+        body.referral_code.as_deref(),
     )
     .await?;
 

@@ -87,14 +87,17 @@ async fn main() -> std::io::Result<()> {
     info!("MinIO/S3 client initialized");
 
     // Start daily reconciliation scheduler (awaited so startup failure is caught)
-    let cron_expr =
-        std::env::var("RECONCILIATION_CRON").unwrap_or_else(|_| "0 0 1 * * *".into()); // default: 01:00 UTC daily
+    let cron_expr = std::env::var("RECONCILIATION_CRON").unwrap_or_else(|_| "0 0 1 * * *".into()); // default: 01:00 UTC daily
     match start_reconciliation_scheduler(db_pool.clone(), payment_provider.clone(), &cron_expr)
         .await
     {
         Ok(_) => info!("Reconciliation scheduler started (cron: {})", cron_expr),
         Err(e) => error!("Failed to start reconciliation scheduler: {}", e),
     }
+
+    // Share base URL for WhatsApp sharing links
+    let share_base_url = std::env::var("SHARE_BASE_URL")
+        .unwrap_or_else(|_| format!("http://localhost:{}", config.api_port));
 
     // Shared application state injected via web::Data<>
     let app_config = web::Data::new(config.clone());
@@ -105,6 +108,7 @@ async fn main() -> std::io::Result<()> {
     let s3_data = web::Data::new(s3_client);
     let fcm_data = web::Data::new(fcm_client);
     let sms_router_data = web::Data::new(sms_router);
+    let share_base_url_data = web::Data::new(share_base_url);
 
     HttpServer::new(move || {
         App::new()
@@ -116,6 +120,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(s3_data.clone())
             .app_data(fcm_data.clone())
             .app_data(sms_router_data.clone())
+            .app_data(share_base_url_data.clone())
             .configure(routes::configure)
     })
     .bind(&bind_addr)?

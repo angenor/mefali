@@ -123,7 +123,8 @@ pub struct VerifyOnboardingPayload {
 
 /// Lightweight merchant summary for customer discovery (GET /api/v1/merchants).
 /// Only fully onboarded merchants (onboarding_step = 5) are returned.
-/// avg_rating and delivery_fee are hardcoded for MVP (no ratings table yet).
+/// avg_rating and total_ratings are computed from the ratings table.
+/// delivery_fee is hardcoded for MVP.
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct MerchantSummary {
     pub id: Id,

@@ -114,6 +114,7 @@ class AuthNotifier extends Notifier<AuthState> {
     String? name, {
     String? role,
     String? sponsorPhone,
+    String? referralCode,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
@@ -123,6 +124,7 @@ class AuthNotifier extends Notifier<AuthState> {
         name,
         role: role,
         sponsorPhone: sponsorPhone,
+        referralCode: referralCode,
       );
       await _storage.write(key: _keyAccessToken, value: response.accessToken);
       await _storage.write(key: _keyRefreshToken, value: response.refreshToken);

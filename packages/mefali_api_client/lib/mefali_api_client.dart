@@ -1,7 +1,7 @@
 /// Client HTTP Dio, WebSocket et providers Riverpod mefali.
 library;
 
-export 'package:dio/dio.dart' show DioException;
+export 'package:dio/dio.dart' show DioException, DioExceptionType;
 export 'dio_client/auth_interceptor.dart';
 export 'dio_client/dio_client.dart';
 export 'endpoints/auth_endpoint.dart';
@@ -34,4 +34,10 @@ export 'providers/delivery_provider.dart';
 export 'providers/driver_availability_provider.dart';
 export 'providers/wallet_provider.dart';
 export 'providers/delivery_tracking_provider.dart';
+export 'endpoints/dispute_endpoint.dart';
+export 'endpoints/rating_endpoint.dart';
+export 'endpoints/share_endpoint.dart';
+export 'providers/dispute_provider.dart';
+export 'providers/rating_provider.dart';
+export 'providers/share_provider.dart';
 export 'websocket/delivery_tracking_ws.dart';

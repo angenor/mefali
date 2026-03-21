@@ -26,7 +26,8 @@ pub async fn create_test_user_with_role(
 ) -> Result<users::model::User, AppError> {
     let n = PHONE_COUNTER.fetch_add(1, Ordering::Relaxed);
     let phone = format!("+22501000{:05}", n);
-    users::repository::create_user(pool, &phone, Some("Test User"), role, UserStatus::Active).await
+    let referral_code = crate::users::service::generate_referral_code();
+    users::repository::create_user(pool, &phone, Some("Test User"), role, UserStatus::Active, &referral_code).await
 }
 
 /// Create a test merchant in Open status.

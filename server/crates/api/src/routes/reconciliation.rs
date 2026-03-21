@@ -38,8 +38,13 @@ pub async fn run_reconciliation(
         None => chrono::Utc::now().date_naive() - chrono::Duration::days(1),
     };
 
-    let report =
-        service::run_daily_reconciliation(&pool, payment_provider.get_ref().as_ref(), date, body.force).await?;
+    let report = service::run_daily_reconciliation(
+        &pool,
+        payment_provider.get_ref().as_ref(),
+        date,
+        body.force,
+    )
+    .await?;
 
     Ok(HttpResponse::Ok().json(ApiResponse::new(&report)))
 }

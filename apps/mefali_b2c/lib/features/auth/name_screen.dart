@@ -20,11 +20,13 @@ class NameScreen extends ConsumerStatefulWidget {
 
 class _NameScreenState extends ConsumerState<NameScreen> {
   final _nameController = TextEditingController();
+  final _referralController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
     _nameController.dispose();
+    _referralController.dispose();
     super.dispose();
   }
 
@@ -38,9 +40,13 @@ class _NameScreenState extends ConsumerState<NameScreen> {
   Future<void> _onSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref
-        .read(authControllerProvider.notifier)
-        .verifyOtp(widget.phone, widget.otp, _nameController.text.trim());
+    final referral = _referralController.text.trim();
+    await ref.read(authControllerProvider.notifier).verifyOtp(
+          widget.phone,
+          widget.otp,
+          _nameController.text.trim(),
+          referralCode: referral.isEmpty ? null : referral,
+        );
 
     if (!mounted) return;
     final result = ref.read(authControllerProvider);
@@ -96,6 +102,24 @@ class _NameScreenState extends ConsumerState<NameScreen> {
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(),
                   validator: _validateName,
+                  enabled: !isLoading,
+                ),
+                const SizedBox(height: 24),
+                const Text('Code parrain (optionnel)'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _referralController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: const InputDecoration(
+                    hintText: 'Ex: ABC123',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) return null;
+                    if (!RegExp(r'^[A-Z0-9]{6}$').hasMatch(value.trim())) {
+                      return 'Code invalide (6 caracteres alphanumeriques)';
+                    }
+                    return null;
+                  },
                   enabled: !isLoading,
                 ),
                 const Spacer(),

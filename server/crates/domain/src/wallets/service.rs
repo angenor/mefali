@@ -204,24 +204,49 @@ pub async fn admin_credit_wallet(
     // Find or create wallet (clients may not have one)
     let wallet = repository::find_or_create_wallet(pool, target_user_id).await?;
 
-    // Credit wallet atomically
-    let updated_wallet = repository::credit_wallet(pool, wallet.id, amount).await?;
-
     // Build description with optional order reference
     let description = match order_id {
         Some(oid) => format!("Credit admin ({reason}) - commande {oid}"),
         None => format!("Credit admin ({reason})"),
     };
 
-    let tx = repository::create_transaction(
-        pool,
-        wallet.id,
-        amount,
-        WalletTransactionType::Refund,
-        &format!("admin_credit:{admin_id}"),
-        Some(&description),
+    let reference = format!("admin_credit:{admin_id}");
+
+    // Atomic: credit wallet + create transaction in a single DB transaction
+    let mut db_tx = pool
+        .begin()
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to begin transaction: {e}")))?;
+
+    let updated_wallet = sqlx::query_as::<_, Wallet>(
+        "UPDATE wallets SET balance = balance + $2, updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, user_id, balance, created_at, updated_at",
     )
-    .await?;
+    .bind(wallet.id)
+    .bind(amount)
+    .fetch_one(&mut *db_tx)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to credit wallet: {e}")))?;
+
+    let tx = sqlx::query_as::<_, WalletTransaction>(
+        "INSERT INTO wallet_transactions (wallet_id, amount, transaction_type, reference, description)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, wallet_id, amount, transaction_type, reference, description, created_at",
+    )
+    .bind(wallet.id)
+    .bind(amount)
+    .bind(WalletTransactionType::Refund)
+    .bind(&reference)
+    .bind(Some(&description))
+    .fetch_one(&mut *db_tx)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to create wallet transaction: {e}")))?;
+
+    db_tx
+        .commit()
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to commit admin credit: {e}")))?;
 
     info!(
         admin_id = %admin_id,
@@ -260,4 +285,62 @@ pub async fn credit_merchant_for_delivery(pool: &PgPool, order: &Order) -> Resul
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::postgres::PgPoolOptions;
+
+    fn lazy_pool() -> PgPool {
+        PgPoolOptions::new()
+            .max_connections(1)
+            .connect_lazy("postgres://test:test@localhost:1/test")
+            .expect("connect_lazy should not fail")
+    }
+
+    #[tokio::test]
+    async fn test_admin_credit_rejects_zero_amount() {
+        let pool = lazy_pool();
+        let result = admin_credit_wallet(
+            &pool,
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            0,
+            "test reason",
+            None,
+        )
+        .await;
+        assert!(matches!(result, Err(AppError::BadRequest(ref msg)) if msg.contains("positif")));
+    }
+
+    #[tokio::test]
+    async fn test_admin_credit_rejects_negative_amount() {
+        let pool = lazy_pool();
+        let result = admin_credit_wallet(
+            &pool,
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            -500,
+            "test reason",
+            None,
+        )
+        .await;
+        assert!(matches!(result, Err(AppError::BadRequest(ref msg)) if msg.contains("positif")));
+    }
+
+    #[tokio::test]
+    async fn test_admin_credit_rejects_empty_reason() {
+        let pool = lazy_pool();
+        let result = admin_credit_wallet(
+            &pool,
+            uuid::Uuid::new_v4(),
+            uuid::Uuid::new_v4(),
+            5000,
+            "   ",
+            None,
+        )
+        .await;
+        assert!(matches!(result, Err(AppError::BadRequest(ref msg)) if msg.contains("raison")));
+    }
 }

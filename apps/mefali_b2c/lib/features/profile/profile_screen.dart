@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/mefali_core.dart';
+import 'package:mefali_design/mefali_design.dart';
 
 /// Ecran Profil B2C — affiche nom, telephone, role, deconnexion.
 class ProfileScreen extends ConsumerWidget {
@@ -47,7 +49,9 @@ class ProfileScreen extends ConsumerWidget {
           onTap: () => context.push('/profile/change-phone'),
         ),
         _ProfileTile(icon: Icons.badge, label: 'Role', value: user.role.name),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
+        _InviteSection(),
+        const SizedBox(height: 24),
         FilledButton.tonal(
           onPressed: () => _confirmLogout(context, ref),
           style: FilledButton.styleFrom(
@@ -78,6 +82,40 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Deconnecter'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InviteSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final referralAsync = ref.watch(referralCodeProvider);
+    return referralAsync.when(
+      data: (data) => InviteFriendsCard(
+        referralCode: data.referralCode,
+        onSharePressed: () async {
+          final message = WhatsAppShareHelper.buildAppInviteMessage(
+            referralCode: data.referralCode,
+            shareBaseUrl: 'https://api.mefali.ci',
+          );
+          final success = await WhatsAppShareHelper.shareOnWhatsApp(message);
+          if (!success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('WhatsApp non disponible')),
+            );
+          }
+        },
+      ),
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (_, __) => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('Impossible de charger votre code parrain'),
       ),
     );
   }

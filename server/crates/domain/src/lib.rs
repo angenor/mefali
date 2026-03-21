@@ -5,6 +5,7 @@ pub mod kyc;
 pub mod merchants;
 pub mod orders;
 pub mod products;
+pub mod ratings;
 pub mod reconciliation;
 pub mod sponsorships;
 pub mod users;

@@ -13,6 +13,7 @@ import 'features/order/order_confirmation_screen.dart';
 import 'features/order/order_tracking_screen.dart';
 import 'features/order/delivery_tracking_screen.dart';
 import 'features/order/orders_list_screen.dart';
+import 'features/order/sync_provider.dart';
 import 'features/order/address_selection_screen.dart';
 import 'features/order/payment_status_screen.dart';
 import 'features/restaurant/restaurant_catalogue_screen.dart';
@@ -86,7 +87,11 @@ final _routerProvider = Provider<GoRouter>((ref) {
         path: '/restaurant/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          final restaurant = state.extra as RestaurantSummary;
+          final restaurant = state.extra as RestaurantSummary?;
+          if (restaurant == null) {
+            // Deep link: extra is null, redirect to home
+            return const HomeScreen();
+          }
           return RestaurantCatalogueScreen(
             restaurantId: id,
             restaurant: restaurant,
@@ -160,6 +165,8 @@ class MefaliB2cApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(_routerProvider);
+    // Activate offline sync processor on app start.
+    ref.watch(syncProcessorProvider);
 
     return MaterialApp.router(
       title: 'mefali',

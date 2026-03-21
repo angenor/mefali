@@ -75,6 +75,18 @@ pub async fn update_profile(
     Ok(HttpResponse::Ok().json(response))
 }
 
+/// GET /api/v1/users/me/referral
+///
+/// Returns the authenticated user's referral code.
+pub async fn get_referral_code(
+    auth: AuthenticatedUser,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, AppError> {
+    let code = repository::get_referral_code(&pool, auth.user_id).await?;
+    let response = ApiResponse::new(serde_json::json!({ "referral_code": code }));
+    Ok(HttpResponse::Ok().json(response))
+}
+
 /// POST /api/v1/users/me/change-phone/request
 ///
 /// Request a phone number change. Sends OTP to the new phone.

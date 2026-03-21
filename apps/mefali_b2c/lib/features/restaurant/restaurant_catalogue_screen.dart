@@ -32,6 +32,26 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
   final String restaurantId;
   final RestaurantSummary restaurant;
 
+  Future<void> _shareRestaurant(BuildContext context, WidgetRef ref) async {
+    try {
+      final metadata =
+          await ref.read(shareMetadataProvider(restaurantId).future);
+      final success =
+          await WhatsAppShareHelper.shareOnWhatsApp(metadata.whatsappMessage);
+      if (!success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('WhatsApp non disponible')),
+        );
+      }
+    } on Exception catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur lors du partage')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
@@ -47,6 +67,19 @@ class RestaurantCatalogueScreen extends ConsumerWidget {
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
+          // Share button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: CircleAvatar(
+              backgroundColor: Colors.black38,
+              child: IconButton(
+                icon: const Icon(Icons.share, color: Colors.white),
+                onPressed: () => _shareRestaurant(context, ref),
+                tooltip: 'Partager sur WhatsApp',
               ),
             ),
           ),

@@ -1,13 +1,16 @@
 pub mod agents;
 pub mod auth;
 pub mod deliveries;
+pub mod disputes;
 pub mod drivers;
 pub mod health;
 pub mod kyc;
 pub mod merchants;
 pub mod orders;
 pub mod products;
+pub mod ratings;
 pub mod reconciliation;
+pub mod share;
 pub mod users;
 pub mod wallets;
 pub mod ws;
@@ -16,6 +19,12 @@ use actix_web::web;
 
 /// Configure all API routes under `/api/v1/`
 pub fn configure(cfg: &mut web::ServiceConfig) {
+    // Public share redirect page (outside /api/v1, no auth)
+    cfg.route(
+        "/share/r/{merchant_id}",
+        web::get().to(share::share_redirect_page),
+    );
+
     cfg.service(
         web::scope("/api/v1")
             .route("/health", web::get().to(health::health_check))
@@ -42,7 +51,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                         web::post().to(users::change_phone_verify),
                     )
                     .route("/me/fcm-token", web::put().to(users::register_fcm_token))
-                    .route("/me/fcm-token", web::delete().to(users::clear_fcm_token)),
+                    .route("/me/fcm-token", web::delete().to(users::clear_fcm_token))
+                    .route("/me/referral", web::get().to(users::get_referral_code)),
             )
             // Delivery routes — Driver role required (except tracking: Client role)
             .service(
@@ -115,7 +125,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/accept", web::put().to(orders::accept_order))
                     .route("/{id}/reject", web::put().to(orders::reject_order))
                     .route("/{id}/ready", web::put().to(orders::mark_ready))
-                    .route("/{id}/retry-payment", web::post().to(orders::retry_payment)),
+                    .route("/{id}/retry-payment", web::post().to(orders::retry_payment))
+                    .route("/{id}/rating", web::post().to(ratings::submit_rating))
+                    .route("/{id}/rating", web::get().to(ratings::get_order_rating))
+                    .route("/{id}/dispute", web::post().to(disputes::create_dispute))
+                    .route("/{id}/dispute", web::get().to(disputes::get_order_dispute)),
             )
             // Payment webhook — NO JWT auth (CinetPay calls directly)
             .service(
@@ -188,6 +202,19 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 "/{id}/acknowledge",
                 web::post().to(products::acknowledge_alert),
             ))
+            // Dispute routes — Client role required
+            .service(
+                web::scope("/disputes")
+                    .route("/me", web::get().to(disputes::list_my_disputes)),
+            )
+            // Share routes — Client role for metadata
+            .service(
+                web::scope("/share")
+                    .route(
+                        "/restaurant/{merchant_id}",
+                        web::get().to(share::get_share_metadata),
+                    ),
+            )
             // Admin routes — Admin role required
             .service(
                 web::scope("/admin")

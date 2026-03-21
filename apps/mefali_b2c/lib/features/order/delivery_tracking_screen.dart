@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/mefali_core.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'rating_sheet_consumer.dart';
 
 /// Ecran de suivi temps reel de livraison (story 5.5).
 ///
@@ -18,6 +21,7 @@ class DeliveryTrackingScreen extends ConsumerStatefulWidget {
     this.deliveryLat,
     this.deliveryLng,
     this.deliveryAddress,
+    this.merchantName,
     super.key,
   });
 
@@ -25,6 +29,7 @@ class DeliveryTrackingScreen extends ConsumerStatefulWidget {
   final double? deliveryLat;
   final double? deliveryLng;
   final String? deliveryAddress;
+  final String? merchantName;
 
   @override
   ConsumerState<DeliveryTrackingScreen> createState() =>
@@ -151,10 +156,55 @@ class _DeliveryTrackingScreenState
       const SnackBar(
         content: Text('Commande livree !'),
         backgroundColor: Color(0xFF4CAF50),
-        duration: Duration(seconds: 3),
+        duration: Duration(seconds: 2),
       ),
     );
-    Future.delayed(const Duration(seconds: 2), () {
+    // Show rating sheet after SnackBar disappears (2s duration + 500ms buffer).
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) _showRatingSheet();
+    });
+  }
+
+  void _showRatingSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => RatingSheetConsumer(
+        orderId: widget.orderId,
+        merchantName: widget.merchantName ?? 'Le restaurant',
+        driverName: _driverName ?? 'Le livreur',
+        onDone: () {
+          Navigator.of(sheetContext).pop();
+          if (mounted) _showPostRatingShare();
+        },
+      ),
+    ).then((_) {
+      // If dismissed without rating, go home (AC #4)
+      if (mounted) context.go('/home');
+    });
+  }
+
+  void _showPostRatingShare() {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => _PostRatingShareContent(
+        onShare: () async {
+          Navigator.of(ctx).pop();
+          if (mounted) context.go('/home');
+        },
+        onSkip: () {
+          Navigator.of(ctx).pop();
+          if (mounted) context.go('/home');
+        },
+      ),
+    ).then((_) {
       if (mounted) context.go('/home');
     });
   }
@@ -378,5 +428,68 @@ class _DeliveryTrackingScreenState
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
+  }
+}
+
+/// Widget Consumer pour le post-rating share — fetch le referral code du user.
+class _PostRatingShareContent extends ConsumerWidget {
+  const _PostRatingShareContent({
+    required this.onShare,
+    required this.onSkip,
+  });
+
+  final VoidCallback onShare;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final referralAsync = ref.watch(referralCodeProvider);
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Merci pour votre avis !',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final code = referralAsync.value?.referralCode ?? '';
+              final message = code.isNotEmpty
+                  ? WhatsAppShareHelper.buildAppInviteMessage(
+                      referralCode: code,
+                      shareBaseUrl: 'https://api.mefali.ci',
+                    )
+                  : 'Rejoins mefali ! L\'app pour commander a manger a Bouake.\nhttps://api.mefali.ci/share';
+              final success =
+                  await WhatsAppShareHelper.shareOnWhatsApp(message);
+              if (!success && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('WhatsApp non disponible'),
+                  ),
+                );
+              }
+              onShare();
+            },
+            icon: const Icon(Icons.share),
+            label: const Text('Partager mefali sur WhatsApp'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF25D366),
+              side: const BorderSide(color: Color(0xFF25D366)),
+              minimumSize: const Size(double.infinity, 48),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onSkip,
+            child: const Text('Plus tard'),
+          ),
+        ],
+      ),
+    );
   }
 }

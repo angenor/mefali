@@ -1,6 +1,6 @@
 # Story 6.4: Admin Credit/Refund
 
-Status: review
+Status: done
 
 ## Story
 
@@ -233,20 +233,21 @@ Claude Opus 4.6 (1M context)
 - cargo build --workspace: OK (1 pre-existing warning in deliveries.rs:324)
 - cargo clippy --workspace: OK (2 pre-existing warnings in orders/repository.rs, users/service.rs + 1 in deliveries.rs)
 - cargo test --workspace --lib: 173 passed, 3 pre-existing DB-dependent failures (PoolTimedOut)
-- cargo test -p domain --lib wallets: 8 passed (3 new: refund_serde, admin_credit_format, admin_credit_with_order)
+- cargo test -p domain --lib wallets: 11 passed (3 model + 3 service validation tests new)
 - cargo fmt --all: Applied
 
 ### Completion Notes List
 
 - Task 1: Added `find_or_create_wallet(pool, user_id)` in wallets/repository.rs. Uses INSERT ON CONFLICT (user_id) DO NOTHING + SELECT pattern for atomic wallet creation without race conditions. Clients who don't have a wallet get one created automatically.
-- Task 2: Added `admin_credit_wallet(pool, admin_id, target_user_id, amount, reason, order_id)` in wallets/service.rs. Validates amount > 0, reason non-empty, target user exists. Calls find_or_create_wallet, then credit_wallet + create_transaction atomically. Uses WalletTransactionType::Refund (not Credit) to avoid reconciliation false positives. Reference format: "admin_credit:{admin_id}". Description includes reason and optional order_id.
+- Task 2: Added `admin_credit_wallet(pool, admin_id, target_user_id, amount, reason, order_id)` in wallets/service.rs. Validates amount > 0, reason non-empty, target user exists. Calls find_or_create_wallet, then credit_wallet + create_transaction atomically via DB transaction (pool.begin/commit). Uses WalletTransactionType::Refund (not Credit) to avoid reconciliation false positives. Reference format: "admin_credit:{admin_id}". Description includes reason and optional order_id.
 - Task 3: Added POST /api/v1/admin/wallets/{user_id}/credit in routes/wallets.rs with AdminCreditBody (amount, reason, order_id) and AdminCreditPath (user_id). Admin role guard via require_role. Registered in /admin/ scope in routes/mod.rs alongside reconciliation routes. Response: { data: { wallet, transaction } }.
 - Task 4: Added notify_admin_credit() following exact pattern from notify_withdrawal_completed(). Fire-and-forget via actix_web::rt::spawn. Title: "Reclamation traitee", Body: "+X FCFA credites sur votre wallet.", Event: "wallet.admin_credit". FCM notification non-blocking.
-- Task 5: 3 new unit tests in wallets/model.rs: test_refund_transaction_type_serde (round-trip), test_admin_credit_transaction_format (reference prefix + type), test_admin_credit_with_order_description (description with order_id). All pass. Build + clippy clean.
+- Task 5: 3 model unit tests in wallets/model.rs (refund_serde, admin_credit_format, admin_credit_with_order) + 3 service validation tests in wallets/service.rs (rejects_zero_amount, rejects_negative_amount, rejects_empty_reason). All pass. Build + clippy clean.
 
 ### Change Log
 
 - 2026-03-21: Implementation complete story 6-4 admin credit/refund
+- 2026-03-21: Code review fixes — (H1) added 3 validation tests in service.rs, (M1) wrapped credit+transaction in DB transaction for true atomicity
 
 ### File List
 

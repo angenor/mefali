@@ -25,6 +25,7 @@ class AuthEndpoint {
     String? name, {
     String? role,
     String? sponsorPhone,
+    String? referralCode,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/auth/verify-otp',
@@ -34,6 +35,7 @@ class AuthEndpoint {
         'name': ?name,
         'role': ?role,
         'sponsor_phone': ?sponsorPhone,
+        'referral_code': ?referralCode,
       },
     );
 

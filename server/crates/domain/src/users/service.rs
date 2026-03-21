@@ -3,6 +3,7 @@ use common::config::AppConfig;
 use common::error::AppError;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use notification::sms::SmsProvider;
+use rand::Rng;
 use redis::aio::ConnectionManager;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -25,6 +26,15 @@ pub struct JwtClaims {
     pub role: String,
     pub iat: i64,
     pub exp: i64,
+}
+
+/// Generate a 6-character uppercase alphanumeric referral code.
+pub fn generate_referral_code() -> String {
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let mut rng = rand::thread_rng();
+    (0..6)
+        .map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char)
+        .collect()
 }
 
 /// Validate phone number format for Cote d'Ivoire (+225XXXXXXXXXX).
@@ -102,7 +112,7 @@ fn parse_registration_role(role: Option<&str>) -> Result<UserRole, AppError> {
 }
 
 /// Verify OTP, create user if new, return JWT tokens.
-/// Supports multi-role registration: role and sponsor_phone are optional.
+/// Supports multi-role registration: role, sponsor_phone, and referral_code are optional.
 pub async fn verify_otp_and_register(
     redis: &mut ConnectionManager,
     pool: &PgPool,
@@ -112,6 +122,7 @@ pub async fn verify_otp_and_register(
     name: Option<&str>,
     role: Option<&str>,
     sponsor_phone: Option<&str>,
+    referral_code_input: Option<&str>,
 ) -> Result<AuthResponse, AppError> {
     validate_phone(phone)?;
 
@@ -160,8 +171,9 @@ pub async fn verify_otp_and_register(
                 (UserRole::Client, UserStatus::Active)
             };
 
+            let code = generate_referral_code();
             let user =
-                repository::create_user(pool, phone, Some(name), user_role, user_status).await?;
+                repository::create_user(pool, phone, Some(name), user_role, user_status, &code).await?;
 
             // Create sponsorship (sponsor already validated above)
             if let Some(sponsor) = sponsor {
@@ -169,6 +181,22 @@ pub async fn verify_otp_and_register(
                 info!(phone = phone, user_id = %user.id, sponsor_id = %sponsor.id, "Driver registered with sponsor");
             } else {
                 info!(phone = phone, user_id = %user.id, "New user registered");
+            }
+
+            // Handle referral attribution (if referral code provided)
+            if let Some(ref_code) = referral_code_input {
+                if ref_code.len() <= 8 && ref_code.chars().all(|c| c.is_ascii_alphanumeric()) {
+                    if let Some(referrer_id) = repository::find_id_by_referral_code(pool, ref_code).await? {
+                        if referrer_id != user.id {
+                            repository::set_referred_by(pool, user.id, referrer_id).await?;
+                            info!(user_id = %user.id, referrer_id = %referrer_id, "Referral attributed");
+                        }
+                    } else {
+                        info!(ref_code = ref_code, "Referral code not found during registration");
+                    }
+                } else {
+                    info!(ref_code = ref_code, "Invalid referral code format ignored");
+                }
             }
 
             user

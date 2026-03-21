@@ -138,7 +138,8 @@ pub async fn increment_no_response<'e>(
 
 /// List fully onboarded merchants for customer discovery, ordered by availability then name.
 /// Only merchants with onboarding_step = 5 are returned.
-/// avg_rating / total_ratings / delivery_fee are hardcoded for MVP (no ratings table yet).
+/// avg_rating and total_ratings are computed from the ratings table.
+/// delivery_fee is hardcoded for MVP.
 pub async fn find_active_for_discovery(
     pool: &PgPool,
     category: Option<&str>,
@@ -146,16 +147,18 @@ pub async fn find_active_for_discovery(
     offset: i64,
 ) -> Result<Vec<MerchantSummary>, AppError> {
     sqlx::query_as::<_, MerchantSummary>(
-        "SELECT id, name, address, availability_status, category, photo_url, city_id,
-                0.0::float8 AS avg_rating, 0::bigint AS total_ratings, 50000::bigint AS delivery_fee
-         FROM merchants
-         WHERE onboarding_step = 5 AND ($1::text IS NULL OR category = $1)
-         ORDER BY CASE availability_status
+        "SELECT m.id, m.name, m.address, m.availability_status, m.category, m.photo_url, m.city_id,
+                COALESCE((SELECT AVG(r.score)::float8 FROM ratings r WHERE r.rated_id = m.user_id AND r.rated_type = 'merchant'), 0.0) AS avg_rating,
+                COALESCE((SELECT COUNT(*)::bigint FROM ratings r WHERE r.rated_id = m.user_id AND r.rated_type = 'merchant'), 0) AS total_ratings,
+                50000::bigint AS delivery_fee
+         FROM merchants m
+         WHERE m.onboarding_step = 5 AND ($1::text IS NULL OR m.category = $1)
+         ORDER BY CASE m.availability_status
                     WHEN 'open' THEN 1
                     WHEN 'overwhelmed' THEN 2
                     WHEN 'auto_paused' THEN 3
                     WHEN 'closed' THEN 4
-                  END, name
+                  END, m.name
          LIMIT $2 OFFSET $3",
     )
     .bind(category)

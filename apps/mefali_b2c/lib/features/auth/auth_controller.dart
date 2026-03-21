@@ -18,10 +18,17 @@ class AuthController extends AsyncNotifier<void> {
   }
 
   /// Verifie l'OTP et finalise l'inscription/connexion.
-  Future<void> verifyOtp(String phone, String otp, String? name) async {
+  Future<void> verifyOtp(
+    String phone,
+    String otp,
+    String? name, {
+    String? referralCode,
+  }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await ref.read(authProvider.notifier).verifyOtp(phone, otp, name);
+      await ref
+          .read(authProvider.notifier)
+          .verifyOtp(phone, otp, name, referralCode: referralCode);
     });
   }
 }

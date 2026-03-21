@@ -89,17 +89,18 @@ pub async fn update_fcm_token(
     Ok(())
 }
 
-/// Create a new user with the given role and status.
+/// Create a new user with the given role, status, and referral code.
 pub async fn create_user(
     pool: &PgPool,
     phone: &str,
     name: Option<&str>,
     role: UserRole,
     status: UserStatus,
+    referral_code: &str,
 ) -> Result<User, AppError> {
     sqlx::query_as::<_, User>(
-        "INSERT INTO users (phone, name, role, status) \
-         VALUES ($1, $2, $3, $4) \
+        "INSERT INTO users (phone, name, role, status, referral_code) \
+         VALUES ($1, $2, $3, $4, $5) \
          ON CONFLICT (phone) DO UPDATE SET updated_at = now() \
          RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
     )
@@ -107,7 +108,50 @@ pub async fn create_user(
     .bind(name)
     .bind(role)
     .bind(status)
+    .bind(referral_code)
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to create user: {}", e)))
+}
+
+/// Get a user's referral code by user ID.
+pub async fn get_referral_code(pool: &PgPool, user_id: Id) -> Result<String, AppError> {
+    sqlx::query_scalar::<_, String>(
+        "SELECT referral_code FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to get referral code: {}", e)))
+}
+
+/// Find a user ID by referral code (for referral attribution).
+pub async fn find_id_by_referral_code(
+    pool: &PgPool,
+    code: &str,
+) -> Result<Option<Id>, AppError> {
+    sqlx::query_scalar::<_, Id>(
+        "SELECT id FROM users WHERE referral_code = $1",
+    )
+    .bind(code)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to find user by referral code: {}", e)))
+}
+
+/// Set the referred_by field for a user (referral attribution).
+pub async fn set_referred_by(
+    pool: &PgPool,
+    user_id: Id,
+    referrer_id: Id,
+) -> Result<(), AppError> {
+    sqlx::query(
+        "UPDATE users SET referred_by = $2 WHERE id = $1 AND referred_by IS NULL",
+    )
+    .bind(user_id)
+    .bind(referrer_id)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to set referred_by: {}", e)))?;
+    Ok(())
 }

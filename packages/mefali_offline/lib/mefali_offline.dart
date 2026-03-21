@@ -2,3 +2,4 @@
 library;
 
 export 'database/mefali_database.dart';
+export 'sync/sync_processor.dart';
