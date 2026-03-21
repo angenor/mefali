@@ -6,9 +6,11 @@ use domain::users::service::JwtClaims;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::PgPool;
 
+use crate::routes::admin;
 use crate::routes::agents;
 use crate::routes::merchants;
 use crate::routes::orders;
+use crate::routes::wallets;
 
 pub fn test_config() -> AppConfig {
     AppConfig {
@@ -84,6 +86,58 @@ pub fn test_app(
                 )
                 .service(
                     web::scope("/agents").route("/me/stats", web::get().to(agents::get_my_stats)),
+                )
+                .service(
+                    web::scope("/admin")
+                        .route("/dashboard/stats", web::get().to(admin::dashboard_stats))
+                        .service(
+                            web::scope("/disputes")
+                                .route("", web::get().to(admin::list_disputes))
+                                .route("/{dispute_id}", web::get().to(admin::get_dispute_detail))
+                                .route(
+                                    "/{dispute_id}/resolve",
+                                    web::post().to(admin::resolve_dispute),
+                                ),
+                        )
+                        .route(
+                            "/wallets/{user_id}/credit",
+                            web::post().to(wallets::admin_credit_wallet),
+                        )
+                        .service(
+                            web::scope("/cities")
+                                .route("", web::get().to(admin::list_cities))
+                                .route("", web::post().to(admin::create_city))
+                                .route("/{city_id}", web::put().to(admin::update_city))
+                                .route(
+                                    "/{city_id}/active",
+                                    web::patch().to(admin::toggle_city_active),
+                                ),
+                        )
+                        .service(
+                            web::scope("/users")
+                                .route("", web::get().to(admin::list_users))
+                                .route("/{user_id}", web::get().to(admin::get_user_detail))
+                                .route(
+                                    "/{user_id}/status",
+                                    web::patch().to(admin::update_user_status_admin),
+                                ),
+                        )
+                        .service(
+                            web::scope("/merchants")
+                                .route("", web::get().to(admin::list_merchants_admin))
+                                .route(
+                                    "/{merchant_id}/history",
+                                    web::get().to(admin::get_merchant_history),
+                                ),
+                        )
+                        .service(
+                            web::scope("/drivers")
+                                .route("", web::get().to(admin::list_drivers_admin))
+                                .route(
+                                    "/{driver_id}/history",
+                                    web::get().to(admin::get_driver_history),
+                                ),
+                        ),
                 )
                 .service(
                     web::scope("/merchants")

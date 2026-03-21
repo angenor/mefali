@@ -2,7 +2,7 @@ use common::error::AppError;
 use common::types::Id;
 use sqlx::PgPool;
 
-use super::model::{User, UserRole, UserStatus};
+use super::model::{AdminAuditLog, AdminUserDetail, AdminUserListItem, User, UserRole, UserStatus};
 
 /// Find a user by ID.
 pub async fn find_by_id(pool: &PgPool, id: Id) -> Result<Option<User>, AppError> {
@@ -137,6 +137,132 @@ pub async fn find_id_by_referral_code(
     .fetch_optional(pool)
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to find user by referral code: {}", e)))
+}
+
+// --- Admin account management queries ---
+
+/// List users with pagination, optional role/status filters, and search.
+pub async fn find_all_paginated(
+    pool: &PgPool,
+    role_filter: Option<&str>,
+    status_filter: Option<&str>,
+    search: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<AdminUserListItem>, AppError> {
+    sqlx::query_as::<_, AdminUserListItem>(
+        "SELECT u.id, u.phone, u.name, u.role, u.status, \
+                c.city_name, u.created_at \
+         FROM users u \
+         LEFT JOIN city_config c ON u.city_id = c.id \
+         WHERE ($1::user_role IS NULL OR u.role = $1::user_role) \
+           AND ($2::user_status IS NULL OR u.status = $2::user_status) \
+           AND ($3::TEXT IS NULL OR u.name ILIKE '%' || $3 || '%' OR u.phone ILIKE '%' || $3 || '%') \
+         ORDER BY u.created_at DESC \
+         LIMIT $4 OFFSET $5",
+    )
+    .bind(role_filter)
+    .bind(status_filter)
+    .bind(search)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to list users: {}", e)))
+}
+
+/// Count users matching filters (for pagination meta).
+pub async fn count_all_filtered(
+    pool: &PgPool,
+    role_filter: Option<&str>,
+    status_filter: Option<&str>,
+    search: Option<&str>,
+) -> Result<i64, AppError> {
+    let count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*)::BIGINT \
+         FROM users u \
+         WHERE ($1::user_role IS NULL OR u.role = $1::user_role) \
+           AND ($2::user_status IS NULL OR u.status = $2::user_status) \
+           AND ($3::TEXT IS NULL OR u.name ILIKE '%' || $3 || '%' OR u.phone ILIKE '%' || $3 || '%')",
+    )
+    .bind(role_filter)
+    .bind(status_filter)
+    .bind(search)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to count users: {}", e)))?;
+
+    Ok(count.0)
+}
+
+/// Get detailed user info with aggregated stats for admin view.
+pub async fn find_detail_by_id(pool: &PgPool, user_id: Id) -> Result<Option<AdminUserDetail>, AppError> {
+    sqlx::query_as::<_, AdminUserDetail>(
+        "SELECT u.id, u.phone, u.name, u.role, u.status, \
+                c.city_name, u.referral_code, u.created_at, u.updated_at, \
+                COALESCE(( \
+                    SELECT COUNT(*)::BIGINT FROM orders \
+                    WHERE customer_id = u.id \
+                       OR merchant_id = (SELECT id FROM merchants WHERE user_id = u.id LIMIT 1) \
+                ), 0) AS total_orders, \
+                CASE WHEN COALESCE(( \
+                    SELECT COUNT(*)::BIGINT FROM orders \
+                    WHERE customer_id = u.id \
+                       OR merchant_id = (SELECT id FROM merchants WHERE user_id = u.id LIMIT 1) \
+                ), 0) = 0 THEN 0.0 \
+                ELSE ( \
+                    COALESCE(( \
+                        SELECT COUNT(*)::BIGINT FROM orders \
+                        WHERE (customer_id = u.id \
+                           OR merchant_id = (SELECT id FROM merchants WHERE user_id = u.id LIMIT 1)) \
+                          AND status = 'delivered' \
+                    ), 0)::FLOAT8 \
+                    / COALESCE(( \
+                        SELECT COUNT(*)::BIGINT FROM orders \
+                        WHERE customer_id = u.id \
+                           OR merchant_id = (SELECT id FROM merchants WHERE user_id = u.id LIMIT 1) \
+                    ), 1)::FLOAT8 * 100.0 \
+                ) END AS completion_rate, \
+                COALESCE(( \
+                    SELECT COUNT(*)::BIGINT FROM disputes WHERE reporter_id = u.id \
+                ), 0) AS disputes_filed, \
+                COALESCE(( \
+                    SELECT AVG(score)::FLOAT8 FROM ratings WHERE rated_id = u.id \
+                ), 0.0) AS avg_rating \
+         FROM users u \
+         LEFT JOIN city_config c ON u.city_id = c.id \
+         WHERE u.id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to find user detail: {}", e)))
+}
+
+/// Insert an admin audit log entry.
+pub async fn insert_audit_log(
+    pool: &PgPool,
+    admin_id: Id,
+    target_user_id: Id,
+    action: &str,
+    old_status: Option<UserStatus>,
+    new_status: Option<UserStatus>,
+    reason: Option<&str>,
+) -> Result<AdminAuditLog, AppError> {
+    sqlx::query_as::<_, AdminAuditLog>(
+        "INSERT INTO admin_audit_logs (admin_id, target_user_id, action, old_status, new_status, reason) \
+         VALUES ($1, $2, $3, $4, $5, $6) \
+         RETURNING id, admin_id, target_user_id, action, old_status, new_status, reason, created_at",
+    )
+    .bind(admin_id)
+    .bind(target_user_id)
+    .bind(action)
+    .bind(old_status)
+    .bind(new_status)
+    .bind(reason)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to insert audit log: {}", e)))
 }
 
 /// Set the referred_by field for a user (referral attribution).

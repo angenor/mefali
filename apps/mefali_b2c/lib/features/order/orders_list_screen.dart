@@ -237,6 +237,7 @@ class OrderListItem extends ConsumerWidget {
   }
 
   void _showDisputeSheet(BuildContext context, WidgetRef ref) {
+    final parentContext = context;
     var isLoading = false;
     showModalBottomSheet<void>(
       context: context,
@@ -246,7 +247,7 @@ class OrderListItem extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => DisputeReportSheet(
+        builder: (_, setSheetState) => DisputeReportSheet(
           isLoading: isLoading,
           onSubmit: ({required disputeType, description}) async {
             setSheetState(() => isLoading = true);
@@ -261,8 +262,8 @@ class OrderListItem extends ConsumerWidget {
               );
               if (sheetContext.mounted) Navigator.of(sheetContext).pop();
               ref.invalidate(orderDisputeProvider(order.id));
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              if (parentContext.mounted) {
+                ScaffoldMessenger.of(parentContext).showSnackBar(
                   const SnackBar(
                     content: Text(
                       'Votre signalement a ete envoye. Nous reviendrons vers vous.',
@@ -272,18 +273,33 @@ class OrderListItem extends ConsumerWidget {
                 );
               }
             } on DioException catch (e) {
-              setSheetState(() => isLoading = false);
               final statusCode = e.response?.statusCode;
-              if (statusCode == 409 && context.mounted) {
-                Navigator.of(sheetContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Vous avez deja signale un probleme pour cette commande',
+              if (statusCode == 409) {
+                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (parentContext.mounted) {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Vous avez deja signale un probleme pour cette commande',
+                      ),
+                      backgroundColor:
+                          Theme.of(parentContext).colorScheme.error,
                     ),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
+                  );
+                }
+              } else {
+                setSheetState(() => isLoading = false);
+                if (parentContext.mounted) {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Une erreur est survenue. Veuillez reessayer.',
+                      ),
+                      backgroundColor:
+                          Theme.of(parentContext).colorScheme.error,
+                    ),
+                  );
+                }
               }
             }
           },

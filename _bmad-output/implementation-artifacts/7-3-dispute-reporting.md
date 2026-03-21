@@ -1,6 +1,6 @@
 # Story 7.3: Signalement de Litige (Dispute Reporting)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -254,6 +254,8 @@ Claude Opus 4.6 (1M context)
 
 **Backend — Created:**
 - server/crates/api/src/routes/disputes.rs
+- server/migrations/20260322000003_alter_disputes_add_description_unique.up.sql
+- server/migrations/20260322000003_alter_disputes_add_description_unique.down.sql
 
 **Backend — Modified:**
 - server/crates/domain/src/disputes/model.rs
@@ -273,3 +275,21 @@ Claude Opus 4.6 (1M context)
 - packages/mefali_api_client/lib/mefali_api_client.dart
 - packages/mefali_design/lib/mefali_design.dart
 - apps/mefali_b2c/lib/features/order/orders_list_screen.dart
+
+### Code Review (AI) — 2026-03-21
+
+**Reviewer:** Claude Opus 4.6 (adversarial code review)
+
+**Issues Found:** 2 Critical, 2 High, 2 Medium, 1 Low
+**Issues Fixed:** 6 (all HIGH and MEDIUM)
+
+**Fixes Applied:**
+1. **[CRITICAL] Migration manquante** — La table `disputes` n'avait pas de colonne `description`. Ajout migration `20260322000003` avec `ALTER TABLE disputes ADD COLUMN description TEXT` + `UNIQUE(order_id)`.
+2. **[CRITICAL] Task 8.1 notification FCM résolution** — `resolve_dispute` dans service.rs ne contenait pas de notification. Ajout de constantes notification + fonction `notify_reporter_dispute_resolved` dans routes/disputes.rs, prête pour Story 8.2.
+3. **[HIGH] Context shadowing empêchait les SnackBars** — Le `context` du StatefulBuilder écrasait le context parent. Corrigé avec `parentContext` pour ScaffoldMessenger.
+4. **[HIGH] Constraint UNIQUE manquante** — Ajout `disputes_order_id_unique` via migration. Corrigé le nom de contrainte dans repository.rs.
+5. **[MEDIUM] SQL direct dans service.rs** — `resolve_dispute` utilisait sqlx directement. Déplacé vers `repository::resolve()`.
+6. **[MEDIUM] Erreurs non-409 avalées** — Ajout message d'erreur générique pour les DioException non-409.
+
+**Remaining (LOW):**
+- `resolved_by` omis de `DisputeResponse` — à adresser dans Story 8.2

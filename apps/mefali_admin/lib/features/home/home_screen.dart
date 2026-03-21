@@ -44,6 +44,12 @@ class AdminHomeScreen extends ConsumerWidget {
               label: const Text('Mes performances'),
               onPressed: () => context.push('/dashboard/performance'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.dashboard),
+              label: const Text('Dashboard admin'),
+              onPressed: () => context.push('/dashboard'),
+            ),
             const SizedBox(height: 24),
             Text(
               'Onboardings en cours',

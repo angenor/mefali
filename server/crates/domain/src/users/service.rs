@@ -378,6 +378,75 @@ pub async fn verify_phone_change(
     Ok(user)
 }
 
+/// Admin updates a user's status with validation, token revocation, and audit logging.
+pub async fn admin_update_user_status(
+    pool: &PgPool,
+    admin_id: common::types::Id,
+    target_user_id: common::types::Id,
+    new_status: UserStatus,
+    reason: Option<&str>,
+) -> Result<User, AppError> {
+    // Fetch target user
+    let target = repository::find_by_id(pool, target_user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+
+    // Guard: cannot modify admin accounts
+    if target.role == UserRole::Admin {
+        return Err(AppError::Forbidden(
+            "Cannot modify admin accounts".into(),
+        ));
+    }
+
+    let old_status = target.status.clone();
+
+    // Validate status transition
+    let valid = matches!(
+        (&old_status, &new_status),
+        (UserStatus::Active, UserStatus::Suspended)
+            | (UserStatus::Active, UserStatus::Deactivated)
+            | (UserStatus::Suspended, UserStatus::Active)
+            | (UserStatus::Suspended, UserStatus::Deactivated)
+            | (UserStatus::Deactivated, UserStatus::Active)
+    );
+
+    if !valid {
+        return Err(AppError::BadRequest(format!(
+            "Invalid status transition: {} -> {}",
+            old_status, new_status
+        )));
+    }
+
+    // Update status
+    let updated_user = repository::update_status(pool, target_user_id, new_status.clone()).await?;
+
+    // Revoke refresh tokens on suspend/deactivate
+    if new_status == UserStatus::Suspended || new_status == UserStatus::Deactivated {
+        refresh_token_repository::revoke_all_for_user(pool, target_user_id).await?;
+    }
+
+    // Insert audit log
+    repository::insert_audit_log(
+        pool,
+        admin_id,
+        target_user_id,
+        "update_status",
+        Some(old_status),
+        Some(new_status),
+        reason,
+    )
+    .await?;
+
+    info!(
+        admin_id = %admin_id,
+        target_user_id = %target_user_id,
+        action = "update_status",
+        "Admin updated user status"
+    );
+
+    Ok(updated_user)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

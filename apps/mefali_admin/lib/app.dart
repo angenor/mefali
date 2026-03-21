@@ -9,6 +9,7 @@ import 'features/auth/otp_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/kyc/kyc_capture_screen.dart';
 import 'features/kyc/pending_drivers_screen.dart';
+import 'features/dashboard/admin_shell_screen.dart';
 import 'features/dashboard/agent_performance_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
 
@@ -74,6 +75,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           final userId = state.pathParameters['userId']!;
           return KycCaptureScreen(userId: userId);
         },
+      ),
+      GoRoute(
+        path: '/dashboard',
+        builder: (context, state) => const AdminShellScreen(),
       ),
       GoRoute(
         path: '/dashboard/performance',

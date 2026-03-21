@@ -134,6 +134,89 @@ pub struct Sponsorship {
     pub updated_at: Timestamp,
 }
 
+impl std::fmt::Display for UserStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserStatus::Active => write!(f, "active"),
+            UserStatus::PendingKyc => write!(f, "pending_kyc"),
+            UserStatus::Suspended => write!(f, "suspended"),
+            UserStatus::Deactivated => write!(f, "deactivated"),
+        }
+    }
+}
+
+// --- Admin account management types ---
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct AdminUserListItem {
+    pub id: Id,
+    pub phone: String,
+    pub name: Option<String>,
+    pub role: UserRole,
+    pub status: UserStatus,
+    pub city_name: Option<String>,
+    pub created_at: Timestamp,
+}
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct AdminUserDetail {
+    pub id: Id,
+    pub phone: String,
+    pub name: Option<String>,
+    pub role: UserRole,
+    pub status: UserStatus,
+    pub city_name: Option<String>,
+    pub referral_code: String,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
+    pub total_orders: i64,
+    pub completion_rate: f64,
+    pub disputes_filed: i64,
+    pub avg_rating: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AdminUserListParams {
+    #[serde(default = "default_page")]
+    pub page: i64,
+    #[serde(default = "default_per_page")]
+    pub per_page: i64,
+    pub role: Option<String>,
+    pub status: Option<String>,
+    pub search: Option<String>,
+}
+
+fn default_page() -> i64 {
+    1
+}
+fn default_per_page() -> i64 {
+    20
+}
+
+impl AdminUserListParams {
+    pub fn offset(&self) -> i64 {
+        (self.page - 1) * self.per_page
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserStatusRequest {
+    pub new_status: UserStatus,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct AdminAuditLog {
+    pub id: Id,
+    pub admin_id: Id,
+    pub target_user_id: Id,
+    pub action: String,
+    pub old_status: Option<UserStatus>,
+    pub new_status: Option<UserStatus>,
+    pub reason: Option<String>,
+    pub created_at: Timestamp,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

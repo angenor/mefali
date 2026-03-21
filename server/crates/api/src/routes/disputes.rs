@@ -84,6 +84,49 @@ pub async fn list_my_disputes(
     )))
 }
 
+/// Notify the dispute reporter that their dispute has been resolved (best-effort).
+/// Ready for Story 8.2 to call from the resolve route handler.
+pub async fn notify_reporter_dispute_resolved(
+    pool: &PgPool,
+    reporter_id: uuid::Uuid,
+    fcm_client: Option<&FcmClient>,
+) {
+    let fcm = match fcm_client {
+        Some(c) => c,
+        None => return,
+    };
+
+    let token: Option<(String,)> = match sqlx::query_as(
+        "SELECT fcm_token FROM users WHERE id = $1 AND fcm_token IS NOT NULL AND fcm_token != ''",
+    )
+    .bind(reporter_id)
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(row) => row,
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch reporter FCM token for dispute resolution");
+            return;
+        }
+    };
+
+    if let Some((token,)) = token {
+        let notification = PushNotification {
+            device_token: token,
+            title: domain::disputes::service::DISPUTE_RESOLVED_TITLE.into(),
+            body: domain::disputes::service::DISPUTE_RESOLVED_BODY.into(),
+            data: {
+                let mut map = serde_json::Map::new();
+                map.insert("event".into(), "dispute.resolved".into());
+                Some(serde_json::Value::Object(map))
+            },
+        };
+        if let Err(e) = fcm.send_push(&notification).await {
+            warn!(error = %e, "Failed to send dispute resolution notification to reporter");
+        }
+    }
+}
+
 /// Notify all admin users of a new dispute (best-effort, fire-and-forget).
 async fn notify_admins_new_dispute(
     pool: &PgPool,

@@ -7,6 +7,11 @@ use super::model::{CreateDisputeRequest, Dispute, DisputeStatus};
 use super::repository;
 use crate::orders;
 
+/// Notification title sent to the reporter when a dispute is resolved.
+pub const DISPUTE_RESOLVED_TITLE: &str = "Votre reclamation a ete traitee";
+/// Notification body template for resolved disputes.
+pub const DISPUTE_RESOLVED_BODY: &str = "Votre reclamation a ete examinee et traitee par notre equipe.";
+
 /// Create a dispute for a delivered order.
 /// Validates: order exists, requester owns order, order is delivered, no existing dispute.
 pub async fn create_dispute(
@@ -92,7 +97,8 @@ pub async fn list_my_disputes(
 }
 
 /// Resolve a dispute (to be called by admin in Story 8.2).
-/// Updates status and sends notification to reporter.
+/// Updates status in DB. Caller (route handler) is responsible for sending
+/// FCM notification to the reporter.
 pub async fn resolve_dispute(
     pool: &PgPool,
     dispute_id: Id,
@@ -109,18 +115,7 @@ pub async fn resolve_dispute(
         ));
     }
 
-    let resolved = sqlx::query_as::<_, Dispute>(
-        "UPDATE disputes SET status = $1, resolution = $2, resolved_by = $3
-         WHERE id = $4
-         RETURNING id, order_id, reporter_id, dispute_type, status, description, resolution, resolved_by, created_at, updated_at",
-    )
-    .bind(DisputeStatus::Resolved)
-    .bind(resolution)
-    .bind(admin_id)
-    .bind(dispute_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::DatabaseError(format!("Failed to resolve dispute: {e}")))?;
+    let resolved = repository::resolve(pool, dispute_id, admin_id, resolution).await?;
 
     info!(
         dispute_id = %dispute_id,

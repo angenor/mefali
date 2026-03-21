@@ -28,7 +28,7 @@ pub async fn create_dispute(
     .await
     .map_err(|e| {
         if let sqlx::Error::Database(ref db_err) = e {
-            if db_err.constraint() == Some("disputes_order_id_key") {
+            if db_err.constraint() == Some("disputes_order_id_unique") {
                 return AppError::Conflict(
                     "Un litige a deja ete signale pour cette commande".into(),
                 );
@@ -81,6 +81,27 @@ pub async fn find_by_reporter(
     .map_err(|e| AppError::DatabaseError(format!("Failed to find disputes by reporter: {e}")))
 }
 
+/// Update a dispute to resolved status.
+pub async fn resolve(
+    pool: &PgPool,
+    dispute_id: Id,
+    admin_id: Id,
+    resolution: &str,
+) -> Result<Dispute, AppError> {
+    sqlx::query_as::<_, Dispute>(&format!(
+        "UPDATE disputes SET status = $1, resolution = $2, resolved_by = $3
+         WHERE id = $4
+         RETURNING {DISPUTE_COLUMNS}"
+    ))
+    .bind(super::model::DisputeStatus::Resolved)
+    .bind(resolution)
+    .bind(admin_id)
+    .bind(dispute_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to resolve dispute: {e}")))
+}
+
 /// Count total disputes filed by a specific user.
 pub async fn count_by_reporter(pool: &PgPool, reporter_id: Id) -> Result<i64, AppError> {
     let row = sqlx::query_as::<_, (i64,)>(
@@ -92,4 +113,170 @@ pub async fn count_by_reporter(pool: &PgPool, reporter_id: Id) -> Result<i64, Ap
     .map_err(|e| AppError::DatabaseError(format!("Failed to count disputes: {e}")))?;
 
     Ok(row.0)
+}
+
+/// List disputes for admin with order/reporter summary, filtered and paginated.
+pub async fn find_all_admin(
+    pool: &PgPool,
+    status_filter: Option<&super::model::DisputeStatus>,
+    type_filter: Option<&DisputeType>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<super::model::AdminDisputeListItem>, AppError> {
+    let mut query = String::from(
+        "SELECT d.id, d.order_id, d.reporter_id, d.dispute_type, d.status,
+                d.description, d.created_at,
+                u.name as reporter_name, u.phone as reporter_phone,
+                m.name as merchant_name, o.total as order_total
+         FROM disputes d
+         JOIN users u ON u.id = d.reporter_id
+         JOIN orders o ON o.id = d.order_id
+         JOIN merchants m ON m.id = o.merchant_id
+         WHERE 1=1",
+    );
+
+    let mut param_idx = 1;
+    if status_filter.is_some() {
+        query.push_str(&format!(" AND d.status = ${param_idx}"));
+        param_idx += 1;
+    }
+    if type_filter.is_some() {
+        query.push_str(&format!(" AND d.dispute_type = ${param_idx}"));
+        param_idx += 1;
+    }
+
+    query.push_str(&format!(
+        " ORDER BY d.created_at DESC LIMIT ${param_idx} OFFSET ${}",
+        param_idx + 1
+    ));
+
+    let mut q = sqlx::query_as::<_, super::model::AdminDisputeListItem>(&query);
+
+    if let Some(s) = status_filter {
+        q = q.bind(s);
+    }
+    if let Some(t) = type_filter {
+        q = q.bind(t);
+    }
+    q = q.bind(limit).bind(offset);
+
+    q.fetch_all(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to list admin disputes: {e}")))
+}
+
+/// Count disputes for admin with optional filters.
+pub async fn count_all_admin(
+    pool: &PgPool,
+    status_filter: Option<&super::model::DisputeStatus>,
+    type_filter: Option<&DisputeType>,
+) -> Result<i64, AppError> {
+    let mut query = String::from("SELECT COUNT(*)::bigint FROM disputes d WHERE 1=1");
+
+    if status_filter.is_some() {
+        query.push_str(" AND d.status = $1");
+        if type_filter.is_some() {
+            query.push_str(" AND d.dispute_type = $2");
+        }
+    } else if type_filter.is_some() {
+        query.push_str(" AND d.dispute_type = $1");
+    }
+
+    let mut q = sqlx::query_as::<_, (i64,)>(&query);
+
+    if let Some(s) = status_filter {
+        q = q.bind(s);
+    }
+    if let Some(t) = type_filter {
+        q = q.bind(t);
+    }
+
+    let row = q
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to count admin disputes: {e}")))?;
+
+    Ok(row.0)
+}
+
+/// Get order timeline events (key timestamps) in a single query.
+pub async fn get_order_timeline(
+    pool: &PgPool,
+    order_id: Id,
+) -> Result<Vec<super::model::OrderTimelineEvent>, AppError> {
+    let rows = sqlx::query_as::<_, (String, Option<common::types::Timestamp>)>(
+        "SELECT label, ts FROM (
+            SELECT 'Commande placee' AS label, o.created_at AS ts, 1 AS sort_order
+            FROM orders o WHERE o.id = $1
+          UNION ALL
+            SELECT 'Collectee par livreur', dl.picked_up_at, 2
+            FROM deliveries dl WHERE dl.order_id = $1
+          UNION ALL
+            SELECT 'Livree au client', dl.delivered_at, 3
+            FROM deliveries dl WHERE dl.order_id = $1
+          UNION ALL
+            SELECT 'Litige signale', d.created_at, 4
+            FROM disputes d WHERE d.order_id = $1
+        ) timeline
+        ORDER BY sort_order",
+    )
+    .bind(order_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to get order timeline: {e}")))?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(label, timestamp)| super::model::OrderTimelineEvent { label, timestamp })
+        .collect())
+}
+
+/// Get merchant stats for dispute context.
+pub async fn get_merchant_stats(
+    pool: &PgPool,
+    merchant_id: Id,
+) -> Result<super::model::ActorStats, AppError> {
+    let row = sqlx::query_as::<_, (Option<String>, i64, i64)>(
+        "SELECT m.name,
+                (SELECT COUNT(*)::bigint FROM orders WHERE merchant_id = $1) as total_orders,
+                (SELECT COUNT(*)::bigint FROM disputes d
+                 JOIN orders o ON o.id = d.order_id
+                 WHERE o.merchant_id = $1) as total_disputes
+         FROM merchants m WHERE m.id = $1",
+    )
+    .bind(merchant_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to get merchant stats: {e}")))?;
+
+    Ok(super::model::ActorStats {
+        name: row.0,
+        total_orders: row.1,
+        total_disputes: row.2,
+    })
+}
+
+/// Get driver stats for dispute context.
+pub async fn get_driver_stats(
+    pool: &PgPool,
+    driver_id: Id,
+) -> Result<super::model::ActorStats, AppError> {
+    let row = sqlx::query_as::<_, (Option<String>, i64, i64)>(
+        "SELECT u.name,
+                (SELECT COUNT(*)::bigint FROM deliveries WHERE driver_id = $1) as total_deliveries,
+                (SELECT COUNT(*)::bigint FROM disputes d
+                 JOIN orders o ON o.id = d.order_id
+                 WHERE o.driver_id = $1) as total_disputes
+         FROM users u WHERE u.id = $1",
+    )
+    .bind(driver_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to get driver stats: {e}")))?;
+
+    Ok(super::model::ActorStats {
+        name: row.0,
+        total_orders: row.1,
+        total_disputes: row.2,
+    })
 }

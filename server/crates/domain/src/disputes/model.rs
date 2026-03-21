@@ -116,6 +116,81 @@ impl From<Dispute> for DisputeResponse {
     }
 }
 
+/// Admin dispute list item — dispute + order/reporter summary.
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct AdminDisputeListItem {
+    pub id: Id,
+    pub order_id: Id,
+    pub reporter_id: Id,
+    pub dispute_type: DisputeType,
+    pub status: DisputeStatus,
+    pub description: Option<String>,
+    pub created_at: Timestamp,
+    pub reporter_name: Option<String>,
+    pub reporter_phone: String,
+    pub merchant_name: Option<String>,
+    pub order_total: i64,
+}
+
+/// Order timeline event for dispute detail view.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderTimelineEvent {
+    pub label: String,
+    pub timestamp: Option<Timestamp>,
+}
+
+/// Actor stats for dispute context (merchant or driver).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActorStats {
+    pub name: Option<String>,
+    pub total_orders: i64,
+    pub total_disputes: i64,
+}
+
+/// Admin dispute detail — full context for resolution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdminDisputeDetail {
+    pub dispute: DisputeResponse,
+    pub timeline: Vec<OrderTimelineEvent>,
+    pub merchant_stats: ActorStats,
+    pub driver_stats: Option<ActorStats>,
+}
+
+/// Request payload for resolving a dispute (admin).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolveDisputeRequest {
+    pub action: ResolveAction,
+    pub resolution: String,
+    pub credit_amount: Option<i64>,
+}
+
+/// Resolution action type.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolveAction {
+    Credit,
+    Warn,
+    Dismiss,
+}
+
+impl ResolveDisputeRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.resolution.trim().is_empty() {
+            return Err("resolution is required".into());
+        }
+        if self.action == ResolveAction::Credit {
+            match self.credit_amount {
+                None => return Err("credit_amount is required when action is credit".into()),
+                Some(amount) if amount <= 0 => {
+                    return Err("credit_amount must be positive".into());
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

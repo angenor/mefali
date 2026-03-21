@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod city_config;
 pub mod deliveries;
 pub mod disputes;
 pub mod kyc;

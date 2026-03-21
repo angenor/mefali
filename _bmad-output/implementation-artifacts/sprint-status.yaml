@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-21 # 7-3-dispute-reporting: review
+last_updated: 2026-03-21 # 9-1-driver-sponsorship: in-progress
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -108,21 +108,21 @@ development_status:
   epic-7: in-progress
   7-1-double-rating: done
   7-2-whatsapp-sharing: done
-  7-3-dispute-reporting: review
+  7-3-dispute-reporting: done
   epic-7-retrospective: optional
 
   # Epic 8: Admin Dashboard & Operations
-  epic-8: backlog
-  8-1-admin-operational-dashboard: backlog
-  8-2-dispute-management-with-timeline: backlog
-  8-3-city-configuration: backlog
-  8-4-account-management: backlog
-  8-5-merchant-and-driver-history: backlog
+  epic-8: in-progress
+  8-1-admin-operational-dashboard: done
+  8-2-dispute-management-with-timeline: done
+  8-3-city-configuration: done
+  8-4-account-management: done
+  8-5-merchant-and-driver-history: done
   epic-8-retrospective: optional
 
   # Epic 9: Driver Sponsorship System
-  epic-9: backlog
-  9-1-driver-sponsorship: backlog
+  epic-9: in-progress
+  9-1-driver-sponsorship: in-progress
   9-2-sponsor-first-contact: backlog
   9-3-progressive-penalties: backlog
   epic-9-retrospective: optional
