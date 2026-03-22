@@ -1,3 +1,0 @@
-{$CADDY_DOMAIN:localhost} {
-	reverse_proxy /api/* api:8080
-}

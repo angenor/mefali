@@ -19,7 +19,9 @@ mefali is an African marketplace & logistics super-app targeting Bouake, Cote d'
 
 **Rust crates** (`server/crates/`): `api` (Actix Web entry point), `domain` (business logic: orders, merchants, deliveries, wallets, users, disputes, sponsorships), `infrastructure` (DB/Redis/MinIO clients), `payment_provider` (PaymentProvider trait + CinetPay adapter), `notification` (FCM + SMS dual-provider), `common` (AppError, config, types)
 
-**Infrastructure**: PostgreSQL, Redis, MinIO (S3-compatible file storage), Caddy (reverse proxy)
+**Infrastructure**: PostgreSQL, Redis, MinIO (S3-compatible file storage), Nginx (reverse proxy on shared VPS via UAfricas)
+
+**Deployment**: Shared Hetzner VPS (`161.97.92.63`) alongside UAfricas. Mefali API exposed on port 8090, proxied by UAfricas Nginx on `api.mefali.com`. Deploy script: `deploy-mefali.sh`.
 
 ## Build & Dev Commands
 
