@@ -21,7 +21,7 @@ mefali is an African marketplace & logistics super-app targeting Bouake, Cote d'
 
 **Infrastructure**: PostgreSQL, Redis, MinIO (S3-compatible file storage), Nginx (reverse proxy on shared VPS via UAfricas)
 
-**Deployment**: Shared Hetzner VPS (`161.97.92.63`) alongside UAfricas. Mefali API exposed on port 8090, proxied by UAfricas Nginx on `api.mefali.com`. Deploy script: `deploy-mefali.sh`.
+**Deployment**: Shared Contabo VPS Ubuntu (`161.97.92.63`) alongside UAfricas. Mefali API exposed on port 8090, proxied by UAfricas Nginx on `api.mefali.com`. Deploy script: `deploy-mefali.sh`.
 
 ## Build & Dev Commands
 
