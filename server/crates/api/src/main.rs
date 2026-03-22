@@ -38,7 +38,7 @@ async fn main() -> std::io::Result<()> {
 
     // Run database migrations
     sqlx::migrate!("../../migrations")
-        .run(&db_pool)
+        .run(&db_pool as &sqlx::PgPool)
         .await
         .expect("Failed to run database migrations");
     info!("Database migrations applied successfully");
