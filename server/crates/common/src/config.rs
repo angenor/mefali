@@ -24,6 +24,7 @@ pub struct AppConfig {
     pub cinetpay_notify_url: String,
     pub cinetpay_return_url: String,
     pub cinetpay_webhook_secret: String,
+    pub dev_mode: bool,
 }
 
 fn parse_or_default<T: std::str::FromStr>(var_name: &str, raw: &str, default: T) -> T {
@@ -86,6 +87,7 @@ impl AppConfig {
                 warn!("CINETPAY_WEBHOOK_SECRET not set — using dev default");
                 "dev-webhook-secret".into()
             }),
+            dev_mode: env::var("DEV_MODE").unwrap_or_default() == "true",
         })
     }
 }

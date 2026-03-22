@@ -36,6 +36,7 @@ pub fn test_config() -> AppConfig {
         cinetpay_notify_url: "http://localhost:8090/api/v1/payments/webhook".into(),
         cinetpay_return_url: "http://localhost:8090/payment/return".into(),
         cinetpay_webhook_secret: "test-webhook-secret".into(),
+        dev_mode: true,
     }
 }
 

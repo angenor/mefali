@@ -21,7 +21,7 @@ pub async fn request_otp(
 ) -> Result<HttpResponse, common::error::AppError> {
     let mut redis_conn = redis.get_ref().clone();
 
-    service::request_otp(
+    let otp_code = service::request_otp(
         &mut redis_conn,
         sms_provider.get_ref().as_ref(),
         &config,
@@ -29,9 +29,14 @@ pub async fn request_otp(
     )
     .await?;
 
-    let response = ApiResponse::new(serde_json::json!({
+    let mut data = serde_json::json!({
         "message": "OTP envoye"
-    }));
+    });
+    if let Some(code) = otp_code {
+        data["otp"] = serde_json::json!(code);
+    }
+
+    let response = ApiResponse::new(data);
     Ok(HttpResponse::Ok().json(response))
 }
 

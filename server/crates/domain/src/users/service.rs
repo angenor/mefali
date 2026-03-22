@@ -72,12 +72,13 @@ fn generate_access_token(user: &User, config: &AppConfig) -> Result<String, AppE
 }
 
 /// Request OTP: validate phone, check rate limit, generate OTP, send via SMS.
+/// Returns the OTP code if dev_mode is enabled (for testing without SMS).
 pub async fn request_otp(
     redis: &mut ConnectionManager,
     sms_provider: &dyn SmsProvider,
     config: &AppConfig,
     phone: &str,
-) -> Result<(), AppError> {
+) -> Result<Option<String>, AppError> {
     validate_phone(phone)?;
 
     otp_service::check_rate_limit(redis, phone, config.otp_rate_limit_per_minute).await?;
@@ -95,7 +96,12 @@ pub async fn request_otp(
         .map_err(|e| AppError::ExternalServiceError(format!("SMS send failed: {}", e)))?;
 
     info!(phone = phone, "OTP requested and sent");
-    Ok(())
+
+    if config.dev_mode {
+        Ok(Some(code))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Parse and validate role for self-registration.
@@ -528,6 +534,7 @@ mod tests {
             cinetpay_notify_url: "http://localhost:8090/api/v1/payments/webhook".into(),
             cinetpay_return_url: "http://localhost:8090/payment/return".into(),
             cinetpay_webhook_secret: "test-webhook-secret".into(),
+            dev_mode: true,
         };
 
         let result = generate_access_token(&user, &config);
