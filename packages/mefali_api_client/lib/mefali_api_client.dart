@@ -47,4 +47,6 @@ export 'providers/share_provider.dart';
 export 'providers/admin_accounts_provider.dart';
 export 'providers/admin_merchants_provider.dart';
 export 'providers/admin_drivers_provider.dart';
+export 'endpoints/sponsorship_endpoint.dart';
+export 'providers/sponsorship_provider.dart';
 export 'websocket/delivery_tracking_ws.dart';

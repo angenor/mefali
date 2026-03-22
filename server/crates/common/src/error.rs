@@ -9,6 +9,9 @@ pub enum AppError {
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    #[error("Bad request: {1}")]
+    BadRequestWithCode(&'static str, String),
+
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
 
@@ -36,6 +39,7 @@ impl AppError {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",
             AppError::BadRequest(_) => "BAD_REQUEST",
+            AppError::BadRequestWithCode(code, _) => code,
             AppError::Unauthorized(_) => "UNAUTHORIZED",
             AppError::Forbidden(_) => "FORBIDDEN",
             AppError::InternalError(_) => "INTERNAL_ERROR",
@@ -50,6 +54,7 @@ impl AppError {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::BadRequestWithCode(_, _) => StatusCode::BAD_REQUEST,
             AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
             AppError::Forbidden(_) => StatusCode::FORBIDDEN,
             AppError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,

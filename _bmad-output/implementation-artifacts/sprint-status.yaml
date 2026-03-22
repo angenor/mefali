@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-16
-last_updated: 2026-03-21 # 9-1-driver-sponsorship: in-progress
+last_updated: 2026-03-22 # 9-3-progressive-penalties: done
 project: mefali
 project_key: NOKEY
 tracking_system: file-system
@@ -122,7 +122,7 @@ development_status:
 
   # Epic 9: Driver Sponsorship System
   epic-9: in-progress
-  9-1-driver-sponsorship: in-progress
-  9-2-sponsor-first-contact: backlog
-  9-3-progressive-penalties: backlog
+  9-1-driver-sponsorship: done
+  9-2-sponsor-first-contact: done
+  9-3-progressive-penalties: done
   epic-9-retrospective: optional

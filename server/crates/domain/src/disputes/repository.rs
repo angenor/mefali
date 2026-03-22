@@ -199,7 +199,30 @@ pub async fn count_all_admin(
     Ok(row.0)
 }
 
+/// Insert a dispute event into the timeline.
+pub async fn insert_dispute_event(
+    pool: &PgPool,
+    dispute_id: Id,
+    event_type: &str,
+    label: &str,
+    metadata: Option<serde_json::Value>,
+) -> Result<(), AppError> {
+    sqlx::query(
+        "INSERT INTO dispute_events (dispute_id, event_type, label, metadata) \
+         VALUES ($1, $2, $3, $4)",
+    )
+    .bind(dispute_id)
+    .bind(event_type)
+    .bind(label)
+    .bind(metadata)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::DatabaseError(format!("Failed to insert dispute event: {e}")))?;
+    Ok(())
+}
+
 /// Get order timeline events (key timestamps) in a single query.
+/// Includes dispute_events (e.g. sponsor_contacted) via UNION.
 pub async fn get_order_timeline(
     pool: &PgPool,
     order_id: Id,
@@ -217,8 +240,13 @@ pub async fn get_order_timeline(
           UNION ALL
             SELECT 'Litige signale', d.created_at, 4
             FROM disputes d WHERE d.order_id = $1
+          UNION ALL
+            SELECT de.label, de.created_at, 5
+            FROM dispute_events de
+            JOIN disputes d ON d.id = de.dispute_id
+            WHERE d.order_id = $1
         ) timeline
-        ORDER BY sort_order",
+        ORDER BY sort_order, ts",
     )
     .bind(order_id)
     .fetch_all(pool)
@@ -229,6 +257,30 @@ pub async fn get_order_timeline(
         .into_iter()
         .map(|(label, timestamp)| super::model::OrderTimelineEvent { label, timestamp })
         .collect())
+}
+
+/// Count distinct disputes involving drivers sponsored by a given sponsor.
+/// Counts disputes where the order's driver is an active sponsored driver of the sponsor.
+pub async fn count_disputes_for_sponsored_drivers(
+    pool: &PgPool,
+    sponsor_id: Id,
+) -> Result<i64, AppError> {
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(DISTINCT d.id)::bigint \
+         FROM disputes d \
+         JOIN orders o ON d.order_id = o.id \
+         JOIN sponsorships s ON o.driver_id = s.sponsored_id \
+         WHERE s.sponsor_id = $1 \
+           AND s.status = 'active' \
+           AND d.status IN ('open', 'in_progress', 'resolved')",
+    )
+    .bind(sponsor_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        AppError::DatabaseError(format!("Failed to count disputes for sponsored drivers: {e}"))
+    })?;
+    Ok(row.0)
 }
 
 /// Get merchant stats for dispute context.

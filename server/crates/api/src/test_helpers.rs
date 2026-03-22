@@ -10,6 +10,7 @@ use crate::routes::admin;
 use crate::routes::agents;
 use crate::routes::merchants;
 use crate::routes::orders;
+use crate::routes::sponsorships;
 use crate::routes::wallets;
 
 pub fn test_config() -> AppConfig {
@@ -138,6 +139,11 @@ pub fn test_app(
                                     web::get().to(admin::get_driver_history),
                                 ),
                         ),
+                )
+                .service(
+                    web::scope("/sponsorships")
+                        .route("/me", web::get().to(sponsorships::get_my_sponsorships))
+                        .route("/me/sponsor", web::get().to(sponsorships::get_my_sponsor)),
                 )
                 .service(
                     web::scope("/merchants")

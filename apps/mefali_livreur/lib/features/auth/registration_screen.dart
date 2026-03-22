@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -48,6 +49,33 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     return null;
   }
 
+  String _mapRegistrationError(Object? error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final errorObj = data['error'];
+        if (errorObj is Map<String, dynamic>) {
+          final code = errorObj['code'] as String? ?? '';
+          final message = errorObj['message'] as String? ?? '';
+          switch (code) {
+            case 'SPONSOR_MAX_REACHED':
+              return 'Votre parrain a atteint le maximum de 3 filleuls';
+            case 'SPONSOR_NOT_ACTIVE':
+              return 'Ce numero n\'est pas un livreur actif';
+            case 'SPONSOR_NOT_FOUND':
+              return 'Sponsor introuvable. Verifiez le numero.';
+            case 'SPONSOR_SELF':
+              return 'Vous ne pouvez pas etre votre propre sponsor';
+            case 'SPONSOR_RIGHTS_REVOKED':
+              return 'Ce livreur n\'a plus le droit de parrainer de nouveaux livreurs';
+          }
+          if (message.isNotEmpty) return message;
+        }
+      }
+    }
+    return 'Erreur lors de l\'inscription. Veuillez reessayer.';
+  }
+
   Future<void> _onSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -69,11 +97,13 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     if (result.hasValue) {
       context.go('/home');
     } else if (result.hasError) {
+      final error = result.error;
+      final message = _mapRegistrationError(error);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Erreur lors de l\'inscription'),
+          content: Text(message),
           backgroundColor: Theme.of(context).colorScheme.error,
-          duration: const Duration(days: 365),
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'OK',
             textColor: Colors.white,

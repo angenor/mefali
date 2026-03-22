@@ -7,7 +7,7 @@ use super::model::{AdminAuditLog, AdminUserDetail, AdminUserListItem, User, User
 /// Find a user by ID.
 pub async fn find_by_id(pool: &PgPool, id: Id) -> Result<Option<User>, AppError> {
     sqlx::query_as::<_, User>(
-        "SELECT id, phone, name, role, status, city_id, fcm_token, created_at, updated_at \
+        "SELECT id, phone, name, role, status, city_id, fcm_token, can_sponsor, created_at, updated_at \
          FROM users WHERE id = $1",
     )
     .bind(id)
@@ -19,7 +19,7 @@ pub async fn find_by_id(pool: &PgPool, id: Id) -> Result<Option<User>, AppError>
 /// Find a user by phone number.
 pub async fn find_by_phone(pool: &PgPool, phone: &str) -> Result<Option<User>, AppError> {
     sqlx::query_as::<_, User>(
-        "SELECT id, phone, name, role, status, city_id, fcm_token, created_at, updated_at \
+        "SELECT id, phone, name, role, status, city_id, fcm_token, can_sponsor, created_at, updated_at \
          FROM users WHERE phone = $1",
     )
     .bind(phone)
@@ -33,7 +33,7 @@ pub async fn update_name(pool: &PgPool, user_id: Id, name: &str) -> Result<User,
     sqlx::query_as::<_, User>(
         "UPDATE users SET name = $2, updated_at = now() \
          WHERE id = $1 \
-         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+         RETURNING id, phone, name, role, status, city_id, fcm_token, can_sponsor, created_at, updated_at",
     )
     .bind(user_id)
     .bind(name)
@@ -47,7 +47,7 @@ pub async fn update_phone(pool: &PgPool, user_id: Id, new_phone: &str) -> Result
     sqlx::query_as::<_, User>(
         "UPDATE users SET phone = $2, updated_at = now() \
          WHERE id = $1 \
-         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+         RETURNING id, phone, name, role, status, city_id, fcm_token, can_sponsor, created_at, updated_at",
     )
     .bind(user_id)
     .bind(new_phone)
@@ -65,7 +65,7 @@ pub async fn update_status(
     sqlx::query_as::<_, User>(
         "UPDATE users SET status = $2, updated_at = now() \
          WHERE id = $1 \
-         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+         RETURNING id, phone, name, role, status, city_id, fcm_token, can_sponsor, created_at, updated_at",
     )
     .bind(user_id)
     .bind(new_status)
@@ -102,7 +102,7 @@ pub async fn create_user(
         "INSERT INTO users (phone, name, role, status, referral_code) \
          VALUES ($1, $2, $3, $4, $5) \
          ON CONFLICT (phone) DO UPDATE SET updated_at = now() \
-         RETURNING id, phone, name, role, status, city_id, fcm_token, created_at, updated_at",
+         RETURNING id, phone, name, role, status, city_id, fcm_token, can_sponsor, created_at, updated_at",
     )
     .bind(phone)
     .bind(name)
@@ -263,6 +263,21 @@ pub async fn insert_audit_log(
     .fetch_one(pool)
     .await
     .map_err(|e| AppError::DatabaseError(format!("Failed to insert audit log: {}", e)))
+}
+
+/// Update a user's can_sponsor flag.
+pub async fn update_can_sponsor(
+    pool: &PgPool,
+    user_id: Id,
+    can_sponsor: bool,
+) -> Result<(), AppError> {
+    sqlx::query("UPDATE users SET can_sponsor = $2, updated_at = now() WHERE id = $1")
+        .bind(user_id)
+        .bind(can_sponsor)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to update can_sponsor: {e}")))?;
+    Ok(())
 }
 
 /// Set the referred_by field for a user (referral attribution).

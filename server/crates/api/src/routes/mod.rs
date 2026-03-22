@@ -12,6 +12,7 @@ pub mod products;
 pub mod ratings;
 pub mod reconciliation;
 pub mod share;
+pub mod sponsorships;
 pub mod users;
 pub mod wallets;
 pub mod ws;
@@ -97,6 +98,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 web::scope("/drivers")
                     .route("/availability", web::put().to(drivers::set_availability))
                     .route("/availability", web::get().to(drivers::get_availability)),
+            )
+            // Sponsorship routes — Driver role required
+            .service(
+                web::scope("/sponsorships")
+                    .route("/me", web::get().to(sponsorships::get_my_sponsorships))
+                    .route("/me/sponsor", web::get().to(sponsorships::get_my_sponsor)),
             )
             // Wallet routes — Driver/Merchant role required
             .service(

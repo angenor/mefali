@@ -18,7 +18,7 @@ use super::model::{
 use super::otp_service;
 use super::refresh_token_repository;
 use super::repository;
-use super::sponsorship_repository;
+use crate::sponsorships;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
@@ -144,7 +144,7 @@ pub async fn verify_otp_and_register(
             let parsed_role = parse_registration_role(role)?;
 
             // Validate sponsor BEFORE creating user to avoid orphaned drivers
-            let sponsor = if parsed_role == UserRole::Driver {
+            let sponsor_id = if parsed_role == UserRole::Driver {
                 let sp = sponsor_phone.ok_or_else(|| {
                     AppError::BadRequest("Sponsor phone is required for driver registration".into())
                 })?;
@@ -152,15 +152,15 @@ pub async fn verify_otp_and_register(
 
                 // Prevent self-sponsoring
                 if phone == sp {
-                    return Err(AppError::BadRequest(
-                        "Cannot use your own phone as sponsor".into(),
+                    return Err(AppError::BadRequestWithCode(
+                        "SPONSOR_SELF",
+                        "Vous ne pouvez pas utiliser votre propre numero comme parrain".into(),
                     ));
                 }
 
-                let sponsor = repository::find_by_phone(pool, sp).await?.ok_or_else(|| {
-                    AppError::BadRequest("Sponsor not found. Ensure they are registered.".into())
-                })?;
-                Some(sponsor)
+                // Validate sponsor: exists, is driver, is active, has < 3 filleuls
+                let sid = sponsorships::service::validate_can_sponsor(pool, sp).await?;
+                Some(sid)
             } else {
                 None
             };
@@ -176,9 +176,9 @@ pub async fn verify_otp_and_register(
                 repository::create_user(pool, phone, Some(name), user_role, user_status, &code).await?;
 
             // Create sponsorship (sponsor already validated above)
-            if let Some(sponsor) = sponsor {
-                sponsorship_repository::create(pool, sponsor.id, user.id).await?;
-                info!(phone = phone, user_id = %user.id, sponsor_id = %sponsor.id, "Driver registered with sponsor");
+            if let Some(sid) = sponsor_id {
+                sponsorships::service::create_sponsorship(pool, sid, user.id).await?;
+                info!(phone = phone, user_id = %user.id, sponsor_id = %sid, "Driver registered with sponsor");
             } else {
                 info!(phone = phone, user_id = %user.id, "New user registered");
             }
@@ -502,6 +502,7 @@ mod tests {
             status: super::super::model::UserStatus::Active,
             city_id: None,
             fcm_token: None,
+            can_sponsor: true,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

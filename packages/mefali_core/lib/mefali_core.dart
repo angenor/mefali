@@ -37,4 +37,5 @@ export 'models/city_config.dart';
 export 'models/admin_user.dart';
 export 'models/admin_merchant.dart';
 export 'models/admin_driver.dart';
+export 'models/sponsorship.dart';
 export 'utils/formatting.dart';

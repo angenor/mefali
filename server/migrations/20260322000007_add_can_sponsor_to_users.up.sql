@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN can_sponsor BOOLEAN NOT NULL DEFAULT true;

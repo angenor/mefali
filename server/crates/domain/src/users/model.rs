@@ -10,6 +10,7 @@ pub struct User {
     pub status: UserStatus,
     pub city_id: Option<Id>,
     pub fcm_token: Option<String>,
+    pub can_sponsor: bool,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }
@@ -103,35 +104,6 @@ pub struct ChangePhoneRequestPayload {
 pub struct ChangePhoneVerifyPayload {
     pub new_phone: String,
     pub otp: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, sqlx::Type)]
-#[sqlx(type_name = "sponsorship_status", rename_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
-pub enum SponsorshipStatus {
-    Active,
-    Suspended,
-    Terminated,
-}
-
-impl std::fmt::Display for SponsorshipStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SponsorshipStatus::Active => write!(f, "active"),
-            SponsorshipStatus::Suspended => write!(f, "suspended"),
-            SponsorshipStatus::Terminated => write!(f, "terminated"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct Sponsorship {
-    pub id: Id,
-    pub sponsor_id: Id,
-    pub sponsored_id: Id,
-    pub status: SponsorshipStatus,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
 }
 
 impl std::fmt::Display for UserStatus {
@@ -309,18 +281,4 @@ mod tests {
         assert_eq!(payload.otp, "123456");
     }
 
-    #[test]
-    fn test_sponsorship_status_display() {
-        assert_eq!(SponsorshipStatus::Active.to_string(), "active");
-        assert_eq!(SponsorshipStatus::Suspended.to_string(), "suspended");
-        assert_eq!(SponsorshipStatus::Terminated.to_string(), "terminated");
-    }
-
-    #[test]
-    fn test_sponsorship_status_serde() {
-        let json = serde_json::to_string(&SponsorshipStatus::Active).unwrap();
-        assert_eq!(json, "\"active\"");
-        let parsed: SponsorshipStatus = serde_json::from_str("\"terminated\"").unwrap();
-        assert_eq!(parsed, SponsorshipStatus::Terminated);
-    }
 }

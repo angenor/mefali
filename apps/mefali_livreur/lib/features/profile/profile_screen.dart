@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 
+import 'sponsorship_screen.dart';
+
 /// Ecran Profil livreur — affiche nom, telephone, role, statut KYC, deconnexion.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -66,6 +68,17 @@ class ProfileScreen extends ConsumerWidget {
             onTap: () => context.push('/profile/change-phone'),
           ),
           _ProfileTile(icon: Icons.badge, label: 'Role', value: user.role.name),
+          _ProfileTile(
+            icon: Icons.group,
+            label: 'Parrainage',
+            value: 'Mes filleuls et mon parrain',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => const SponsorshipScreen(),
+              ),
+            ),
+          ),
           const SizedBox(height: 32),
           FilledButton.tonal(
             onPressed: () => _confirmLogout(context, ref),

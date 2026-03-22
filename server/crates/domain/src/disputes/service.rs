@@ -10,7 +10,25 @@ use crate::orders;
 /// Notification title sent to the reporter when a dispute is resolved.
 pub const DISPUTE_RESOLVED_TITLE: &str = "Votre reclamation a ete traitee";
 /// Notification body template for resolved disputes.
-pub const DISPUTE_RESOLVED_BODY: &str = "Votre reclamation a ete examinee et traitee par notre equipe.";
+pub const DISPUTE_RESOLVED_BODY: &str =
+    "Votre reclamation a ete examinee et traitee par notre equipe.";
+
+/// Notification title sent to sponsor when sponsored driver has a dispute.
+pub const SPONSOR_DISPUTE_ALERT_TITLE: &str = "Litige signale pour votre filleul";
+/// Format the notification body for sponsor dispute alerts.
+pub fn sponsor_dispute_alert_body(dispute_type: &str, driver_name: &str) -> String {
+    format!(
+        "Un litige de type {} a ete signale pour {}. En tant que parrain, vous etes informe en priorite.",
+        dispute_type, driver_name
+    )
+}
+/// Format the SMS for sponsor dispute alerts.
+pub fn sponsor_dispute_alert_sms(dispute_type: &str, driver_name: &str, short_id: &str) -> String {
+    format!(
+        "mefali: Litige ({}) signale pour votre filleul {}. Contactez-le. Ref: {}",
+        dispute_type, driver_name, short_id
+    )
+}
 
 /// Create a dispute for a delivered order.
 /// Validates: order exists, requester owns order, order is delivered, no existing dispute.
