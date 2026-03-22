@@ -83,7 +83,7 @@ pub async fn request_otp(
 
     otp_service::check_rate_limit(redis, phone, config.otp_rate_limit_per_minute).await?;
 
-    let code = otp_service::generate_otp(config.otp_length);
+    let code = otp_service::generate_otp(config.otp_length, config.dev_mode);
     otp_service::store_otp(redis, phone, &code, config.otp_expiry_seconds).await?;
 
     let message = format!(
@@ -340,7 +340,7 @@ pub async fn request_phone_change(
     otp_service::check_rate_limit(redis, &payload.new_phone, config.otp_rate_limit_per_minute)
         .await?;
 
-    let code = otp_service::generate_otp(config.otp_length);
+    let code = otp_service::generate_otp(config.otp_length, config.dev_mode);
     otp_service::store_otp(redis, &payload.new_phone, &code, config.otp_expiry_seconds).await?;
 
     let message = format!(

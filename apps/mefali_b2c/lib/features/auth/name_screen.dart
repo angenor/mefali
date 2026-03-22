@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'auth_controller.dart';
 
 /// Ecran de saisie du prenom lors de la premiere inscription.
@@ -51,12 +49,11 @@ class _NameScreenState extends ConsumerState<NameScreen> {
     if (!mounted) return;
     final result = ref.read(authControllerProvider);
 
-    if (result.hasValue) {
-      context.go('/home');
-    } else if (result.hasError) {
+    if (result.hasError) {
+      final error = result.error;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Erreur lors de la verification'),
+          content: Text('Erreur: $error'),
           backgroundColor: Theme.of(context).colorScheme.error,
           duration: const Duration(days: 365),
           action: SnackBarAction(
@@ -67,6 +64,7 @@ class _NameScreenState extends ConsumerState<NameScreen> {
         ),
       );
     }
+    // Navigation geree par le GoRouter redirect (authProvider.isAuthenticated).
   }
 
   @override

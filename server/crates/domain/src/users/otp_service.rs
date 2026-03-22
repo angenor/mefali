@@ -3,8 +3,15 @@ use rand::Rng;
 use redis::AsyncCommands;
 use tracing::{info, warn};
 
+/// Fixed OTP code used in dev mode for testing without SMS.
+pub const DEV_OTP_CODE: &str = "123456";
+
 /// Generate a random OTP code of the specified length.
-pub fn generate_otp(length: usize) -> String {
+/// In dev mode, returns the fixed DEV_OTP_CODE instead.
+pub fn generate_otp(length: usize, dev_mode: bool) -> String {
+    if dev_mode {
+        return DEV_OTP_CODE.to_string();
+    }
     let mut rng = rand::thread_rng();
     let max = 10u32.pow(length as u32);
     let code = rng.gen_range(0..max);
@@ -122,15 +129,15 @@ mod tests {
 
     #[test]
     fn test_generate_otp_length() {
-        let otp = generate_otp(6);
+        let otp = generate_otp(6, false);
         assert_eq!(otp.len(), 6);
         assert!(otp.chars().all(|c| c.is_ascii_digit()));
     }
 
     #[test]
     fn test_generate_otp_uniqueness() {
-        let otp1 = generate_otp(6);
-        let otp2 = generate_otp(6);
+        let otp1 = generate_otp(6, false);
+        let otp2 = generate_otp(6, false);
         // Not guaranteed to differ, but very likely with 6 digits
         // This test validates the function runs without errors
         assert_eq!(otp1.len(), 6);
@@ -141,8 +148,14 @@ mod tests {
     fn test_generate_otp_pads_zeros() {
         // Generate many OTPs and verify they all have correct length
         for _ in 0..100 {
-            let otp = generate_otp(6);
+            let otp = generate_otp(6, false);
             assert_eq!(otp.len(), 6, "OTP '{}' should be 6 digits", otp);
         }
+    }
+
+    #[test]
+    fn test_generate_otp_dev_mode_returns_fixed_code() {
+        let otp = generate_otp(6, true);
+        assert_eq!(otp, DEV_OTP_CODE);
     }
 }
