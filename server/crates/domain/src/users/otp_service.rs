@@ -6,6 +6,9 @@ use tracing::{info, warn};
 /// Fixed OTP code used in dev mode for testing without SMS.
 pub const DEV_OTP_CODE: &str = "123456";
 
+/// Fixed sponsor phone used in dev mode for driver registration without a real sponsor.
+pub const DEV_SPONSOR_PHONE: &str = "+2250505050505";
+
 /// Generate a random OTP code of the specified length.
 /// In dev mode, returns the fixed DEV_OTP_CODE instead.
 pub fn generate_otp(length: usize, dev_mode: bool) -> String {

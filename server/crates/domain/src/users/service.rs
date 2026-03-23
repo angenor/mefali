@@ -156,17 +156,23 @@ pub async fn verify_otp_and_register(
                 })?;
                 validate_phone(sp)?;
 
-                // Prevent self-sponsoring
-                if phone == sp {
-                    return Err(AppError::BadRequestWithCode(
-                        "SPONSOR_SELF",
-                        "Vous ne pouvez pas utiliser votre propre numero comme parrain".into(),
-                    ));
-                }
+                // Dev mode: test sponsor phone bypasses validation (no real sponsor needed)
+                if config.dev_mode && sp == otp_service::DEV_SPONSOR_PHONE {
+                    info!(phone = phone, "Dev mode: sponsor validation bypassed for test phone");
+                    None
+                } else {
+                    // Prevent self-sponsoring
+                    if phone == sp {
+                        return Err(AppError::BadRequestWithCode(
+                            "SPONSOR_SELF",
+                            "Vous ne pouvez pas utiliser votre propre numero comme parrain".into(),
+                        ));
+                    }
 
-                // Validate sponsor: exists, is driver, is active, has < 3 filleuls
-                let sid = sponsorships::service::validate_can_sponsor(pool, sp).await?;
-                Some(sid)
+                    // Validate sponsor: exists, is driver, is active, has < 3 filleuls
+                    let sid = sponsorships::service::validate_can_sponsor(pool, sp).await?;
+                    Some(sid)
+                }
             } else {
                 None
             };
