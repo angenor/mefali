@@ -142,10 +142,19 @@ pub async fn verify_otp_and_register(
             existing
         }
         None => {
-            // Registration: name is required for new users
-            let name = name.ok_or_else(|| {
-                AppError::NotFound("User not found. Please register first.".into())
-            })?;
+            // Registration: name is required for new users (except dev mode)
+            let name = match name {
+                Some(n) => n,
+                None if config.dev_mode => {
+                    info!(phone = phone, "Dev mode: auto-registering user without name");
+                    "Utilisateur Test"
+                }
+                None => {
+                    return Err(AppError::NotFound(
+                        "User not found. Please register first.".into(),
+                    ));
+                }
+            };
 
             let parsed_role = parse_registration_role(role)?;
 
