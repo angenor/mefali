@@ -28,14 +28,15 @@ class DeepLinkHandler {
     if (_initialized) return;
     _initialized = true;
 
-    // Check for initial link (cold start)
+    // Check for initial link (cold start) with timeout to avoid blocking startup
     try {
-      final initialLinkStr =
-          await _channel.invokeMethod<String>('getInitialLink');
+      final initialLinkStr = await _channel
+          .invokeMethod<String>('getInitialLink')
+          .timeout(const Duration(seconds: 3));
       if (initialLinkStr != null && initialLinkStr.isNotEmpty) {
         _initialLink = Uri.tryParse(initialLinkStr);
       }
-    } on PlatformException catch (e) {
+    } catch (e) {
       debugPrint('Deep link initial check failed: $e');
     }
 

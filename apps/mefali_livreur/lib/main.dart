@@ -14,16 +14,22 @@ import 'features/notification/push_notification_handler.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase init — gracefully skipped if config files missing
-  try {
-    await Firebase.initializeApp();
-    PushNotificationHandler.instance.initialize();
-  } catch (e) {
-    debugPrint('Firebase init skipped (config missing): $e');
-  }
+  // Firebase init — fire-and-forget to avoid blocking startup
+  Future.microtask(() async {
+    try {
+      await Firebase.initializeApp();
+      PushNotificationHandler.instance.initialize();
+    } catch (e) {
+      debugPrint('Firebase init skipped (config missing): $e');
+    }
+  });
 
-  // Deep link handler for SMS fallback
-  await DeepLinkHandler.instance.initialize();
+  // Deep link handler for SMS fallback — non-bloquant avec timeout
+  try {
+    await DeepLinkHandler.instance.initialize();
+  } catch (e) {
+    debugPrint('Deep link init failed: $e');
+  }
 
   // Sync any pending offline actions on app startup
   _syncPendingOnStartup();

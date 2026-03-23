@@ -28,6 +28,25 @@ class _NameScreenState extends ConsumerState<NameScreen> {
     super.dispose();
   }
 
+  /// Traduit les erreurs serveur en messages user-friendly.
+  String _parseErrorMessage(Object? error) {
+    final raw = error.toString();
+    // Ordre important : les checks plus spécifiques d'abord
+    if (raw.contains('User not found')) {
+      return 'Utilisateur introuvable. Veuillez vous inscrire.';
+    }
+    if (raw.contains('OTP expired') || raw.contains('OTP expired or not found')) {
+      return 'Code expire. Veuillez redemander un nouveau code.';
+    }
+    if (raw.contains('Invalid OTP')) {
+      return 'Code invalide. Verifiez le code et reessayez.';
+    }
+    if (raw.contains('Too many')) {
+      return 'Trop de tentatives. Veuillez patienter avant de reessayer.';
+    }
+    return 'Une erreur est survenue. Veuillez reessayer.';
+  }
+
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Veuillez entrer votre prenom';
@@ -50,10 +69,10 @@ class _NameScreenState extends ConsumerState<NameScreen> {
     final result = ref.read(authControllerProvider);
 
     if (result.hasError) {
-      final error = result.error;
+      final message = _parseErrorMessage(result.error);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: $error'),
+          content: Text(message),
           backgroundColor: Theme.of(context).colorScheme.error,
           duration: const Duration(days: 365),
           action: SnackBarAction(

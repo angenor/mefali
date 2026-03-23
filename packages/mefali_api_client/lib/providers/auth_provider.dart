@@ -13,6 +13,7 @@ import 'sales_dashboard_provider.dart';
 
 const _keyAccessToken = 'access_token';
 const _keyRefreshToken = 'refresh_token';
+const _keyUser = 'user_data';
 
 /// Etat de l'authentification.
 class AuthState {
@@ -128,6 +129,10 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       await _storage.write(key: _keyAccessToken, value: response.accessToken);
       await _storage.write(key: _keyRefreshToken, value: response.refreshToken);
+      await _storage.write(
+        key: _keyUser,
+        value: jsonEncode(response.user.toJson()),
+      );
       state = state.copyWith(
         isLoading: false,
         user: response.user,
@@ -166,14 +171,29 @@ class AuthNotifier extends Notifier<AuthState> {
     final expired = _isJwtExpired(accessToken);
 
     if (!expired || refreshToken != null) {
+      // Restaurer l'objet User depuis SecureStorage
+      User? user;
+      try {
+        final userJson = await _storage.read(key: _keyUser);
+        if (userJson != null) {
+          user = User.fromJson(
+            jsonDecode(userJson) as Map<String, dynamic>,
+          );
+        }
+      } catch (_) {
+        // User corrompu → ignorer, l'app fonctionnera sans (affichage degradé)
+      }
+
       // Token valide, ou expire mais refresh present (interceptor gerera)
       state = state.copyWith(
         accessToken: accessToken,
         refreshToken: refreshToken,
+        user: user,
       );
     } else {
       // Token expire et pas de refresh → nettoyage
       await _storage.delete(key: _keyAccessToken);
+      await _storage.delete(key: _keyUser);
     }
   }
 
@@ -195,9 +215,17 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// Met a jour l'utilisateur en memoire (apres modification du profil).
-  void updateUser(User user) {
+  /// Met a jour l'utilisateur en memoire et dans SecureStorage (apres modification du profil).
+  Future<void> updateUser(User user) async {
     state = state.copyWith(user: user);
+    try {
+      await _storage.write(
+        key: _keyUser,
+        value: jsonEncode(user.toJson()),
+      );
+    } catch (_) {
+      // Best effort — l'etat en memoire est deja a jour.
+    }
   }
 
   /// Deconnecte l'utilisateur et supprime les tokens locaux.
@@ -207,6 +235,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     await _storage.delete(key: _keyAccessToken);
     await _storage.delete(key: _keyRefreshToken);
+    await _storage.delete(key: _keyUser);
     clearSalesCache();
     clearAgentStatsCache();
     state = const AuthState();
