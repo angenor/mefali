@@ -110,3 +110,31 @@ cat rust-toolchain.toml
 ```
 
 Attendu : tous présents et commités, versions = celles de `research.md`.
+
+---
+
+## Résultats de validation (T032 — 2026-07-13)
+
+Machine : macOS (Apple Silicon), rustc 1.97.0, Flutter 3.44.6, Node 24.12,
+pnpm 11.12, Docker 29.1. Postgres de test : `postgres:16` local (le compose
+reste sur `18.4`, conforme spec ; SQL standard compatible).
+
+| Scénario | Résultat | Détail |
+|---|---|---|
+| S1 compilation | ✅ *(local)* | backend `cargo build`+`test` (32 suites), apps `flutter test`, `pnpm build` verts. `docker compose config` valide ; `up` non exécuté ici (registre Docker Hub inaccessible dans le bac à sable). |
+| S2 thème | ✅ | tests `mefali_core` : `ColorScheme` #F97316, Inter, rayon 16 ; goldens des 2 apps générés. |
+| S3 contrat + clients | ✅ | `/health` testé, `openapi.json` généré (title/tag/operationId conformes), génération **déterministe** (2× empreintes identiques), clients Dart+TS commités. |
+| S4 outbox | ✅ | `cargo test -p socle --test outbox` : commit/rollback, publication+rejeu idempotent, échec+reprise (3/3). |
+| S5 observabilité | ⚙️ partiel | logs JSON + Sentry câblés (test : Sentry off sans DSN). Sentry réel + sonde uptime = à activer sur la prod. |
+| S6 sauvegardes | ⚙️ artefacts | `backup.sh`/`restore-test.sh` écrits (bash -n OK). Exécution réelle contre B2/age/rclone = action utilisateur. |
+| S7 seeds | ✅ | `cargo run -p api --bin seed` ~4 s (< 5 min) ; re-seed → marqueur unique (idempotent). |
+| S8 déploiement | ⚙️ artefacts | `provision.sh`, `compose.prod.yml` (validé), `deploy.yml`, Dockerfile prêts. VPS/DNS/GHCR = action utilisateur. |
+| S9 lockfiles | ✅ | 6 lockfiles présents ; versions figées (1.97.0, pnpm@11.12.0, Flutter 3.44.6). |
+
+**Success criteria** : SC-002/003/004/005/008/009 vérifiés localement ;
+SC-001 (< 30 min) plausible (env prouvé) ; SC-006/007/010/011 dépendent de la
+prod réelle (déploiement, sondes, sauvegardes B2).
+
+**Écarts de version documentés** : `intl` 0.20.2 (SDK Flutter, vs 0.20.3),
+TypeScript 5.9.3 (vs 7.0.2 incompatible avec le lint/tsc). Digests Garage/Caddy
+à épingler sur la prod (Docker Hub inaccessible dans le bac à sable de dev).

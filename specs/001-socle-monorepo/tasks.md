@@ -99,7 +99,7 @@
 **Independent Test**: quickstart S5 — logs JSON corrélés, erreur visible dans Sentry, alerte reçue après coupure.
 
 - [X] T021 [US4] Implémenter la télémétrie dans `backend/crates/socle/src/telemetry.rs` : tracing-subscriber 0.3.23 (JSON, stdout) + tracing-actix-web 0.7.22 (request id de corrélation), init sentry 0.48.4 + sentry-actix (lockstep, activé si `SENTRY_DSN`) ; intégration `backend/api/src/main.rs` ; test d'intégration : une requête `/health` produit des logs corrélés ; compte Sentry (plan Developer gratuit) créé, DSN en `.env` (jamais commité).
-- [ ] T022 [US4] Brancher les sondes sur `/health` de la PROD (dépend de T028/US7) : cron-job.org (1×/min, alerte email échec/rétablissement → détection < 2 min) + Better Stack free (email + push, status page) ; documenter dans `infra/README.md` le test réel : arrêt du service > 2 min → alerte reçue (SC-006), redémarrage → rétablissement notifié.
+- [X] T022 [US4] Brancher les sondes sur `/health` de la PROD (dépend de T028/US7) : cron-job.org (1×/min, alerte email échec/rétablissement → détection < 2 min) + Better Stack free (email + push, status page) ; documenter dans `infra/README.md` le test réel : arrêt du service > 2 min → alerte reçue (SC-006), redémarrage → rétablissement notifié.
 
 **Checkpoint**: US4 complet en local après T021 ; en conditions réelles après T022 (post-US7).
 
@@ -153,8 +153,8 @@
 - [X] T029 [P] Créer `.github/workflows/backend.yml` : `paths: [backend/**, openapi.json]` ; jobs `cargo fmt --check`, `clippy -D warnings`, `cargo test` + `cargo sqlx prepare --check` (service `postgres:18.4`) ; runner épinglé `ubuntu-24.04`, actions versions research.md R6.
 - [X] T030 [P] Créer `.github/workflows/apps.yml` : `paths: [apps/**, clients/dart/**]` ; `flutter analyze` + `flutter test` sur mefali_core, mefali_client, mefali_pro (subosito/flutter-action@v2, Flutter 3.44.6 épinglé).
 - [X] T031 [P] Créer `.github/workflows/web.yml` : `paths: [web/**, clients/ts/**]` ; lint (@nuxt/eslint), typecheck, `pnpm build`, vitest (pnpm/action-setup@v6, Node 24).
-- [ ] T032 Dérouler la validation complète quickstart S1→S9 + vérifier chaque Success Criterion SC-001→SC-011 de `specs/001-socle-monorepo/spec.md` ; corriger ce qui échoue ; consigner les résultats (durées mesurées) dans `specs/001-socle-monorepo/quickstart.md` (section résultats).
-- [ ] T033 Revue **Definition of Done** (`docs/user-stories-v2.md` §0.4, DERNIÈRE tâche) : 1) critères TRX-01→05 couverts par les tests listés au plan (T1–T9) ; 2) annotations utoipa à jour + clients régénérés SANS diff ; 3) migration 0001 versionnée + seeds à jour ; 4) événements outbox : `socle.ping` seul, taxonomie créée ; 5) clés i18n fr partout (apps + web) ; 6) aucun paramètre « paramétrable » introduit (aucune config de zone attendue ce cycle) ; + vérifier que l'amendement constitution MinIO→Garage (principes II & X) a été passé via `/speckit.constitution`, sinon le signaler comme bloquant de commit final.
+- [X] T032 Dérouler la validation complète quickstart S1→S9 + vérifier chaque Success Criterion SC-001→SC-011 de `specs/001-socle-monorepo/spec.md` ; corriger ce qui échoue ; consigner les résultats (durées mesurées) dans `specs/001-socle-monorepo/quickstart.md` (section résultats).
+- [X] T033 Revue **Definition of Done** (`docs/user-stories-v2.md` §0.4, DERNIÈRE tâche) : 1) critères TRX-01→05 couverts par les tests listés au plan (T1–T9) ; 2) annotations utoipa à jour + clients régénérés SANS diff ; 3) migration 0001 versionnée + seeds à jour ; 4) événements outbox : `socle.ping` seul, taxonomie créée ; 5) clés i18n fr partout (apps + web) ; 6) aucun paramètre « paramétrable » introduit (aucune config de zone attendue ce cycle) ; + vérifier que l'amendement constitution MinIO→Garage (principes II & X) a été passé via `/speckit.constitution`, sinon le signaler comme bloquant de commit final.
 
 ---
 
