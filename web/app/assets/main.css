@@ -1,0 +1,47 @@
+/* Entrée CSS du web : Tailwind CSS v4 + design tokens Mefali.
+   Tailwind d'abord (préflight), puis tokens.css (les :root/base l'emportent),
+   puis la thématisation Tailwind depuis les tokens. */
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Mappe le thème Tailwind sur les design tokens (docs/design/tokens.md).
+   Les couleurs et la police RÉFÉRENCENT tokens.css (source unique) ; les rayons
+   utilisent les valeurs littérales (même nom de variable que Tailwind = pas
+   d'auto-référence). Génère les utilitaires bg-primary, text-text-muted,
+   rounded-card, text-display, font-sans, etc. */
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-surface: var(--surface);
+  --color-background: var(--background);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-primary-tint: var(--primary-tint);
+  --color-success-tint: var(--success-tint);
+  --color-danger-tint: var(--danger-tint);
+  --color-warning-tint: var(--warning-tint);
+
+  /* Rayons (valeurs de docs/design/tokens.md) */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-chip: 999px;
+
+  /* Police (plancher 16px) */
+  --font-sans: var(--font-family);
+
+  /* Échelle typographique : taille + interligne (docs/design/tokens.md) */
+  --text-display: 40px;
+  --text-display--line-height: 1.1;
+  --text-title: 22px;
+  --text-title--line-height: 1.3;
+  --text-heading: 18px;
+  --text-heading--line-height: 1.35;
+  --text-body: 16px;
+  --text-body--line-height: 1.5;
+  --text-caption: 13px;
+  --text-caption--line-height: 1.4;
+}

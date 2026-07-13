@@ -63,8 +63,9 @@ sites officiels — vérification web du jour.
 | Brique | Version figée | Note |
 |---|---|---|
 | Nuxt | 4.4.8 — Nuxt 4 est bien la majeure stable (pas de Nuxt 5) | hybride : routes publiques SSR, `/admin/**` ssr:false (`routeRules`) |
-| Vue / TypeScript | 3.5.39 / 7.0.2 | |
+| Vue / TypeScript | 3.5.39 / **5.9.3** | **Écart assumé** : research initial visait TS 7.0.2 (compilateur natif) mais il casse `@typescript-eslint` 8.63 et `vue-tsc` 2.x → repli sur la dernière 5.x supportée par l'écosystème lint/typecheck |
 | Node LTS / pnpm | 24.18.0 (« Krypton ») / 11.12.0 | `packageManager` dans package.json |
+| **Tailwind CSS** | **4.3.2** (v4) via `@tailwindcss/vite` (moteur natif `@tailwindcss/oxide`) | **Décision (2026-07-13, demandée)** : framework CSS utilitaire du web, **branché sur les design tokens** (`@theme` référence `app/assets/tokens.css`, source unique) — génère `bg-primary`, `rounded-card`, `text-display`… Ce n'est pas une bibliothèque de composants ; le choix Nuxt UI/PrimeVue reste différé |
 | Pinia + @pinia/nuxt | 3.0.4 + 0.11.3 | |
 | @nuxtjs/i18n | 10.4.1 | fr dès la première page (constitution VII) |
 | vitest / @nuxt/eslint | 4.1.10 / 1.16.0 (ESLint 10.7.0) | |
