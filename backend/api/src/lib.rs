@@ -58,9 +58,14 @@ pub async fn run() -> std::io::Result<()> {
     match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
             Ok(pool) => {
+                // Migrations embarquées appliquées au démarrage (déploiement prod
+                // autonome — pas de sqlx-cli dans l'image).
+                if let Err(e) = sqlx::migrate!("../migrations").run(&pool).await {
+                    return Err(std::io::Error::other(format!("migrations : {e}")));
+                }
                 let worker = socle::WorkerOutbox::new(pool, Vec::new());
                 tokio::spawn(worker.run());
-                eprintln!("worker outbox démarré");
+                eprintln!("migrations appliquées ; worker outbox démarré");
             }
             Err(e) => eprintln!("base indisponible — worker outbox non démarré : {e}"),
         },
@@ -79,10 +84,40 @@ pub async fn run() -> std::io::Result<()> {
             .service(health::health)
             .split_for_parts();
         app.configure(mount_docs(prod, openapi))
+            // Corrélation par requête (request id) dans les logs JSON…
+            .wrap(tracing_actix_web::TracingLogger::default())
+            // …et capture des erreurs HTTP par Sentry (actif si SENTRY_DSN).
+            .wrap(sentry_actix::Sentry::new())
     })
     .bind(addr)?
     .run()
     .await
+}
+
+/// Charge le jeu de démonstration en UNE transaction (idempotent, rollback si
+/// interruption). Rejoue `backend/seeds/NN_*.sql` dans l'ordre lexicographique.
+/// Renvoie le nombre de fichiers appliqués. data-model.md §3.
+pub async fn charger_seeds(pool: &sqlx::PgPool) -> Result<usize, sqlx::Error> {
+    let dir = std::env::var("SEED_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../seeds"));
+    let mut fichiers: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+        .expect("dossier backend/seeds introuvable")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|ext| ext == "sql"))
+        .collect();
+    fichiers.sort();
+
+    let mut tx = pool.begin().await?;
+    for fichier in &fichiers {
+        let sql = std::fs::read_to_string(fichier).expect("lecture d'un fichier seed");
+        // SQL issu de nos fichiers de seed commités (jamais d'entrée utilisateur).
+        sqlx::raw_sql(sqlx::AssertSqlSafe(sql))
+            .execute(&mut *tx)
+            .await?;
+    }
+    tx.commit().await?;
+    Ok(fichiers.len())
 }
 
 #[cfg(test)]
@@ -157,5 +192,26 @@ mod tests {
             .to_request();
         let resp2 = atest::call_service(&app, req2).await;
         assert!(resp2.status().is_success());
+    }
+
+    /// T6 — seed sur base vierge puis re-seed → état identique, zéro doublon.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn seed_idempotent(pool: sqlx::PgPool) {
+        let n1 = charger_seeds(&pool).await.unwrap();
+        assert!(n1 >= 1, "au moins le marqueur de démo");
+        let compte1: i64 = sqlx::query_scalar("SELECT count(*) FROM demo.marqueur")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        let n2 = charger_seeds(&pool).await.unwrap();
+        let compte2: i64 = sqlx::query_scalar("SELECT count(*) FROM demo.marqueur")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(n1, n2);
+        assert_eq!(compte1, 1);
+        assert_eq!(compte2, 1, "re-seed → état identique, zéro doublon");
     }
 }

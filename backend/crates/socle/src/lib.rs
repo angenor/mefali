@@ -5,12 +5,12 @@
 //! et types de santé. Seul crate du workspace à contenir de la logique ce cycle
 //! (constitution IX).
 //!
-//! Télémétrie (T021) complétée ensuite.
 
 pub mod config;
 pub mod db;
 pub mod health;
 pub mod outbox;
+pub mod telemetry;
 
 pub use config::{AppEnv, Config};
 pub use db::connect_pg;
@@ -19,3 +19,4 @@ pub use outbox::{
     ecrire_evenement, ConsommateurOutbox, ConsommationError, EvenementPublie, NouvelEvenement,
     OutboxError, WorkerOutbox,
 };
+pub use telemetry::{init_telemetry, TelemetryGuard};

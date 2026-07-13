@@ -18,11 +18,19 @@ path = "src/main.rs"
 name = "export-openapi"
 path = "src/bin/export-openapi.rs"
 
+[[bin]]
+name = "seed"
+path = "src/bin/seed.rs"
+
 [dependencies]
 actix-web.workspace = true
 tokio.workspace = true
 socle.workspace = true
+sqlx.workspace = true
 utoipa.workspace = true
 utoipa-actix-web.workspace = true
 utoipa-swagger-ui.workspace = true
 serde_json.workspace = true
+tracing.workspace = true
+tracing-actix-web.workspace = true
+sentry-actix.workspace = true
