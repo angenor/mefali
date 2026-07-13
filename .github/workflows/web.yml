@@ -16,20 +16,19 @@ on:
 jobs:
   web:
     runs-on: ubuntu-24.04
+    env:
+      # pnpm provisionné par corepack depuis le champ packageManager (11.12.0).
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v7
-      # Lit la version pnpm depuis le champ packageManager de web/package.json.
-      - uses: pnpm/action-setup@v6
-        with:
-          package_json_file: web/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Activer pnpm (corepack)
+        run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run typecheck
