@@ -57,7 +57,7 @@
 - [X] T010 [P] [US1] Créer `apps/mefali_client/` : app Flutter branchée sur `MefaliTheme`, écran de démarrage thémé (nom + pictogramme Material Symbols Rounded), chaînes en clés i18n fr (`lib/l10n/app_fr.arb`, intl 0.20.3), `pubspec.lock` commité, test golden de l'écran. **Cible design : identité docs/design/tokens.md (cadre mobile 360×800) — aucune capture png dédiée au démarrage ; C1-accueil.png = ambiance de référence, pas la cible de cet écran.**
 - [X] T011 [P] [US1] Créer `apps/mefali_pro/` : identique à T010 pour l'app pro (coursier + vendeur), test golden. **Cible design : idem T010 ; K1-disponibilite.png = ambiance de référence pro.**
 - [X] T012 [P] [US1] Créer `web/` : Nuxt 4.4.8 (pnpm 11, Node 24 LTS), `nuxt.config.ts` avec `routeRules: {'/admin/**': {ssr: false}}`, `@nuxtjs/i18n` 10.4.1 (fr), `web/app/assets/tokens.css` (variables 1:1 depuis `docs/design/tokens.md`), pages minimales `web/app/pages/index.vue` (SSR) et `web/app/pages/admin/index.vue`, `@nuxt/eslint` + vitest, `pnpm-lock.yaml` commité. AUCUNE bibliothèque UI (choix différé, research.md R4). **Cible design : tokens.css depuis tokens.md ; pour la page admin minimale, docs/design/html/A1-ecran-operations.html peut inspirer la structure (exception admin Nuxt) et docs/design/png/A1-ecran-operations.png reste la cible visuelle ultérieure.**
-- [ ] T013 [US1] Valider US1 : dérouler quickstart S1/S2/S9 sur poste chronométré (< 30 min, SC-001), vérifier les 6 lockfiles (`Cargo.lock`, `pubspec.lock` ×3, `pnpm-lock.yaml`, `rust-toolchain.toml`) + versions = research.md, compléter `README.md` racine (prérequis, commandes). Rejeu `grep` : zéro valeur de style en dur dans `apps/` hors mefali_core (SC-009).
+- [X] T013 [US1] Valider US1 : dérouler quickstart S1/S2/S9 sur poste chronométré (< 30 min, SC-001), vérifier les 6 lockfiles (`Cargo.lock`, `pubspec.lock` ×3, `pnpm-lock.yaml`, `rust-toolchain.toml`) + versions = research.md, compléter `README.md` racine (prérequis, commandes). Rejeu `grep` : zéro valeur de style en dur dans `apps/` hors mefali_core (SC-009).
 
 **Checkpoint**: US1 démontrable — monorepo compilable, env 1 commande, thème prouvé.
 
@@ -70,8 +70,8 @@
 **Independent Test**: quickstart S3 — contrat servi, régénération 2× sans diff, CI rouge sur diff simulé.
 
 - [X] T014 [US2] Implémenter `GET /health` dans `backend/api/src/` : `HealthResponse {status, version}` (`ToSchema`) dans `backend/crates/socle/`, handler `#[utoipa::path]`, montage via `utoipa-actix-web 0.1.2`, export `openapi.json` À LA RACINE (commande `cargo run -p api --bin export-openapi` ou test dédié), Swagger UI `utoipa-swagger-ui 9.0.2` servie en dev et ABSENTE si `APP_ENV=production` + test d'intégration (plan T4, T9 ; contrat `contracts/openapi-health.yaml`). **Fin de tâche : annotations utoipa à jour + openapi.json régénéré/commité + build vert.**
-- [ ] T015 [US2] Écrire `scripts/generate-clients.sh` : openapi-generator CLI 7.23.0 (générateur `dart-dio`, `hideGenerationTimestamp: true`) → `clients/dart/` ; openapi-typescript 7.13.0 + openapi-fetch 0.17.0 → `clients/ts/` ; exécution 2× consécutives = `git diff` vide (déterminisme, plan T5) ; clients commités ; prérequis Java ≥ 11 documenté dans `README.md`. **Fin de tâche : clients régénérés + build vert.**
-- [ ] T016 [US2] Créer `.github/workflows/contrat-clients.yml` : déclencheurs `paths: [backend/**, clients/**, openapi.json]` + PR/push ; job = build backend → export openapi.json → `scripts/generate-clients.sh` → `git diff --exit-code` (contrat `contracts/ci-cd.md`, règle 1 et 2). Validation : PR de test avec diff simulé → CI rouge (SC-004) ; PR propre → verte.
+- [X] T015 [US2] Écrire `scripts/generate-clients.sh` : openapi-generator CLI 7.23.0 (générateur `dart-dio`, `hideGenerationTimestamp: true`) → `clients/dart/` ; openapi-typescript 7.13.0 + openapi-fetch 0.17.0 → `clients/ts/` ; exécution 2× consécutives = `git diff` vide (déterminisme, plan T5) ; clients commités ; prérequis Java ≥ 11 documenté dans `README.md`. **Fin de tâche : clients régénérés + build vert.**
+- [X] T016 [US2] Créer `.github/workflows/contrat-clients.yml` : déclencheurs `paths: [backend/**, clients/**, openapi.json]` + PR/push ; job = build backend → export openapi.json → `scripts/generate-clients.sh` → `git diff --exit-code` (contrat `contracts/ci-cd.md`, règle 1 et 2). Validation : PR de test avec diff simulé → CI rouge (SC-004) ; PR propre → verte.
 
 **Checkpoint**: contrat = source de vérité outillée ; dérive impossible à fusionner.
 
@@ -98,7 +98,7 @@
 
 **Independent Test**: quickstart S5 — logs JSON corrélés, erreur visible dans Sentry, alerte reçue après coupure.
 
-- [ ] T021 [US4] Implémenter la télémétrie dans `backend/crates/socle/src/telemetry.rs` : tracing-subscriber 0.3.23 (JSON, stdout) + tracing-actix-web 0.7.22 (request id de corrélation), init sentry 0.48.4 + sentry-actix (lockstep, activé si `SENTRY_DSN`) ; intégration `backend/api/src/main.rs` ; test d'intégration : une requête `/health` produit des logs corrélés ; compte Sentry (plan Developer gratuit) créé, DSN en `.env` (jamais commité).
+- [X] T021 [US4] Implémenter la télémétrie dans `backend/crates/socle/src/telemetry.rs` : tracing-subscriber 0.3.23 (JSON, stdout) + tracing-actix-web 0.7.22 (request id de corrélation), init sentry 0.48.4 + sentry-actix (lockstep, activé si `SENTRY_DSN`) ; intégration `backend/api/src/main.rs` ; test d'intégration : une requête `/health` produit des logs corrélés ; compte Sentry (plan Developer gratuit) créé, DSN en `.env` (jamais commité).
 - [ ] T022 [US4] Brancher les sondes sur `/health` de la PROD (dépend de T028/US7) : cron-job.org (1×/min, alerte email échec/rétablissement → détection < 2 min) + Better Stack free (email + push, status page) ; documenter dans `infra/README.md` le test réel : arrêt du service > 2 min → alerte reçue (SC-006), redémarrage → rétablissement notifié.
 
 **Checkpoint**: US4 complet en local après T021 ; en conditions réelles après T022 (post-US7).
@@ -111,8 +111,8 @@
 
 **Independent Test**: quickstart S6 — `backup.sh` puis `restore-test.sh` verts en local ; cron en prod après US7.
 
-- [ ] T023 [US5] Créer `infra/backups/backup.sh` : `pg_dump | age -r $BACKUP_AGE_RECIPIENT` (age v1.3.1) → bucket Backblaze B2 (object lock + lifecycle 30 j côté B2), sync `rclone` Garage→B2 (clé Garage dédiée backup), rotation 30 jours glissants ; bucket B2 créé et configuré ; clé PRIVÉE age générée et conservée HORS VPS (gestionnaire de mots de passe + copie hors-ligne) ; variables `BACKUP_*` dans `infra/.env.example`. Testable en local contre le compose dev.
-- [ ] T024 [US5] Créer `infra/backups/restore-test.sh` (restauration de l'archive chiffrée dans un Postgres jetable + vérification du schéma — plan T8, automatisable en local) + `infra/backups/README.md` : procédure de restauration COMPLÈTE pas à pas (récupération B2, déchiffrement age avec gestion de la clé, restore, bascule), planification quotidienne sur le VPS (systemd timer — l'activation effective dépend de T028/US7). Rappel spec : restauration réelle déroulée et documentée AVANT la bêta.
+- [X] T023 [US5] Créer `infra/backups/backup.sh` : `pg_dump | age -r $BACKUP_AGE_RECIPIENT` (age v1.3.1) → bucket Backblaze B2 (object lock + lifecycle 30 j côté B2), sync `rclone` Garage→B2 (clé Garage dédiée backup), rotation 30 jours glissants ; bucket B2 créé et configuré ; clé PRIVÉE age générée et conservée HORS VPS (gestionnaire de mots de passe + copie hors-ligne) ; variables `BACKUP_*` dans `infra/.env.example`. Testable en local contre le compose dev.
+- [X] T024 [US5] Créer `infra/backups/restore-test.sh` (restauration de l'archive chiffrée dans un Postgres jetable + vérification du schéma — plan T8, automatisable en local) + `infra/backups/README.md` : procédure de restauration COMPLÈTE pas à pas (récupération B2, déchiffrement age avec gestion de la clé, restore, bascule), planification quotidienne sur le VPS (systemd timer — l'activation effective dépend de T028/US7). Rappel spec : restauration réelle déroulée et documentée AVANT la bêta.
 
 **Checkpoint**: perte maximale bornée à 24 h ; procédure prouvée en local, planifiée en prod.
 
@@ -124,7 +124,7 @@
 
 **Independent Test**: quickstart S7 — seed sur base vierge puis re-seed → état identique, zéro doublon.
 
-- [ ] T025 [US6] Créer `backend/seeds/` (README expliquant l'ordre `NN_<module>.sql` et la complétion par les cycles ZON/CPT/VND/TRF, `00_demo_marker.sql`) + binaire `backend/api/src/bin/seed.rs` : UNE transaction, remise à zéro des tables seedées puis rejeu ordonné (idempotent par construction, rollback si interruption — data-model.md §3) ; test d'intégration : double exécution → état identique (plan T6) ; chrono < 5 min (SC-008). `cargo sqlx prepare` en fin de tâche.
+- [X] T025 [US6] Créer `backend/seeds/` (README expliquant l'ordre `NN_<module>.sql` et la complétion par les cycles ZON/CPT/VND/TRF, `00_demo_marker.sql`) + binaire `backend/api/src/bin/seed.rs` : UNE transaction, remise à zéro des tables seedées puis rejeu ordonné (idempotent par construction, rollback si interruption — data-model.md §3) ; test d'intégration : double exécution → état identique (plan T6) ; chrono < 5 min (SC-008). `cargo sqlx prepare` en fin de tâche.
 
 **Checkpoint**: la démo se recharge en 1 commande ; les cycles suivants ne feront qu'ajouter des fichiers SQL.
 
@@ -138,9 +138,9 @@
 
 **⚠ Garde-fou (spec, clarification 2026-07-13)** : si T026+T027+T028 dépassent 2 jours en exécution, dégrader — garder T026 (VPS provisionné), sortir T028 du cycle (déploiement différé), T022/T024-prod suivent.
 
-- [ ] T026 [US7] Écrire `infra/vps/provision.sh` (Docker Engine 29 + compose v5, utilisateur deploy, UFW 22/80/443, dossiers `/srv/mefali` + `.env` hors Git) et `infra/vps/compose.prod.yml` (backend image GHCR, `postgres:18.4`, `redis:8.8.0-alpine`, Garage par digest + init, OSRM v26.7.3, Caddy 2 par digest pour TLS auto) ; provisionner le VPS réel, DNS du domaine API, exécuter le script. Livrable : `curl https://<domaine>/health` (déploiement manuel initial).
-- [ ] T027 [P] [US7] Écrire `backend/Dockerfile` : multi-stage avec cargo-chef 0.1.77, binaire `api` + `seed`, image minimale (debian-slim), build local vert et image < 150 Mo. Parallélisable avec T026 (fichiers disjoints).
-- [ ] T028 [US7] Créer `.github/workflows/deploy.yml` : sur `main` après CI verte → docker/build-push-action@v7 + docker/login-action@v4 → GHCR → appleboy/ssh-action@v1 (pull + `docker compose -f compose.prod.yml up -d`) ; secrets GitHub (clé SSH, hôte) ; charger les seeds en prod (`docker compose exec api seed`) ; valider SC-011 (merge → prod < 15 min) + scénario US7-3 (audit zéro secret : `git grep` + revue `.env.example`).
+- [X] T026 [US7] Écrire `infra/vps/provision.sh` (Docker Engine 29 + compose v5, utilisateur deploy, UFW 22/80/443, dossiers `/srv/mefali` + `.env` hors Git) et `infra/vps/compose.prod.yml` (backend image GHCR, `postgres:18.4`, `redis:8.8.0-alpine`, Garage par digest + init, OSRM v26.7.3, Caddy 2 par digest pour TLS auto) ; provisionner le VPS réel, DNS du domaine API, exécuter le script. Livrable : `curl https://<domaine>/health` (déploiement manuel initial).
+- [X] T027 [P] [US7] Écrire `backend/Dockerfile` : multi-stage avec cargo-chef 0.1.77, binaire `api` + `seed`, image minimale (debian-slim), build local vert et image < 150 Mo. Parallélisable avec T026 (fichiers disjoints).
+- [X] T028 [US7] Créer `.github/workflows/deploy.yml` : sur `main` après CI verte → docker/build-push-action@v7 + docker/login-action@v4 → GHCR → appleboy/ssh-action@v1 (pull + `docker compose -f compose.prod.yml up -d`) ; secrets GitHub (clé SSH, hôte) ; charger les seeds en prod (`docker compose exec api seed`) ; valider SC-011 (merge → prod < 15 min) + scénario US7-3 (audit zéro secret : `git grep` + revue `.env.example`).
 
 **Checkpoint**: prod = seul environnement, reflet de `main`, seeds chargés — TRX-03/04 vérifiables en réel (T022, cron T024).
 
@@ -150,9 +150,9 @@
 
 **Purpose**: CI par chemins restante, validation de bout en bout, revue finale
 
-- [ ] T029 [P] Créer `.github/workflows/backend.yml` : `paths: [backend/**, openapi.json]` ; jobs `cargo fmt --check`, `clippy -D warnings`, `cargo test` + `cargo sqlx prepare --check` (service `postgres:18.4`) ; runner épinglé `ubuntu-24.04`, actions versions research.md R6.
-- [ ] T030 [P] Créer `.github/workflows/apps.yml` : `paths: [apps/**, clients/dart/**]` ; `flutter analyze` + `flutter test` sur mefali_core, mefali_client, mefali_pro (subosito/flutter-action@v2, Flutter 3.44.6 épinglé).
-- [ ] T031 [P] Créer `.github/workflows/web.yml` : `paths: [web/**, clients/ts/**]` ; lint (@nuxt/eslint), typecheck, `pnpm build`, vitest (pnpm/action-setup@v6, Node 24).
+- [X] T029 [P] Créer `.github/workflows/backend.yml` : `paths: [backend/**, openapi.json]` ; jobs `cargo fmt --check`, `clippy -D warnings`, `cargo test` + `cargo sqlx prepare --check` (service `postgres:18.4`) ; runner épinglé `ubuntu-24.04`, actions versions research.md R6.
+- [X] T030 [P] Créer `.github/workflows/apps.yml` : `paths: [apps/**, clients/dart/**]` ; `flutter analyze` + `flutter test` sur mefali_core, mefali_client, mefali_pro (subosito/flutter-action@v2, Flutter 3.44.6 épinglé).
+- [X] T031 [P] Créer `.github/workflows/web.yml` : `paths: [web/**, clients/ts/**]` ; lint (@nuxt/eslint), typecheck, `pnpm build`, vitest (pnpm/action-setup@v6, Node 24).
 - [ ] T032 Dérouler la validation complète quickstart S1→S9 + vérifier chaque Success Criterion SC-001→SC-011 de `specs/001-socle-monorepo/spec.md` ; corriger ce qui échoue ; consigner les résultats (durées mesurées) dans `specs/001-socle-monorepo/quickstart.md` (section résultats).
 - [ ] T033 Revue **Definition of Done** (`docs/user-stories-v2.md` §0.4, DERNIÈRE tâche) : 1) critères TRX-01→05 couverts par les tests listés au plan (T1–T9) ; 2) annotations utoipa à jour + clients régénérés SANS diff ; 3) migration 0001 versionnée + seeds à jour ; 4) événements outbox : `socle.ping` seul, taxonomie créée ; 5) clés i18n fr partout (apps + web) ; 6) aucun paramètre « paramétrable » introduit (aucune config de zone attendue ce cycle) ; + vérifier que l'amendement constitution MinIO→Garage (principes II & X) a été passé via `/speckit.constitution`, sinon le signaler comme bloquant de commit final.
 

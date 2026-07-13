@@ -1,0 +1,56 @@
+name: deploy
+
+# Déploiement production (US7, FR-018). Tourne sur main ; la protection de
+# branche exige les CI vertes AVANT merge (contracts/ci-cd.md règle 4).
+# Build image → GHCR → SSH VPS : pull + compose up + seeds. Cible : < 15 min (SC-011).
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: image
+        run: echo "ref=ghcr.io/${{ github.repository }}-api:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.ref }}
+            ghcr.io/${{ github.repository }}-api:latest
+
+      - name: Déploiement SSH (pull + up + seeds)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /srv/mefali
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "GHCR_IMAGE=${{ steps.image.outputs.ref }}" > .env.image
+            COMPOSE="docker compose --env-file .env --env-file .env.image -f compose.prod.yml"
+            $COMPOSE pull
+            $COMPOSE up -d
+            # Migrations : appliquées par l'api au démarrage. Seeds (idempotents) :
+            $COMPOSE run --rm api seed
