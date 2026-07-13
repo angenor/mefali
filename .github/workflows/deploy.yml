@@ -13,6 +13,14 @@ concurrency:
 
 jobs:
   deploy:
+    # Garde-fou : ne s'exécute QUE si la variable de dépôt DEPLOY_ENABLED = 'true'.
+    # Tant qu'elle n'est pas définie, le job est SAUTÉ (aucun échec sur main).
+    # Pour activer le déploiement en production :
+    #   1. Settings → Secrets and variables → Actions → Variables :
+    #      créer DEPLOY_ENABLED = true
+    #   2. Secrets : DEPLOY_HOST, DEPLOY_SSH_KEY, GHCR_READ_TOKEN
+    #   3. VPS provisionné (infra/vps/provision.sh) + DNS du domaine API.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
