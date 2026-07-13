@@ -1,0 +1,38 @@
+name: apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'clients/dart/**'
+      - '.github/workflows/apps.yml'
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'clients/dart/**'
+      - '.github/workflows/apps.yml'
+
+jobs:
+  apps:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - apps/packages/mefali_core
+          - apps/mefali_client
+          - apps/mefali_pro
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      # Goldens exclus : rendu pixel sensible à la plateforme (générés/vérifiés en local).
+      - run: flutter test --exclude-tags golden

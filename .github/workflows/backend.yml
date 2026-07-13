@@ -1,0 +1,57 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'openapi.json'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'openapi.json'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_USER: mefali
+          POSTGRES_PASSWORD: mefali
+          POSTGRES_DB: mefali
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U mefali -d mefali"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://mefali:mefali@localhost:5432/mefali
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      # La version 1.97.0 + composants viennent de rust-toolchain.toml (racine).
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+      - name: Installer sqlx-cli
+        run: cargo install sqlx-cli@0.9.0 --no-default-features --features native-tls,postgres,sqlx-toml
+      - name: Appliquer les migrations
+        run: cargo sqlx migrate run
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Cache sqlx à jour
+        run: cargo sqlx prepare --workspace --check
+      - name: Tests
+        run: cargo test
