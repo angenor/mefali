@@ -1,0 +1,6 @@
+{
+  "projectId": "f0b9e5ab-3b8a-476c-9e2a-82cac6c7a135",
+  "projectName": "Mefali Design System",
+  "shape": "guidelines-only",
+  "note": "Aucun code de composant dans ce dépôt — amorçage d'un projet Design System à partir de la spécification docs/design/Mefali_DESIGN.md. Pas de bundle compilé. À convertir en synchro haute-fidélité (shape storybook/package) le jour où un dépôt de composants Mefali existe."
+}

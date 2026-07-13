@@ -1,0 +1,138 @@
+/* Mefali — Design System foundation
+ * Transcription fidèle de docs/design/Mefali_DESIGN.md (spec fondatrice).
+ * Aucun composant compilé n'existe encore : ce fichier fournit les tokens
+ * et un vocabulaire de base « on-brand » que l'agent de design peut réutiliser
+ * directement via var(--*) et les classes .mf-*.
+ *
+ * Contexte cible : Android d'entrée de gamme, plein soleil, utilisateur pressé,
+ * parfois peu lettré. Densité utile, jamais décorative. Pas de mode sombre au MVP.
+ */
+
+:root {
+  /* — Couleurs (tokens canoniques, §2) — */
+  --primary: #F97316;        /* Actions principales, marque, éléments actifs */
+  --primary-dark: #C2570C;   /* Pressed/hover, texte primaire sur fond clair */
+  --success: #15803D;        /* Cash, confirmations, « collecté », toggle ouvert */
+  --danger: #DC2626;         /* Erreurs, montants à avancer, suspension, fermé */
+  --warning: #B45309;        /* Escalade, litiges en cours, hors-ligne */
+  --surface: #FFFFFF;        /* Cartes */
+  --background: #FAFAF7;     /* Fond d'écran */
+  --text: #171717;           /* Texte principal */
+  --text-muted: #525252;     /* Texte secondaire — contraste plancher */
+  --border: #E5E5E5;         /* Séparateurs, contours de carte */
+
+  /* — Teintes claires (dérivées, échelle Tailwind ~100 des mêmes couleurs) —
+   * Fonds de chips/badges/bandeaux ; le texte reste en couleur foncée (AAA). */
+  --primary-tint: #FFEDD5;
+  --success-tint: #DCFCE7;
+  --danger-tint: #FEE2E2;
+  --warning-tint: #FEF3C7;
+
+  /* — Typographie (§3) — */
+  --font-family: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
+  --font-display: 700 40px/1.1 var(--font-family);  /* montants d'action, code livraison (36–40) */
+  --font-title: 600 22px/1.3 var(--font-family);    /* titres d'écran */
+  --font-heading: 600 18px/1.35 var(--font-family); /* titres de carte, noms vendeurs */
+  --font-body: 400 16px/1.5 var(--font-family);     /* texte courant — plancher 16px */
+  --font-caption: 500 13px/1.4 var(--font-family);  /* métadonnées : horodatage, distances */
+
+  /* — Espacements : grille 8px, 4px autorisé en intra-composant (§4) — */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;   /* marge d'écran standard */
+  --space-4: 24px;
+  --space-5: 32px;
+  --screen-margin: 16px;
+
+  /* — Rayons (§4) — */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-chip: 999px;   /* plein */
+
+  /* — Élévation : une seule, légère. Pas de dégradés décoratifs. — */
+  --elevation-1: 0 1px 3px rgba(23, 23, 23, 0.10);
+
+  /* — Cibles tactiles (§5) — */
+  --tap-min: 48px;        /* toute cible tactile ≥ 48 dp */
+  --button-height: 56px;  /* bouton primaire pleine largeur */
+}
+
+/* Base */
+body {
+  margin: 0;
+  font: var(--font-body);
+  color: var(--text);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Échelle typographique en classes utilitaires */
+.mf-display { font: var(--font-display); }
+.mf-title   { font: var(--font-title); }
+.mf-heading { font: var(--font-heading); }
+.mf-body    { font: var(--font-body); }
+.mf-caption { font: var(--font-caption); color: var(--text-muted); }
+
+/* Bouton primaire (§5.1) : pleine largeur, 56px, fond primary, libellé bold 18, picto à gauche.
+ * Les actions principales vivent en BAS d'écran (usage à une main, sur moto). */
+.mf-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--button-height);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--primary);
+  color: #fff;
+  font: 700 18px/1 var(--font-family);
+  cursor: pointer;
+}
+.mf-btn-primary:active { background: var(--primary-dark); }
+
+/* Carte (§5.2) : surface, rayon 16, contour border, élévation légère. */
+.mf-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elevation-1);
+  overflow: hidden;
+}
+
+/* Chip de statut (§5.5) : plein, contour ou fond teinté + texte foncé. */
+.mf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-chip);
+  font: var(--font-caption);
+}
+.mf-chip--outline { border: 1px solid var(--border); color: var(--text-muted); }
+.mf-chip--success { background: var(--success-tint); color: var(--success); }
+.mf-chip--danger  { background: var(--danger-tint);  color: var(--danger); }
+.mf-chip--warning { background: var(--warning-tint); color: var(--warning); }
+
+/* Bandeau hors-ligne (§5.6) : barre fine warning clair, ne bloque jamais l'écran. */
+.mf-offline-banner {
+  padding: var(--space-2) var(--screen-margin);
+  background: var(--warning-tint);
+  color: var(--warning);
+  font: var(--font-caption);
+}
+
+/* Montant d'action (§5.8 / §8) : bloc pleine largeur, display, contexte body au-dessus.
+ * Couleur success (à encaisser) ou danger (à avancer). Toujours l'élément le plus visible. */
+.mf-amount {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3);
+}
+.mf-amount__label { font: var(--font-body); color: var(--text-muted); }
+.mf-amount__value { font: var(--font-display); }
+.mf-amount--collect { color: var(--success); }
+.mf-amount--advance { color: var(--danger); }
