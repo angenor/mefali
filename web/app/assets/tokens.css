@@ -1,0 +1,54 @@
+/* Jetons de design Mefali — transcription 1:1 de docs/design/tokens.md.
+   Source de vérité unique côté web ; aucune valeur de style en dur ailleurs. */
+:root {
+  /* --- Couleurs --- */
+  --primary: #F97316;
+  --primary-dark: #C2570C;
+  --success: #15803D;
+  --danger: #DC2626;
+  --warning: #B45309;
+  --surface: #FFFFFF;
+  --background: #FAFAF7;
+  --text: #171717;
+  --text-muted: #525252;
+  --border: #E5E5E5;
+  /* Teintes claires (fonds de chips/badges — texte reste foncé) */
+  --primary-tint: #FFEDD5;
+  --success-tint: #DCFCE7;
+  --danger-tint: #FEE2E2;
+  --warning-tint: #FEF3C7;
+
+  /* --- Typographie (plancher 16px) --- */
+  --font-family: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
+  --font-display: 700 40px/1.1 var(--font-family);
+  --font-title: 600 22px/1.3 var(--font-family);
+  --font-heading: 600 18px/1.35 var(--font-family);
+  --font-body: 400 16px/1.5 var(--font-family);
+  --font-caption: 500 13px/1.4 var(--font-family);
+
+  /* --- Espacement — grille 8px --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --screen-margin: 16px;
+
+  /* --- Rayons --- */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-chip: 999px;
+
+  /* --- Élévation & cibles tactiles --- */
+  --elevation-1: 0 1px 3px rgba(23, 23, 23, 0.10);
+  --tap-min: 48px;
+  --button-height: 56px;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font: var(--font-body);
+}

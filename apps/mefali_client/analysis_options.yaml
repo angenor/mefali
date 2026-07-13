@@ -1,0 +1,8 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Fichiers de localisation générés (lib/l10n/app_localizations*.dart).
+    invalid_annotation_target: ignore
+  exclude:
+    - lib/l10n/app_localizations*.dart

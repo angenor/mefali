@@ -1,0 +1,11 @@
+{
+  "@@locale": "fr",
+  "appTitle": "Mefali",
+  "@appTitle": {
+    "description": "Nom de l'application cliente"
+  },
+  "splashTagline": "Vos repas et vos courses, livrés à Tiassalé",
+  "@splashTagline": {
+    "description": "Accroche de l'écran de démarrage"
+  }
+}

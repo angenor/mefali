@@ -1,0 +1,30 @@
+name: mefali_client
+description: Application cliente Mefali (commande de repas et courses à Tiassalé).
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  # Épinglé par le SDK Flutter 3.44.6 via flutter_localizations (research.md
+  # indiquait 0.20.3 ; la contrainte du SDK prime).
+  intl: 0.20.2
+  # Utilisé directement dans l'écran de démarrage (Symbols.*).
+  material_symbols_icons: 4.2951.0
+  mefali_core:
+    path: ../packages/mefali_core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
