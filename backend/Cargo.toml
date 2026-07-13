@@ -1,0 +1,78 @@
+# Workspace backend Mefali — Actix + sqlx. Versions figées le 2026-07-13
+# (research.md R1, constitution X). Le workspace assemble 12 crates de domaine
+# (vides ce cycle), le crate technique `socle` et le binaire `api`.
+[workspace]
+resolver = "2"
+members = ["crates/*", "api"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+# --- Crates internes (chemins) ---
+socle = { path = "crates/socle" }
+zones = { path = "crates/zones" }
+comptes = { path = "crates/comptes" }
+prestataires = { path = "crates/prestataires" }
+qr = { path = "crates/qr" }
+tarification = { path = "crates/tarification" }
+commandes = { path = "crates/commandes" }
+dispatch = { path = "crates/dispatch" }
+coursier = { path = "crates/coursier" }
+paiements = { path = "crates/paiements" }
+notifications = { path = "crates/notifications" }
+avis = { path = "crates/avis" }
+metriques = { path = "crates/metriques" }
+
+# --- Web / runtime ---
+actix-web = "4.14.0"
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "signal", "time"] }
+
+# --- Base de données ---
+sqlx = { version = "0.9.0", default-features = false, features = [
+  "runtime-tokio",
+  "tls-rustls-ring",
+  "postgres",
+  "macros",
+  "chrono",
+  "uuid",
+  "json",
+  "migrate",
+] }
+
+# --- Contrat OpenAPI ---
+utoipa = { version = "5.5.0", features = ["actix_extras", "chrono", "uuid"] }
+utoipa-actix-web = "0.1.2"
+utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web"] }
+
+# --- Sérialisation / types ---
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+uuid = { version = "1.23.5", features = ["v7", "serde"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+
+# --- Observabilité (TRX-03) ---
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }
+tracing-actix-web = "0.7.22"
+sentry = "0.48.4"
+sentry-actix = "0.48.4"
+
+# --- Configuration / infra ---
+config = "0.15.25"
+redis = "1.3.0"
+deadpool-redis = "0.23.0"
+aws-sdk-s3 = "1.138.0"
+
+# --- Utilitaires ---
+async-trait = "0.1"
+thiserror = "2"
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1

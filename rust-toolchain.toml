@@ -1,0 +1,6 @@
+# Toolchain Rust figée (constitution X — versions vérifiées le 2026-07-13, research.md R1).
+# Toute machine (dev + CI) construit avec exactement cette version.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
