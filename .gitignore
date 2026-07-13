@@ -17,6 +17,8 @@ target/
 
 # === Flutter / apps ===
 # pubspec.lock EST commité (constitution X).
+# Localisations GÉNÉRÉES par gen-l10n (source = lib/l10n/app_fr.arb).
+apps/*/lib/l10n/app_localizations*.dart
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies

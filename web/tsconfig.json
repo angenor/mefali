@@ -1,0 +1,10 @@
+{
+  "//": "tsconfig racine Nuxt 4 — références vers les projets générés dans .nuxt/.",
+  "files": [],
+  "references": [
+    { "path": "./.nuxt/tsconfig.app.json" },
+    { "path": "./.nuxt/tsconfig.server.json" },
+    { "path": "./.nuxt/tsconfig.shared.json" },
+    { "path": "./.nuxt/tsconfig.node.json" }
+  ]
+}

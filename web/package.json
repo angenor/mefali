@@ -24,7 +24,7 @@
   "devDependencies": {
     "@nuxt/eslint": "1.16.0",
     "eslint": "10.7.0",
-    "typescript": "7.0.2",
+    "typescript": "5.9.3",
     "vitest": "4.1.10",
     "vue-tsc": "^2"
   }
