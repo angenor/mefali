@@ -42,6 +42,9 @@ sqlx = { version = "0.9.0", default-features = false, features = [
   "uuid",
   "json",
   "migrate",
+  # Lit backend/sqlx.toml (preferred-crates = chrono) — sinon les macros et le
+  # CLI échouent en présence du fichier (research.md R1).
+  "sqlx-toml",
 ] }
 
 # --- Contrat OpenAPI ---

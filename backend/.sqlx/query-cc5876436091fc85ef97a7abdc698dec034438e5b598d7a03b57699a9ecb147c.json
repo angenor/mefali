@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE outbox.evenement\n                         SET tentatives = tentatives + 1, derniere_erreur = $2\n                         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cc5876436091fc85ef97a7abdc698dec034438e5b598d7a03b57699a9ecb147c"
+}

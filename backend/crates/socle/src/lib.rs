@@ -5,10 +5,17 @@
 //! et types de santé. Seul crate du workspace à contenir de la logique ce cycle
 //! (constitution IX).
 //!
-//! Contenu complété par T014 (santé), T018/T019 (outbox) et T021 (télémétrie).
+//! Télémétrie (T021) complétée ensuite.
 
 pub mod config;
 pub mod db;
+pub mod health;
+pub mod outbox;
 
 pub use config::{AppEnv, Config};
 pub use db::connect_pg;
+pub use health::HealthResponse;
+pub use outbox::{
+    ecrire_evenement, ConsommateurOutbox, ConsommationError, EvenementPublie, NouvelEvenement,
+    OutboxError, WorkerOutbox,
+};

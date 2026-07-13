@@ -9,4 +9,20 @@ publish = false
 [dependencies]
 config.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 sqlx.workspace = true
+utoipa.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+tokio.workspace = true

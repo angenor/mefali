@@ -6,11 +6,23 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[lib]
+name = "api"
+path = "src/lib.rs"
+
 [[bin]]
 name = "api"
 path = "src/main.rs"
+
+[[bin]]
+name = "export-openapi"
+path = "src/bin/export-openapi.rs"
 
 [dependencies]
 actix-web.workspace = true
 tokio.workspace = true
 socle.workspace = true
+utoipa.workspace = true
+utoipa-actix-web.workspace = true
+utoipa-swagger-ui.workspace = true
+serde_json.workspace = true
