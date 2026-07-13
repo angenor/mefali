@@ -37,7 +37,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: pnpm/action-setup@v6
+      # generate-clients.sh utilise npx (openapi-generator, openapi-typescript) —
+      # pnpm n'est pas requis ici.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
