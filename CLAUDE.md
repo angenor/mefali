@@ -26,7 +26,7 @@ utilisateur en clés i18n fr).
 - `apps/mefali_client/`, `apps/mefali_pro/` — Flutter.
   `apps/packages/mefali_core/` — thème M3 + composants partagés.
 - `web/` — Nuxt 4 (public SSR, `/admin/**` en ssr:false).
-- `infra/` — docker-compose dev (Postgres, Redis, MinIO, OSRM), VPS, backups.
+- `infra/` — docker-compose dev (Postgres, Redis, Garage, OSRM), VPS, backups.
 - `specs/` — cycles Spec-Kit.
 
 ## Commandes (précisées/complétées au cycle TRX — les maintenir ici)

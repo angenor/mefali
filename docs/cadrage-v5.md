@@ -300,7 +300,7 @@ Montants en **unités mineures entières + code ISO 4217** porté par la zone (X
 
 ## 10. Stack technique
 
-**Règle générale : dernières versions stables.** À l'initialisation du projet, vérifier et figer (lockfiles) les dernières versions stables de chaque brique — Flutter, Shorebird, Actix Web, utoipa, Nuxt 4, PostgreSQL, Redis, MinIO — puis les tenir à jour à cadence mensuelle.
+**Règle générale : dernières versions stables.** À l'initialisation du projet, vérifier et figer (lockfiles) les dernières versions stables de chaque brique — Flutter, Shorebird, Actix Web, utoipa, Nuxt 4, PostgreSQL, Redis, Garage — puis les tenir à jour à cadence mensuelle.
 
 ### 10.1 Applications mobiles — Flutter + Shorebird
 
@@ -319,9 +319,9 @@ Montants en **unités mineures entières + code ISO 4217** porté par la zone (X
 
 Positions coursiers (GEO + TTL), verrous d'offres, pub/sub temps réel, cache (catalogue, itinéraires), rate-limiting OTP. Éphémère uniquement.
 
-### 10.4 MinIO
+### 10.4 Garage (stockage objet, API S3)
 
-Photos de course, images catalogue, **notes vocales de repère**, plaques QR (PDF). API S3 → migration transparente. Rétention alignée ARTCI.
+Photos de course, images catalogue, **notes vocales de repère**, plaques QR (PDF). API S3 → migration transparente. Rétention alignée ARTCI. Mono-nœud au MVP : `replication_mode = 1`, layout assigné au provisioning, buckets créés par le provisioning, une clé d'accès dédiée par usage (backend / job de sauvegarde). Périmètre S3 requis (vérifié au POC) : put/get, multipart, URLs présignées — Garage ne couvre pas 100 % de l'API S3, nos besoins si. *Remplace MinIO, dépôt archivé et sans patchs de sécurité depuis avril 2026 (décision du 2026-07-13, cycle 001-socle-monorepo).*
 
 ### 10.5 Console admin & web public — Nuxt 4
 
@@ -359,7 +359,7 @@ Push FCM prioritaire (canal haute importance coursier/vendeur) ; SMS limités : 
 
 ### 10.10 Infra & conformité
 
-1 VPS (backend + Postgres + Redis + MinIO + OSRM + Metabase) + sauvegardes externalisées testées + monitoring (uptime, Sentry). Immatriculation (CEPICI), déclaration **ARTCI**, CGU/CGV (Mefali intermédiaire, responsabilité sanitaire au vendeur), assurance RC, casque obligatoire.
+1 VPS (backend + Postgres + Redis + Garage + OSRM + Metabase) + sauvegardes externalisées testées + monitoring (uptime, Sentry). Immatriculation (CEPICI), déclaration **ARTCI**, CGU/CGV (Mefali intermédiaire, responsabilité sanitaire au vendeur), assurance RC, casque obligatoire.
 
 ---
 

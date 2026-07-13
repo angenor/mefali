@@ -11,7 +11,7 @@
 - **Un module = un epic = un cycle Spec-Kit** : copier la section du module dans `/specify`, dérouler `/plan` en pointant le cadrage v5 (§10 architecture, §11 provisions) comme contrainte, puis `/tasks` et implémentation.
 - **Implémenter par tranches verticales (§0.5)**, pas module par module.
 - Le **contrat OpenAPI est la source de vérité** : toute story qui touche l'API met d'abord à jour les annotations utoipa, puis régénère les clients Dart et TypeScript (TRX-01).
-- **Dernières versions stables** : à l'initialisation, vérifier et figer (lockfiles) les versions stables les plus récentes de chaque brique (Flutter, Shorebird, Actix, utoipa, Nuxt 4, Postgres, Redis, MinIO, OSRM, Metabase) ; revue mensuelle.
+- **Dernières versions stables** : à l'initialisation, vérifier et figer (lockfiles) les versions stables les plus récentes de chaque brique (Flutter, Shorebird, Actix, utoipa, Nuxt 4, Postgres, Redis, Garage, OSRM, Metabase) ; revue mensuelle.
 
 ### 0.2 Priorités
 
@@ -86,7 +86,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 - Logs structurés avec corrélation par requête ; Sentry ; sonde uptime sur `/health` ; alerte si indisponibilité > 2 min.
 
 **TRX-04 — Sauvegardes (P0)**
-- `pg_dump` quotidien chiffré externalisé + sync MinIO ; **restauration complète testée et documentée avant la bêta**.
+- `pg_dump` quotidien chiffré externalisé + sync du stockage objet (Garage) ; **restauration complète testée et documentée avant la bêta**. Immutabilité/versioning des sauvegardes portés par le bucket externe (object lock), jamais par Garage.
 
 **TRX-05 — Seeds & démo (P0)**
 - Zone Tiassalé, 5 vendeurs multi-catégories (dont un avec prix barrés et un en « livraison offerte dès X »), 20 articles, 2 coursiers, grille tarifaire, comptes de test — rechargeables en une commande.
@@ -134,7 +134,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 - 1..n rôles {client, coursier, vendeur, admin} par compte ; coursier/vendeur validés par l'admin ; Mefali Pro bascule d'interface selon rôle.
 
 **CPT-04 — Dossier coursier (P0)**
-- Pièce d'identité (MinIO), véhicules déclarés, référent local, statut {en attente, validé, suspendu} ; non validé = pas de mise en ligne.
+- Pièce d'identité (Garage), véhicules déclarés, référent local, statut {en attente, validé, suspendu} ; non validé = pas de mise en ligne.
 
 **CPT-05 — Adresses enregistrées (P0)**
 - Proposition d'enregistrement après livraison réussie (« Maison », « Bureau », libre) ; réutilisation en 1 tap — **y compris la note vocale de repère associée**.
@@ -149,7 +149,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 *Le crate s'appelle `prestataires` : le vendeur est le **type de prestataire du MVP**. Agrément, charte, QR, sites, notes, score de fiabilité et plan freemium sont portés par le prestataire ; le catalogue d'articles et le stock vivent dans l'extension vendeur. Un artisan de phase N (plombier, électricien) sera un autre type de prestataire réutilisant tout le socle sans migration (cadrage §11.13).*
 
 **VND-01 — Agrément (P0)**
-- Fiche admin : nom, catégorie, photos, GPS, horaires, délai de préparation, contact, charte signée (scan MinIO, incluant l'acceptation de la retenue à la source) ; statut {prospect, agréé, suspendu} ; suspension → retrait fiche + révocation QR immédiats.
+- Fiche admin : nom, catégorie, photos, GPS, horaires, délai de préparation, contact, charte signée (scan Garage, incluant l'acceptation de la retenue à la source) ; statut {prospect, agréé, suspendu} ; suspension → retrait fiche + révocation QR immédiats.
 
 **VND-02 — Catalogue avec prix barrés (P0)**
 - Article : nom, **prix**, **prix_barré optionnel** (contrainte : prix_barré > prix ; affichage promo côté client), photo optionnelle, disponibilité, catégorie interne.
@@ -186,7 +186,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 ## Module QRC — QR & traçabilité
 
 **QRC-01 — Génération QR + plaque (P0)**
-- QR : `https://mefali.ci/v/{vendor_id}?t={jeton HMAC révocable}` ; **code de secours à 4 chiffres** propre au vendeur ; PDF de plaque (QR + nom + code) dans MinIO, téléchargeable admin.
+- QR : `https://mefali.ci/v/{vendor_id}?t={jeton HMAC révocable}` ; **code de secours à 4 chiffres** propre au vendeur ; PDF de plaque (QR + nom + code) dans Garage, téléchargeable admin.
 
 **QRC-02 — Scan en course (P0)**
 - Préconditions : commande active du coursier comportant un **arrêt** chez ce vendeur, état compatible ; vérifications : correspondance vendeur/arrêt, GPS < 100 m (paramétrable), horodatage serveur ; succès → arrêt **COLLECTÉ** (+ photo si la politique résolue l'exige : vendeur > catégorie > défaut, forcée au-dessus d'un seuil de montant) ; toutes les collectes faites → commande EN_LIVRAISON.
@@ -241,7 +241,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 - **Livraison offerte vendeur (VND-08) : commandes mono-vendeur uniquement** ; panier multi-vendeurs → frais normaux.
 
 **CMD-02 — Adresse de livraison (P0)**
-- Pin GPS + bouton « Utiliser ma position actuelle » ; **repère obligatoire : texte (≥ 10 caractères) OU note vocale (≤ 30 s, MinIO, jouable par le coursier en course)** ; téléphone vérifié ; adresse enregistrée en 1 tap (repère vocal inclus).
+- Pin GPS + bouton « Utiliser ma position actuelle » ; **repère obligatoire : texte (≥ 10 caractères) OU note vocale (≤ 30 s, Garage, jouable par le coursier en course)** ; téléphone vérifié ; adresse enregistrée en 1 tap (repère vocal inclus).
 
 **CMD-03 — Création et choix du paiement (P0)**
 - Cash autorisé si montant ≤ plafond de zone ET client sans `prépaiement_imposé` ; restauration + client sans historique : plafond réduit (paramétrable) ; sinon prépaiement mobile money (PAY-02) avant dispatch.
