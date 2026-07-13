@@ -1,0 +1,77 @@
+# Environnement de développement Mefali (research.md R5).
+# Démarre les DÉPENDANCES ; le backend, lui, tourne via `cargo run` en dev.
+#
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# Valeurs par défaut = dev local uniquement. En prod : infra/vps/compose.prod.yml
+# avec un vrai `.env` (constitution VIII). OSRM : lancer d'abord infra/osrm/prepare.sh.
+
+name: mefali-dev
+
+services:
+  postgres:
+    image: postgres:18.4
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-mefali}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-mefali}"
+      POSTGRES_DB: "${POSTGRES_DB:-mefali}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mefali} -d ${POSTGRES_DB:-mefali}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    # Éphémère uniquement (constitution II) — aucun volume de persistance.
+    image: redis:8.8.0-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  garage:
+    # Stockage objet (API S3). research.md R5 : épingler par DIGEST en prod.
+    # Résoudre le digest : docker buildx imagetools inspect dxflrs/garage:v2.3.0
+    # puis remplacer par  dxflrs/garage@sha256:<digest>  dans compose.prod.yml.
+    image: dxflrs/garage:v2.3.0
+    environment:
+      # Dev only. En prod : valeurs fortes depuis le .env du VPS.
+      GARAGE_RPC_SECRET: "${GARAGE_RPC_SECRET:-dededededededededededededededededededededededededededededededede}"
+      GARAGE_ADMIN_TOKEN: "${GARAGE_ADMIN_TOKEN:-dev-admin-token}"
+    ports:
+      - "3900:3900"  # API S3
+      - "3901:3901"  # RPC
+      - "3903:3903"  # Admin
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  osrm:
+    # Routage. AUCUN service ne dépend d'osrm : son indisponibilité ne bloque
+    # ni Postgres/Redis/Garage ni le build/les tests (edge case spec).
+    # Prérequis : infra/osrm/prepare.sh (télécharge + extract/partition/customize).
+    image: ghcr.io/project-osrm/osrm-backend:v26.7.3
+    command: osrm-routed --algorithm mld /data/ivory-coast-latest.osrm
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osrm:/data
+    restart: "no"
+
+volumes:
+  pg_data:
+  garage_meta:
+  garage_data:

@@ -1,0 +1,6 @@
+# TLS automatique (Let's Encrypt) + reverse-proxy vers le backend.
+# $DOMAIN est fourni par l'environnement (compose.prod.yml → .env).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:8080
+}

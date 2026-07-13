@@ -1,0 +1,36 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'clients/ts/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'clients/ts/**'
+      - '.github/workflows/web.yml'
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    env:
+      # pnpm provisionné par corepack depuis le champ packageManager (11.12.0).
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Activer pnpm (corepack)
+        run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm run build
+      - run: pnpm test

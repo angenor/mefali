@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, type_evenement, entite_type, entite_id, payload, survenu_le\n            FROM outbox.evenement\n            WHERE publie_le IS NULL\n            ORDER BY cree_le\n            LIMIT $1\n            FOR UPDATE SKIP LOCKED\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "type_evenement",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "type_evenement"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "entite_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "entite_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "entite_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "entite_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "payload",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "survenu_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "survenu_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b15d4779e3d55f4ac00f1d9faba372f3dbf66bda157294381d9e2420a70b24ae"
+}

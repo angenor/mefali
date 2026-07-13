@@ -121,7 +121,7 @@ clients/
 └── ts/                   # GÉNÉRÉ depuis openapi.json — jamais édité à la main
 
 web/                      # Nuxt 4 (public SSR + /admin/** ssr:false)
-infra/                    # docker-compose dev (Postgres, Redis, MinIO, OSRM)
+infra/                    # docker-compose dev (Postgres, Redis, Garage, OSRM)
 ```
 
 **Structure Decision**: [Lister les répertoires réellement touchés par cette

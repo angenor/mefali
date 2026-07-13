@@ -1,0 +1,40 @@
+# Contrat attendu du /health dans l'openapi.json GÉNÉRÉ par utoipa.
+# Ce fichier décrit la cible ; la source de vérité reste openapi.json
+# (généré — constitution I). La CI compare openapi.json committé vs généré.
+openapi: 3.1.0
+info:
+  title: Mefali API
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      tags: [socle]
+      operationId: health
+      summary: Sonde de vie du service (non authentifiée)
+      responses:
+        "200":
+          description: Service opérationnel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        version:
+          type: string
+          description: Version du binaire (CARGO_PKG_VERSION)
+# Notes de périmètre :
+# - /health ne touche NI Postgres ni Redis (sonde de vie, pas de readiness) :
+#   la sonde uptime mesure la disponibilité du processus ; une panne de
+#   dépendance remonte par Sentry/logs, pas en abattant /health.
+# - Swagger UI : servie en dev (APP_ENV=dev), absente ou protégée en
+#   production (constitution VIII).
+# - Toute évolution passe par les annotations utoipa puis régénération
+#   openapi.json + clients (TRX-01).

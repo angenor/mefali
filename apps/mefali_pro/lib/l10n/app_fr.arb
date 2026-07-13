@@ -1,0 +1,11 @@
+{
+  "@@locale": "fr",
+  "appTitle": "Mefali Pro",
+  "@appTitle": {
+    "description": "Nom de l'application pro (coursiers et vendeurs)"
+  },
+  "splashTagline": "Coursiers et vendeurs : gérez votre activité à Tiassalé",
+  "@splashTagline": {
+    "description": "Accroche de l'écran de démarrage pro"
+  }
+}

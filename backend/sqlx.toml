@@ -1,0 +1,9 @@
+# Configuration sqlx 0.9 (research.md R1). Le nouveau format « un fichier par
+# requête » du cache offline vit dans `.sqlx/` (commité, contrôlé en CI par
+# `cargo sqlx prepare --check`).
+#
+# On force chrono comme crate de date/heure : les macros sqlx peuvent sinon
+# choisir `time` si ses features sont actives transitivement, ce qui casserait
+# la cohérence des types (décision research.md R1).
+[macros.preferred-crates]
+date-time = "chrono"

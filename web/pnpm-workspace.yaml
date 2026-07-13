@@ -1,0 +1,7 @@
+# Configuration pnpm (pnpm 11 lit les réglages ici). Autorise les scripts de
+# build des dépendances qui en ont besoin (esbuild pour vite/nuxt, etc.).
+allowBuilds:
+  '@parcel/watcher': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  unrs-resolver: true

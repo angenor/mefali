@@ -1,0 +1,53 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mefali API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "socle"
+        ],
+        "summary": "Sonde de vie du service. Répond `200 {status:\"ok\", version}`.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Service opérationnel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "description": "Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde\nmesure la disponibilité du processus (non authentifiée, constitution VIII).",
+        "required": [
+          "status",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Toujours `\"ok\"` quand le processus répond.",
+            "example": "ok"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version du binaire (`CARGO_PKG_VERSION`)."
+          }
+        }
+      }
+    }
+  }
+}

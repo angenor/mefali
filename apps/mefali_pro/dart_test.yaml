@@ -1,0 +1,4 @@
+tags:
+  golden:
+    # Tests golden : rendu pixel, sensibles à la plateforme. Exécutés en local ;
+    # exclus de la CI (flutter test --exclude-tags golden — voir .github/workflows/apps.yml).

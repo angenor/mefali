@@ -1,0 +1,57 @@
+# === Secrets (constitution VIII — zéro secret dans le dépôt) ===
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+# clé privée age des sauvegardes — TOUJOURS hors dépôt (research.md R7)
+*.age-key
+age-key.txt
+
+# === Rust / backend ===
+# Cargo.lock EST commité (workspace avec binaire — constitution X).
+target/
+**/*.rs.bk
+*.pdb
+# artefacts de préparation sqlx : .sqlx/ EST commité (offline mode CI).
+
+# === Flutter / apps ===
+# pubspec.lock EST commité (constitution X).
+# Localisations GÉNÉRÉES par gen-l10n (source = lib/l10n/app_fr.arb).
+apps/*/lib/l10n/app_localizations*.dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/build/
+.fvm/
+apps/**/.idea/
+*.iml
+
+# === Node / web ===
+# pnpm-lock.yaml EST commité (constitution X).
+node_modules/
+web/.nuxt/
+web/.output/
+web/.data/
+web/dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# === Infra locale (données de conteneurs, jamais commitées) ===
+infra/**/data/
+infra/osrm/*.osm.pbf
+infra/osrm/*.osrm*
+infra/garage/meta/
+infra/garage/data/
+
+# === Outils / OS / IDE ===
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# === Java (openapi-generator JAR téléchargé par le script) ===
+scripts/.openapi-generator-cli/

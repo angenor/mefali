@@ -1,0 +1,74 @@
+# Production Mefali — UN VPS, docker compose (US7). Placé dans /srv/mefali/.
+# Secrets et paramètres dans /srv/mefali/.env (hors Git). Caddy termine le TLS ;
+# le backend n'est PAS exposé directement.
+#
+# ⚠ Images tierces épinglées PAR DIGEST en prod (research.md R5). Résoudre :
+#   docker buildx imagetools inspect dxflrs/garage:v2.3.0   → @sha256:…
+#   docker buildx imagetools inspect caddy:2                → @sha256:…
+# puis remplacer les tags ci-dessous.
+
+name: mefali
+
+services:
+  api:
+    image: ${GHCR_IMAGE:?ghcr.io/<owner>/mefali-api:<sha>}
+    restart: unless-stopped
+    env_file: [.env]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose: ['8080']
+
+  postgres:
+    image: postgres:18.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8.8.0-alpine
+    restart: unless-stopped
+
+  garage:
+    image: dxflrs/garage:v2.3.0   # TODO prod : @sha256:<digest>
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v26.7.3
+    restart: "no"
+    command: osrm-routed --algorithm mld /data/ivory-coast-latest.osrm
+    volumes: [osrm_data:/data]
+
+  caddy:
+    image: caddy:2   # TODO prod : @sha256:<digest>
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pg_data:
+  garage_meta:
+  garage_data:
+  osrm_data:
+  caddy_data:
+  caddy_config:

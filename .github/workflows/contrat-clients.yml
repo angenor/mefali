@@ -1,0 +1,50 @@
+name: contrat-clients
+
+# Contrôle anti-dérive du contrat (TRX-01, contracts/ci-cd.md règles 1-2) :
+# écoute backend/** ET clients/** — un changement de l'un sans l'autre échoue.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'clients/**'
+      - 'openapi.json'
+      - 'scripts/generate-clients.sh'
+      - '.github/workflows/contrat-clients.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'clients/**'
+      - 'openapi.json'
+      - 'scripts/generate-clients.sh'
+      - '.github/workflows/contrat-clients.yml'
+
+jobs:
+  contrat-clients:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+      # Java >= 11 : requis par openapi-generator CLI (client Dart).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      # generate-clients.sh utilise npx (openapi-generator, openapi-typescript) —
+      # pnpm n'est pas requis ici.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Régénérer openapi.json + clients
+        env:
+          SQLX_OFFLINE: 'true'
+        run: ./scripts/generate-clients.sh
+      - name: Aucun diff (dérive interdite)
+        run: git diff --exit-code

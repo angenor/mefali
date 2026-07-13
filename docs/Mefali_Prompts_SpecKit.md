@@ -17,7 +17,7 @@ mkdir -p docs/design
 # → copier Mefali_CLAUDE.md                vers ./CLAUDE.md (racine du dépôt, commité)
 ```
 
-Vérifie le préfixe des commandes de ta version (`/speckit.specify` sur les versions récentes, `/specify` sur les anciennes).
+Vérifie le préfixe des commandes de ta version (`/speckit-specify` sur les versions récentes, `/specify` sur les anciennes).
 
 ### 0.1 Monorepo — arborescence de référence (créée au cycle 1)
 
@@ -50,7 +50,7 @@ mefali/
 
 ```
 /speckit.constitution   (1 seule fois, §1)
-puis : /speckit.specify (§3) → /speckit.clarify (§2.1) → /speckit.plan (§2.2)
+puis : /speckit-specify (§3) → /speckit.clarify (§2.1) → /speckit.plan (§2.2)
 → /speckit.tasks (§2.3) → /speckit.analyze (§2.4) → /speckit.implement (§2.5)
 → commit / merge
 ```
@@ -153,10 +153,10 @@ Principes non négociables :
 
 ## 2. Prompts communs (identiques à chaque cycle, à coller tels quels)
 
-### 2.1 `/speckit.clarify`
+### 2.1 `/speckit-clarify`
 
 ```
-/speckit.clarify
+/speckit-clarify
 
 Avant de me poser une question, vérifie si la réponse est dans docs/cadrage-v5.md
 ou docs/user-stories-v2.md et cite la section. Ne me pose que les questions dont
@@ -166,10 +166,10 @@ docs/user-stories-v2.md (valeur seed, éditable). Toute ambiguïté visuelle se
 résout par docs/design/png/ et docs/design/tokens.md.
 ```
 
-### 2.2 `/speckit.plan`
+### 2.2 `/speckit-plan`
 
 ```
-/speckit.plan
+/speckit-plan
 
 Stack imposée (cadrage v5 §10 — non négociable) :
 - Backend : Rust stable, Actix Web, sqlx + PostgreSQL (migrations versionnées),
@@ -195,10 +195,10 @@ structures de données et traits exposés aux autres crates, événements outbox
 métriques émis, écrans/widgets concernés, tests d'intégration.
 ```
 
-### 2.3 `/speckit.tasks`
+### 2.3 `/speckit-tasks`
 
 ```
-/speckit.tasks
+/speckit-tasks
 
 Découpe en tâches d'une demi-journée à une journée maximum, ordonnées par
 dépendance. Chaque tâche qui touche l'API se termine par : mise à jour des
@@ -208,10 +208,10 @@ capture docs/design/png/ correspondante. Termine la liste par une tâche « revu
 Definition of Done » (docs/user-stories-v2.md §0.4).
 ```
 
-### 2.4 `/speckit.analyze`
+### 2.4 `/speckit-analyze`
 
 ```
-/speckit.analyze
+/speckit-analyze
 
 Vérifie la cohérence spec ↔ plan ↔ tâches ↔ constitution. Signale toute exigence
 des stories du périmètre de ce module non couverte par une tâche, toute tâche qui
@@ -219,10 +219,10 @@ déborde du périmètre (P2, PROVISION, hors-périmètre listés dans la spec), 
 toute violation des principes 2, 3, 5 et 11 de la constitution.
 ```
 
-### 2.5 `/speckit.implement`
+### 2.5 `/speckit-implement`
 
 ```
-/speckit.implement
+/speckit-implement
 
 Implémente les tâches dans l'ordre. Après chaque tâche : compile, teste, commite
 avec un message conventionnel référençant la story (ex. "feat(dispatch): DSP-04
@@ -241,12 +241,12 @@ clients. À la fin, déroule cette checklist et liste ce qui resterait non confo
 
 ---
 
-## 3. Les 16 prompts `/speckit.specify` (ordre d'exécution)
+## 3. Les 16 prompts `/speckit-specify` (ordre d'exécution)
 
 ### Cycle 1 — TRX (bootstrappe le monorepo)
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module TRX — Transverse & infrastructure, et
 docs/cadrage-v5.md sections §10 et §11.
@@ -277,7 +277,7 @@ de client non commité.
 ### Cycle 2 — ZON
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module ZON — Zones & configuration, et
 docs/cadrage-v5.md sections §4, §9.4 et §11.1.
@@ -300,7 +300,7 @@ surcharge partielle.
 ### Cycle 3 — CPT
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module CPT — Comptes & identité, et
 docs/cadrage-v5.md sections §7.1 et §8.2.
@@ -324,7 +324,7 @@ messages d'erreur OTP ne révèlent jamais si un numéro existe.
 ### Cycle 4 — VND (crate `prestataires`)
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module VND — Vendeurs & catalogue (crate
 prestataires), et docs/cadrage-v5.md sections §5, §6 et §11.13.
@@ -351,7 +351,7 @@ maquettes de référence : docs/design/png/V1, V2, C2.
 ### Cycle 5 — QRC
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module QRC — QR & traçabilité, et
 docs/cadrage-v5.md section §5.3.
@@ -378,7 +378,7 @@ plaque physique ; maquette de référence : docs/design/png/K3.
 ### Cycle 6 — TRF
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module TRF — Tarification & devises, et
 docs/cadrage-v5.md section §9.
@@ -411,7 +411,7 @@ vit ici et est exposée au dispatch et aux commandes ; maquette : docs/design/pn
 ### Cycle 7 — CMD
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module CMD — Commandes, et docs/cadrage-v5.md
 sections §7.2, §7.5 et §8.
@@ -445,7 +445,7 @@ Points d'attention : dépendances = zones, comptes, prestataires, tarification
 ### Cycle 8 — DSP
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module DSP — Dispatch automatique, et
 docs/cadrage-v5.md section §7.3.
@@ -475,7 +475,7 @@ docs/design/png/K2.
 ### Cycle 9 — CRS
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module CRS — Coursier, et docs/cadrage-v5.md
 sections §7.4, §7.5 et §7.6.
@@ -507,7 +507,7 @@ K3 est la cible exacte.
 ### Cycle 10 — PAY
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module PAY — Paiements, et docs/cadrage-v5.md
 sections §10.7 et §12.
@@ -535,7 +535,7 @@ JAMAIS de chemin de paiement partiel.
 ### Cycle 11 — NTF
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module NTF — Notifications, et docs/cadrage-v5.md
 section §10.8.
@@ -556,7 +556,7 @@ scénario « client sans internet à la livraison » (CRS-04) — teste-le expli
 ### Cycle 12 — MET
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module MET — Métriques, et docs/cadrage-v5.md
 sections §10.9 et §16.
@@ -579,7 +579,7 @@ nouvelle fonctionnalité déclare ses événements ici.
 ### Cycle 13 — AVI
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module AVI — Avis, litiges & modération, et
 docs/cadrage-v5.md sections §7.5 et §5.1.
@@ -602,7 +602,7 @@ jamais » — l'indemnisation est impossible sans preuves attachées.
 ### Cycle 14 — ADM
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module ADM — Console admin, et docs/cadrage-v5.md
 sections §7.3, §9 et §16.
@@ -633,7 +633,7 @@ A2, A3, A4.
 ### Cycle 15 — WEB
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module WEB — Web public, et docs/cadrage-v5.md
 section §5.3.
@@ -654,7 +654,7 @@ résolution de jeton du cycle QRC.
 ### Cycle 16 — VAP
 
 ```
-/speckit.specify
+/speckit-specify
 
 Lis docs/user-stories-v2.md, module VAP — App vendeur minimale, et
 docs/cadrage-v5.md sections §6.2 et §6.3.
@@ -696,5 +696,5 @@ tâches P1 sont placées en fin de liste pour être livrables après le cœur P0
 
 - **Une branche par cycle** (`feat/dsp-dispatch`), merge quand la checklist du §2.5 passe.
 - **Commits conventionnels référençant les stories** : `feat(cmd): CMD-04 machine à états segment→arrêts`.
-- **Si une décision produit change** : mettre à jour d'abord `docs/cadrage-v5.md` / `docs/user-stories-v2.md` (et `docs/design/` si visuel), puis relancer `/speckit.specify` du module concerné — jamais l'inverse.
+- **Si une décision produit change** : mettre à jour d'abord `docs/cadrage-v5.md` / `docs/user-stories-v2.md` (et `docs/design/` si visuel), puis relancer `/speckit-specify` du module concerné — jamais l'inverse.
 - **Fin de chaque tranche** : tag Git (`t1-done`), démo réelle sur téléphone Android d'entrée de gamme, restauration de sauvegarde testée.

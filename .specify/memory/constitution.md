@@ -1,44 +1,30 @@
 <!--
-SYNC IMPACT REPORT — /speckit.constitution du 2026-07-13
-Version : template vierge → 1.0.0 (ratification initiale, aucun principe préexistant)
-Principes créés :
-  I. Sources de vérité uniques
-  II. Architecture — monolithe modulaire, cœur agnostique du vertical
-  III. Intégrité de l'argent
-  IV. Distances par itinéraire routier
-  V. Offline-first & idempotence coursier
-  VI. Événements outbox & métriques
-  VII. Qualité vérifiable
-  VIII. Sécurité & conformité
-  IX. Périmètre — « Prêt ≠ construit »
-  X. Versions à jour puis figées
-  XI. Référence visuelle unique
-Sections ajoutées : Contexte produit & contraintes ; Workflow de développement
-  & portes qualité ; Governance.
-Sections supprimées : aucune (placeholders du template remplacés).
+SYNC IMPACT REPORT — /speckit.constitution du 2026-07-13 (amendement)
+Version : 1.0.0 → 1.0.1 (PATCH — clarification sans changement de sens)
+Principes modifiés :
+  II. Architecture — « MinIO est accédé via l'API S3 » → « Garage est accédé
+      via l'API S3 » (la règle — accès exclusif par l'API S3 — est inchangée ;
+      seule la brique nommée change)
+  X. Versions à jour puis figées — liste des briques : MinIO → Garage
+Motif : MinIO community archivé le 2026-04-25 (plus de patchs de sécurité,
+  dernière image sept. 2025) ; bascule sur Garage v2.3.0 (S3-compatible,
+  mono-nœud replication_mode=1) décidée et validée le 2026-07-13 au cycle
+  001-socle-monorepo. Docs produit déjà à jour : docs/cadrage-v5.md
+  (§10, §10.4, §10.10), docs/user-stories-v2.md, CLAUDE.md.
+Sections ajoutées : aucune. Sections supprimées : aucune.
 Templates propagés :
-  ✅ .specify/templates/plan-template.md — portes Constitution Check concrètes
-     (I–XI) + arborescence monorepo Mefali
-  ✅ .specify/templates/tasks-template.md — conventions de chemins monorepo +
-     règles de tâches induites par la constitution + tests d'intégration de
-     machines à états rendus obligatoires
-  ✅ .specify/templates/spec-template.md — alignement des priorités de stories
-     sur P0/P1/P2/PROVISION de docs/user-stories-v2.md
-  ✅ .specify/templates/checklist-template.md — générique, aligné, aucun
-     changement requis
-  — .specify/templates/commands/*.md : répertoire absent (commandes installées
-     dans .claude/skills/, maintenues par Spec-Kit) : rien à faire
-Actions de cohérence effectuées :
-  - docs/Mefali_Cadrage_MVP_v5.md renommé en docs/cadrage-v5.md et
-    docs/Mefali_User_Stories_MVP_v2.md en docs/user-stories-v2.md (étape 0 de
-    docs/Mefali_Prompts_SpecKit.md, rend valides les références de CLAUDE.md
-    et de la présente constitution)
-Suivis différés :
-  - TODO(taxonomie-evenements) : docs/taxonomie-evenements.md n'existe pas
-    encore — à créer au premier cycle qui déclare des événements (principe VI).
-  - TODO(git) : dépôt git non initialisé — le principe I (CI en échec sur diff
-    de client) et le workflow de commit supposent git + CI, à mettre en place
-    au cycle TRX.
+  ✅ .specify/templates/plan-template.md — arborescence monorepo : MinIO → Garage
+  ✅ .specify/templates/spec-template.md — aucune référence, rien à faire
+  ✅ .specify/templates/tasks-template.md — aucune référence, rien à faire
+  ✅ .specify/templates/checklist-template.md — aucune référence, rien à faire
+  — .specify/templates/commands/*.md : répertoire absent, rien à faire
+Suivis différés (mis à jour) :
+  - TODO(taxonomie-evenements) : docs/taxonomie-evenements.md à créer par la
+    tâche T020 du cycle 001-socle-monorepo (planifiée).
+  - TODO(git) résolu : dépôt initialisé ; la CI (diff de clients) arrive au
+    cycle 001-socle-monorepo (tâches T016, T029–T031).
+Historique : ratification initiale 1.0.0 du 2026-07-13 (11 principes créés,
+  sections Contexte produit, Workflow & portes qualité, Governance).
 -->
 
 # Constitution Mefali
@@ -82,7 +68,7 @@ au lieu de passer inaperçue.
 - Le dispatch filtre sur des CAPACITÉS requises ; le filtre est générique
   (MVP : types de véhicule).
 - Redis ne porte que de l'éphémère reconstructible (GEO coursiers, verrous
-  `SET NX EX`, pub/sub, cache, rate-limit). MinIO est accédé via l'API S3.
+  `SET NX EX`, pub/sub, cache, rate-limit). Garage est accédé via l'API S3.
   Postgres est la SEULE vérité durable.
 
 Rationale : les verticaux futurs (prestations à domicile, e-entrepôt…)
@@ -155,7 +141,7 @@ par refonte du tronc.
 ### X. Versions à jour puis figées
 
 - Chaque brique (Rust, Actix, sqlx, utoipa, Flutter, Shorebird, Nuxt 4,
-  Postgres, Redis, MinIO, OSRM, Metabase) est prise en dernière version
+  Postgres, Redis, Garage, OSRM, Metabase) est prise en dernière version
   STABLE, vérifiée à l'initialisation du module concerné, puis figée par
   lockfile.
 - Revue mensuelle des versions.
@@ -224,4 +210,4 @@ par refonte du tronc.
 - `CLAUDE.md` (racine) est le guide d'exécution courant ; il reste synchronisé
   avec la constitution et ne la contredit jamais.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
+**Version**: 1.0.1 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
