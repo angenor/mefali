@@ -5,19 +5,22 @@
 //! `zones` reste un domaine pur. Toute chaîne d'erreur utilisateur est une clé
 //! i18n fr (`message_cle`, constitution VII).
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::future::{ready, Ready};
 
+use actix_governor::governor::middleware::NoOpMiddleware;
+use actix_governor::{GovernorConfig, GovernorConfigBuilder, PeerIpKeyExtractor};
 use actix_web::dev::Payload;
-use actix_web::http::StatusCode;
-use actix_web::{put, web, FromRequest, HttpRequest, HttpResponse, ResponseError};
+use actix_web::http::{header, StatusCode};
+use actix_web::{get, put, web, FromRequest, HttpRequest, HttpResponse, ResponseError};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use zones::{Forcage, PgZones};
+use zones::{ConfigurationZones, Forcage, PgZones};
 
 // ── Erreurs HTTP (corps JSON { code, message_cle } — i18n fr) ───────────────
 
@@ -260,6 +263,161 @@ pub async fn forcer_categorie(
     Ok(HttpResponse::Ok().json(EtatCategorie::from(etat)))
 }
 
+// ── Configuration produit publique : GET /config?zone= (ZON-04) ─────────────
+
+/// Configuration du rate-limit de `/config` (par IP, en mémoire de processus —
+/// research R4) : `burst` requêtes immédiates, recharge d'une toutes les
+/// `intervalle_ms` millisecondes.
+pub(crate) fn config_governor(
+    burst: u32,
+    intervalle_ms: u64,
+) -> GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware> {
+    GovernorConfigBuilder::default()
+        .milliseconds_per_request(intervalle_ms)
+        .burst_size(burst)
+        .finish()
+        .expect("configuration governor valide")
+}
+
+/// `QueryConfig` : paramètre `zone` absent ou invalide → 400 (clé i18n).
+pub(crate) fn config_query() -> web::QueryConfig {
+    web::QueryConfig::default().error_handler(|_err, _req| ErreurApi::ParametreManquant.into())
+}
+
+/// Devise (contrat) — montants entiers en unités mineures (principe III).
+#[derive(Debug, Serialize, ToSchema)]
+struct DeviseDto {
+    /// Code ISO 4217 (ex. XOF).
+    code: String,
+    /// Nombre de décimales des unités mineures (0 pour XOF).
+    decimales: u8,
+}
+
+/// Catégorie active (contrat).
+#[derive(Debug, Serialize, ToSchema)]
+struct CategorieDto {
+    /// Slug de la catégorie.
+    slug: String,
+    /// Clé i18n fr du nom.
+    nom_cle: String,
+    /// Mixable au panier (CMD-01).
+    mixable: bool,
+}
+
+/// Document `/config` (contrat) — sous-ensemble public de la config effective.
+#[derive(Debug, Serialize, ToSchema)]
+struct ConfigZone {
+    /// Zone servie.
+    zone: Uuid,
+    /// Empreinte SHA-256 hex du document canonique (= ETag).
+    version: String,
+    /// Devise résolue.
+    devise: DeviseDto,
+    /// Drapeaux (clés `drapeau.*` sans préfixe).
+    drapeaux: BTreeMap<String, bool>,
+    /// Catégories actives dans la zone.
+    categories: Vec<CategorieDto>,
+    /// Slugs des types de transport actifs.
+    transports_actifs: Vec<String>,
+    /// Textes (clés `texte.*` sans préfixe) — clés i18n fr.
+    textes: BTreeMap<String, String>,
+    /// Paramètres client (clés `client.*` sans préfixe).
+    #[schema(value_type = Object)]
+    parametres: BTreeMap<String, serde_json::Value>,
+}
+
+impl From<zones::ConfigZonePublique> for ConfigZone {
+    fn from(d: zones::ConfigZonePublique) -> Self {
+        ConfigZone {
+            zone: d.zone,
+            version: d.version,
+            devise: DeviseDto {
+                code: d.devise.code,
+                decimales: d.devise.decimales,
+            },
+            drapeaux: d.drapeaux,
+            categories: d
+                .categories
+                .into_iter()
+                .map(|c| CategorieDto {
+                    slug: c.slug,
+                    nom_cle: c.nom_cle,
+                    mixable: c.mixable,
+                })
+                .collect(),
+            transports_actifs: d.transports_actifs,
+            textes: d.textes,
+            parametres: d.parametres,
+        }
+    }
+}
+
+/// Paramètre de requête de `/config`.
+#[derive(Debug, Deserialize)]
+struct ConfigQuery {
+    zone: Uuid,
+}
+
+/// Configuration produit publique d'une zone (ZON-04). PUBLIC en lecture seule
+/// (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag
+/// (304 sur If-None-Match — polling horaire économe).
+#[utoipa::path(
+    get,
+    path = "/config",
+    tag = "zones",
+    params(("zone" = Uuid, Query, description = "Zone dont on veut la configuration effective.")),
+    responses(
+        (status = 200, description = "Configuration effective résolue.", body = ConfigZone),
+        (status = 304, description = "Non modifiée (If-None-Match == version)."),
+        (status = 400, description = "Paramètre zone absent ou UUID invalide."),
+        (status = 404, description = "Zone inconnue — erreur explicite, jamais une config vide."),
+        (status = 429, description = "Rate-limit dépassé."),
+    ),
+)]
+#[get("/config")]
+pub async fn config(
+    requete: HttpRequest,
+    zone: web::Query<ConfigQuery>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, ErreurApi> {
+    let zone = zone.zone;
+    let depot = PgZones::new(pool.get_ref().clone());
+
+    // configuration_effective valide l'existence (404 si zone inconnue — FR-021).
+    let config = depot.configuration_effective(zone).await?;
+    let devise = depot.devise(zone).await?;
+    let categories = depot.categories_actives(zone).await?;
+    let transports = depot.transports_actifs(zone).await?;
+    let document = zones::assembler(&config, devise, categories, transports);
+
+    // 304 si le client détient déjà cette version.
+    if let Some(entrant) = requete
+        .headers()
+        .get(header::IF_NONE_MATCH)
+        .and_then(|v| v.to_str().ok())
+    {
+        if etag_correspond(entrant, &document.version) {
+            return Ok(HttpResponse::NotModified()
+                .insert_header((header::ETAG, document.version))
+                .finish());
+        }
+    }
+
+    let dto = ConfigZone::from(document);
+    Ok(HttpResponse::Ok()
+        .insert_header((header::ETAG, dto.version.clone()))
+        .json(dto))
+}
+
+/// Compare un en-tête `If-None-Match` (guillemets ou préfixe `W/` tolérés) à la
+/// version ; `*` correspond toujours.
+fn etag_correspond(entrant: &str, version: &str) -> bool {
+    entrant.split(',').any(|etag| {
+        let e = etag.trim().trim_start_matches("W/").trim_matches('"');
+        e == version || e == "*"
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -342,5 +500,130 @@ mod tests {
             .to_request();
         let resp = atest::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    macro_rules! app_config {
+        ($pool:expr) => {
+            atest::init_service(
+                App::new()
+                    .app_data(web::Data::new($pool.clone()))
+                    .app_data(config_query())
+                    .service(config),
+            )
+            .await
+        };
+    }
+
+    /// SC-003 — une consultation restitue exactement la config de Tiassalé.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn config_200_sc003(pool: PgPool) {
+        preparer(&pool).await;
+        let app = app_config!(pool);
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri(&format!("/config?zone={TIASSALE}"))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let etag = resp
+            .headers()
+            .get(header::ETAG)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
+        let corps: serde_json::Value = atest::read_body_json(resp).await;
+
+        assert_eq!(corps["devise"]["code"], "XOF");
+        assert_eq!(corps["devise"]["decimales"], 0);
+        assert_eq!(corps["drapeaux"]["livraison_offerte_mefali"], true);
+        assert_eq!(corps["drapeaux"]["gratuite_commissions"], true);
+        assert_eq!(corps["drapeaux"]["pluie"], false);
+        assert_eq!(corps["transports_actifs"], json!(["a_pied", "velo", "moto"]));
+        assert_eq!(corps["categories"], json!([]), "aucun vendeur → aucune catégorie active");
+        let version = corps["version"].as_str().unwrap();
+        assert!(!version.is_empty());
+        assert_eq!(etag.as_deref(), Some(version), "ETag == version");
+        // Liste blanche : aucun namespace interne ne fuit.
+        assert!(!corps.to_string().contains("seuil_activation"));
+    }
+
+    /// Zone inconnue → 404 explicite (FR-021), jamais une config vide.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn config_404_zone_inconnue(pool: PgPool) {
+        preparer(&pool).await;
+        let app = app_config!(pool);
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri("/config?zone=00000000-0000-7000-8000-00000000dead")
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let corps: serde_json::Value = atest::read_body_json(resp).await;
+        assert_eq!(corps["code"], "zone_inconnue");
+    }
+
+    /// If-None-Match == version → 304 (polling horaire économe).
+    #[sqlx::test(migrations = "../migrations")]
+    async fn config_304_if_none_match(pool: PgPool) {
+        preparer(&pool).await;
+        let app = app_config!(pool);
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri(&format!("/config?zone={TIASSALE}"))
+                .to_request(),
+        )
+        .await;
+        let corps: serde_json::Value = atest::read_body_json(resp).await;
+        let version = corps["version"].as_str().unwrap().to_owned();
+
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri(&format!("/config?zone={TIASSALE}"))
+                .insert_header((header::IF_NONE_MATCH, version))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::NOT_MODIFIED);
+    }
+
+    /// Paramètre `zone` absent ou UUID invalide → 400.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn config_400_zone_invalide(pool: PgPool) {
+        preparer(&pool).await;
+        let app = app_config!(pool);
+        for uri in ["/config", "/config?zone=pas-un-uuid"] {
+            let resp =
+                atest::call_service(&app, atest::TestRequest::get().uri(uri).to_request()).await;
+            assert_eq!(resp.status(), StatusCode::BAD_REQUEST, "uri = {uri}");
+        }
+    }
+
+    /// Rate-limit par IP : 2e requête rapide de la même IP → 429.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn config_429_rate_limit(pool: PgPool) {
+        preparer(&pool).await;
+        let gouverneur = config_governor(1, 60_000);
+        let app = atest::init_service(
+            App::new()
+                .app_data(web::Data::new(pool.clone()))
+                .wrap(actix_governor::Governor::new(&gouverneur))
+                .service(config),
+        )
+        .await;
+        let requete = || {
+            atest::TestRequest::get()
+                .uri(&format!("/config?zone={TIASSALE}"))
+                .peer_addr("1.2.3.4:9000".parse().unwrap())
+                .to_request()
+        };
+        let r1 = atest::call_service(&app, requete()).await;
+        assert_eq!(r1.status(), StatusCode::OK);
+        let r2 = atest::call_service(&app, requete()).await;
+        assert_eq!(r2.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 }

@@ -1,7 +1,10 @@
 .gitignore
 README.md
 analysis_options.yaml
+doc/CategorieDto.md
+doc/ConfigZone.md
 doc/CorpsForcage.md
+doc/DeviseDto.md
 doc/EtatCategorie.md
 doc/ForcageDto.md
 doc/HealthResponse.md
@@ -18,10 +21,16 @@ lib/src/auth/basic_auth.dart
 lib/src/auth/bearer_auth.dart
 lib/src/auth/oauth.dart
 lib/src/date_serializer.dart
+lib/src/model/categorie_dto.dart
+lib/src/model/config_zone.dart
 lib/src/model/corps_forcage.dart
 lib/src/model/date.dart
+lib/src/model/devise_dto.dart
 lib/src/model/etat_categorie.dart
 lib/src/model/forcage_dto.dart
 lib/src/model/health_response.dart
 lib/src/serializers.dart
 pubspec.yaml
+test/categorie_dto_test.dart
+test/config_zone_test.dart
+test/devise_dto_test.dart

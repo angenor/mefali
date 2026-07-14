@@ -20,6 +20,7 @@ pub fn api_openapi() -> OpenApi {
         .into_utoipa_app()
         .service(health::health)
         .service(zones_http::forcer_categorie)
+        .service(zones_http::config)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -93,20 +94,28 @@ pub async fn run() -> std::io::Result<()> {
         addr.0, addr.1
     );
 
+    // Rate-limit /config par IP (research R4) : burst 30, recharge 1/100 ms.
+    // Partagé entre workers (Arc interne) — un seul compteur par IP.
+    let gouverneur = zones_http::config_governor(30, 100);
+
     HttpServer::new(move || {
         let (app, openapi) = App::new()
             .into_utoipa_app()
             .service(health::health)
             .service(zones_http::forcer_categorie)
+            .service(zones_http::config)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
-            // Corps JSON invalide → 422 corps_invalide (clé i18n).
-            .app_data(zones_http::config_json());
+            // Corps JSON invalide → 422 ; paramètre `zone` invalide → 400 (clés i18n).
+            .app_data(zones_http::config_json())
+            .app_data(zones_http::config_query());
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
         }
         app
+            // Rate-limit par IP (politeness) sur toute la surface publique.
+            .wrap(actix_governor::Governor::new(&gouverneur))
             // Corrélation par requête (request id) dans les logs JSON…
             .wrap(tracing_actix_web::TracingLogger::default())
             // …et capture des erreurs HTTP par Sentry (actif si SENTRY_DSN).

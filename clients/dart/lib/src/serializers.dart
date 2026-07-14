@@ -14,7 +14,10 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
+import 'package:mefali_api_client/src/model/categorie_dto.dart';
+import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
+import 'package:mefali_api_client/src/model/devise_dto.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
@@ -22,7 +25,10 @@ import 'package:mefali_api_client/src/model/health_response.dart';
 part 'serializers.g.dart';
 
 @SerializersFor([
+  CategorieDto,
+  ConfigZone,
   CorpsForcage,
+  DeviseDto,
   EtatCategorie,
   ForcageDto,
   HealthResponse,

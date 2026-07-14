@@ -71,6 +71,51 @@
         ]
       }
     },
+    "/config": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Configuration produit publique d'une zone (ZON-04). PUBLIC en lecture seule\n(clarification Q1), liste blanche de namespaces (R4), versionnée par ETag\n(304 sur If-None-Match — polling horaire économe).",
+        "operationId": "config",
+        "parameters": [
+          {
+            "name": "zone",
+            "in": "query",
+            "description": "Zone dont on veut la configuration effective.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration effective résolue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigZone"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Non modifiée (If-None-Match == version)."
+          },
+          "400": {
+            "description": "Paramètre zone absent ou UUID invalide."
+          },
+          "404": {
+            "description": "Zone inconnue — erreur explicite, jamais une config vide."
+          },
+          "429": {
+            "description": "Rate-limit dépassé."
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -95,6 +140,96 @@
   },
   "components": {
     "schemas": {
+      "CategorieDto": {
+        "type": "object",
+        "description": "Catégorie active (contrat).",
+        "required": [
+          "slug",
+          "nom_cle",
+          "mixable"
+        ],
+        "properties": {
+          "mixable": {
+            "type": "boolean",
+            "description": "Mixable au panier (CMD-01)."
+          },
+          "nom_cle": {
+            "type": "string",
+            "description": "Clé i18n fr du nom."
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug de la catégorie."
+          }
+        }
+      },
+      "ConfigZone": {
+        "type": "object",
+        "description": "Document `/config` (contrat) — sous-ensemble public de la config effective.",
+        "required": [
+          "zone",
+          "version",
+          "devise",
+          "drapeaux",
+          "categories",
+          "transports_actifs",
+          "textes",
+          "parametres"
+        ],
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategorieDto"
+            },
+            "description": "Catégories actives dans la zone."
+          },
+          "devise": {
+            "$ref": "#/components/schemas/DeviseDto",
+            "description": "Devise résolue."
+          },
+          "drapeaux": {
+            "type": "object",
+            "description": "Drapeaux (clés `drapeau.*` sans préfixe).",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "parametres": {
+            "type": "object",
+            "description": "Paramètres client (clés `client.*` sans préfixe)."
+          },
+          "textes": {
+            "type": "object",
+            "description": "Textes (clés `texte.*` sans préfixe) — clés i18n fr.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "transports_actifs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Slugs des types de transport actifs."
+          },
+          "version": {
+            "type": "string",
+            "description": "Empreinte SHA-256 hex du document canonique (= ETag)."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone servie."
+          }
+        }
+      },
       "CorpsForcage": {
         "type": "object",
         "description": "Corps de la requête de forçage.",
@@ -105,6 +240,26 @@
           "forcage": {
             "$ref": "#/components/schemas/ForcageDto",
             "description": "Nouveau mode de forçage à appliquer."
+          }
+        }
+      },
+      "DeviseDto": {
+        "type": "object",
+        "description": "Devise (contrat) — montants entiers en unités mineures (principe III).",
+        "required": [
+          "code",
+          "decimales"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Code ISO 4217 (ex. XOF)."
+          },
+          "decimales": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre de décimales des unités mineures (0 pour XOF).",
+            "minimum": 0
           }
         }
       },
