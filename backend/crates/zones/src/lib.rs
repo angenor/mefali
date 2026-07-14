@@ -13,8 +13,10 @@ pub mod arbre;
 pub mod depot;
 pub mod modele;
 pub mod parametre;
+pub mod resolution;
 
 pub use depot::PgZones;
 pub use modele::{
     CategorieActive, ConfigurationEffective, Devise, ErreurZones, TypeZone, ValeurProvenance, Zone,
 };
+pub use resolution::ConfigurationZones;

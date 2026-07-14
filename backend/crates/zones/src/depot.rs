@@ -14,8 +14,6 @@ use sqlx::PgPool;
 /// Handle de dépôt du domaine zones. Le clone est bon marché (pool partagé).
 #[derive(Clone)]
 pub struct PgZones {
-    // Lu dès `arbre.rs`/`resolution.rs` (T005+). `allow` retiré à ce moment-là.
-    #[allow(dead_code)]
     pub(crate) pool: PgPool,
 }
 
