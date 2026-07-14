@@ -30,7 +30,7 @@ Monorepo Mefali — chemins réels du plan : crate `backend/crates/zones/`, surf
 
 **Purpose**: dépendances nouvelles vérifiées et figées (constitution X)
 
-- [ ] T001 Vérifier sur crates.io les dernières versions STABLES de `sha2` (version de config, R3) et `actix-governor` (rate-limit /config, R4), les ajouter à `backend/Cargo.toml` (workspace.dependencies) et aux crates consommateurs ; `cargo build` vert, lockfile commité. (½ j)
+- [X] T001 Vérifier sur crates.io les dernières versions STABLES de `sha2` (version de config, R3) et `actix-governor` (rate-limit /config, R4), les ajouter à `backend/Cargo.toml` (workspace.dependencies) et aux crates consommateurs ; `cargo build` vert, lockfile commité. (½ j)
 
 ---
 

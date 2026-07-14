@@ -7,3 +7,6 @@ license.workspace = true
 publish = false
 
 [dependencies]
+# Empreinte SHA-256 du document /config (research.md R3). Consommé par
+# src/config_publique.rs (T014).
+sha2.workspace = true
