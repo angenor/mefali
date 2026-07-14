@@ -11,12 +11,14 @@
 
 pub mod arbre;
 pub mod categorie;
+pub mod config_publique;
 pub mod depot;
 pub mod modele;
 pub mod parametre;
 pub mod resolution;
 
 pub use categorie::{EtatCategorie, Forcage};
+pub use config_publique::{assembler, ConfigZonePublique};
 pub use depot::PgZones;
 pub use modele::{
     CategorieActive, ConfigurationEffective, Devise, ErreurZones, TypeZone, ValeurProvenance, Zone,
