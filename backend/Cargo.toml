@@ -30,6 +30,8 @@ metriques = { path = "crates/metriques" }
 
 # --- Web / runtime ---
 actix-web = "4.14.0"
+# Uploads entrants pièce d'identité / note vocale (CPT, research.md R7).
+actix-multipart = "0.8.0"
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "signal", "time"] }
 
 # --- Base de données ---
@@ -79,6 +81,16 @@ thiserror = "2"
 sha2 = "0.11.0"
 # --- Rate-limit /config par IP (ZON-04, research.md R4) ---
 actix-governor = "0.10.0"
+
+# --- Authentification et OTP (cycle CPT 003) — versions figées le 2026-07-14 ---
+# Jeton d'accès JWT HS256 15 min (research.md R1).
+jsonwebtoken = "10.4.0"
+# Normalisation E.164 (port Rust de libphonenumber — research.md R4).
+phonenumber = "0.3.10"
+# HMAC-SHA256 du code OTP au repos (research.md R3) — s'appuie sur sha2 ci-dessus.
+hmac = "0.13.0"
+# CSPRNG : code OTP 6 chiffres, refresh opaque 256 bits, jeton d'inscription (R2/R3).
+rand = "0.10.2"
 
 [profile.release]
 strip = true

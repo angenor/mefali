@@ -20,6 +20,16 @@ dependencies:
     path: ../../../clients/dart
   # Cache local de la configuration distante (hors-ligne — FR-020). Figée (R7).
   shared_preferences: 2.5.5
+  # ── Cycle CPT (003) — plugins NATIFS stabilisés tôt (cadrage §10.1 : Shorebird
+  # ne patche que le Dart ; les ajouter maintenant évite un passage store). ──
+  # Jetons de session au repos : chiffré, jamais shared_preferences (research R11).
+  flutter_secure_storage: 10.3.1
+  # Photo de la pièce d'identité du dossier coursier (research.md R7, R11).
+  image_picker: 1.2.3
+  # Enregistrement de la note vocale de repère d'adresse (research.md R11).
+  record: 7.1.1
+  # Lecture de la note vocale de repère d'adresse (research.md R11).
+  just_audio: 0.10.6
 
 dev_dependencies:
   flutter_test:

@@ -6,4 +6,36 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine PUR (constitution II) : aucune dépendance d'infrastructure ici —
+# Redis et S3 n'entrent que dans la couche `api`, derrière les ports
+# `DepotEphemere` / `DepotObjets` définis par ce crate (research.md R3, R7).
 [dependencies]
+socle.workspace = true
+# Indicatif par défaut, rétention du repère vocal et transports actifs sont des
+# paramètres hérités, lus via `ConfigurationZones` (R4, R8 ; FR-024).
+zones.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+# Jeton d'accès JWT HS256 15 min, claims sub/sid (research.md R1).
+jsonwebtoken.workspace = true
+# Normalisation E.164 avec l'indicatif par défaut de la zone (research.md R4).
+phonenumber.workspace = true
+# HMAC-SHA256 du code OTP ; SHA-256 du refresh opaque (research.md R2, R3).
+hmac.workspace = true
+sha2.workspace = true
+# CSPRNG : code OTP, refresh 256 bits, jeton d'inscription (research.md R2, R3).
+rand.workspace = true
+
+[dev-dependencies]
+sqlx.workspace = true
+uuid.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
