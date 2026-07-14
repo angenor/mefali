@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT valeur FROM zones.parametre_zone WHERE zone_id = $1 AND cle = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "valeur",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "zones.parametre_zone",
+            "name": "valeur"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0c96f57c34efec60988436f80236273d7fc8bec3b720e11af526e8c8129b6bc2"
+}

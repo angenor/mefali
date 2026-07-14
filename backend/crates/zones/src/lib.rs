@@ -12,6 +12,7 @@
 pub mod arbre;
 pub mod depot;
 pub mod modele;
+pub mod parametre;
 
 pub use depot::PgZones;
 pub use modele::{

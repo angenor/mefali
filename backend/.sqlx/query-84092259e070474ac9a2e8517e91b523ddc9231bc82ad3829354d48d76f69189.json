@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO zones.parametre_zone (zone_id, cle, valeur)\n             VALUES ($1, $2, $3)\n             ON CONFLICT (zone_id, cle) DO UPDATE SET valeur = $3, modifie_le = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "84092259e070474ac9a2e8517e91b523ddc9231bc82ad3829354d48d76f69189"
+}

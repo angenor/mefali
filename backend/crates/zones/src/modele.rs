@@ -163,3 +163,13 @@ pub enum ErreurZones {
     #[error("erreur base de données zones : {0}")]
     Sql(#[from] sqlx::Error),
 }
+
+impl From<socle::OutboxError> for ErreurZones {
+    /// L'écriture d'un événement outbox n'échoue que sur erreur SQL — repliée
+    /// sur [`ErreurZones::Sql`] pour préserver l'atomicité (constitution VI).
+    fn from(erreur: socle::OutboxError) -> Self {
+        match erreur {
+            socle::OutboxError::Db(e) => ErreurZones::Sql(e),
+        }
+    }
+}
