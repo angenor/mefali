@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT actif_auto, actif AS \"actif!\" FROM zones.activation_categorie\n               WHERE zone_id = $1 AND categorie_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actif_auto",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "zones.activation_categorie",
+            "name": "actif_auto"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "actif!",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "zones.activation_categorie",
+            "name": "actif"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "a92a1a9d3e47963e4f2b6acc7ecc1f302a411d271ce315192c790006ffb8a459"
+}

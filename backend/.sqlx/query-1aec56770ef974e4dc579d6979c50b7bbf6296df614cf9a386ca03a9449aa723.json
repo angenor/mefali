@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE zones.activation_categorie\n               SET forcage = $3::text::zones.forcage_categorie, modifie_le = now()\n               WHERE zone_id = $1 AND categorie_id = $2\n               RETURNING actif AS \"actif!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actif!",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "zones.activation_categorie",
+            "name": "actif"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "1aec56770ef974e4dc579d6979c50b7bbf6296df614cf9a386ca03a9449aa723"
+}
