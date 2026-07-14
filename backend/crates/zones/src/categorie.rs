@@ -88,8 +88,8 @@ impl PgZones {
         categorie_slug: &str,
         nb_vendeurs_agrees: i64,
     ) -> Result<(), ErreurZones> {
-        // Seuil résolu par héritage à la ville, dans CETTE transaction.
-        let config = resoudre(&mut **tx, ville).await?;
+        // Seuil résolu par héritage à la ville, dans CETTE transaction (reborrow).
+        let config = resoudre(&mut *tx, ville).await?;
         let Some(seuil) = config
             .valeur(&format!("categorie.{categorie_slug}.seuil_activation"))
             .and_then(Value::as_i64)

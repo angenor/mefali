@@ -106,10 +106,12 @@ impl PgZones {
         tx: &mut sqlx::PgTransaction<'_>,
         zone: Uuid,
     ) -> Result<bool, ErreurZones> {
-        let existe =
-            sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM zones.zone WHERE id = $1)", zone)
-                .fetch_one(&mut **tx)
-                .await?;
+        let existe = sqlx::query_scalar!(
+            "SELECT EXISTS(SELECT 1 FROM zones.zone WHERE id = $1)",
+            zone
+        )
+        .fetch_one(&mut **tx)
+        .await?;
         Ok(existe.unwrap_or(false))
     }
 }
@@ -170,7 +172,10 @@ mod tests {
             .unwrap();
 
         let err = z.reparenter(&mut tx, a.id, Some(b.id)).await.unwrap_err();
-        assert!(matches!(err, ErreurZones::CycleDetecte), "A sous son enfant B");
+        assert!(
+            matches!(err, ErreurZones::CycleDetecte),
+            "A sous son enfant B"
+        );
         let err2 = z.reparenter(&mut tx, a.id, Some(a.id)).await.unwrap_err();
         assert!(matches!(err2, ErreurZones::CycleDetecte), "A sous A");
     }
@@ -196,7 +201,10 @@ mod tests {
             .bind(a.id)
             .execute(&pool)
             .await;
-        assert!(res.is_err(), "le trigger zone_sans_cycle doit refuser le cycle");
+        assert!(
+            res.is_err(),
+            "le trigger zone_sans_cycle doit refuser le cycle"
+        );
     }
 
     /// Suppression refusée (RESTRICT) avec enfants ou références ; feuille libre OK.

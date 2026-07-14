@@ -134,8 +134,8 @@ impl FromRequest for AdminAuth {
             .get("X-Admin-Token")
             .and_then(|v| v.to_str().ok())
             .unwrap_or_default();
-        let ok = !attendu.is_empty()
-            && egalite_temps_constant(attendu.as_bytes(), fourni.as_bytes());
+        let ok =
+            !attendu.is_empty() && egalite_temps_constant(attendu.as_bytes(), fourni.as_bytes());
         ready(if ok {
             Ok(AdminAuth)
         } else {
@@ -256,7 +256,13 @@ pub async fn forcer_categorie(
 
     let mut tx = pool.begin().await?;
     let etat = depot
-        .forcer_categorie(&mut tx, zone_id, &categorie_slug, corps.forcage.into(), "admin")
+        .forcer_categorie(
+            &mut tx,
+            zone_id,
+            &categorie_slug,
+            corps.forcage.into(),
+            "admin",
+        )
         .await?;
     tx.commit().await?;
 
@@ -448,7 +454,9 @@ mod tests {
         preparer(&pool).await;
         let app = app!(pool);
         let req = atest::TestRequest::put()
-            .uri(&format!("/admin/zones/{TIASSALE}/categories/marche/forcage"))
+            .uri(&format!(
+                "/admin/zones/{TIASSALE}/categories/marche/forcage"
+            ))
             .insert_header(("X-Admin-Token", JETON))
             .set_json(json!({ "forcage": "force_actif" }))
             .to_request();
@@ -465,7 +473,9 @@ mod tests {
         preparer(&pool).await;
         let app = app!(pool);
         let req = atest::TestRequest::put()
-            .uri(&format!("/admin/zones/{TIASSALE}/categories/marche/forcage"))
+            .uri(&format!(
+                "/admin/zones/{TIASSALE}/categories/marche/forcage"
+            ))
             .set_json(json!({ "forcage": "force_actif" }))
             .to_request();
         let resp = atest::call_service(&app, req).await;
@@ -479,7 +489,9 @@ mod tests {
         preparer(&pool).await;
         let app = app!(pool);
         let req = atest::TestRequest::put()
-            .uri(&format!("/admin/zones/{TIASSALE}/categories/inexistante/forcage"))
+            .uri(&format!(
+                "/admin/zones/{TIASSALE}/categories/inexistante/forcage"
+            ))
             .insert_header(("X-Admin-Token", JETON))
             .set_json(json!({ "forcage": "force_actif" }))
             .to_request();
@@ -494,7 +506,9 @@ mod tests {
         preparer(&pool).await;
         let app = app!(pool);
         let req = atest::TestRequest::put()
-            .uri(&format!("/admin/zones/{TIASSALE}/categories/marche/forcage"))
+            .uri(&format!(
+                "/admin/zones/{TIASSALE}/categories/marche/forcage"
+            ))
             .insert_header(("X-Admin-Token", JETON))
             .set_json(json!({ "forcage": "n_importe_quoi" }))
             .to_request();
@@ -539,8 +553,15 @@ mod tests {
         assert_eq!(corps["drapeaux"]["livraison_offerte_mefali"], true);
         assert_eq!(corps["drapeaux"]["gratuite_commissions"], true);
         assert_eq!(corps["drapeaux"]["pluie"], false);
-        assert_eq!(corps["transports_actifs"], json!(["a_pied", "velo", "moto"]));
-        assert_eq!(corps["categories"], json!([]), "aucun vendeur → aucune catégorie active");
+        assert_eq!(
+            corps["transports_actifs"],
+            json!(["a_pied", "velo", "moto"])
+        );
+        assert_eq!(
+            corps["categories"],
+            json!([]),
+            "aucun vendeur → aucune catégorie active"
+        );
         let version = corps["version"].as_str().unwrap();
         assert!(!version.is_empty());
         assert_eq!(etag.as_deref(), Some(version), "ETag == version");

@@ -26,9 +26,15 @@ async fn setup(pool: &PgPool) -> (PgZones, Uuid) {
     .execute(&mut *tx)
     .await
     .unwrap();
-    z.definir_parametre(&mut tx, ville, "categorie.marche.seuil_activation", json!(3), "seed")
-        .await
-        .unwrap();
+    z.definir_parametre(
+        &mut tx,
+        ville,
+        "categorie.marche.seuil_activation",
+        json!(3),
+        "seed",
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
     (z, ville)
 }
@@ -78,14 +84,18 @@ async fn franchissement_du_seuil(pool: PgPool) {
 
     // Seuil − 1 (2 vendeurs) → aucune activation, aucun événement.
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "marche", 2).await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "marche", 2)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert_eq!(actif_optionnel(&pool, ville, "marche").await, Some(false));
     assert_eq!(compter(&pool, "categorie.activation_changee").await, 0);
 
     // Seuil atteint (3) → activation + événement.
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "marche", 3).await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "marche", 3)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert!(actif(&pool, ville, "marche").await);
     assert_eq!(compter(&pool, "categorie.activation_changee").await, 1);
@@ -104,15 +114,22 @@ async fn franchissement_du_seuil(pool: PgPool) {
 async fn repli_sous_le_seuil_reste_active(pool: PgPool) {
     let (z, ville) = setup(&pool).await;
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "marche", 3).await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "marche", 3)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert!(actif(&pool, ville, "marche").await);
     let evenements = compter(&pool, "categorie.activation_changee").await;
 
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "marche", 1).await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "marche", 1)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
-    assert!(actif(&pool, ville, "marche").await, "aucune désactivation automatique");
+    assert!(
+        actif(&pool, ville, "marche").await,
+        "aucune désactivation automatique"
+    );
     assert_eq!(
         compter(&pool, "categorie.activation_changee").await,
         evenements,
@@ -135,7 +152,11 @@ async fn force_actif_sous_le_seuil(pool: PgPool) {
     assert_eq!(etat.forcage, Forcage::ForceActif);
     assert!(actif(&pool, ville, "marche").await);
     assert_eq!(compter(&pool, "categorie.forcage_change").await, 1);
-    assert_eq!(compter(&pool, "categorie.activation_changee").await, 1, "false→true");
+    assert_eq!(
+        compter(&pool, "categorie.activation_changee").await,
+        1,
+        "false→true"
+    );
 
     let p = dernier_payload(&pool, "categorie.forcage_change").await;
     assert_eq!(p["avant"], "automatique");
@@ -148,7 +169,9 @@ async fn force_actif_sous_le_seuil(pool: PgPool) {
 async fn force_inactif_au_dessus_du_seuil(pool: PgPool) {
     let (z, ville) = setup(&pool).await;
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "marche", 5).await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "marche", 5)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert!(actif(&pool, ville, "marche").await);
 
@@ -172,8 +195,12 @@ async fn force_inactif_au_dessus_du_seuil(pool: PgPool) {
 async fn retour_automatique_reapplique_la_regle(pool: PgPool) {
     let (z, ville) = setup(&pool).await;
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "marche", 3).await.unwrap(); // actif_auto = true
-    z.forcer_categorie(&mut tx, ville, "marche", Forcage::ForceInactif, "admin").await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "marche", 3)
+        .await
+        .unwrap(); // actif_auto = true
+    z.forcer_categorie(&mut tx, ville, "marche", Forcage::ForceInactif, "admin")
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert!(!actif(&pool, ville, "marche").await);
 
@@ -191,7 +218,11 @@ async fn retour_automatique_reapplique_la_regle(pool: PgPool) {
 async fn seuil_absent_inerte_mais_forcable(pool: PgPool) {
     let z = PgZones::new(pool.clone());
     let mut tx = pool.begin().await.unwrap();
-    let ville = z.creer_zone(&mut tx, None, TypeZone::Ville, "V").await.unwrap().id;
+    let ville = z
+        .creer_zone(&mut tx, None, TypeZone::Ville, "V")
+        .await
+        .unwrap()
+        .id;
     sqlx::query(
         "INSERT INTO zones.categorie (id, slug, nom_cle, workflow_vendeur)
          VALUES ($1, 'gaz', 'categorie.gaz.nom', 'echange_contenant')",
@@ -204,7 +235,9 @@ async fn seuil_absent_inerte_mais_forcable(pool: PgPool) {
 
     // Sans seuil résolu, la règle est inerte : aucune ligne, aucun événement.
     let mut tx = pool.begin().await.unwrap();
-    z.recalculer_activation(&mut tx, ville, "gaz", 100).await.unwrap();
+    z.recalculer_activation(&mut tx, ville, "gaz", 100)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert_eq!(actif_optionnel(&pool, ville, "gaz").await, None);
     assert_eq!(compter(&pool, "categorie.activation_changee").await, 0);
@@ -234,7 +267,10 @@ async fn categorie_inconnue(pool: PgPool) {
     .execute(&mut *tx)
     .await
     .unwrap();
-    let err = z.recalculer_activation(&mut tx, ville, "fantome", 5).await.unwrap_err();
+    let err = z
+        .recalculer_activation(&mut tx, ville, "fantome", 5)
+        .await
+        .unwrap_err();
     assert!(matches!(err, zones::ErreurZones::CategorieInconnue(_)));
     let err = z
         .forcer_categorie(&mut tx, ville, "fantome", Forcage::ForceActif, "admin")
@@ -248,7 +284,9 @@ async fn categorie_inconnue(pool: PgPool) {
 async fn rollback_aucun_evenement(pool: PgPool) {
     let (z, ville) = setup(&pool).await;
     let mut tx = pool.begin().await.unwrap();
-    z.forcer_categorie(&mut tx, ville, "marche", Forcage::ForceActif, "admin").await.unwrap();
+    z.forcer_categorie(&mut tx, ville, "marche", Forcage::ForceActif, "admin")
+        .await
+        .unwrap();
     tx.rollback().await.unwrap();
     assert_eq!(compter(&pool, "categorie.forcage_change").await, 0);
     assert_eq!(compter(&pool, "categorie.activation_changee").await, 0);

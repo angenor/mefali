@@ -15,7 +15,9 @@ use async_trait::async_trait;
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::modele::{CategorieActive, ConfigurationEffective, Devise, ErreurZones, ValeurProvenance};
+use crate::modele::{
+    CategorieActive, ConfigurationEffective, Devise, ErreurZones, ValeurProvenance,
+};
 use crate::PgZones;
 
 /// Lecture de la configuration de zone résolue par héritage. Interface interne
@@ -56,9 +58,12 @@ pub(crate) async fn resoudre(
     conn: &mut sqlx::PgConnection,
     zone: Uuid,
 ) -> Result<ConfigurationEffective, ErreurZones> {
-    let existe = sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM zones.zone WHERE id = $1)", zone)
-        .fetch_one(&mut *conn)
-        .await?;
+    let existe = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM zones.zone WHERE id = $1)",
+        zone
+    )
+    .fetch_one(&mut *conn)
+    .await?;
     if existe != Some(true) {
         return Err(ErreurZones::ZoneInconnue(zone));
     }
@@ -110,7 +115,11 @@ impl ConfigurationZones for PgZones {
     }
 
     async fn parametre(&self, zone: Uuid, cle: &str) -> Result<Option<Value>, ErreurZones> {
-        Ok(self.configuration_effective(zone).await?.valeur(cle).cloned())
+        Ok(self
+            .configuration_effective(zone)
+            .await?
+            .valeur(cle)
+            .cloned())
     }
 
     async fn devise(&self, zone: Uuid) -> Result<Devise, ErreurZones> {

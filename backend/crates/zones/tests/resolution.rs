@@ -35,21 +35,43 @@ async fn creer_arbre(pool: &PgPool) -> (PgZones, Uuid, Uuid, Uuid) {
         .id;
 
     // Niveau pays : devise + trois textes (dont deux seront surchargés plus bas).
-    z.definir_parametre(&mut tx, p, "devise.code", json!("XOF"), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, p, "devise.decimales", json!(0), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, p, "texte.sans", json!("P"), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, p, "texte.partiel", json!("P"), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, p, "texte.total", json!("P"), "seed").await.unwrap();
+    z.definir_parametre(&mut tx, p, "devise.code", json!("XOF"), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, p, "devise.decimales", json!(0), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, p, "texte.sans", json!("P"), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, p, "texte.partiel", json!("P"), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, p, "texte.total", json!("P"), "seed")
+        .await
+        .unwrap();
 
     // Niveau ville : surcharge partielle + totale.
-    z.definir_parametre(&mut tx, v, "texte.partiel", json!("V"), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, v, "texte.total", json!("V"), "seed").await.unwrap();
+    z.definir_parametre(&mut tx, v, "texte.partiel", json!("V"), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, v, "texte.total", json!("V"), "seed")
+        .await
+        .unwrap();
 
     // Niveau quartier : surcharge totale + valeurs "vides" définies + fictif.
-    z.definir_parametre(&mut tx, q, "texte.total", json!("Q"), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, q, "drapeau.actif", json!(false), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, q, "texte.vide", json!(""), "seed").await.unwrap();
-    z.definir_parametre(&mut tx, q, "dispatch.rayon_km", json!(3), "seed").await.unwrap();
+    z.definir_parametre(&mut tx, q, "texte.total", json!("Q"), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, q, "drapeau.actif", json!(false), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, q, "texte.vide", json!(""), "seed")
+        .await
+        .unwrap();
+    z.definir_parametre(&mut tx, q, "dispatch.rayon_km", json!(3), "seed")
+        .await
+        .unwrap();
 
     tx.commit().await.unwrap();
     (z, p, v, q)
@@ -97,7 +119,11 @@ async fn niveau_intermediaire(pool: PgPool) {
 
     assert_eq!(cfg.valeur("texte.sans"), Some(&json!("P")));
     assert_eq!(cfg.provenance("texte.sans"), Some(p), "hérité du pays");
-    assert_eq!(cfg.valeur("texte.total"), Some(&json!("V")), "ne voit pas Q");
+    assert_eq!(
+        cfg.valeur("texte.total"),
+        Some(&json!("V")),
+        "ne voit pas Q"
+    );
     assert_eq!(cfg.valeur("drapeau.actif"), None, "défini sur Q seulement");
 }
 
@@ -107,7 +133,10 @@ async fn devise_et_zone_inconnue(pool: PgPool) {
     let (z, _p, _v, q) = creer_arbre(&pool).await;
     assert_eq!(
         z.devise(q).await.unwrap(),
-        Devise { code: "XOF".to_owned(), decimales: 0 }
+        Devise {
+            code: "XOF".to_owned(),
+            decimales: 0
+        }
     );
 
     let mut tx = pool.begin().await.unwrap();
@@ -135,7 +164,10 @@ async fn parametre_fictif_bout_en_bout(pool: PgPool) {
     let (z, p, _v, q) = creer_arbre(&pool).await;
 
     // Déjà posé sur Q dans l'arbre de test (résolution locale).
-    assert_eq!(z.parametre(q, "dispatch.rayon_km").await.unwrap(), Some(json!(3)));
+    assert_eq!(
+        z.parametre(q, "dispatch.rayon_km").await.unwrap(),
+        Some(json!(3))
+    );
 
     // Posé sur le pays → hérité par la feuille, avec provenance.
     let mut tx = pool.begin().await.unwrap();
@@ -157,7 +189,10 @@ async fn reparentage_change_resolution(pool: PgPool) {
     let (z, p, v, q) = creer_arbre(&pool).await;
 
     // Avant : Q → V → P ; texte.partiel vient de la ville.
-    assert_eq!(z.parametre(q, "texte.partiel").await.unwrap(), Some(json!("V")));
+    assert_eq!(
+        z.parametre(q, "texte.partiel").await.unwrap(),
+        Some(json!("V"))
+    );
 
     // Re-parenter Q directement sous P (retire V de la chaîne).
     let mut tx = pool.begin().await.unwrap();
@@ -165,6 +200,9 @@ async fn reparentage_change_resolution(pool: PgPool) {
     tx.commit().await.unwrap();
 
     // Après : Q → P ; texte.partiel vient désormais du pays.
-    assert_eq!(z.parametre(q, "texte.partiel").await.unwrap(), Some(json!("P")));
+    assert_eq!(
+        z.parametre(q, "texte.partiel").await.unwrap(),
+        Some(json!("P"))
+    );
     let _ = v;
 }

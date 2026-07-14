@@ -163,10 +163,12 @@ impl PgZones {
             return Ok(());
         };
 
-        let existe =
-            sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM zones.categorie WHERE slug = $1)", slug)
-                .fetch_one(&mut **tx)
-                .await?;
+        let existe = sqlx::query_scalar!(
+            "SELECT EXISTS(SELECT 1 FROM zones.categorie WHERE slug = $1)",
+            slug
+        )
+        .fetch_one(&mut **tx)
+        .await?;
         if existe != Some(true) {
             return Err(ErreurZones::CategorieInconnue(slug.to_owned()));
         }
@@ -197,10 +199,7 @@ mod tests {
     use uuid::Uuid;
 
     async fn zone_avec_categorie(z: &PgZones, tx: &mut sqlx::PgTransaction<'_>) -> Uuid {
-        let zone = z
-            .creer_zone(tx, None, TypeZone::Pays, "CI")
-            .await
-            .unwrap();
+        let zone = z.creer_zone(tx, None, TypeZone::Pays, "CI").await.unwrap();
         sqlx::query(
             "INSERT INTO zones.categorie (id, slug, nom_cle, workflow_vendeur)
              VALUES ($1, 'restauration', 'categorie.restauration.nom', 'restauration')",
@@ -271,7 +270,13 @@ mod tests {
 
         // Slug de catégorie inconnu.
         let err = z
-            .definir_parametre(&mut tx, zone, "categorie.inconnue.mixable", json!(true), "test")
+            .definir_parametre(
+                &mut tx,
+                zone,
+                "categorie.inconnue.mixable",
+                json!(true),
+                "test",
+            )
             .await
             .unwrap_err();
         assert!(matches!(err, ErreurZones::CategorieInconnue(_)));

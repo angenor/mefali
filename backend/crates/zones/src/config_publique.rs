@@ -135,8 +135,18 @@ mod tests {
     /// Changement d'un paramètre (même provenant d'un ancêtre) → version change (FR-019).
     #[test]
     fn changement_parametre_change_version() {
-        let a = assembler(&config(&[("drapeau.pluie", json!(false))]), xof(), vec![], vec![]);
-        let b = assembler(&config(&[("drapeau.pluie", json!(true))]), xof(), vec![], vec![]);
+        let a = assembler(
+            &config(&[("drapeau.pluie", json!(false))]),
+            xof(),
+            vec![],
+            vec![],
+        );
+        let b = assembler(
+            &config(&[("drapeau.pluie", json!(true))]),
+            xof(),
+            vec![],
+            vec![],
+        );
         assert_ne!(a.version, b.version);
     }
 
@@ -154,7 +164,10 @@ mod tests {
         let doc = assembler(&c, xof(), vec![], vec!["a_pied".to_owned()]);
 
         assert_eq!(doc.drapeaux.get("pluie"), Some(&false));
-        assert_eq!(doc.textes.get("bandeau").map(String::as_str), Some("Bienvenue"));
+        assert_eq!(
+            doc.textes.get("bandeau").map(String::as_str),
+            Some("Bienvenue")
+        );
         assert_eq!(doc.parametres.get("theme"), Some(&json!("clair")));
         assert_eq!(doc.transports_actifs, vec!["a_pied"]);
 

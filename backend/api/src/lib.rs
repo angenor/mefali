@@ -27,10 +27,13 @@ pub fn api_openapi() -> OpenApi {
         .version("0.1.0")
         .build();
     // Garde admin du forçage (research R5) : jeton d'en-tête X-Admin-Token.
-    openapi.components.get_or_insert_with(Default::default).add_security_scheme(
-        "adminToken",
-        SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-Admin-Token"))),
-    );
+    openapi
+        .components
+        .get_or_insert_with(Default::default)
+        .add_security_scheme(
+            "adminToken",
+            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-Admin-Token"))),
+        );
     openapi
 }
 
@@ -250,7 +253,15 @@ mod tests {
     /// T009 — double seed du jeu Tiassalé → état strictement identique (SC-008).
     #[sqlx::test(migrations = "../migrations")]
     async fn seed_zones_idempotent(pool: sqlx::PgPool) {
-        type Etat = (i64, i64, i64, i64, i64, Option<serde_json::Value>, Option<serde_json::Value>);
+        type Etat = (
+            i64,
+            i64,
+            i64,
+            i64,
+            i64,
+            Option<serde_json::Value>,
+            Option<serde_json::Value>,
+        );
         async fn etat(pool: &sqlx::PgPool) -> Etat {
             async fn compter(pool: &sqlx::PgPool, sql: &'static str) -> i64 {
                 sqlx::query_scalar(sql).fetch_one(pool).await.unwrap()
@@ -278,13 +289,24 @@ mod tests {
         charger_seeds(&pool).await.unwrap();
         let apres_deux = etat(&pool).await;
 
-        assert_eq!(apres_un, apres_deux, "double seed → état strictement identique");
+        assert_eq!(
+            apres_un, apres_deux,
+            "double seed → état strictement identique"
+        );
         assert_eq!(apres_un.0, 2, "CI + Tiassalé");
         assert_eq!(apres_un.1, 8, "8 types de transport");
         assert_eq!(apres_un.2, 6, "6 catégories");
         assert_eq!(apres_un.3, 6, "6 activations Tiassalé");
         assert_eq!(apres_un.4, 18, "8 (pays) + 10 (ville) paramètres");
-        assert_eq!(apres_un.5, Some(serde_json::json!(false)), "restauration non mixable");
-        assert_eq!(apres_un.6, Some(serde_json::json!(8)), "seuil restauration 8");
+        assert_eq!(
+            apres_un.5,
+            Some(serde_json::json!(false)),
+            "restauration non mixable"
+        );
+        assert_eq!(
+            apres_un.6,
+            Some(serde_json::json!(8)),
+            "seuil restauration 8"
+        );
     }
 }

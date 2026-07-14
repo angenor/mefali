@@ -17,21 +17,27 @@ use zones::{ConfigurationZones, ErreurZones, PgZones, TypeZone};
 async fn setup(pool: &PgPool) -> (PgZones, Uuid, Uuid) {
     let z = PgZones::new(pool.clone());
     let mut tx = pool.begin().await.unwrap();
-    let pays = z.creer_zone(&mut tx, None, TypeZone::Pays, "CI").await.unwrap().id;
+    let pays = z
+        .creer_zone(&mut tx, None, TypeZone::Pays, "CI")
+        .await
+        .unwrap()
+        .id;
     let ville = z
         .creer_zone(&mut tx, Some(pays), TypeZone::Ville, "Tiassalé")
         .await
         .unwrap()
         .id;
     for (i, slug) in ["a_pied", "velo", "moto", "voiture"].iter().enumerate() {
-        sqlx::query("INSERT INTO zones.type_transport (id, slug, nom_cle, ordre) VALUES ($1, $2, $3, $4)")
-            .bind(Uuid::now_v7())
-            .bind(slug)
-            .bind(format!("transport.{slug}.nom"))
-            .bind((i + 1) as i16)
-            .execute(&mut *tx)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO zones.type_transport (id, slug, nom_cle, ordre) VALUES ($1, $2, $3, $4)",
+        )
+        .bind(Uuid::now_v7())
+        .bind(slug)
+        .bind(format!("transport.{slug}.nom"))
+        .bind((i + 1) as i16)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
     }
     tx.commit().await.unwrap();
     (z, pays, ville)
@@ -45,9 +51,15 @@ async fn heritage_et_surcharge_en_bloc(pool: PgPool) {
 
     // Activés au niveau PAYS → hérités par la ville.
     let mut tx = pool.begin().await.unwrap();
-    z.definir_parametre(&mut tx, pays, "transport.actifs", json!(["a_pied", "velo", "moto"]), "seed")
-        .await
-        .unwrap();
+    z.definir_parametre(
+        &mut tx,
+        pays,
+        "transport.actifs",
+        json!(["a_pied", "velo", "moto"]),
+        "seed",
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
     assert_eq!(
         z.transports_actifs(ville).await.unwrap(),
@@ -57,11 +69,21 @@ async fn heritage_et_surcharge_en_bloc(pool: PgPool) {
 
     // Surcharge locale de la ville = remplacement EN BLOC.
     let mut tx = pool.begin().await.unwrap();
-    z.definir_parametre(&mut tx, ville, "transport.actifs", json!(["voiture"]), "seed")
-        .await
-        .unwrap();
+    z.definir_parametre(
+        &mut tx,
+        ville,
+        "transport.actifs",
+        json!(["voiture"]),
+        "seed",
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
-    assert_eq!(z.transports_actifs(ville).await.unwrap(), vec!["voiture"], "surcharge en bloc");
+    assert_eq!(
+        z.transports_actifs(ville).await.unwrap(),
+        vec!["voiture"],
+        "surcharge en bloc"
+    );
     assert_eq!(
         z.transports_actifs(pays).await.unwrap(),
         vec!["a_pied", "velo", "moto"],
@@ -75,7 +97,13 @@ async fn slug_inconnu_refuse(pool: PgPool) {
     let (z, pays, _ville) = setup(&pool).await;
     let mut tx = pool.begin().await.unwrap();
     let err = z
-        .definir_parametre(&mut tx, pays, "transport.actifs", json!(["a_pied", "fusee"]), "seed")
+        .definir_parametre(
+            &mut tx,
+            pays,
+            "transport.actifs",
+            json!(["a_pied", "fusee"]),
+            "seed",
+        )
         .await
         .unwrap_err();
     assert!(matches!(err, ErreurZones::ValeurInvalide { .. }));
