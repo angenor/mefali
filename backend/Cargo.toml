@@ -76,6 +76,10 @@ aws-sdk-s3 = "1.138.0"
 # --- Utilitaires ---
 async-trait = "0.1"
 thiserror = "2"
+# Client HTTP de TESTS uniquement (dev-dependency) : consomme une URL présignée
+# Garage pour prouver l'aller-retour d'octets (SC-007, cycle CPT T005). Déjà
+# dans l'arbre via aws-smithy-http-client — aucune résolution nouvelle.
+reqwest = { version = "0.13.4", default-features = false }
 
 # --- Empreinte de configuration (ZON-04, research.md R3) ---
 sha2 = "0.11.0"

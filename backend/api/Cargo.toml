@@ -46,6 +46,18 @@ actix-governor.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
+chrono.workspace = true
+# Impls des ports async du crate `comptes` (infra_redis, infra_s3 — T005).
+async-trait.workspace = true
 tracing.workspace = true
 tracing-actix-web.workspace = true
 sentry-actix.workspace = true
+
+[dev-dependencies]
+# Tests d'intégration des impls réelles des ports (infra_redis, infra_s3 — T005).
+tokio.workspace = true
+comptes.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+# Consomme une URL présignée Garage pour prouver l'aller-retour d'octets (SC-007).
+reqwest.workspace = true

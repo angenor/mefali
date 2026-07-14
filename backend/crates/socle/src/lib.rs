@@ -12,7 +12,7 @@ pub mod health;
 pub mod outbox;
 pub mod telemetry;
 
-pub use config::{AppEnv, Config};
+pub use config::{AppEnv, Config, SmsMode};
 pub use db::connect_pg;
 pub use health::HealthResponse;
 pub use outbox::{

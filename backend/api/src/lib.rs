@@ -5,9 +5,14 @@
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
 pub mod health;
+pub mod infra_redis;
+pub mod infra_s3;
 pub mod zones_http;
 
+use std::sync::Arc;
+
 use actix_web::{web, App, HttpResponse, HttpServer};
+use comptes::{DepotEphemere, DepotObjets, EnvoiSms, SmsTraces};
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::openapi::{InfoBuilder, OpenApi};
 use utoipa_actix_web::AppExt;
@@ -58,15 +63,38 @@ fn mount_docs(prod: bool, openapi: OpenApi) -> impl FnOnce(&mut web::ServiceConf
     }
 }
 
+/// Région S3 signée mais non routante côté Garage (`infra/garage/garage.toml`).
+const REGION_S3: &str = "garage";
+
+/// Ports du domaine `comptes` câblés sur leurs implémentations réelles. Le
+/// domaine ne connaît que les traits ; cette structure est la composition
+/// racine (constitution II).
+#[derive(Clone)]
+pub struct InfraComptes {
+    /// Défis OTP, compteurs anti-abus, jetons d'inscription (Redis — R3).
+    pub ephemere: Arc<dyn DepotEphemere>,
+    /// Envoi des codes (journalisé tant que `SMS_MODE=traces` — R6).
+    pub sms: Arc<dyn EnvoiSms>,
+    /// Pièces d'identité et repères vocaux (Garage — R7).
+    pub objets: Arc<dyn DepotObjets>,
+    /// Secret de signature des jetons d'accès (R1).
+    pub jwt_secret: Arc<str>,
+}
+
 /// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
 pub async fn run() -> std::io::Result<()> {
     let prod = std::env::var("APP_ENV")
         .map(|v| v == "production")
         .unwrap_or(false);
 
-    // Worker outbox + pool applicatif : démarrés si la base est configurée.
-    // Aucun consommateur enregistré ce cycle. Sans base, le service sert `/health`
-    // seul (sonde de vie, sans dépendance) ; les endpoints zones renvoient 500.
+    // Worker outbox + pool applicatif + ports du domaine comptes : démarrés si
+    // la configuration est complète. Sans elle, le service sert `/health` seul
+    // (sonde de vie, sans dépendance) ; les endpoints métier renvoient 500.
+    //
+    // Nuance de sécurité (cycle CPT) : une configuration ABSENTE dégrade
+    // silencieusement, une configuration PRÉSENTE mais invalide (JWT_SECRET
+    // trop court) échoue au démarrage — `socle::Config::from_env` la refuse.
+    let mut infra_opt: Option<InfraComptes> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
             Ok(pool) => {
@@ -78,6 +106,31 @@ pub async fn run() -> std::io::Result<()> {
                 let worker = socle::WorkerOutbox::new(pool.clone(), Vec::new());
                 tokio::spawn(worker.run());
                 eprintln!("migrations appliquées ; worker outbox démarré");
+
+                let ephemere = infra_redis::RedisEphemere::nouveau(&config.redis_url)
+                    .map_err(|e| std::io::Error::other(format!("Redis : {e}")))?;
+                let objets = infra_s3::S3Objets::nouveau(
+                    &config.s3_endpoint,
+                    &config.s3_access_key,
+                    &config.s3_secret_key,
+                    &config.s3_bucket,
+                    REGION_S3,
+                );
+                let sms: Arc<dyn EnvoiSms> = match config.sms_mode {
+                    // Le fournisseur réel arrive au cycle NTF, derrière ce même
+                    // port (research R6) — ici le code part dans les logs.
+                    socle::SmsMode::Traces => Arc::new(SmsTraces::new()),
+                };
+                eprintln!(
+                    "ports comptes câblés (Redis, Garage, SMS={:?})",
+                    config.sms_mode
+                );
+                infra_opt = Some(InfraComptes {
+                    ephemere: Arc::new(ephemere),
+                    sms,
+                    objets: Arc::new(objets),
+                    jwt_secret: Arc::from(config.jwt_secret.as_str()),
+                });
                 Some(pool)
             }
             Err(e) => {
@@ -85,8 +138,8 @@ pub async fn run() -> std::io::Result<()> {
                 None
             }
         },
-        Err(_) => {
-            eprintln!("configuration incomplète — worker outbox non démarré (/health seul)");
+        Err(e) => {
+            eprintln!("configuration incomplète — worker outbox non démarré (/health seul) : {e}");
             None
         }
     };
@@ -115,6 +168,9 @@ pub async fn run() -> std::io::Result<()> {
             .app_data(zones_http::config_query());
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
+        }
+        if let Some(infra) = infra_opt.clone() {
+            app = app.app_data(web::Data::new(infra));
         }
         app
             // Rate-limit par IP (politeness) sur toute la surface publique.
