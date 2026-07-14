@@ -103,12 +103,27 @@ impl PgZones {
                 }
             }
             "transport.actifs" => {
-                // Forme seulement ; l'existence des slugs est validée en T013.
-                let ok = valeur
+                let Some(slugs) = valeur
                     .as_array()
-                    .is_some_and(|a| a.iter().all(Value::is_string));
-                if !ok {
+                    .map(|a| a.iter().map(Value::as_str).collect::<Option<Vec<_>>>())
+                    .and_then(|opt| opt)
+                else {
                     return invalide("tableau de slugs (chaînes) attendu");
+                };
+                // Chaque slug doit exister au référentiel type_transport (T013).
+                for slug in slugs {
+                    let existe = sqlx::query_scalar!(
+                        "SELECT EXISTS(SELECT 1 FROM zones.type_transport WHERE slug = $1)",
+                        slug,
+                    )
+                    .fetch_one(&mut **tx)
+                    .await?;
+                    if existe != Some(true) {
+                        return Err(ErreurZones::ValeurInvalide {
+                            cle: cle.to_owned(),
+                            raison: format!("type de transport inconnu : {slug}"),
+                        });
+                    }
                 }
             }
             _ if cle.starts_with("drapeau.") => {
@@ -194,6 +209,19 @@ mod tests {
         .execute(&mut **tx)
         .await
         .unwrap();
+        // Types de transport requis par la validation de `transport.actifs`.
+        for (i, slug) in ["a_pied", "moto"].iter().enumerate() {
+            sqlx::query(
+                "INSERT INTO zones.type_transport (id, slug, nom_cle, ordre) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(slug)
+            .bind(format!("transport.{slug}.nom"))
+            .bind((i + 1) as i16)
+            .execute(&mut **tx)
+            .await
+            .unwrap();
+        }
         zone.id
     }
 

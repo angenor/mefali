@@ -84,7 +84,7 @@ Monorepo Mefali — chemins réels du plan : crate `backend/crates/zones/`, surf
 
 **Independent Test**: seeds → 8 types au référentiel, `transports_actifs` de Tiassalé = [a_pied, velo, moto] ; activation posée sur un parent héritée par les descendantes, surcharge locale prioritaire (spec US3)
 
-- [ ] T013 [P] [US3] `transports_actifs()` du trait dans `backend/crates/zones/src/resolution.rs` (lecture de `transport.actifs` résolu) + validation des slugs contre `zones.type_transport` dans `definir_parametre` (`backend/crates/zones/src/parametre.rs`) ; tests dans `backend/crates/zones/tests/transport.rs` : seed Tiassalé = 3 slugs, héritage depuis un parent, surcharge locale en bloc, slug inconnu refusé (`ValeurInvalide`), ajout d'un 9e type = INSERT seul (SC — aucune modification structurelle). Dépend de T007, T009. (½ j)
+- [X] T013 [P] [US3] `transports_actifs()` du trait dans `backend/crates/zones/src/resolution.rs` (lecture de `transport.actifs` résolu) + validation des slugs contre `zones.type_transport` dans `definir_parametre` (`backend/crates/zones/src/parametre.rs`) ; tests dans `backend/crates/zones/tests/transport.rs` : seed Tiassalé = 3 slugs, héritage depuis un parent, surcharge locale en bloc, slug inconnu refusé (`ValeurInvalide`), ajout d'un 9e type = INSERT seul (SC — aucune modification structurelle). Dépend de T007, T009. (½ j)
 
 **Checkpoint**: US1 + US2 + US3 — toutes les lectures du trait sont en place
 
