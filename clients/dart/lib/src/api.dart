@@ -10,6 +10,7 @@ import 'package:mefali_api_client/src/auth/basic_auth.dart';
 import 'package:mefali_api_client/src/auth/bearer_auth.dart';
 import 'package:mefali_api_client/src/auth/oauth.dart';
 import 'package:mefali_api_client/src/api/socle_api.dart';
+import 'package:mefali_api_client/src/api/zones_api.dart';
 
 class MefaliApiClient {
   static const String basePath = r'http://localhost';
@@ -109,5 +110,11 @@ class MefaliApiClient {
   /// by doing that all interceptors will not be executed
   SocleApi getSocleApi() {
     return SocleApi(dio, serializers);
+  }
+
+  /// Get ZonesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  ZonesApi getZonesApi() {
+    return ZonesApi(dio, serializers);
   }
 }

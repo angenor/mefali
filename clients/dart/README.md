@@ -65,16 +65,26 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
+[*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
 
 
 ## Documentation For Models
 
+ - [CorpsForcage](doc/CorpsForcage.md)
+ - [EtatCategorie](doc/EtatCategorie.md)
+ - [ForcageDto](doc/ForcageDto.md)
  - [HealthResponse](doc/HealthResponse.md)
 
 
 ## Documentation For Authorization
 
-Endpoints do not require authorization.
+
+Authentication schemes defined for the API:
+### adminToken
+
+- **Type**: API key
+- **API key parameter name**: X-Admin-Token
+- **Location**: HTTP header
 
 
 ## Author

@@ -258,6 +258,7 @@ dependencies = [
  "actix-governor",
  "actix-web",
  "sentry-actix",
+ "serde",
  "serde_json",
  "socle",
  "sqlx",
@@ -267,6 +268,8 @@ dependencies = [
  "utoipa",
  "utoipa-actix-web",
  "utoipa-swagger-ui",
+ "uuid",
+ "zones",
 ]
 
 [[package]]
@@ -4266,7 +4269,16 @@ checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 name = "zones"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
  "sha2 0.11.0",
+ "socle",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

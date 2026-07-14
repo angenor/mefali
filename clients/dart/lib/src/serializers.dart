@@ -14,11 +14,17 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
+import 'package:mefali_api_client/src/model/corps_forcage.dart';
+import 'package:mefali_api_client/src/model/etat_categorie.dart';
+import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
 
 part 'serializers.g.dart';
 
 @SerializersFor([
+  CorpsForcage,
+  EtatCategorie,
+  ForcageDto,
   HealthResponse,
 ])
 Serializers serializers = (_$serializers.toBuilder()

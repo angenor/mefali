@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Force l'état d'une catégorie dans une ville (ZON-02). Journalisé via outbox
+         *     (categorie.forcage_change + categorie.activation_changee si bascule) dans la
+         *     même transaction.
+         */
+        put: operations["forcer_categorie"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -25,6 +46,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Corps de la requête de forçage. */
+        CorpsForcage: {
+            /** @description Nouveau mode de forçage à appliquer. */
+            forcage: components["schemas"]["ForcageDto"];
+        };
+        /** @description État effectif d'une catégorie renvoyé après forçage (contrat). */
+        EtatCategorie: {
+            /** @description État EFFECTIF après application. */
+            actif: boolean;
+            /** @description Slug de la catégorie. */
+            categorie: string;
+            /** @description Mode de forçage appliqué. */
+            forcage: components["schemas"]["ForcageDto"];
+            /**
+             * Format: uuid
+             * @description Ville concernée.
+             */
+            zone: string;
+        };
+        /**
+         * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
+         * @enum {string}
+         */
+        ForcageDto: "automatique" | "force_actif" | "force_inactif";
         /**
          * @description Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde
          *     mesure la disponibilité du processus (non authentifiée, constitution VIII).
@@ -47,6 +92,56 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    forcer_categorie: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Ville dont on force la catégorie. */
+                zone_id: string;
+                /** @description Slug de la catégorie. */
+                categorie_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpsForcage"];
+            };
+        };
+        responses: {
+            /** @description Nouveau mode appliqué ; état effectif. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatCategorie"];
+                };
+            };
+            /** @description Jeton admin absent ou invalide. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Zone ou catégorie inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps invalide (forcage hors énumération). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;

@@ -26,13 +26,16 @@ path = "src/bin/seed.rs"
 actix-web.workspace = true
 tokio.workspace = true
 socle.workspace = true
+zones.workspace = true
 sqlx.workspace = true
 utoipa.workspace = true
 utoipa-actix-web.workspace = true
 utoipa-swagger-ui.workspace = true
 # Rate-limit par IP de GET /config (research.md R4). Consommé par zones_http (T015).
 actix-governor.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+uuid.workspace = true
 tracing.workspace = true
 tracing-actix-web.workspace = true
 sentry-actix.workspace = true

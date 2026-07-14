@@ -5,8 +5,10 @@
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
 pub mod health;
+pub mod zones_http;
 
 use actix_web::{web, App, HttpResponse, HttpServer};
+use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::openapi::{InfoBuilder, OpenApi};
 use utoipa_actix_web::AppExt;
 use utoipa_swagger_ui::SwaggerUi;
@@ -17,11 +19,17 @@ pub fn api_openapi() -> OpenApi {
     let (_, mut openapi) = App::new()
         .into_utoipa_app()
         .service(health::health)
+        .service(zones_http::forcer_categorie)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
         .version("0.1.0")
         .build();
+    // Garde admin du forçage (research R5) : jeton d'en-tête X-Admin-Token.
+    openapi.components.get_or_insert_with(Default::default).add_security_scheme(
+        "adminToken",
+        SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-Admin-Token"))),
+    );
     openapi
 }
 
@@ -52,10 +60,10 @@ pub async fn run() -> std::io::Result<()> {
         .map(|v| v == "production")
         .unwrap_or(false);
 
-    // Worker outbox : démarré si la base est configurée. Aucun consommateur
-    // enregistré ce cycle (les parcours métier en ajouteront). Sans base,
-    // le service sert `/health` seul (sonde de vie, sans dépendance).
-    match socle::Config::from_env() {
+    // Worker outbox + pool applicatif : démarrés si la base est configurée.
+    // Aucun consommateur enregistré ce cycle. Sans base, le service sert `/health`
+    // seul (sonde de vie, sans dépendance) ; les endpoints zones renvoient 500.
+    let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
             Ok(pool) => {
                 // Migrations embarquées appliquées au démarrage (déploiement prod
@@ -63,14 +71,21 @@ pub async fn run() -> std::io::Result<()> {
                 if let Err(e) = sqlx::migrate!("../migrations").run(&pool).await {
                     return Err(std::io::Error::other(format!("migrations : {e}")));
                 }
-                let worker = socle::WorkerOutbox::new(pool, Vec::new());
+                let worker = socle::WorkerOutbox::new(pool.clone(), Vec::new());
                 tokio::spawn(worker.run());
                 eprintln!("migrations appliquées ; worker outbox démarré");
+                Some(pool)
             }
-            Err(e) => eprintln!("base indisponible — worker outbox non démarré : {e}"),
+            Err(e) => {
+                eprintln!("base indisponible — worker outbox non démarré : {e}");
+                None
+            }
         },
-        Err(_) => eprintln!("configuration incomplète — worker outbox non démarré (/health seul)"),
-    }
+        Err(_) => {
+            eprintln!("configuration incomplète — worker outbox non démarré (/health seul)");
+            None
+        }
+    };
 
     let addr = ("0.0.0.0", 8080);
     println!(
@@ -82,8 +97,16 @@ pub async fn run() -> std::io::Result<()> {
         let (app, openapi) = App::new()
             .into_utoipa_app()
             .service(health::health)
+            .service(zones_http::forcer_categorie)
             .split_for_parts();
-        app.configure(mount_docs(prod, openapi))
+        let mut app = app
+            .configure(mount_docs(prod, openapi))
+            // Corps JSON invalide → 422 corps_invalide (clé i18n).
+            .app_data(zones_http::config_json());
+        if let Some(pool) = pool_opt.clone() {
+            app = app.app_data(web::Data::new(pool));
+        }
+        app
             // Corrélation par requête (request id) dans les logs JSON…
             .wrap(tracing_actix_web::TracingLogger::default())
             // …et capture des erreurs HTTP par Sentry (actif si SENTRY_DSN).
