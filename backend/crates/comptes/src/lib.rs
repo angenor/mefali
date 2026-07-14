@@ -17,7 +17,10 @@
 //!   impossible à contourner (constitution VI).
 
 pub mod modele;
+pub mod otp;
 pub mod ports;
+#[cfg(test)]
+mod test_zones;
 
 pub use modele::{
     Adresse, Appareil, AttributionRole, Compte, DossierCoursier, ErreurComptes, ErreurEphemere,

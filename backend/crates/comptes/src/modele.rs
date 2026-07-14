@@ -425,6 +425,17 @@ pub enum ErreurComptes {
     /// Configuration de zone irrésolvable (indicatif, rétention, transports).
     #[error("configuration de zone : {0}")]
     Zones(#[from] zones::ErreurZones),
+    /// Paramètre de zone requis absent de toute la chaîne d'héritage, ou
+    /// inexploitable. Le SERVICE est mal configuré (500) — ce n'est pas une
+    /// faute du client, et surtout pas un « numéro invalide » (422) : les
+    /// confondre enverrait le dev chasser un bug côté app.
+    #[error("configuration de zone « {cle} » : {raison}")]
+    ConfigurationZoneInvalide {
+        /// Clé du paramètre fautif.
+        cle: &'static str,
+        /// Ce qui cloche.
+        raison: String,
+    },
     /// Émission ou vérification d'un jeton d'accès en échec.
     #[error("jeton d'accès : {0}")]
     Jeton(String),
