@@ -71,6 +71,149 @@
         ]
       }
     },
+    "/auth/inscription": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Crée le compte après consentement ARTCI, puis ouvre sa session.",
+        "operationId": "inscrire",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Inscription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Compte créé (réduit au numéro vérifié) + session ouverte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatVerification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton d'inscription invalide, expiré (10 min) ou déjà consommé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Consentement absent — aucun compte n'est créé (FR-006).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/otp/demander": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Demande l'envoi d'un code OTP. Réponse TOUJOURS neutre (SC-003).",
+        "operationId": "demander",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeOtp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Réponse UNIQUE : numéro connu ou non, plafond atteint ou non. Chaque demande invalide le code précédent du numéro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepte"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Numéro non normalisable — erreur de FORMAT, neutre quant à l'existence d'un compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/otp/verifier": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.",
+        "operationId": "verifier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationOtp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Vérification réussie — deux issues discriminées par `resultat`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatVerification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Code faux, expiré (> 5 min) ou essais épuisés (3) — message NEUTRE unique, identique dans TOUS les cas d'échec.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Numéro non normalisable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/config": {
       "get": {
         "tags": [
@@ -140,6 +283,39 @@
   },
   "components": {
     "schemas": {
+      "Accepte": {
+        "type": "object",
+        "description": "Réponse UNIQUE de `/auth/otp/demander`.",
+        "required": [
+          "message_cle"
+        ],
+        "properties": {
+          "message_cle": {
+            "type": "string",
+            "description": "Toujours `comptes.otp.envoye_si_valide`.",
+            "example": "comptes.otp.envoye_si_valide"
+          }
+        }
+      },
+      "AppareilDto": {
+        "type": "object",
+        "description": "Appareil déclaré par l'app à l'ouverture de session.",
+        "required": [
+          "nom",
+          "plateforme"
+        ],
+        "properties": {
+          "nom": {
+            "type": "string",
+            "description": "Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste.",
+            "maxLength": 80
+          },
+          "plateforme": {
+            "$ref": "#/components/schemas/PlateformeDto",
+            "description": "Plateforme."
+          }
+        }
+      },
       "CategorieDto": {
         "type": "object",
         "description": "Catégorie active (contrat).",
@@ -160,6 +336,45 @@
           "slug": {
             "type": "string",
             "description": "Slug de la catégorie."
+          }
+        }
+      },
+      "CompteMoi": {
+        "type": "object",
+        "description": "Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`).",
+        "required": [
+          "id",
+          "telephone_e164",
+          "zone_id",
+          "roles",
+          "cree_le"
+        ],
+        "properties": {
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Création du compte."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant du compte."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EtatRoleDto"
+            },
+            "description": "Rôles et leurs statuts (tous, pas seulement les valides)."
+          },
+          "telephone_e164": {
+            "type": "string",
+            "description": "Identité Mefali — aucune donnée nominative au MVP."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de rattachement."
           }
         }
       },
@@ -243,6 +458,25 @@
           }
         }
       },
+      "DemandeOtp": {
+        "type": "object",
+        "description": "Corps de `POST /auth/otp/demander`.",
+        "required": [
+          "telephone",
+          "zone"
+        ],
+        "properties": {
+          "telephone": {
+            "type": "string",
+            "description": "Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4)."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de l'app (bootstrap Tiassalé — R13)."
+          }
+        }
+      },
       "DeviseDto": {
         "type": "object",
         "description": "Devise (contrat) — montants entiers en unités mineures (principe III).",
@@ -260,6 +494,24 @@
             "format": "int32",
             "description": "Nombre de décimales des unités mineures (0 pour XOF).",
             "minimum": 0
+          }
+        }
+      },
+      "ErreurApi": {
+        "type": "object",
+        "description": "Corps d'erreur du contrat — `{ code, message_cle }`.",
+        "required": [
+          "code",
+          "message_cle"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Code stable, exploitable par le client."
+          },
+          "message_cle": {
+            "type": "string",
+            "description": "Clé i18n fr — aucune chaîne UI en dur (constitution VII)."
           }
         }
       },
@@ -292,6 +544,39 @@
           }
         }
       },
+      "EtatRoleDto": {
+        "type": "object",
+        "description": "État d'un rôle (contrat).",
+        "required": [
+          "role",
+          "statut"
+        ],
+        "properties": {
+          "decide_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Horodatage de la dernière décision."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de la dernière décision admin."
+          },
+          "role": {
+            "type": "string",
+            "description": "Rôle concerné."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut courant."
+          }
+        }
+      },
       "ForcageDto": {
         "type": "string",
         "description": "Mode de forçage (contrat) — mappé sur [`zones::Forcage`].",
@@ -317,6 +602,130 @@
           "version": {
             "type": "string",
             "description": "Version du binaire (`CARGO_PKG_VERSION`)."
+          }
+        }
+      },
+      "Inscription": {
+        "type": "object",
+        "description": "Corps de `POST /auth/inscription`.",
+        "required": [
+          "jeton_inscription",
+          "consentement_version"
+        ],
+        "properties": {
+          "consentement_version": {
+            "type": "string",
+            "description": "Version du texte ARTCI accepté — servie par la config de zone."
+          },
+          "jeton_inscription": {
+            "type": "string",
+            "description": "Émis par `/auth/otp/verifier`, usage unique, TTL 10 min."
+          }
+        }
+      },
+      "JetonsDto": {
+        "type": "object",
+        "description": "Paire de jetons (contrat).",
+        "required": [
+          "acces",
+          "rafraichissement"
+        ],
+        "properties": {
+          "acces": {
+            "type": "string",
+            "description": "JWT HS256, 15 min (claims sub/sid)."
+          },
+          "rafraichissement": {
+            "type": "string",
+            "description": "Opaque 256 bits — tourne à chaque usage."
+          }
+        }
+      },
+      "PlateformeDto": {
+        "type": "string",
+        "description": "Plateforme de l'appareil (contrat).",
+        "enum": [
+          "android",
+          "ios"
+        ]
+      },
+      "ResultatVerification": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Numéro connu — session ouverte.",
+            "required": [
+              "jetons",
+              "compte",
+              "resultat"
+            ],
+            "properties": {
+              "compte": {
+                "$ref": "#/components/schemas/CompteMoi",
+                "description": "Compte connecté."
+              },
+              "jetons": {
+                "$ref": "#/components/schemas/JetonsDto",
+                "description": "Jetons de l'appareil."
+              },
+              "resultat": {
+                "type": "string",
+                "enum": [
+                  "session"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Numéro inconnu — consentement ARTCI exigé avant création (FR-006).",
+            "required": [
+              "jeton_inscription",
+              "resultat"
+            ],
+            "properties": {
+              "jeton_inscription": {
+                "type": "string",
+                "description": "Jeton d'inscription à usage unique."
+              },
+              "resultat": {
+                "type": "string",
+                "enum": [
+                  "consentement_requis"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`."
+      },
+      "VerificationOtp": {
+        "type": "object",
+        "description": "Corps de `POST /auth/otp/verifier`.",
+        "required": [
+          "telephone",
+          "zone",
+          "code",
+          "appareil"
+        ],
+        "properties": {
+          "appareil": {
+            "$ref": "#/components/schemas/AppareilDto",
+            "description": "Appareil — capté ici, conservé jusqu'à l'inscription (R3)."
+          },
+          "code": {
+            "type": "string",
+            "description": "Code à 6 chiffres.",
+            "pattern": "^[0-9]{6}$"
+          },
+          "telephone": {
+            "type": "string",
+            "description": "Le MÊME numéro que celui de la demande."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de l'app."
           }
         }
       }

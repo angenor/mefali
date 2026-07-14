@@ -4,6 +4,7 @@
 //! `/health`, Swagger UI en dev (absente en production, constitution VIII),
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
+pub mod auth_http;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
@@ -12,7 +13,7 @@ pub mod zones_http;
 use std::sync::Arc;
 
 use actix_web::{web, App, HttpResponse, HttpServer};
-use comptes::{DepotEphemere, DepotObjets, EnvoiSms, SmsTraces};
+use comptes::{EnvoiSms, PgComptes, SmsTraces};
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::openapi::{InfoBuilder, OpenApi};
 use utoipa_actix_web::AppExt;
@@ -26,6 +27,9 @@ pub fn api_openapi() -> OpenApi {
         .service(health::health)
         .service(zones_http::forcer_categorie)
         .service(zones_http::config)
+        .service(auth_http::demander)
+        .service(auth_http::verifier)
+        .service(auth_http::inscrire)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -66,21 +70,6 @@ fn mount_docs(prod: bool, openapi: OpenApi) -> impl FnOnce(&mut web::ServiceConf
 /// Région S3 signée mais non routante côté Garage (`infra/garage/garage.toml`).
 const REGION_S3: &str = "garage";
 
-/// Ports du domaine `comptes` câblés sur leurs implémentations réelles. Le
-/// domaine ne connaît que les traits ; cette structure est la composition
-/// racine (constitution II).
-#[derive(Clone)]
-pub struct InfraComptes {
-    /// Défis OTP, compteurs anti-abus, jetons d'inscription (Redis — R3).
-    pub ephemere: Arc<dyn DepotEphemere>,
-    /// Envoi des codes (journalisé tant que `SMS_MODE=traces` — R6).
-    pub sms: Arc<dyn EnvoiSms>,
-    /// Pièces d'identité et repères vocaux (Garage — R7).
-    pub objets: Arc<dyn DepotObjets>,
-    /// Secret de signature des jetons d'accès (R1).
-    pub jwt_secret: Arc<str>,
-}
-
 /// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
 pub async fn run() -> std::io::Result<()> {
     let prod = std::env::var("APP_ENV")
@@ -94,7 +83,7 @@ pub async fn run() -> std::io::Result<()> {
     // Nuance de sécurité (cycle CPT) : une configuration ABSENTE dégrade
     // silencieusement, une configuration PRÉSENTE mais invalide (JWT_SECRET
     // trop court) échoue au démarrage — `socle::Config::from_env` la refuse.
-    let mut infra_opt: Option<InfraComptes> = None;
+    let mut comptes_opt: Option<PgComptes> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
             Ok(pool) => {
@@ -125,12 +114,15 @@ pub async fn run() -> std::io::Result<()> {
                     "ports comptes câblés (Redis, Garage, SMS={:?})",
                     config.sms_mode
                 );
-                infra_opt = Some(InfraComptes {
-                    ephemere: Arc::new(ephemere),
+                // PgComptes EST la composition racine du domaine : pool + les
+                // trois ports + le secret. Les handlers ne voient que lui.
+                comptes_opt = Some(PgComptes::new(
+                    pool.clone(),
+                    Arc::new(ephemere),
                     sms,
-                    objets: Arc::new(objets),
-                    jwt_secret: Arc::from(config.jwt_secret.as_str()),
-                });
+                    Arc::new(objets),
+                    Arc::from(config.jwt_secret.as_bytes()),
+                ));
                 Some(pool)
             }
             Err(e) => {
@@ -160,6 +152,9 @@ pub async fn run() -> std::io::Result<()> {
             .service(health::health)
             .service(zones_http::forcer_categorie)
             .service(zones_http::config)
+            .service(auth_http::demander)
+            .service(auth_http::verifier)
+            .service(auth_http::inscrire)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -169,8 +164,8 @@ pub async fn run() -> std::io::Result<()> {
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
         }
-        if let Some(infra) = infra_opt.clone() {
-            app = app.app_data(web::Data::new(infra));
+        if let Some(depot) = comptes_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
         }
         app
             // Rate-limit par IP (politeness) sur toute la surface publique.

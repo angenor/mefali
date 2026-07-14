@@ -7,13 +7,28 @@ part of 'serializers.dart';
 // **************************************************************************
 
 Serializers _$serializers = (Serializers().toBuilder()
+      ..add(Accepte.serializer)
+      ..add(AppareilDto.serializer)
       ..add(CategorieDto.serializer)
+      ..add(CompteMoi.serializer)
       ..add(ConfigZone.serializer)
       ..add(CorpsForcage.serializer)
+      ..add(DemandeOtp.serializer)
       ..add(DeviseDto.serializer)
+      ..add(ErreurApi.serializer)
       ..add(EtatCategorie.serializer)
+      ..add(EtatRoleDto.serializer)
       ..add(ForcageDto.serializer)
       ..add(HealthResponse.serializer)
+      ..add(Inscription.serializer)
+      ..add(JetonsDto.serializer)
+      ..add(PlateformeDto.serializer)
+      ..add(ResultatVerification.serializer)
+      ..add(ResultatVerificationOneOf.serializer)
+      ..add(ResultatVerificationOneOf1.serializer)
+      ..add(ResultatVerificationOneOf1ResultatEnum.serializer)
+      ..add(ResultatVerificationOneOfResultatEnum.serializer)
+      ..add(VerificationOtp.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CategorieDto)]),
           () => ListBuilder<CategorieDto>())
@@ -27,7 +42,10 @@ Serializers _$serializers = (Serializers().toBuilder()
           () => MapBuilder<String, String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
-          () => ListBuilder<String>()))
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
+          () => ListBuilder<EtatRoleDto>()))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint

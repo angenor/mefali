@@ -47,13 +47,14 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:mefali_api_client/mefali_api_client.dart';
 
 
-final api = MefaliApiClient().getSocleApi();
+final api = MefaliApiClient().getAuthApi();
+final DemandeOtp demandeOtp = ; // DemandeOtp | 
 
 try {
-    final response = await api.health();
+    final response = await api.demander(demandeOtp);
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling SocleApi->health: $e\n");
+    print("Exception when calling AuthApi->demander: $e\n");
 }
 
 ```
@@ -64,6 +65,9 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
+[*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
+[*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
 [*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
@@ -71,13 +75,26 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [Accepte](doc/Accepte.md)
+ - [AppareilDto](doc/AppareilDto.md)
  - [CategorieDto](doc/CategorieDto.md)
+ - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [CorpsForcage](doc/CorpsForcage.md)
+ - [DemandeOtp](doc/DemandeOtp.md)
  - [DeviseDto](doc/DeviseDto.md)
+ - [ErreurApi](doc/ErreurApi.md)
  - [EtatCategorie](doc/EtatCategorie.md)
+ - [EtatRoleDto](doc/EtatRoleDto.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [HealthResponse](doc/HealthResponse.md)
+ - [Inscription](doc/Inscription.md)
+ - [JetonsDto](doc/JetonsDto.md)
+ - [PlateformeDto](doc/PlateformeDto.md)
+ - [ResultatVerification](doc/ResultatVerification.md)
+ - [ResultatVerificationOneOf](doc/ResultatVerificationOneOf.md)
+ - [ResultatVerificationOneOf1](doc/ResultatVerificationOneOf1.md)
+ - [VerificationOtp](doc/VerificationOtp.md)
 
 
 ## Documentation For Authorization

@@ -25,6 +25,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/inscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crée le compte après consentement ARTCI, puis ouvre sa session. */
+        post: operations["inscrire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/demander": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demande l'envoi d'un code OTP. Réponse TOUJOURS neutre (SC-003). */
+        post: operations["demander"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/verifier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Vérifie le code : ouvre une session (numéro connu) ou exige le consentement. */
+        post: operations["verifier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -67,6 +118,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Réponse UNIQUE de `/auth/otp/demander`. */
+        Accepte: {
+            /**
+             * @description Toujours `comptes.otp.envoye_si_valide`.
+             * @example comptes.otp.envoye_si_valide
+             */
+            message_cle: string;
+        };
+        /** @description Appareil déclaré par l'app à l'ouverture de session. */
+        AppareilDto: {
+            /** @description Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste. */
+            nom: string;
+            /** @description Plateforme. */
+            plateforme: components["schemas"]["PlateformeDto"];
+        };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
             /** @description Mixable au panier (CMD-01). */
@@ -75,6 +141,28 @@ export interface components {
             nom_cle: string;
             /** @description Slug de la catégorie. */
             slug: string;
+        };
+        /** @description Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`). */
+        CompteMoi: {
+            /**
+             * Format: date-time
+             * @description Création du compte.
+             */
+            cree_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant du compte.
+             */
+            id: string;
+            /** @description Rôles et leurs statuts (tous, pas seulement les valides). */
+            roles: components["schemas"]["EtatRoleDto"][];
+            /** @description Identité Mefali — aucune donnée nominative au MVP. */
+            telephone_e164: string;
+            /**
+             * Format: uuid
+             * @description Zone de rattachement.
+             */
+            zone_id: string;
         };
         /** @description Document `/config` (contrat) — sous-ensemble public de la config effective. */
         ConfigZone: {
@@ -107,6 +195,16 @@ export interface components {
             /** @description Nouveau mode de forçage à appliquer. */
             forcage: components["schemas"]["ForcageDto"];
         };
+        /** @description Corps de `POST /auth/otp/demander`. */
+        DemandeOtp: {
+            /** @description Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4). */
+            telephone: string;
+            /**
+             * Format: uuid
+             * @description Zone de l'app (bootstrap Tiassalé — R13).
+             */
+            zone: string;
+        };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
             /** @description Code ISO 4217 (ex. XOF). */
@@ -116,6 +214,13 @@ export interface components {
              * @description Nombre de décimales des unités mineures (0 pour XOF).
              */
             decimales: number;
+        };
+        /** @description Corps d'erreur du contrat — `{ code, message_cle }`. */
+        ErreurApi: {
+            /** @description Code stable, exploitable par le client. */
+            code: string;
+            /** @description Clé i18n fr — aucune chaîne UI en dur (constitution VII). */
+            message_cle: string;
         };
         /** @description État effectif d'une catégorie renvoyé après forçage (contrat). */
         EtatCategorie: {
@@ -130,6 +235,20 @@ export interface components {
              * @description Ville concernée.
              */
             zone: string;
+        };
+        /** @description État d'un rôle (contrat). */
+        EtatRoleDto: {
+            /**
+             * Format: date-time
+             * @description Horodatage de la dernière décision.
+             */
+            decide_le?: string | null;
+            /** @description Motif de la dernière décision admin. */
+            motif?: string | null;
+            /** @description Rôle concerné. */
+            role: string;
+            /** @description Statut courant. */
+            statut: string;
         };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
@@ -148,6 +267,53 @@ export interface components {
             status: string;
             /** @description Version du binaire (`CARGO_PKG_VERSION`). */
             version: string;
+        };
+        /** @description Corps de `POST /auth/inscription`. */
+        Inscription: {
+            /** @description Version du texte ARTCI accepté — servie par la config de zone. */
+            consentement_version: string;
+            /** @description Émis par `/auth/otp/verifier`, usage unique, TTL 10 min. */
+            jeton_inscription: string;
+        };
+        /** @description Paire de jetons (contrat). */
+        JetonsDto: {
+            /** @description JWT HS256, 15 min (claims sub/sid). */
+            acces: string;
+            /** @description Opaque 256 bits — tourne à chaque usage. */
+            rafraichissement: string;
+        };
+        /**
+         * @description Plateforme de l'appareil (contrat).
+         * @enum {string}
+         */
+        PlateformeDto: "android" | "ios";
+        /** @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`. */
+        ResultatVerification: {
+            /** @description Compte connecté. */
+            compte: components["schemas"]["CompteMoi"];
+            /** @description Jetons de l'appareil. */
+            jetons: components["schemas"]["JetonsDto"];
+            /** @enum {string} */
+            resultat: "session";
+        } | {
+            /** @description Jeton d'inscription à usage unique. */
+            jeton_inscription: string;
+            /** @enum {string} */
+            resultat: "consentement_requis";
+        };
+        /** @description Corps de `POST /auth/otp/verifier`. */
+        VerificationOtp: {
+            /** @description Appareil — capté ici, conservé jusqu'à l'inscription (R3). */
+            appareil: components["schemas"]["AppareilDto"];
+            /** @description Code à 6 chiffres. */
+            code: string;
+            /** @description Le MÊME numéro que celui de la demande. */
+            telephone: string;
+            /**
+             * Format: uuid
+             * @description Zone de l'app.
+             */
+            zone: string;
         };
     };
     responses: never;
@@ -205,6 +371,123 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    inscrire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Inscription"];
+            };
+        };
+        responses: {
+            /** @description Compte créé (réduit au numéro vérifié) + session ouverte. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatVerification"];
+                };
+            };
+            /** @description Jeton d'inscription invalide, expiré (10 min) ou déjà consommé. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Consentement absent — aucun compte n'est créé (FR-006). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    demander: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeOtp"];
+            };
+        };
+        responses: {
+            /** @description Réponse UNIQUE : numéro connu ou non, plafond atteint ou non. Chaque demande invalide le code précédent du numéro. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Accepte"];
+                };
+            };
+            /** @description Numéro non normalisable — erreur de FORMAT, neutre quant à l'existence d'un compte. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    verifier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationOtp"];
+            };
+        };
+        responses: {
+            /** @description Vérification réussie — deux issues discriminées par `resultat`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatVerification"];
+                };
+            };
+            /** @description Code faux, expiré (> 5 min) ou essais épuisés (3) — message NEUTRE unique, identique dans TOUS les cas d'échec. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Numéro non normalisable. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };
