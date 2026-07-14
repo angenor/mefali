@@ -41,6 +41,28 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | Type d'événement | Entité | Émis par | Statut |
 |---|---|---|---|
 | `socle.ping` | `socle` | tests d'intégration outbox | **Technique** — hors taxonomie produit, sert à valider le cycle de vie de l'outbox |
+| `zone.parametre_modifie` | `zone` | `PgZones::definir_parametre` (cycle ZON) | **Produit** — modification d'un paramètre de zone |
+| `categorie.forcage_change` | `activation_categorie` | `PgZones::forcer_categorie` (cycle ZON) | **Produit** — changement du mode de forçage admin |
+| `categorie.activation_changee` | `activation_categorie` | `PgZones::forcer_categorie` / `recalculer_activation` (cycle ZON) | **Produit** — bascule de l'état EFFECTIF d'activation |
 
-*(Les événements produit — `commande.*`, `livraison.*`, `paiement.*`… — sont
-ajoutés à ce registre par les cycles qui les émettent, avec leurs parcours.)*
+### Événements du cycle ZON (002 — zones & configuration héritée)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la mutation
+(constitution VI, research R9). `entite_id` = identifiant de la ligne mutée.
+Le journal « qui/quand/avant/après » exigé par ADM-05 est porté par ces
+événements — pas de table d'audit parallèle. Les seeds (chargement initial)
+n'émettent aucun événement.
+
+| Type | `entite_type` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|
+| `zone.parametre_modifie` | `zone` | `zone` (id), `cle`, `avant` (`null` si création), `apres`, `acteur` |
+| `categorie.forcage_change` | `activation_categorie` | `zone` (id), `categorie` (slug), `avant`, `apres` (modes de forçage), `acteur` |
+| `categorie.activation_changee` | `activation_categorie` | `zone` (id), `categorie` (slug), `avant`, `apres` (état effectif booléen), `origine` (`seuil` \| `forcage`), `nb_vendeurs` (si `origine=seuil`), `seuil` |
+
+`categorie.forcage_change` est émis à CHAQUE forçage ; `categorie.activation_changee`
+seulement quand l'état effectif (`actif`) bascule — les deux dans la même
+transaction que l'UPDATE. Les métriques d'activation dériveront de ces
+événements (aucun KPI manuel).
+
+*(Les autres événements produit — `commande.*`, `livraison.*`, `paiement.*`… —
+sont ajoutés à ce registre par les cycles qui les émettent, avec leurs parcours.)*
