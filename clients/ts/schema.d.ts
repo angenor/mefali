@@ -4,6 +4,48 @@
  */
 
 export interface paths {
+    "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Force l'état d'une catégorie dans une ville (ZON-02). Journalisé via outbox
+         *     (categorie.forcage_change + categorie.activation_changee si bascule) dans la
+         *     même transaction.
+         */
+        put: operations["forcer_categorie"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Configuration produit publique d'une zone (ZON-04). PUBLIC en lecture seule
+         *     (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag
+         *     (304 sur If-None-Match — polling horaire économe).
+         */
+        get: operations["config"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -25,6 +67,75 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Catégorie active (contrat). */
+        CategorieDto: {
+            /** @description Mixable au panier (CMD-01). */
+            mixable: boolean;
+            /** @description Clé i18n fr du nom. */
+            nom_cle: string;
+            /** @description Slug de la catégorie. */
+            slug: string;
+        };
+        /** @description Document `/config` (contrat) — sous-ensemble public de la config effective. */
+        ConfigZone: {
+            /** @description Catégories actives dans la zone. */
+            categories: components["schemas"]["CategorieDto"][];
+            /** @description Devise résolue. */
+            devise: components["schemas"]["DeviseDto"];
+            /** @description Drapeaux (clés `drapeau.*` sans préfixe). */
+            drapeaux: {
+                [key: string]: boolean;
+            };
+            /** @description Paramètres client (clés `client.*` sans préfixe). */
+            parametres: Record<string, never>;
+            /** @description Textes (clés `texte.*` sans préfixe) — clés i18n fr. */
+            textes: {
+                [key: string]: string;
+            };
+            /** @description Slugs des types de transport actifs. */
+            transports_actifs: string[];
+            /** @description Empreinte SHA-256 hex du document canonique (= ETag). */
+            version: string;
+            /**
+             * Format: uuid
+             * @description Zone servie.
+             */
+            zone: string;
+        };
+        /** @description Corps de la requête de forçage. */
+        CorpsForcage: {
+            /** @description Nouveau mode de forçage à appliquer. */
+            forcage: components["schemas"]["ForcageDto"];
+        };
+        /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
+        DeviseDto: {
+            /** @description Code ISO 4217 (ex. XOF). */
+            code: string;
+            /**
+             * Format: int32
+             * @description Nombre de décimales des unités mineures (0 pour XOF).
+             */
+            decimales: number;
+        };
+        /** @description État effectif d'une catégorie renvoyé après forçage (contrat). */
+        EtatCategorie: {
+            /** @description État EFFECTIF après application. */
+            actif: boolean;
+            /** @description Slug de la catégorie. */
+            categorie: string;
+            /** @description Mode de forçage appliqué. */
+            forcage: components["schemas"]["ForcageDto"];
+            /**
+             * Format: uuid
+             * @description Ville concernée.
+             */
+            zone: string;
+        };
+        /**
+         * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
+         * @enum {string}
+         */
+        ForcageDto: "automatique" | "force_actif" | "force_inactif";
         /**
          * @description Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde
          *     mesure la disponibilité du processus (non authentifiée, constitution VIII).
@@ -47,6 +158,107 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    forcer_categorie: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Ville dont on force la catégorie. */
+                zone_id: string;
+                /** @description Slug de la catégorie. */
+                categorie_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpsForcage"];
+            };
+        };
+        responses: {
+            /** @description Nouveau mode appliqué ; état effectif. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatCategorie"];
+                };
+            };
+            /** @description Jeton admin absent ou invalide. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Zone ou catégorie inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps invalide (forcage hors énumération). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    config: {
+        parameters: {
+            query: {
+                /** @description Zone dont on veut la configuration effective. */
+                zone: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Configuration effective résolue. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigZone"];
+                };
+            };
+            /** @description Non modifiée (If-None-Match == version). */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Paramètre zone absent ou UUID invalide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Zone inconnue — erreur explicite, jamais une config vide. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate-limit dépassé. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;

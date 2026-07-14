@@ -11,6 +11,13 @@ export 'package:mefali_api_client/src/serializers.dart';
 export 'package:mefali_api_client/src/model/date.dart';
 
 export 'package:mefali_api_client/src/api/socle_api.dart';
+export 'package:mefali_api_client/src/api/zones_api.dart';
 
+export 'package:mefali_api_client/src/model/categorie_dto.dart';
+export 'package:mefali_api_client/src/model/config_zone.dart';
+export 'package:mefali_api_client/src/model/corps_forcage.dart';
+export 'package:mefali_api_client/src/model/devise_dto.dart';
+export 'package:mefali_api_client/src/model/etat_categorie.dart';
+export 'package:mefali_api_client/src/model/forcage_dto.dart';
 export 'package:mefali_api_client/src/model/health_response.dart';
 

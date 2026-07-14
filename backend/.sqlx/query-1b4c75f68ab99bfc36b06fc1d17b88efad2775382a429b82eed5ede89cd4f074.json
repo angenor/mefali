@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE chaine AS (\n            SELECT id, parent_id, 0 AS profondeur\n            FROM zones.zone WHERE id = $1\n            UNION ALL\n            SELECT z.id, z.parent_id, c.profondeur + 1\n            FROM zones.zone z JOIN chaine c ON z.id = c.parent_id\n        )\n        SELECT DISTINCT ON (p.cle)\n            p.cle     AS \"cle!\",\n            p.valeur  AS \"valeur!\",\n            p.zone_id AS \"provenance!\"\n        FROM chaine c\n        JOIN zones.parametre_zone p ON p.zone_id = c.id\n        ORDER BY p.cle, c.profondeur ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cle!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "zones.parametre_zone",
+            "name": "cle"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "valeur!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "zones.parametre_zone",
+            "name": "valeur"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "provenance!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "zones.parametre_zone",
+            "name": "zone_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1b4c75f68ab99bfc36b06fc1d17b88efad2775382a429b82eed5ede89cd4f074"
+}

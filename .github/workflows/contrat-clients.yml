@@ -42,6 +42,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      # Flutter/Dart : requis par build_runner (sérialiseurs .g.dart du client Dart).
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
       - name: Régénérer openapi.json + clients
         env:
           SQLX_OFFLINE: 'true'

@@ -5,6 +5,117 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
+      "put": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Force l'état d'une catégorie dans une ville (ZON-02). Journalisé via outbox\n(categorie.forcage_change + categorie.activation_changee si bascule) dans la\nmême transaction.",
+        "operationId": "forcer_categorie",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "path",
+            "description": "Ville dont on force la catégorie.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "categorie_slug",
+            "in": "path",
+            "description": "Slug de la catégorie.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpsForcage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouveau mode appliqué ; état effectif.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatCategorie"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton admin absent ou invalide."
+          },
+          "404": {
+            "description": "Zone ou catégorie inconnue."
+          },
+          "422": {
+            "description": "Corps invalide (forcage hors énumération)."
+          }
+        },
+        "security": [
+          {
+            "adminToken": []
+          }
+        ]
+      }
+    },
+    "/config": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Configuration produit publique d'une zone (ZON-04). PUBLIC en lecture seule\n(clarification Q1), liste blanche de namespaces (R4), versionnée par ETag\n(304 sur If-None-Match — polling horaire économe).",
+        "operationId": "config",
+        "parameters": [
+          {
+            "name": "zone",
+            "in": "query",
+            "description": "Zone dont on veut la configuration effective.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration effective résolue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigZone"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Non modifiée (If-None-Match == version)."
+          },
+          "400": {
+            "description": "Paramètre zone absent ou UUID invalide."
+          },
+          "404": {
+            "description": "Zone inconnue — erreur explicite, jamais une config vide."
+          },
+          "429": {
+            "description": "Rate-limit dépassé."
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -29,6 +140,167 @@
   },
   "components": {
     "schemas": {
+      "CategorieDto": {
+        "type": "object",
+        "description": "Catégorie active (contrat).",
+        "required": [
+          "slug",
+          "nom_cle",
+          "mixable"
+        ],
+        "properties": {
+          "mixable": {
+            "type": "boolean",
+            "description": "Mixable au panier (CMD-01)."
+          },
+          "nom_cle": {
+            "type": "string",
+            "description": "Clé i18n fr du nom."
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug de la catégorie."
+          }
+        }
+      },
+      "ConfigZone": {
+        "type": "object",
+        "description": "Document `/config` (contrat) — sous-ensemble public de la config effective.",
+        "required": [
+          "zone",
+          "version",
+          "devise",
+          "drapeaux",
+          "categories",
+          "transports_actifs",
+          "textes",
+          "parametres"
+        ],
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategorieDto"
+            },
+            "description": "Catégories actives dans la zone."
+          },
+          "devise": {
+            "$ref": "#/components/schemas/DeviseDto",
+            "description": "Devise résolue."
+          },
+          "drapeaux": {
+            "type": "object",
+            "description": "Drapeaux (clés `drapeau.*` sans préfixe).",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "parametres": {
+            "type": "object",
+            "description": "Paramètres client (clés `client.*` sans préfixe)."
+          },
+          "textes": {
+            "type": "object",
+            "description": "Textes (clés `texte.*` sans préfixe) — clés i18n fr.",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "transports_actifs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Slugs des types de transport actifs."
+          },
+          "version": {
+            "type": "string",
+            "description": "Empreinte SHA-256 hex du document canonique (= ETag)."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone servie."
+          }
+        }
+      },
+      "CorpsForcage": {
+        "type": "object",
+        "description": "Corps de la requête de forçage.",
+        "required": [
+          "forcage"
+        ],
+        "properties": {
+          "forcage": {
+            "$ref": "#/components/schemas/ForcageDto",
+            "description": "Nouveau mode de forçage à appliquer."
+          }
+        }
+      },
+      "DeviseDto": {
+        "type": "object",
+        "description": "Devise (contrat) — montants entiers en unités mineures (principe III).",
+        "required": [
+          "code",
+          "decimales"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Code ISO 4217 (ex. XOF)."
+          },
+          "decimales": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre de décimales des unités mineures (0 pour XOF).",
+            "minimum": 0
+          }
+        }
+      },
+      "EtatCategorie": {
+        "type": "object",
+        "description": "État effectif d'une catégorie renvoyé après forçage (contrat).",
+        "required": [
+          "zone",
+          "categorie",
+          "forcage",
+          "actif"
+        ],
+        "properties": {
+          "actif": {
+            "type": "boolean",
+            "description": "État EFFECTIF après application."
+          },
+          "categorie": {
+            "type": "string",
+            "description": "Slug de la catégorie."
+          },
+          "forcage": {
+            "$ref": "#/components/schemas/ForcageDto",
+            "description": "Mode de forçage appliqué."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ville concernée."
+          }
+        }
+      },
+      "ForcageDto": {
+        "type": "string",
+        "description": "Mode de forçage (contrat) — mappé sur [`zones::Forcage`].",
+        "enum": [
+          "automatique",
+          "force_actif",
+          "force_inactif"
+        ]
+      },
       "HealthResponse": {
         "type": "object",
         "description": "Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde\nmesure la disponibilité du processus (non authentifiée, constitution VIII).",
@@ -47,6 +319,13 @@
             "description": "Version du binaire (`CARGO_PKG_VERSION`)."
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "adminToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Admin-Token"
       }
     }
   }

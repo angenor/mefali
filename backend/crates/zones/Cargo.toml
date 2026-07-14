@@ -7,3 +7,22 @@ license.workspace = true
 publish = false
 
 [dependencies]
+socle.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+# Empreinte SHA-256 du document /config (research.md R3). Consommé par
+# src/config_publique.rs (T014).
+sha2.workspace = true
+
+[dev-dependencies]
+sqlx.workspace = true
+uuid.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+tokio.workspace = true

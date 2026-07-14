@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT c.slug, c.nom_cle\n            FROM zones.activation_categorie a\n            JOIN zones.categorie c ON c.id = a.categorie_id\n            WHERE a.zone_id = $1 AND a.actif = true\n            ORDER BY c.slug\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "zones.categorie",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "nom_cle",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "zones.categorie",
+            "name": "nom_cle"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c796f436531a242b509352329f2f68f605ff44654b9c391af8ef6d38fb5bf6a8"
+}

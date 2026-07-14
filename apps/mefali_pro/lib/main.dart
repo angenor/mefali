@@ -1,10 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import 'l10n/app_localizations.dart';
 import 'splash_screen.dart';
 
-void main() => runApp(const MefaliProApp());
+/// URL du backend, surchargeable au build (`--dart-define=MEFALI_API_URL=...`).
+const String _urlApi =
+    String.fromEnvironment('MEFALI_API_URL', defaultValue: 'http://localhost:8080');
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Configuration produit distante démarrée en arrière-plan (cache immédiat +
+  // rafraîchissement horaire) — aucun écran, ne bloque pas le lancement.
+  unawaited(demarrerServiceConfig(urlApi: _urlApi));
+  runApp(const MefaliProApp());
+}
 
 /// Application pro Mefali. Branche `MefaliTheme` et la localisation fr.
 class MefaliProApp extends StatelessWidget {

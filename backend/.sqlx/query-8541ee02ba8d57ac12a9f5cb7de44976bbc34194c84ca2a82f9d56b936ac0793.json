@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO zones.zone (id, parent_id, type, nom)\n             VALUES ($1, $2, $3::text::zones.type_zone, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8541ee02ba8d57ac12a9f5cb7de44976bbc34194c84ca2a82f9d56b936ac0793"
+}

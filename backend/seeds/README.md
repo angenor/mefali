@@ -19,7 +19,7 @@ zéro doublon (data-model.md §3).
 | Fichier | Contenu | Cycle |
 |---|---|---|
 | `00_demo_marker.sql` | Marqueur du jeu de démo | socle |
-| `10_zones.sql` | Zones de Tiassalé | ZON *(à venir)* |
+| `10_zones_tiassale.sql` | CI > Tiassalé, 8 transports, 6 catégories, devise/drapeaux/seuils, 6 activations (UUID fixes) | ZON |
 | `20_comptes.sql` | Comptes de démo | CPT *(à venir)* |
 | `30_vendeurs.sql`, `35_articles.sql` | Vendeurs agréés + catalogues | VND *(à venir)* |
 | `40_tarification.sql` | Grilles de tarif | TRF *(à venir)* |

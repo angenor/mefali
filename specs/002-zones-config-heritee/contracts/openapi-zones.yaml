@@ -1,0 +1,142 @@
+# Contrat de conception du cycle 002 — zones & configuration.
+# RÉFÉRENCE de design : la source de vérité reste openapi.json GÉNÉRÉ par
+# utoipa depuis les handlers (constitution I) ; ce fichier fixe la cible que
+# les annotations #[utoipa::path] doivent produire (même pratique que
+# specs/001-socle-monorepo/contracts/openapi-health.yaml).
+openapi: 3.1.0
+info:
+  title: Mefali API — surface zones (cycle 002)
+  version: 0.1.0
+paths:
+  /config:
+    get:
+      tags: [zones]
+      summary: Configuration produit effective d'une zone (ZON-04)
+      description: >
+        PUBLIC en lecture seule (clarification Q1 de la spec — exception
+        documentée au principe VIII) ; rate-limité par IP (actix-governor).
+        Ne sert QUE la liste blanche de namespaces (research R4) : devise,
+        drapeau.*, texte.*, client.* + vues dérivées categories (actives) et
+        transports_actifs. `version` = SHA-256 du document canonique servi
+        (research R3), renvoyée aussi en ETag ; `If-None-Match` → 304.
+      parameters:
+        - name: zone
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: Zone dont on veut la configuration effective.
+      responses:
+        "200":
+          description: Configuration effective (résolue par héritage).
+          headers:
+            ETag: { schema: { type: string }, description: Égal à `version`. }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConfigZone" }
+              example:
+                zone: "01900000-0000-7000-8000-000000000002"
+                version: "3f6c…(sha-256 hex)"
+                devise: { code: "XOF", decimales: 0 }
+                drapeaux:
+                  livraison_offerte_mefali: true
+                  gratuite_commissions: true
+                  pluie: false
+                categories:
+                  - { slug: "marche", nom_cle: "categorie.marche.nom", mixable: true }
+                transports_actifs: ["a_pied", "velo", "moto"]
+                textes: {}
+                parametres: {}
+        "304": { description: Non modifiée (If-None-Match == version). }
+        "400": { description: Paramètre `zone` absent ou UUID invalide., content: { application/json: { schema: { $ref: "#/components/schemas/Erreur" } } } }
+        "404": { description: Zone inconnue — erreur EXPLICITE (FR-021), jamais une config vide., content: { application/json: { schema: { $ref: "#/components/schemas/Erreur" } } } }
+        "429": { description: Rate-limit dépassé. }
+  /admin/zones/{zone_id}/categories/{categorie_slug}/forcage:
+    put:
+      tags: [zones]
+      summary: Forçage d'une catégorie par ville (ZON-02) — SEULE écriture admin du cycle (clarification Q2)
+      description: >
+        Protégé par l'en-tête X-Admin-Token (garde temporaire, remplacée par
+        JWT + rôle admin au cycle CPT — research R5, Complexity Tracking).
+        Journalisé qui/quand/avant/après via outbox (categorie.forcage_change,
+        + categorie.activation_changee si l'état effectif bascule) dans la
+        même transaction (constitution VI).
+      security: [{ adminToken: [] }]
+      parameters:
+        - { name: zone_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: categorie_slug, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [forcage]
+              properties:
+                forcage: { $ref: "#/components/schemas/Forcage" }
+      responses:
+        "200":
+          description: Nouveau mode appliqué ; renvoie l'état effectif.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EtatCategorie" }
+        "401": { description: Jeton admin absent ou invalide. }
+        "404": { description: Zone ou catégorie inconnue. }
+        "422": { description: Corps invalide (forcage hors énumération). }
+components:
+  securitySchemes:
+    adminToken: { type: apiKey, in: header, name: X-Admin-Token }
+  schemas:
+    ConfigZone:
+      type: object
+      required: [zone, version, devise, drapeaux, categories, transports_actifs, textes, parametres]
+      properties:
+        zone: { type: string, format: uuid }
+        version: { type: string, description: SHA-256 hex du document canonique. }
+        devise:
+          type: object
+          required: [code, decimales]
+          properties:
+            code: { type: string, description: ISO 4217 (XOF). }
+            decimales: { type: integer, description: 0 pour XOF — montants entiers en unités mineures. }
+        drapeaux:
+          type: object
+          additionalProperties: { type: boolean }
+          description: Clés drapeau.* sans le préfixe.
+        categories:
+          type: array
+          description: Catégories ACTIVES dans la zone uniquement.
+          items:
+            type: object
+            required: [slug, nom_cle, mixable]
+            properties:
+              slug: { type: string }
+              nom_cle: { type: string, description: Clé i18n fr — jamais de chaîne UI en dur. }
+              mixable: { type: boolean, description: CMD-01 — mixable au panier. }
+        transports_actifs:
+          type: array
+          items: { type: string }
+          description: Slugs du référentiel, résolus par héritage.
+        textes:
+          type: object
+          additionalProperties: { type: string }
+          description: Clés texte.* (fr) sans le préfixe — structure prête pour en (ZON-05 hors périmètre).
+        parametres:
+          type: object
+          description: Clés client.* sans le préfixe.
+    Forcage:
+      type: string
+      enum: [automatique, force_actif, force_inactif]
+    EtatCategorie:
+      type: object
+      required: [zone, categorie, forcage, actif]
+      properties:
+        zone: { type: string, format: uuid }
+        categorie: { type: string, description: slug }
+        forcage: { $ref: "#/components/schemas/Forcage" }
+        actif: { type: boolean, description: État EFFECTIF après application. }
+    Erreur:
+      type: object
+      required: [code, message_cle]
+      properties:
+        code: { type: string, description: ex. zone_inconnue }
+        message_cle: { type: string, description: Clé i18n fr (constitution VII) — pas de message en dur. }
