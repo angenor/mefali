@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE zones.zone SET parent_id = $2, modifie_le = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4925ee297d34ffd1a2dc5477c4539a2807f753d4beb0fda1876fa26555a25ec2"
+}

@@ -9,6 +9,7 @@
 //! Écritures = méthodes inhérentes de [`PgZones`] sur `&mut PgTransaction`
 //! (événements outbox inclus, constitution VI). Lectures = trait sur pool.
 
+pub mod arbre;
 pub mod depot;
 pub mod modele;
 
