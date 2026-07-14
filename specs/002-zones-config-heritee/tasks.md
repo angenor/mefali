@@ -107,7 +107,7 @@ Monorepo Mefali — chemins réels du plan : crate `backend/crates/zones/`, surf
 
 ## Phase 7: Polish & validation finale
 
-- [ ] T018 Passe complète de `specs/002-zones-config-heritee/quickstart.md` sur environnement dev (docker compose) : SC-001 → SC-008, double seed, forçage curl + événements outbox constatés, `./scripts/generate-clients.sh` puis `git status --porcelain` vide (CI contrat-clients). Dépend de toutes les stories. (½ j)
+- [X] T018 Passe complète de `specs/002-zones-config-heritee/quickstart.md` sur environnement dev (docker compose) : SC-001 → SC-008, double seed, forçage curl + événements outbox constatés, `./scripts/generate-clients.sh` puis `git status --porcelain` vide (CI contrat-clients). Dépend de toutes les stories. (½ j)
 - [ ] T019 Revue Definition of Done (`docs/user-stories-v2.md` §0.4 — DERNIÈRE tâche, demande utilisateur) : (1) critères d'acceptation ZON-01→04 couverts par tests unitaires + intégration sur transitions ; (2) annotations utoipa à jour, clients Dart/TS régénérés SANS diff manuel ; (3) migration `0002_zones.sql` versionnée + seeds à jour ; (4) événements outbox pour chaque changement d'état + taxonomie MET (aucun parcours utilisateur ce cycle → pas d'événement métrique app) ; (5) clés i18n fr externalisées (`nom_cle`, `message_cle`) ; (6) paramètres « paramétrables » en configuration de zone — AUCUNE constante en dur ; puis re-passer `specs/002-zones-config-heritee/checklists/requirements.md`, `cargo test` + `cargo sqlx prepare` verts, commits conventionnels `feat(zones): ZON-0x …`. Dépend de T018. (½ j)
 
 ---
