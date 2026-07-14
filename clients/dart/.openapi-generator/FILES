@@ -31,6 +31,3 @@ lib/src/model/forcage_dto.dart
 lib/src/model/health_response.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/categorie_dto_test.dart
-test/config_zone_test.dart
-test/devise_dto_test.dart
