@@ -353,7 +353,9 @@ mod tests {
         assert_eq!(apres_un.1, 8, "8 types de transport");
         assert_eq!(apres_un.2, 6, "6 catégories");
         assert_eq!(apres_un.3, 6, "6 activations Tiassalé");
-        assert_eq!(apres_un.4, 18, "8 (pays) + 10 (ville) paramètres");
+        // 8 (pays, cycle 002) + 4 (pays, cycle 003 : indicatif, rétention du
+        // repère vocal, durée max de note vocale, version ARTCI) + 10 (ville).
+        assert_eq!(apres_un.4, 22, "12 (pays) + 10 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),
@@ -364,5 +366,124 @@ mod tests {
             Some(serde_json::json!(8)),
             "seuil restauration 8"
         );
+    }
+
+    /// T009 — double seed du module comptes → état strictement identique
+    /// (SC-008), et le premier admin est bien amorcé hors parcours applicatif.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn seed_comptes_idempotent(pool: sqlx::PgPool) {
+        const ADMIN: &str = "01900000-0000-7000-8000-000000000401";
+
+        /// Comptes, attributions, et les colonnes qu'un `now()` mal placé dans
+        /// le seed ferait dériver à chaque exécution.
+        type Etat = (i64, i64, String, chrono::DateTime<chrono::Utc>);
+        async fn etat(pool: &sqlx::PgPool) -> Etat {
+            let comptes: i64 = sqlx::query_scalar("SELECT count(*) FROM comptes.compte")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+            let attributions: i64 =
+                sqlx::query_scalar("SELECT count(*) FROM comptes.attribution_role")
+                    .fetch_one(pool)
+                    .await
+                    .unwrap();
+            let (telephone, consentement_le): (String, chrono::DateTime<chrono::Utc>) =
+                sqlx::query_as("SELECT telephone_e164, consentement_le FROM comptes.compte WHERE id = $1::uuid")
+                    .bind(ADMIN)
+                    .fetch_one(pool)
+                    .await
+                    .unwrap();
+            (comptes, attributions, telephone, consentement_le)
+        }
+
+        charger_seeds(&pool).await.unwrap();
+        let apres_un = etat(&pool).await;
+        charger_seeds(&pool).await.unwrap();
+        let apres_deux = etat(&pool).await;
+
+        assert_eq!(
+            apres_un, apres_deux,
+            "double seed → état strictement identique (horodatages figés compris)"
+        );
+        assert_eq!(apres_un.0, 1, "le seul compte est le premier admin");
+        assert_eq!(apres_un.1, 2, "ses rôles : client + admin");
+
+        // FR-012 — c'est le seed, et lui seul, qui amorce la chaîne des admins.
+        // Colonne QUALIFIÉE : tri par l'énum (client, coursier, vendeur, admin)
+        // et non par le texte de la colonne de sortie — cf. depot.rs.
+        let roles: Vec<String> = sqlx::query_scalar(
+            "SELECT role::text FROM comptes.attribution_role
+             WHERE compte_id = $1::uuid AND statut = 'valide'
+             ORDER BY attribution_role.role",
+        )
+        .bind(ADMIN)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            roles,
+            vec!["client", "admin"],
+            "les deux rôles sont VALIDES"
+        );
+
+        // Aucun événement outbox : un chargement n'est pas une transition.
+        let evenements: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM outbox.evenement WHERE type_evenement LIKE 'compte.%'
+                OR type_evenement LIKE 'role.%'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(evenements, 0, "le seed n'émet aucun événement");
+    }
+
+    /// FR-024 — les paramètres du module sont posés au PAYS et hérités par
+    /// Tiassalé : rien de tout cela n'a le droit d'être en dur dans le code.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn seed_comptes_parametres_herites_par_tiassale(pool: sqlx::PgPool) {
+        use zones::ConfigurationZones;
+        charger_seeds(&pool).await.unwrap();
+
+        let tiassale: uuid::Uuid = "01900000-0000-7000-8000-000000000002".parse().unwrap();
+        let depot = zones::PgZones::new(pool.clone());
+
+        for (cle, attendu) in [
+            ("telephone.indicatif_defaut", serde_json::json!("+225")),
+            (
+                "adresse.retention_repere_vocal_jours",
+                serde_json::json!(365),
+            ),
+            ("medias.note_vocale_duree_max_s", serde_json::json!(30)),
+            ("consentement.artci_version", serde_json::json!("2026-07")),
+        ] {
+            assert_eq!(
+                depot.parametre(tiassale, cle).await.unwrap(),
+                Some(attendu),
+                "« {cle} » doit être résolu à Tiassalé par héritage du pays"
+            );
+        }
+    }
+
+    /// Le numéro du premier admin doit être RÉELLEMENT utilisable : c'est par
+    /// OTP sur ce numéro que l'admin obtient son jeton (quickstart SC-005). Un
+    /// placeholder non normalisable rendrait l'admin inaccessible — sans qu'un
+    /// seul test ne le signale.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn seed_admin_a_un_numero_utilisable(pool: sqlx::PgPool) {
+        charger_seeds(&pool).await.unwrap();
+        let tiassale: uuid::Uuid = "01900000-0000-7000-8000-000000000002".parse().unwrap();
+        let telephone: String = sqlx::query_scalar(
+            "SELECT telephone_e164 FROM comptes.compte
+             WHERE id = '01900000-0000-7000-8000-000000000401'::uuid",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        let normalise =
+            comptes::otp::normaliser_e164(&zones::PgZones::new(pool.clone()), tiassale, &telephone)
+                .await
+                .expect("le numéro du premier admin doit passer la normalisation E.164");
+        assert_eq!(normalise, telephone, "déjà en forme canonique");
     }
 }
