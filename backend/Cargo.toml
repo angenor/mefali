@@ -88,7 +88,12 @@ actix-governor = "0.10.0"
 
 # --- Authentification et OTP (cycle CPT 003) — versions figées le 2026-07-14 ---
 # Jeton d'accès JWT HS256 15 min (research.md R1).
-jsonwebtoken = "10.4.0"
+# ⚠ jsonwebtoken 10 n'embarque AUCUN backend crypto par défaut (`default =
+# ["use_pem"]`) : sans feature, `encode` compile puis PANIQUE à la première
+# signature. `rust_crypto` (pur Rust) plutôt que `aws_lc_rs` : le builder de
+# `backend/Dockerfile` n'a que build-essential/pkg-config, pas cmake. `use_pem`
+# est inutile ici — HS256 signe avec un secret brut, jamais une clé PEM.
+jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto"] }
 # Normalisation E.164 (port Rust de libphonenumber — research.md R4).
 phonenumber = "0.3.10"
 # HMAC-SHA256 du code OTP au repos (research.md R3) — s'appuie sur sha2 ci-dessus.

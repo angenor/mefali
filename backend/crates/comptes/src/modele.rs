@@ -133,7 +133,9 @@ pub struct Compte {
     pub consentement_le: DateTime<Utc>,
     /// Création du compte.
     pub cree_le: DateTime<Utc>,
-    /// Dernière vérification OTP réussie ; `None` avant la toute première.
+    /// Dernière vérification OTP réussie sur un compte DÉJÀ existant ; `None`
+    /// tant que le compte ne s'est pas reconnecté depuis sa création (la
+    /// vérification qui a mené à l'inscription précède le compte lui-même).
     pub derniere_connexion_le: Option<DateTime<Utc>>,
 }
 

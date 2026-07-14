@@ -16,12 +16,17 @@
 //!   de sorte que l'atomicité « transition + événement outbox » soit
 //!   impossible à contourner (constitution VI).
 
+pub mod depot;
+pub mod inscription;
 pub mod modele;
 pub mod otp;
 pub mod ports;
+pub mod session;
 #[cfg(test)]
 mod test_zones;
 
+pub use depot::{Comptes, PgComptes};
+pub use inscription::{IssueVerification, SessionOuverte};
 pub use modele::{
     Adresse, Appareil, AttributionRole, Compte, DossierCoursier, ErreurComptes, ErreurEphemere,
     ErreurObjets, ErreurSms, OrigineRevocation, Plateforme, Role, Session, StatutRole,
@@ -31,3 +36,4 @@ pub use ports::{
     Compteur, DepotEphemere, DepotObjets, EnvoiSms, HorlogeManuelle, IssueDefi, JetonInscription,
     MemoireEphemere, MemoireObjets, SmsEnvoye, SmsTraces, UrlPresignee,
 };
+pub use session::{verifier_acces, Claims, Jetons, OrigineSession, ACCES_TTL};

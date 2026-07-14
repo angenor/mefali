@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT role::text AS \"role!\", statut::text AS \"statut!\", motif,\n                      decide_par, decide_le, demande_le\n               FROM comptes.attribution_role WHERE compte_id = $1\n               ORDER BY attribution_role.role",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "role!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "motif",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.attribution_role",
+            "name": "motif"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "decide_par",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.attribution_role",
+            "name": "decide_par"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "decide_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.attribution_role",
+            "name": "decide_le"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "demande_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.attribution_role",
+            "name": "demande_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "dfd938aa54a944dc4a3eb2cb62b1ef6237da862e8b5647944ce84b243475b339"
+}
