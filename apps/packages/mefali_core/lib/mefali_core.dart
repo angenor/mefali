@@ -1,6 +1,7 @@
 /// Thème Material 3 Mefali et composants partagés (depuis `docs/design/tokens.md`).
 library;
 
+export 'src/config/amorce_config.dart';
 export 'src/config/cache_config.dart';
 export 'src/config/config_distante.dart';
 export 'src/config/service_config.dart';
