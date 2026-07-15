@@ -36,6 +36,17 @@ class ConfigDistante {
   /// Document complet de `/config`.
   final Map<String, dynamic> donnees;
 
+  /// Slugs des types de transport ACTIFS dans la zone (référentiel ZON-03).
+  ///
+  /// C'est la SEULE liste dans laquelle un coursier peut déclarer un véhicule
+  /// (FR-015) : le serveur refuse tout le reste. Servie à plat par `/config`,
+  /// et non dans `parametres` — ce dernier ne porte que les clés `client.*`.
+  ///
+  /// Vide si la config n'a jamais pu être chargée : l'appelant doit alors le
+  /// dire plutôt que d'afficher un formulaire sans choix.
+  List<String> get transportsActifs =>
+      (donnees['transports_actifs'] as List?)?.cast<String>() ?? const [];
+
   /// Sérialise pour le cache local.
   String encoder() => jsonEncode(donnees);
 }

@@ -5,6 +5,7 @@ import 'package:mefali_core/mefali_core.dart';
 import '../l10n/app_localizations.dart';
 import 'composants.dart';
 import 'etat_roles.dart';
+import 'formulaire_dossier.dart';
 import 'libelles_roles.dart';
 import 'pied_pro.dart';
 
@@ -19,10 +20,35 @@ import 'pied_pro.dart';
 /// s'ajouter ici.
 class EcranEtatDemande extends StatelessWidget {
   /// Crée l'écran d'état de la demande.
-  const EcranEtatDemande({super.key, required this.etat});
+  const EcranEtatDemande({super.key, required this.etat, this.transportsActifs = const []});
 
   /// Rôles du compte connecté.
   final EtatRoles etat;
+
+  /// Slugs des types de transport actifs dans la zone, pour le formulaire.
+  final List<String> transportsActifs;
+
+  /// Le dossier coursier peut-il être (re)déposé ?
+  ///
+  /// FR-015 : jamais depuis `en_attente` (c'est déjà fait) ni `valide`. Après
+  /// un refus, si — c'est tout l'intérêt du motif affiché juste au-dessus.
+  bool get _peutSoumettre => switch (etat.statut(RolePro.coursier)) {
+        StatutRolePro.aucun || StatutRolePro.refuse => true,
+        StatutRolePro.enAttente || StatutRolePro.valide || StatutRolePro.suspendu => false,
+      };
+
+  Future<void> _ouvrirFormulaire(BuildContext context) async {
+    final soumis = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => FormulaireDossierCoursier(
+          session: etat.session,
+          transportsActifs: transportsActifs,
+        ),
+      ),
+    );
+    // Le dossier est parti : l'état affiché n'est plus le bon.
+    if (soumis ?? false) await etat.charger();
+  }
 
   /// Situation à mettre en titre.
   ///
@@ -117,12 +143,23 @@ class EcranEtatDemande extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: MefaliTokens.space3),
-              // Action principale en bas d'écran (règle d'or 3).
-              BoutonPrincipal(
-                libelle: l10n.proActualiser,
-                picto: Symbols.refresh,
-                onPresse: etat.charger,
-              ),
+              // Action principale en bas d'écran (règle d'or 3). Constituer le
+              // dossier prime sur actualiser quand c'est possible : c'est la
+              // seule action qui fasse AVANCER la situation.
+              if (_peutSoumettre)
+                BoutonPrincipal(
+                  libelle: situation == StatutRolePro.refuse
+                      ? l10n.proDossierRenvoyer
+                      : l10n.proDossierConstituer,
+                  picto: Symbols.assignment_ind,
+                  onPresse: () => _ouvrirFormulaire(context),
+                )
+              else
+                BoutonPrincipal(
+                  libelle: l10n.proActualiser,
+                  picto: Symbols.refresh,
+                  onPresse: etat.charger,
+                ),
               const SizedBox(height: MefaliTokens.space2),
               PiedPro(session: etat.session),
             ],

@@ -22,6 +22,26 @@ extension LibellesRoles on AppLocalizations {
         StatutRolePro.refuse => proStatutRefuse,
         StatutRolePro.suspendu => proStatutSuspendu,
       };
+
+  /// Libellé d'un type de transport du référentiel ZON-03.
+  ///
+  /// Le slug est du PROTOCOLE ; son libellé est une clé i18n (FR-024). Le
+  /// référentiel porte bien un `nom_cle` côté backend, mais `/config` ne sert
+  /// que les slugs ACTIFS — le libellé se résout donc ici.
+  ///
+  /// Un slug inconnu de cette app (type ajouté au référentiel après une version)
+  /// s'affiche tel quel : mieux vaut un mot brut qu'une case sans nom.
+  String transport(String slug) => switch (slug) {
+        'a_pied' => proTransportAPied,
+        'velo' => proTransportVelo,
+        'moto' => proTransportMoto,
+        'tricycle_taxi' => proTransportTricycleTaxi,
+        'tricycle_cargo' => proTransportTricycleCargo,
+        'voiture' => proTransportVoiture,
+        'camionnette' => proTransportCamionnette,
+        'camion' => proTransportCamion,
+        _ => slug,
+      };
 }
 
 /// Ton de la puce d'un statut (planche de style §4 — chips de statut).

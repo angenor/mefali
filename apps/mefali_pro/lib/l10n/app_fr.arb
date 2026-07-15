@@ -115,5 +115,105 @@
   "proBasculeSemantique": "Choisir l'interface affichée",
   "@proBasculeSemantique": {
     "description": "Libellé d'accessibilité de la bascule entre rôles validés (FR-013)"
+  },
+  "proDossierTitre": "Devenir coursier",
+  "@proDossierTitre": {
+    "description": "Titre du formulaire de dossier coursier (CPT-04)"
+  },
+  "proDossierAide": "Mefali vérifie votre dossier avant de vous confier des courses.",
+  "@proDossierAide": {
+    "description": "Aide en tête du formulaire de dossier coursier"
+  },
+  "proDossierConstituer": "Constituer mon dossier",
+  "@proDossierConstituer": {
+    "description": "Action : ouvrir le formulaire de dossier pour la première fois"
+  },
+  "proDossierRenvoyer": "Corriger et renvoyer mon dossier",
+  "@proDossierRenvoyer": {
+    "description": "Action : re-soumettre le dossier après un refus (FR-015)"
+  },
+  "proDossierPiece": "Pièce d'identité",
+  "@proDossierPiece": {
+    "description": "Section du formulaire : la pièce d'identité"
+  },
+  "proDossierPhotographier": "Photographier",
+  "@proDossierPhotographier": {
+    "description": "Action : prendre la pièce d'identité en photo"
+  },
+  "proDossierChoisirFichier": "Choisir un fichier",
+  "@proDossierChoisirFichier": {
+    "description": "Action : choisir la pièce d'identité dans la galerie"
+  },
+  "proDossierVehicules": "Vos véhicules",
+  "@proDossierVehicules": {
+    "description": "Section du formulaire : les véhicules déclarés"
+  },
+  "proDossierVehiculesIndisponibles": "Impossible de charger les véhicules autorisés à Tiassalé. Vérifiez votre connexion.",
+  "@proDossierVehiculesIndisponibles": {
+    "description": "Affiché quand la configuration de zone n'a jamais pu être chargée"
+  },
+  "proDossierReferent": "Votre référent",
+  "@proDossierReferent": {
+    "description": "Section du formulaire : le référent local"
+  },
+  "proDossierReferentAide": "Une personne de Tiassalé qui répond de vous.",
+  "@proDossierReferentAide": {
+    "description": "Aide de la section référent (caution morale locale, cadrage §7.1)"
+  },
+  "proDossierReferentNom": "Nom du référent",
+  "@proDossierReferentNom": {
+    "description": "Champ : nom du référent local"
+  },
+  "proDossierReferentTelephone": "Téléphone du référent",
+  "@proDossierReferentTelephone": {
+    "description": "Champ : téléphone du référent local"
+  },
+  "proDossierEnvoyer": "Envoyer mon dossier",
+  "@proDossierEnvoyer": {
+    "description": "Action principale : soumettre le dossier coursier"
+  },
+  "proDossierIncomplet": "Complétez tout le dossier avant de l'envoyer.",
+  "@proDossierIncomplet": {
+    "description": "Erreur : dossier incomplet, non soumis (FR-015 scénario 1)"
+  },
+  "proDossierRefuseParServeur": "Mefali n'a pas accepté ce dossier. Vérifiez la pièce et les véhicules choisis.",
+  "@proDossierRefuseParServeur": {
+    "description": "Erreur : le serveur a refusé le dossier (422)"
+  },
+  "proDossierDejaTraite": "Votre dossier a déjà été traité.",
+  "@proDossierDejaTraite": {
+    "description": "Erreur : le dossier est déjà validé ou suspendu (409)"
+  },
+  "proTransportAPied": "À pied",
+  "@proTransportAPied": {
+    "description": "Type de transport : à pied"
+  },
+  "proTransportVelo": "Vélo",
+  "@proTransportVelo": {
+    "description": "Type de transport : vélo"
+  },
+  "proTransportMoto": "Moto",
+  "@proTransportMoto": {
+    "description": "Type de transport : moto"
+  },
+  "proTransportTricycleTaxi": "Tricycle taxi",
+  "@proTransportTricycleTaxi": {
+    "description": "Type de transport : tricycle taxi"
+  },
+  "proTransportTricycleCargo": "Tricycle cargo",
+  "@proTransportTricycleCargo": {
+    "description": "Type de transport : tricycle cargo"
+  },
+  "proTransportVoiture": "Voiture",
+  "@proTransportVoiture": {
+    "description": "Type de transport : voiture"
+  },
+  "proTransportCamionnette": "Camionnette",
+  "@proTransportCamionnette": {
+    "description": "Type de transport : camionnette"
+  },
+  "proTransportCamion": "Camion",
+  "@proTransportCamion": {
+    "description": "Type de transport : camion"
   }
 }
