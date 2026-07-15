@@ -4,6 +4,7 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 import '../../l10n/mefali_core_localizations.dart';
 import '../auth/session_auth.dart';
+import '../theme/etats.dart';
 import '../theme/tokens.dart';
 import 'note_vocale.dart';
 
@@ -101,15 +102,23 @@ class _ListeAdressesState extends State<ListeAdresses> {
       body: FutureBuilder<List<Adresse>>(
         future: _adresses,
         builder: (context, instantane) {
+          // Squelettes, jamais un spinner plein écran (docs/design §7).
           if (instantane.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator.adaptive());
+            return const SqueletteListe();
           }
           if (instantane.hasError) {
-            return _Message(texte: l10n.adressesErreur, picto: Symbols.wifi_off);
+            return MessageEtat(
+              texte: l10n.adressesErreur,
+              picto: Symbols.wifi_off,
+              // Une erreur réseau SANS action est un cul-de-sac : l'utilisateur
+              // n'a plus qu'à tuer l'app (règle d'or 5).
+              action: _recharger,
+              libelleAction: l10n.actionReessayer,
+            );
           }
           final adresses = instantane.data ?? const <Adresse>[];
           if (adresses.isEmpty) {
-            return _Message(texte: l10n.adressesVide, picto: Symbols.bookmark);
+            return MessageEtat(texte: l10n.adressesVide, picto: Symbols.bookmark);
           }
           return ListView.separated(
             padding: const EdgeInsets.all(MefaliTokens.screenMargin),
@@ -267,30 +276,3 @@ class _Carte extends StatelessWidget {
   }
 }
 
-class _Message extends StatelessWidget {
-  const _Message({required this.texte, required this.picto});
-
-  final String texte;
-  final IconData picto;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(MefaliTokens.space4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(picto, size: 48, color: MefaliTokens.textMuted),
-            const SizedBox(height: MefaliTokens.space3),
-            Text(
-              texte,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

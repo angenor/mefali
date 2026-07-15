@@ -4,6 +4,7 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 import '../../l10n/mefali_core_localizations.dart';
 import '../auth/session_auth.dart';
+import '../theme/etats.dart';
 import '../theme/tokens.dart';
 
 /// Appareils connectés au compte, avec déconnexion à distance (CPT-02, FR-008).
@@ -38,11 +39,7 @@ class _EcranAppareilsState extends State<EcranAppareils> {
     return reponse.data?.toList() ?? const [];
   }
 
-  Future<void> _revoquer(SessionAppareil appareil) async {
-    await widget.session.client.getMoiApi().revoquerSession(
-          sessionId: appareil.id,
-        );
-    if (!mounted) return;
+  void _recharger() {
     // Corps de BLOC, jamais `setState(() => _appareils = _charger())` : la
     // lambda fléchée RETOURNE le Future de l'affectation, et Flutter rejette
     // un callback de setState qui rend un Future. La liste ne se serait
@@ -50,6 +47,14 @@ class _EcranAppareilsState extends State<EcranAppareils> {
     setState(() {
       _appareils = _charger();
     });
+  }
+
+  Future<void> _revoquer(SessionAppareil appareil) async {
+    await widget.session.client.getMoiApi().revoquerSession(
+          sessionId: appareil.id,
+        );
+    if (!mounted) return;
+    _recharger();
   }
 
   @override
@@ -60,15 +65,23 @@ class _EcranAppareilsState extends State<EcranAppareils> {
       body: FutureBuilder<List<SessionAppareil>>(
         future: _appareils,
         builder: (context, instantane) {
+          // Squelettes, jamais un spinner plein écran (docs/design §7).
           if (instantane.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator.adaptive());
+            return const SqueletteListe(hauteurLigne: 72);
           }
           if (instantane.hasError) {
-            return _Message(texte: l10n.appareilsErreur, picto: Symbols.cloud_off);
+            return MessageEtat(
+              texte: l10n.appareilsErreur,
+              picto: Symbols.cloud_off,
+              // Une erreur réseau SANS action est un cul-de-sac — et ici elle
+              // bloquerait la révocation d'un téléphone perdu (règle d'or 5).
+              action: _recharger,
+              libelleAction: l10n.actionReessayer,
+            );
           }
           final appareils = instantane.data ?? const [];
           if (appareils.isEmpty) {
-            return _Message(texte: l10n.appareilsVide, picto: Symbols.devices);
+            return MessageEtat(texte: l10n.appareilsVide, picto: Symbols.devices);
           }
           return ListView.separated(
             padding: const EdgeInsets.all(MefaliTokens.screenMargin),
@@ -172,30 +185,3 @@ class _Puce extends StatelessWidget {
   }
 }
 
-class _Message extends StatelessWidget {
-  const _Message({required this.texte, required this.picto});
-
-  final String texte;
-  final IconData picto;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(MefaliTokens.space4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(picto, size: 48, color: MefaliTokens.textMuted),
-            const SizedBox(height: MefaliTokens.space3),
-            Text(
-              texte,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

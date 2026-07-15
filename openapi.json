@@ -1424,6 +1424,13 @@
             },
             "description": "Catégories actives dans la zone."
           },
+          "consentement_artci_version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la\nrenvoie telle quelle à l'inscription (FR-006). `null` si non résolue."
+          },
           "devise": {
             "$ref": "#/components/schemas/DeviseDto",
             "description": "Devise résolue."

@@ -3,7 +3,6 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../l10n/app_localizations.dart';
-import 'composants.dart';
 import 'etat_roles.dart';
 import 'libelles_roles.dart';
 import 'pied_pro.dart';

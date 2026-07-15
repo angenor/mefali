@@ -54,6 +54,14 @@ class ConfigDistante {
   /// borne. JAMAIS de constante en dur ici (FR-024).
   int? get noteVocaleDureeMaxS => (donnees['note_vocale_duree_max_s'] as num?)?.toInt();
 
+  /// Version du texte de consentement ARTCI en vigueur dans la zone (FR-006).
+  ///
+  /// L'app RENVOIE cette version à l'inscription : c'est ce qui permet de faire
+  /// évoluer le texte par la configuration, sans release. `null` si la config
+  /// n'a jamais été chargée — l'inscription doit alors attendre plutôt que
+  /// d'horodater un consentement sur une version inventée (FR-024).
+  String? get consentementArtciVersion => donnees['consentement_artci_version'] as String?;
+
   /// Sérialise pour le cache local.
   String encoder() => jsonEncode(donnees);
 }

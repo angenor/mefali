@@ -117,15 +117,17 @@ class _LecteurNoteVocaleState extends State<LecteurNoteVocale> {
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              // 48 dp : la spec du bouton audio (docs/design §5) ET le plancher
+              // de cible tactile — on écoute un repère au guidon, pas au bureau.
+              width: MefaliTokens.tapMin,
+              height: MefaliTokens.tapMin,
               decoration: const BoxDecoration(
                 color: MefaliTokens.primary,
                 shape: BoxShape.circle,
               ),
               child: _enLecture
                   ? const Padding(
-                      padding: EdgeInsets.all(10),
+                      padding: EdgeInsets.all(14),
                       child: CircularProgressIndicator.adaptive(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation(MefaliTokens.surface),

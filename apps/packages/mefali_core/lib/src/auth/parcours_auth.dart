@@ -27,7 +27,7 @@ class ParcoursAuth extends StatefulWidget {
     required this.session,
     required this.onConnecte,
     this.zone = zoneBootstrapTiassale,
-    this.versionConsentement = versionConsentementParDefaut,
+    this.versionConsentement,
     this.nomAppareil = 'Appareil Mefali',
     this.plateforme = PlateformeDto.android,
   });
@@ -41,9 +41,15 @@ class ParcoursAuth extends StatefulWidget {
   /// Zone déclarée à l'inscription (research R13).
   final String zone;
 
-  /// Version du texte ARTCI acceptée — servie par la config de zone
-  /// (`consentement.artci_version`) ; le défaut n'est qu'un filet.
-  final String versionConsentement;
+  /// Version du texte ARTCI que l'app a AFFICHÉ, servie par la config de zone
+  /// (`consentement.artci_version` → vue dérivée de `/config`).
+  ///
+  /// `null` tant que la config n'est pas chargée : l'inscription est alors
+  /// refusée plutôt que d'horodater un consentement sur une version inventée
+  /// (FR-006 : « conservé avec la version du texte accepté »). C'est cette
+  /// valeur qui permet de faire évoluer le texte par configuration, sans
+  /// release — un défaut en dur ici la rendrait inerte (FR-024).
+  final String? versionConsentement;
 
   /// Nom d'appareil affiché dans la liste des sessions.
   final String nomAppareil;
@@ -54,10 +60,6 @@ class ParcoursAuth extends StatefulWidget {
   @override
   State<ParcoursAuth> createState() => _ParcoursAuthState();
 }
-
-/// Version ARTCI de repli si la config distante n'est pas encore chargée.
-/// Alignée sur le seed `20_comptes.sql` (`consentement.artci_version`).
-const String versionConsentementParDefaut = '2026-07';
 
 class _ParcoursAuthState extends State<ParcoursAuth> {
   _Etape _etape = _Etape.telephone;
@@ -136,11 +138,18 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
       });
 
   Future<void> _inscrire(MefaliCoreLocalizations l10n) => _executer(l10n, () async {
+        final version = widget.versionConsentement;
+        // Sans la version affichée, on ne PEUT pas horodater honnêtement le
+        // consentement (FR-006) : on le dit au lieu d'en inventer une.
+        if (version == null) {
+          setState(() => _erreur = l10n.authErreurReseau);
+          return;
+        }
         final reponse = await _api.inscrire(
           inscription: Inscription(
             (b) => b
               ..jetonInscription = _jetonInscription!
-              ..consentementVersion = widget.versionConsentement,
+              ..consentementVersion = version,
           ),
         );
         await _traiterResultat(reponse.data);

@@ -93,6 +93,9 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
       'Impossible de charger vos appareils. Vérifiez votre réseau.';
 
   @override
+  String get actionReessayer => 'Réessayer';
+
+  @override
   String get parametresAppareils => 'Appareils connectés';
 
   @override

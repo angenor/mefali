@@ -291,6 +291,9 @@ struct ConfigZone {
     /// Durée maximale d'une note vocale, en secondes — borne l'enregistreur des
     /// apps (FR-019). `null` si la zone ne la résout pas.
     note_vocale_duree_max_s: Option<i64>,
+    /// Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la
+    /// renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
+    consentement_artci_version: Option<String>,
     /// Textes (clés `texte.*` sans préfixe) — clés i18n fr.
     textes: BTreeMap<String, String>,
     /// Paramètres client (clés `client.*` sans préfixe).
@@ -319,6 +322,7 @@ impl From<zones::ConfigZonePublique> for ConfigZone {
                 .collect(),
             transports_actifs: d.transports_actifs,
             note_vocale_duree_max_s: d.note_vocale_duree_max_s,
+            consentement_artci_version: d.consentement_artci_version,
             textes: d.textes,
             parametres: d.parametres,
         }
@@ -625,6 +629,17 @@ mod tests {
             corps["transports_actifs"],
             json!(["a_pied", "velo", "moto"])
         );
+        // Vues dérivées dont les apps du cycle CPT ont besoin — sans elles, la
+        // borne de l'enregistreur vocal et la version du consentement seraient
+        // en dur dans Flutter, donc INERTES en configuration (FR-024).
+        assert_eq!(
+            corps["note_vocale_duree_max_s"], 30,
+            "l'enregistreur se borne par la ZONE (FR-019)"
+        );
+        assert_eq!(
+            corps["consentement_artci_version"], "2026-07",
+            "l'app renvoie la version du texte qu'elle a affiché (FR-006)"
+        );
         assert_eq!(
             corps["categories"],
             json!([]),
@@ -633,8 +648,11 @@ mod tests {
         let version = corps["version"].as_str().unwrap();
         assert!(!version.is_empty());
         assert_eq!(etag.as_deref(), Some(version), "ETag == version");
-        // Liste blanche : aucun namespace interne ne fuit.
+        // Liste blanche : aucun namespace interne ne fuit — ni le namespace
+        // entier des vues dérivées.
         assert!(!corps.to_string().contains("seuil_activation"));
+        assert!(!corps.to_string().contains("medias."));
+        assert!(!corps.to_string().contains("consentement."));
     }
 
     /// Zone inconnue → 404 explicite (FR-021), jamais une config vide.

@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../l10n/mefali_core_localizations.dart';
 import '../adresses/liste_adresses.dart';
 import '../appareils/ecran_appareils.dart';
+import '../config/service_config.dart';
 import '../theme/tokens.dart';
 import 'parcours_auth.dart';
 import 'session_auth.dart';
@@ -22,10 +23,19 @@ class RacineAuth extends StatefulWidget {
     required this.demarrage,
     required this.accueil,
     required this.nomAppareil,
+    this.config,
   });
 
   /// Session partagée de l'application.
   final SessionAuth session;
+
+  /// Configuration de zone, en cours de chargement.
+  ///
+  /// Le parcours d'inscription y lit la version du texte ARTCI qu'il affiche,
+  /// pour la renvoyer telle quelle (FR-006/FR-024). Non attendue au démarrage :
+  /// l'écran de téléphone n'en a pas besoin, et la config sera là bien avant
+  /// que l'utilisateur n'atteigne le consentement (il aura fallu un SMS).
+  final Future<ServiceConfig>? config;
 
   /// Écran de démarrage, affiché tant que le stockage n'est pas relu.
   final Widget demarrage;
@@ -41,10 +51,30 @@ class RacineAuth extends StatefulWidget {
 }
 
 class _RacineAuthState extends State<RacineAuth> {
+  String? _versionConsentement;
+
   @override
   void initState() {
     super.initState();
     widget.session.charger();
+    _lireVersionConsentement();
+  }
+
+  /// Récupère la version du texte ARTCI dès que la config est là.
+  ///
+  /// En silence : son absence ne bloque ni le démarrage ni la saisie du
+  /// numéro — elle ne compte qu'à l'étape du consentement, qui la refusera
+  /// explicitement si elle manque encore.
+  Future<void> _lireVersionConsentement() async {
+    final config = widget.config;
+    if (config == null) return;
+    try {
+      final service = await config;
+      final version = service.courante?.consentementArtciVersion;
+      if (mounted) setState(() => _versionConsentement = version);
+    } catch (_) {
+      // Config injoignable : le parcours le dira au moment du consentement.
+    }
   }
 
   @override
@@ -57,6 +87,7 @@ class _RacineAuthState extends State<RacineAuth> {
           return ParcoursAuth(
             session: widget.session,
             nomAppareil: widget.nomAppareil,
+            versionConsentement: _versionConsentement,
             // `onConnecte` est vide : `SessionAuth` est un ChangeNotifier, ce
             // ListenableBuilder rebâtit déjà sur l'ouverture. Router ici EN PLUS
             // pousserait deux fois vers l'accueil.

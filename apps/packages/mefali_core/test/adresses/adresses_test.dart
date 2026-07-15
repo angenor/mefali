@@ -403,16 +403,18 @@ void main() {
   });
 
   group('ConfigDistante — vues dérivées de /config', () {
-    test('la durée max de note vocale et les transports actifs sont lus par clé', () {
+    test('les vues dérivées dont les apps dépendent sont lues par clé', () {
       final config = ConfigDistante.depuisJson({
         'zone': '01900000-0000-7000-8000-000000000002',
         'version': 'abc',
         'transports_actifs': ['a_pied', 'moto'],
         'note_vocale_duree_max_s': 30,
+        'consentement_artci_version': '2026-07',
       });
 
       expect(config.transportsActifs, ['a_pied', 'moto']);
       expect(config.noteVocaleDureeMaxS, 30);
+      expect(config.consentementArtciVersion, '2026-07');
     });
 
     test('une config sans ces vues ne fabrique pas de valeurs', () {
@@ -426,6 +428,11 @@ void main() {
         config.noteVocaleDureeMaxS,
         isNull,
         reason: 'FR-024 — aucune borne inventée côté client',
+      );
+      expect(
+        config.consentementArtciVersion,
+        isNull,
+        reason: 'FR-006 — pas de version de consentement inventée côté client',
       );
     });
   });

@@ -207,10 +207,14 @@ class _CarteRole extends StatelessWidget {
           ),
           if (motif != null && motif.isNotEmpty) ...[
             const SizedBox(height: MefaliTokens.space3),
+            // `bodyLarge` (16 px) et non `labelSmall` (13 px) : le caption est
+            // réservé aux métadonnées (horodatage, distance) — un refus de
+            // dossier n'en est pas une (tokens, règle d'or 1 : jamais < 16 px).
             Text(
               l10n.proMotif,
-              style: textTheme.labelSmall?.copyWith(
+              style: textTheme.bodyLarge?.copyWith(
                 color: MefaliTokens.textMuted,
+                fontWeight: MefaliTokens.weightMedium,
               ),
             ),
             const SizedBox(height: MefaliTokens.space1),

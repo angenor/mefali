@@ -105,6 +105,10 @@
   "@appareilsErreur": {
     "description": "Erreur de chargement de la liste des appareils"
   },
+  "actionReessayer": "Réessayer",
+  "@actionReessayer": {
+    "description": "Action commune des états d'erreur réseau (règle d'or 5 : erreur réseau = réessayer)"
+  },
   "parametresAppareils": "Appareils connectés",
   "@parametresAppareils": {
     "description": "Entrée de menu vers l'écran des appareils"

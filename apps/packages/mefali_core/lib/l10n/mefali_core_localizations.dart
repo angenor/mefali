@@ -247,6 +247,12 @@ abstract class MefaliCoreLocalizations {
   /// **'Impossible de charger vos appareils. Vérifiez votre réseau.'**
   String get appareilsErreur;
 
+  /// Action commune des états d'erreur réseau (règle d'or 5 : erreur réseau = réessayer)
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get actionReessayer;
+
   /// Entrée de menu vers l'écran des appareils
   ///
   /// In fr, this message translates to:

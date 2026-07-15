@@ -433,6 +433,11 @@ export interface components {
         ConfigZone: {
             /** @description Catégories actives dans la zone. */
             categories: components["schemas"]["CategorieDto"][];
+            /**
+             * @description Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la
+             *     renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
+             */
+            consentement_artci_version?: string | null;
             /** @description Devise résolue. */
             devise: components["schemas"]["DeviseDto"];
             /** @description Drapeaux (clés `drapeau.*` sans préfixe). */

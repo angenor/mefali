@@ -86,30 +86,5 @@ class CarteMefali extends StatelessWidget {
   }
 }
 
-/// Bloc gris d'attente — la forme du contenu à venir.
-///
-/// La planche de style l'exige : « Chargement : toujours des squelettes, jamais
-/// de spinner plein écran ». Un squelette annonce ce qui arrive et ne fait pas
-/// clignoter l'écran sur les réseaux lents qui sont notre cible.
-class Squelette extends StatelessWidget {
-  /// Crée un bloc d'attente.
-  const Squelette({super.key, required this.hauteur, this.largeur});
-
-  /// Hauteur du bloc.
-  final double hauteur;
-
-  /// Largeur du bloc — pleine largeur si absente.
-  final double? largeur;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: hauteur,
-      width: largeur,
-      decoration: BoxDecoration(
-        color: MefaliTokens.border,
-        borderRadius: BorderRadius.circular(MefaliTokens.radiusButton),
-      ),
-    );
-  }
-}
+// `Squelette` a déménagé dans mefali_core (src/theme/squelette.dart) : les deux
+// apps en ont besoin, et c'est un composant de TOKEN, pas un composant de rôle.

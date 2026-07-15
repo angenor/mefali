@@ -50,6 +50,7 @@ class MefaliProApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: RacineAuth(
         session: session,
+        config: config,
         nomAppareil: 'Mefali Pro',
         demarrage: const SplashScreen(),
         // Mefali Pro n'a pas d'accueil « connecté » : il a un accueil par RÔLE

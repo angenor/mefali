@@ -16,6 +16,7 @@ part 'config_zone.g.dart';
 ///
 /// Properties:
 /// * [categories] - Catégories actives dans la zone.
+/// * [consentementArtciVersion] - Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
 /// * [devise] - Devise résolue.
 /// * [drapeaux] - Drapeaux (clés `drapeau.*` sans préfixe).
 /// * [noteVocaleDureeMaxS] - Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas.
@@ -29,6 +30,10 @@ abstract class ConfigZone implements Built<ConfigZone, ConfigZoneBuilder> {
   /// Catégories actives dans la zone.
   @BuiltValueField(wireName: r'categories')
   BuiltList<CategorieDto> get categories;
+
+  /// Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
+  @BuiltValueField(wireName: r'consentement_artci_version')
+  String? get consentementArtciVersion;
 
   /// Devise résolue.
   @BuiltValueField(wireName: r'devise')
@@ -90,6 +95,13 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
       object.categories,
       specifiedType: const FullType(BuiltList, [FullType(CategorieDto)]),
     );
+    if (object.consentementArtciVersion != null) {
+      yield r'consentement_artci_version';
+      yield serializers.serialize(
+        object.consentementArtciVersion,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
     yield r'devise';
     yield serializers.serialize(
       object.devise,
@@ -161,6 +173,14 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
             specifiedType: const FullType(BuiltList, [FullType(CategorieDto)]),
           ) as BuiltList<CategorieDto>;
           result.categories.replace(valueDes);
+          break;
+        case r'consentement_artci_version':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.consentementArtciVersion = valueDes;
           break;
         case r'devise':
           final valueDes = serializers.deserialize(

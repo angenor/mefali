@@ -10,6 +10,8 @@ class _$ConfigZone extends ConfigZone {
   @override
   final BuiltList<CategorieDto> categories;
   @override
+  final String? consentementArtciVersion;
+  @override
   final DeviseDto devise;
   @override
   final BuiltMap<String, bool> drapeaux;
@@ -31,6 +33,7 @@ class _$ConfigZone extends ConfigZone {
 
   _$ConfigZone._(
       {required this.categories,
+      this.consentementArtciVersion,
       required this.devise,
       required this.drapeaux,
       this.noteVocaleDureeMaxS,
@@ -52,6 +55,7 @@ class _$ConfigZone extends ConfigZone {
     if (identical(other, this)) return true;
     return other is ConfigZone &&
         categories == other.categories &&
+        consentementArtciVersion == other.consentementArtciVersion &&
         devise == other.devise &&
         drapeaux == other.drapeaux &&
         noteVocaleDureeMaxS == other.noteVocaleDureeMaxS &&
@@ -66,6 +70,7 @@ class _$ConfigZone extends ConfigZone {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, categories.hashCode);
+    _$hash = $jc(_$hash, consentementArtciVersion.hashCode);
     _$hash = $jc(_$hash, devise.hashCode);
     _$hash = $jc(_$hash, drapeaux.hashCode);
     _$hash = $jc(_$hash, noteVocaleDureeMaxS.hashCode);
@@ -82,6 +87,7 @@ class _$ConfigZone extends ConfigZone {
   String toString() {
     return (newBuiltValueToStringHelper(r'ConfigZone')
           ..add('categories', categories)
+          ..add('consentementArtciVersion', consentementArtciVersion)
           ..add('devise', devise)
           ..add('drapeaux', drapeaux)
           ..add('noteVocaleDureeMaxS', noteVocaleDureeMaxS)
@@ -102,6 +108,11 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
       _$this._categories ??= ListBuilder<CategorieDto>();
   set categories(ListBuilder<CategorieDto>? categories) =>
       _$this._categories = categories;
+
+  String? _consentementArtciVersion;
+  String? get consentementArtciVersion => _$this._consentementArtciVersion;
+  set consentementArtciVersion(String? consentementArtciVersion) =>
+      _$this._consentementArtciVersion = consentementArtciVersion;
 
   DeviseDtoBuilder? _devise;
   DeviseDtoBuilder get devise => _$this._devise ??= DeviseDtoBuilder();
@@ -149,6 +160,7 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
     final $v = _$v;
     if ($v != null) {
       _categories = $v.categories.toBuilder();
+      _consentementArtciVersion = $v.consentementArtciVersion;
       _devise = $v.devise.toBuilder();
       _drapeaux = $v.drapeaux.toBuilder();
       _noteVocaleDureeMaxS = $v.noteVocaleDureeMaxS;
@@ -181,6 +193,7 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
       _$result = _$v ??
           _$ConfigZone._(
             categories: categories.build(),
+            consentementArtciVersion: consentementArtciVersion,
             devise: devise.build(),
             drapeaux: drapeaux.build(),
             noteVocaleDureeMaxS: noteVocaleDureeMaxS,
@@ -198,6 +211,7 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
       try {
         _$failedField = 'categories';
         categories.build();
+
         _$failedField = 'devise';
         devise.build();
         _$failedField = 'drapeaux';
