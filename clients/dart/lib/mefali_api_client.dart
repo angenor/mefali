@@ -18,6 +18,7 @@ export 'package:mefali_api_client/src/api/zones_api.dart';
 
 export 'package:mefali_api_client/src/model/accepte.dart';
 export 'package:mefali_api_client/src/model/action_role_dto.dart';
+export 'package:mefali_api_client/src/model/adresse.dart';
 export 'package:mefali_api_client/src/model/appareil_dto.dart';
 export 'package:mefali_api_client/src/model/categorie_dto.dart';
 export 'package:mefali_api_client/src/model/compte_moi.dart';
@@ -36,11 +37,13 @@ export 'package:mefali_api_client/src/model/forcage_dto.dart';
 export 'package:mefali_api_client/src/model/health_response.dart';
 export 'package:mefali_api_client/src/model/inscription.dart';
 export 'package:mefali_api_client/src/model/jetons_dto.dart';
+export 'package:mefali_api_client/src/model/modifier_adresse.dart';
 export 'package:mefali_api_client/src/model/plateforme_dto.dart';
 export 'package:mefali_api_client/src/model/resultat_verification.dart';
 export 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
 export 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
 export 'package:mefali_api_client/src/model/session_appareil.dart';
+export 'package:mefali_api_client/src/model/url_presignee.dart';
 export 'package:mefali_api_client/src/model/vehicule_declare.dart';
 export 'package:mefali_api_client/src/model/verification_otp.dart';
 

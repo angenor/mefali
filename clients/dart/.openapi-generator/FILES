@@ -4,6 +4,7 @@ analysis_options.yaml
 doc/Accepte.md
 doc/ActionRoleDto.md
 doc/AdminApi.md
+doc/Adresse.md
 doc/AppareilDto.md
 doc/AuthApi.md
 doc/CategorieDto.md
@@ -23,6 +24,7 @@ doc/ForcageDto.md
 doc/HealthResponse.md
 doc/Inscription.md
 doc/JetonsDto.md
+doc/ModifierAdresse.md
 doc/MoiApi.md
 doc/PlateformeDto.md
 doc/ResultatVerification.md
@@ -30,6 +32,7 @@ doc/ResultatVerificationOneOf.md
 doc/ResultatVerificationOneOf1.md
 doc/SessionAppareil.md
 doc/SocleApi.md
+doc/UrlPresignee.md
 doc/VehiculeDeclare.md
 doc/VerificationOtp.md
 doc/ZonesApi.md
@@ -49,6 +52,7 @@ lib/src/auth/oauth.dart
 lib/src/date_serializer.dart
 lib/src/model/accepte.dart
 lib/src/model/action_role_dto.dart
+lib/src/model/adresse.dart
 lib/src/model/appareil_dto.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/compte_moi.dart
@@ -68,11 +72,13 @@ lib/src/model/forcage_dto.dart
 lib/src/model/health_response.dart
 lib/src/model/inscription.dart
 lib/src/model/jetons_dto.dart
+lib/src/model/modifier_adresse.dart
 lib/src/model/plateforme_dto.dart
 lib/src/model/resultat_verification.dart
 lib/src/model/resultat_verification_one_of.dart
 lib/src/model/resultat_verification_one_of1.dart
 lib/src/model/session_appareil.dart
+lib/src/model/url_presignee.dart
 lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart

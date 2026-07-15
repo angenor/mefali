@@ -216,6 +216,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/adresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Adresses enregistrées du compte courant (FR-021). */
+        get: operations["mes_adresses"];
+        put?: never;
+        /** Enregistre une adresse — proposition post-livraison acceptée (FR-019). */
+        post: operations["enregistrer_adresse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/adresses/{adresse_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime l'adresse — soft (FR-021). */
+        delete: operations["supprimer_adresse"];
+        options?: never;
+        head?: never;
+        /** Renomme l'adresse ou met à jour son repère écrit (FR-021). */
+        patch: operations["modifier_adresse"];
+        trace?: never;
+    };
+    "/moi/adresses/{adresse_id}/repere-vocal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** URL présignée de lecture du repère vocal (FR-020). */
+        get: operations["ecouter_repere_vocal"];
+        put?: never;
+        /** Enregistre un nouveau repère vocal — après purge, ou pour le refaire. */
+        post: operations["remplacer_repere_vocal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/dossier-coursier": {
         parameters: {
             query?: never;
@@ -288,6 +342,55 @@ export interface components {
          * @enum {string}
          */
         ActionRoleDto: "attribuer" | "valider" | "refuser" | "suspendre" | "retablir";
+        /**
+         * @description Adresse enregistrée (contrat).
+         *
+         *     ⚠ N'expose NI `compte_id` (implicite : c'est le vôtre), NI la clé S3 du
+         *     repère, NI `supprimee_le`, NI `livraison_origine` (provision CPT-06).
+         */
+        Adresse: {
+            /** @description `false` après purge (12 mois sans utilisation — FR-022). */
+            a_repere_vocal: boolean;
+            /**
+             * Format: date-time
+             * @description Enregistrement.
+             */
+            cree_le: string;
+            /**
+             * Format: date-time
+             * @description Base de la purge.
+             */
+            derniere_utilisation_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant = `Idempotency-Key` du POST créateur (R14).
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description Latitude du pin GPS.
+             */
+            lat: number;
+            /** @description « Maison », « Bureau » ou libre. */
+            libelle: string;
+            /**
+             * Format: double
+             * @description Longitude du pin GPS.
+             */
+            lng: number;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+            /**
+             * Format: int32
+             * @description Durée du repère vocal.
+             */
+            repere_vocal_duree_s?: number | null;
+            /**
+             * Format: uuid
+             * @description Zone de l'adresse.
+             */
+            zone_id: string;
+        };
         /** @description Appareil déclaré par l'app à l'ouverture de session. */
         AppareilDto: {
             /** @description Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste. */
@@ -510,11 +613,69 @@ export interface components {
             /** @description Opaque 256 bits — tourne à chaque usage. */
             rafraichissement: string;
         };
+        /** @description Champs modifiables d'une adresse (contrat). */
+        ModifierAdresse: {
+            /** @description Nouveau libellé — absent = inchangé. */
+            libelle?: string | null;
+            /**
+             * @description Nouveau repère écrit — absent = inchangé, `null` = effacé.
+             *
+             *     Le double `Option` porte cette nuance : sans lui, « ne touche pas » et
+             *     « efface » seraient le même corps JSON.
+             */
+            repere_texte?: string | null;
+        };
+        /** @description Adresse à enregistrer après une livraison réussie (FR-019). */
+        NouvelleAdresse: {
+            /**
+             * Format: int32
+             * @description Durée du repère parlé — bornée par le paramètre de zone
+             *     `medias.note_vocale_duree_max_s`.
+             */
+            duree_s?: number | null;
+            /**
+             * Format: double
+             * @description Latitude du pin GPS.
+             */
+            lat: number;
+            /** @description « Maison », « Bureau » ou libre. */
+            libelle: string;
+            /**
+             * Format: uuid
+             * @description PROVISION — posée par les cycles CMD/CRS ; aucune logique ne la lit.
+             */
+            livraison_origine?: string | null;
+            /**
+             * Format: double
+             * @description Longitude du pin GPS.
+             */
+            lng: number;
+            /**
+             * Format: binary
+             * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
+             */
+            note_vocale?: string | null;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+        };
         /**
          * @description Plateforme de l'appareil (contrat).
          * @enum {string}
          */
         PlateformeDto: "android" | "ios";
+        /** @description Nouveau repère parlé pour une adresse existante. */
+        RemplacementRepereVocal: {
+            /**
+             * Format: int32
+             * @description Durée — bornée par le paramètre de zone `medias.note_vocale_duree_max_s`.
+             */
+            duree_s: number;
+            /**
+             * Format: binary
+             * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
+             */
+            note_vocale: string;
+        };
         /** @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`. */
         ResultatVerification: {
             /** @description Compte connecté. */
@@ -574,6 +735,16 @@ export interface components {
              *     ]
              */
             vehicules: string[];
+        };
+        /** @description URL présignée de lecture (contrat). */
+        UrlPresignee: {
+            /**
+             * Format: date-time
+             * @description Expiration.
+             */
+            expire_le: string;
+            /** @description URL opaque, à durée courte. */
+            url: string;
         };
         /** @description Véhicule déclaré au dossier (contrat). */
         VehiculeDeclare: {
@@ -1100,6 +1271,268 @@ export interface operations {
             };
             /** @description Session absente, invalide ou révoquée. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mes_adresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Adresses vivantes, la plus récemment utilisée d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    enregistrer_adresse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUIDv7 généré par le client — DEVIENT l'id de l'adresse (R14). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["NouvelleAdresse"];
+            };
+        };
+        responses: {
+            /** @description Adresse enregistrée — émet `adresse.enregistree`. Un rejeu de la même clé rend l'adresse EXISTANTE, sans doublon (R14). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Libellé, repère, durée (> paramètre de zone) ou note vocale invalides ; en-tête d'idempotence absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    supprimer_adresse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supprimée — émet `adresse.supprimee`. Sans effet sur les livraisons passées. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    modifier_adresse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModifierAdresse"];
+            };
+        };
+        responses: {
+            /** @description Adresse modifiée — ne vaut que pour l'avenir. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Libellé ou repère invalides. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ecouter_repere_vocal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lien opaque, valable 10 min. Les octets rendus sont IDENTIQUES à ceux enregistrés (SC-007). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UrlPresignee"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue, ou repère vocal absent/purgé (FR-022). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remplacer_repere_vocal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RemplacementRepereVocal"];
+            };
+        };
+        responses: {
+            /** @description Repère remplacé — émet `adresse.modifiee`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Durée (> paramètre de zone) ou note vocale invalides. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

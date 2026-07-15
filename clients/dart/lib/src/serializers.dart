@@ -16,6 +16,7 @@ import 'package:mefali_api_client/src/model/date.dart';
 
 import 'package:mefali_api_client/src/model/accepte.dart';
 import 'package:mefali_api_client/src/model/action_role_dto.dart';
+import 'package:mefali_api_client/src/model/adresse.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
@@ -34,11 +35,13 @@ import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
+import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
 import 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
+import 'package:mefali_api_client/src/model/url_presignee.dart';
 import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
 
@@ -47,6 +50,7 @@ part 'serializers.g.dart';
 @SerializersFor([
   Accepte,
   ActionRoleDto,
+  Adresse,
   AppareilDto,
   CategorieDto,
   CompteMoi,
@@ -65,15 +69,21 @@ part 'serializers.g.dart';
   HealthResponse,
   Inscription,
   JetonsDto,
+  ModifierAdresse,
   PlateformeDto,
   ResultatVerification,
   ResultatVerificationOneOf,
   ResultatVerificationOneOf1,
   SessionAppareil,
+  UrlPresignee,
   VehiculeDeclare,
   VerificationOtp,
 ])
 Serializers serializers = (_$serializers.toBuilder()
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(Adresse)]),
+        () => ListBuilder<Adresse>(),
+      )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(SessionAppareil)]),
         () => ListBuilder<SessionAppareil>(),

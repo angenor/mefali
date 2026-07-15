@@ -4,6 +4,7 @@
 //! `/health`, Swagger UI en dev (absente en production, constitution VIII),
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
+pub mod adresses_http;
 pub mod auth_http;
 pub mod comptes_http;
 pub mod health;
@@ -41,6 +42,12 @@ pub fn api_openapi() -> OpenApi {
         .service(comptes_http::mon_dossier_coursier)
         .service(comptes_http::lister_dossiers_coursier)
         .service(comptes_http::consulter_dossier_coursier)
+        .service(adresses_http::mes_adresses)
+        .service(adresses_http::enregistrer_adresse)
+        .service(adresses_http::modifier_adresse)
+        .service(adresses_http::supprimer_adresse)
+        .service(adresses_http::ecouter_repere_vocal)
+        .service(adresses_http::remplacer_repere_vocal)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -212,6 +219,12 @@ pub async fn run() -> std::io::Result<()> {
             .service(comptes_http::consulter_dossier_coursier)
             .service(comptes_http::soumettre_dossier_coursier)
             .service(comptes_http::mon_dossier_coursier)
+            .service(adresses_http::mes_adresses)
+            .service(adresses_http::enregistrer_adresse)
+            .service(adresses_http::modifier_adresse)
+            .service(adresses_http::supprimer_adresse)
+            .service(adresses_http::ecouter_repere_vocal)
+            .service(adresses_http::remplacer_repere_vocal)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

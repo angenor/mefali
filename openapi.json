@@ -637,6 +637,372 @@
         ]
       }
     },
+    "/moi/adresses": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Adresses enregistrées du compte courant (FR-021).",
+        "operationId": "mes_adresses",
+        "responses": {
+          "200": {
+            "description": "Adresses vivantes, la plus récemment utilisée d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Adresse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Enregistre une adresse — proposition post-livraison acceptée (FR-019).",
+        "operationId": "enregistrer_adresse",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 généré par le client — DEVIENT l'id de l'adresse (R14).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/NouvelleAdresse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Adresse enregistrée — émet `adresse.enregistree`. Un rejeu de la même clé rend l'adresse EXISTANTE, sans doublon (R14).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adresse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Libellé, repère, durée (> paramètre de zone) ou note vocale invalides ; en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/adresses/{adresse_id}": {
+      "delete": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Supprime l'adresse — soft (FR-021).",
+        "operationId": "supprimer_adresse",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Supprimée — émet `adresse.supprimee`. Sans effet sur les livraisons passées."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Renomme l'adresse ou met à jour son repère écrit (FR-021).",
+        "operationId": "modifier_adresse",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierAdresse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Adresse modifiée — ne vaut que pour l'avenir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adresse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Libellé ou repère invalides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/adresses/{adresse_id}/repere-vocal": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "URL présignée de lecture du repère vocal (FR-020).",
+        "operationId": "ecouter_repere_vocal",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lien opaque, valable 10 min. Les octets rendus sont IDENTIQUES à ceux enregistrés (SC-007).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UrlPresignee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue, ou repère vocal absent/purgé (FR-022).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Enregistre un nouveau repère vocal — après purge, ou pour le refaire.",
+        "operationId": "remplacer_repere_vocal",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RemplacementRepereVocal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Repère remplacé — émet `adresse.modifiee`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adresse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Durée (> paramètre de zone) ou note vocale invalides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/dossier-coursier": {
       "get": {
         "tags": [
@@ -886,6 +1252,75 @@
           "suspendre",
           "retablir"
         ]
+      },
+      "Adresse": {
+        "type": "object",
+        "description": "Adresse enregistrée (contrat).\n\n⚠ N'expose NI `compte_id` (implicite : c'est le vôtre), NI la clé S3 du\nrepère, NI `supprimee_le`, NI `livraison_origine` (provision CPT-06).",
+        "required": [
+          "id",
+          "libelle",
+          "lat",
+          "lng",
+          "a_repere_vocal",
+          "zone_id",
+          "cree_le",
+          "derniere_utilisation_le"
+        ],
+        "properties": {
+          "a_repere_vocal": {
+            "type": "boolean",
+            "description": "`false` après purge (12 mois sans utilisation — FR-022)."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Enregistrement."
+          },
+          "derniere_utilisation_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Base de la purge."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant = `Idempotency-Key` du POST créateur (R14)."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude du pin GPS."
+          },
+          "libelle": {
+            "type": "string",
+            "description": "« Maison », « Bureau » ou libre."
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude du pin GPS."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit."
+          },
+          "repere_vocal_duree_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Durée du repère vocal."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de l'adresse."
+          }
+        }
       },
       "AppareilDto": {
         "type": "object",
@@ -1371,6 +1806,86 @@
           }
         }
       },
+      "ModifierAdresse": {
+        "type": "object",
+        "description": "Champs modifiables d'une adresse (contrat).",
+        "properties": {
+          "libelle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau libellé — absent = inchangé.",
+            "maxLength": 60
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau repère écrit — absent = inchangé, `null` = effacé.\n\nLe double `Option` porte cette nuance : sans lui, « ne touche pas » et\n« efface » seraient le même corps JSON.",
+            "maxLength": 500
+          }
+        }
+      },
+      "NouvelleAdresse": {
+        "type": "object",
+        "description": "Adresse à enregistrer après une livraison réussie (FR-019).",
+        "required": [
+          "libelle",
+          "lat",
+          "lng"
+        ],
+        "properties": {
+          "duree_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Durée du repère parlé — bornée par le paramètre de zone\n`medias.note_vocale_duree_max_s`."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude du pin GPS."
+          },
+          "libelle": {
+            "type": "string",
+            "description": "« Maison », « Bureau » ou libre.",
+            "maxLength": 60
+          },
+          "livraison_origine": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "PROVISION — posée par les cycles CMD/CRS ; aucune logique ne la lit."
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude du pin GPS."
+          },
+          "note_vocale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit.",
+            "maxLength": 500
+          }
+        }
+      },
       "PlateformeDto": {
         "type": "string",
         "description": "Plateforme de l'appareil (contrat).",
@@ -1378,6 +1893,26 @@
           "android",
           "ios"
         ]
+      },
+      "RemplacementRepereVocal": {
+        "type": "object",
+        "description": "Nouveau repère parlé pour une adresse existante.",
+        "required": [
+          "note_vocale",
+          "duree_s"
+        ],
+        "properties": {
+          "duree_s": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Durée — bornée par le paramètre de zone `medias.note_vocale_duree_max_s`."
+          },
+          "note_vocale": {
+            "type": "string",
+            "format": "binary",
+            "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          }
+        }
       },
       "ResultatVerification": {
         "oneOf": [
@@ -1504,6 +2039,25 @@
               "moto"
             ],
             "minItems": 1
+          }
+        }
+      },
+      "UrlPresignee": {
+        "type": "object",
+        "description": "URL présignée de lecture (contrat).",
+        "required": [
+          "url",
+          "expire_le"
+        ],
+        "properties": {
+          "expire_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL opaque, à durée courte."
           }
         }
       },

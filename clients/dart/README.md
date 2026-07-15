@@ -73,11 +73,17 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
+[*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
+[*MoiApi*](doc/MoiApi.md) | [**mesAdresses**](doc/MoiApi.md#mesadresses) | **GET** /moi/adresses | Adresses enregistrées du compte courant (FR-021).
 [*MoiApi*](doc/MoiApi.md) | [**mesSessions**](doc/MoiApi.md#messessions) | **GET** /moi/sessions | Appareils/sessions actifs du compte (FR-008).
+[*MoiApi*](doc/MoiApi.md) | [**modifierAdresse**](doc/MoiApi.md#modifieradresse) | **PATCH** /moi/adresses/{adresse_id} | Renomme l&#39;adresse ou met à jour son repère écrit (FR-021).
 [*MoiApi*](doc/MoiApi.md) | [**moi**](doc/MoiApi.md#moi) | **GET** /moi | Compte courant et états de TOUS ses rôles.
 [*MoiApi*](doc/MoiApi.md) | [**monDossierCoursier**](doc/MoiApi.md#mondossiercoursier) | **GET** /moi/dossier-coursier | État du dossier coursier du compte courant (FR-013 : l&#39;app Pro l&#39;affiche).
+[*MoiApi*](doc/MoiApi.md) | [**remplacerRepereVocal**](doc/MoiApi.md#remplacerreperevocal) | **POST** /moi/adresses/{adresse_id}/repere-vocal | Enregistre un nouveau repère vocal — après purge, ou pour le refaire.
 [*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
+[*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
 [*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
@@ -87,6 +93,7 @@ Class | Method | HTTP request | Description
 
  - [Accepte](doc/Accepte.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
+ - [Adresse](doc/Adresse.md)
  - [AppareilDto](doc/AppareilDto.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CompteMoi](doc/CompteMoi.md)
@@ -105,11 +112,13 @@ Class | Method | HTTP request | Description
  - [HealthResponse](doc/HealthResponse.md)
  - [Inscription](doc/Inscription.md)
  - [JetonsDto](doc/JetonsDto.md)
+ - [ModifierAdresse](doc/ModifierAdresse.md)
  - [PlateformeDto](doc/PlateformeDto.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [ResultatVerificationOneOf](doc/ResultatVerificationOneOf.md)
  - [ResultatVerificationOneOf1](doc/ResultatVerificationOneOf1.md)
  - [SessionAppareil](doc/SessionAppareil.md)
+ - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)
  - [VerificationOtp](doc/VerificationOtp.md)
 
