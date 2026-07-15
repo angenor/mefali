@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import 'l10n/app_localizations.dart';
+import 'roles/routeur_roles.dart';
 import 'splash_screen.dart';
 
 /// URL du backend, surchargeable au build (`--dart-define=MEFALI_API_URL=...`).
@@ -47,7 +48,10 @@ class MefaliProApp extends StatelessWidget {
         session: session,
         nomAppareil: 'Mefali Pro',
         demarrage: const SplashScreen(),
-        accueil: (_) => AccueilProvisoire(session: session),
+        // Mefali Pro n'a pas d'accueil « connecté » : il a un accueil par RÔLE
+        // VALIDÉ (FR-013). L'accueil provisoire de mefali_core reste celui de
+        // l'app client, jusqu'au cycle CMD.
+        accueil: (_) => RouteurRoles(session: session),
       ),
     );
   }

@@ -19,6 +19,14 @@ dependencies:
   material_symbols_icons: 4.2951.0
   mefali_core:
     path: ../packages/mefali_core
+  # Client Dart GÉNÉRÉ — l'app pro l'appelle directement depuis le cycle CPT
+  # (`GET /moi` pour les rôles, dossier coursier en multipart). Jamais d'appel
+  # HTTP artisanal (constitution I).
+  mefali_api_client:
+    path: ../../clients/dart
+  # dio apparaît dans la surface publique du client généré (MultipartFile,
+  # DioException) sans y être ré-exporté. Version alignée sur le client.
+  dio: 5.10.0
 
 dev_dependencies:
   flutter_test:

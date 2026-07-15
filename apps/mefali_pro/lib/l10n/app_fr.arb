@@ -7,5 +7,113 @@
   "splashTagline": "Coursiers et vendeurs : gérez votre activité à Tiassalé",
   "@splashTagline": {
     "description": "Accroche de l'écran de démarrage pro"
+  },
+  "proRoleCoursier": "Coursier",
+  "@proRoleCoursier": {
+    "description": "Libellé du rôle coursier"
+  },
+  "proRoleVendeur": "Vendeur",
+  "@proRoleVendeur": {
+    "description": "Libellé du rôle vendeur"
+  },
+  "proStatutAucun": "Non demandé",
+  "@proStatutAucun": {
+    "description": "Puce de statut : le rôle n'a jamais été demandé ni attribué"
+  },
+  "proStatutEnAttente": "En attente",
+  "@proStatutEnAttente": {
+    "description": "Puce de statut : décision de Mefali attendue"
+  },
+  "proStatutValide": "Validé",
+  "@proStatutValide": {
+    "description": "Puce de statut : rôle ouvert"
+  },
+  "proStatutRefuse": "Refusé",
+  "@proStatutRefuse": {
+    "description": "Puce de statut : demande refusée"
+  },
+  "proStatutSuspendu": "Suspendu",
+  "@proStatutSuspendu": {
+    "description": "Puce de statut : rôle retiré temporairement"
+  },
+  "proEtatAucunTitre": "Aucun rôle professionnel",
+  "@proEtatAucunTitre": {
+    "description": "Titre de l'écran d'état quand le compte n'a demandé aucun rôle pro (FR-013)"
+  },
+  "proEtatAucunAide": "Mefali Pro est réservé aux coursiers et aux vendeurs validés par Mefali.",
+  "@proEtatAucunAide": {
+    "description": "Aide de l'écran d'état quand le compte n'a aucun rôle pro"
+  },
+  "proEtatEnAttenteTitre": "Dossier en cours d'examen",
+  "@proEtatEnAttenteTitre": {
+    "description": "Titre de l'écran d'état quand une demande attend la décision de Mefali"
+  },
+  "proEtatEnAttenteAide": "Mefali vérifie votre dossier. Vous pourrez travailler dès qu'il sera validé.",
+  "@proEtatEnAttenteAide": {
+    "description": "Aide de l'écran d'état quand une demande est en attente"
+  },
+  "proEtatRefuseTitre": "Dossier refusé",
+  "@proEtatRefuseTitre": {
+    "description": "Titre de l'écran d'état quand la demande a été refusée"
+  },
+  "proEtatRefuseAide": "Votre dossier n'a pas été retenu.",
+  "@proEtatRefuseAide": {
+    "description": "Aide de l'écran d'état quand la demande a été refusée"
+  },
+  "proEtatSuspenduTitre": "Rôle suspendu",
+  "@proEtatSuspenduTitre": {
+    "description": "Titre de l'écran d'état quand le rôle pro est suspendu"
+  },
+  "proEtatSuspenduAide": "Votre accès professionnel est suspendu.",
+  "@proEtatSuspenduAide": {
+    "description": "Aide de l'écran d'état quand le rôle pro est suspendu"
+  },
+  "proEtatVendeurAgrement": "Le rôle vendeur est attribué par Mefali lors de votre agrément.",
+  "@proEtatVendeurAgrement": {
+    "description": "Rappel : le rôle vendeur ne se demande pas dans l'application (cadrage §5.1)"
+  },
+  "proMotif": "Motif",
+  "@proMotif": {
+    "description": "Intitulé du motif de la décision de Mefali"
+  },
+  "proActualiser": "Actualiser",
+  "@proActualiser": {
+    "description": "Action : relire l'état de ses rôles"
+  },
+  "proDeconnexion": "Se déconnecter",
+  "@proDeconnexion": {
+    "description": "Action : fermer la session sur cet appareil"
+  },
+  "proErreurTitre": "Connexion impossible",
+  "@proErreurTitre": {
+    "description": "Titre affiché quand la lecture des rôles échoue"
+  },
+  "proErreurAide": "Impossible de lire vos rôles. Vérifiez votre connexion.",
+  "@proErreurAide": {
+    "description": "Aide affichée quand la lecture des rôles échoue"
+  },
+  "proErreurAction": "Réessayer",
+  "@proErreurAction": {
+    "description": "Action : relancer la lecture des rôles après un échec"
+  },
+  "proInterfaceCoursierTitre": "Espace coursier",
+  "@proInterfaceCoursierTitre": {
+    "description": "Titre de l'interface coursier"
+  },
+  "proInterfaceCoursierAide": "Vos courses s'afficheront ici.",
+  "@proInterfaceCoursierAide": {
+    "description": "Aide de l'interface coursier tant que le module coursier (CRS) n'est pas construit"
+  },
+  "proInterfaceVendeurTitre": "Espace vendeur",
+  "@proInterfaceVendeurTitre": {
+    "description": "Titre de l'interface vendeur"
+  },
+  "proInterfaceVendeurAide": "Votre boutique et vos commandes s'afficheront ici.",
+  "@proInterfaceVendeurAide": {
+    "description": "Aide de l'interface vendeur tant que le module vendeur (VND) n'est pas construit"
+  },
+  "proBasculeSemantique": "Choisir l'interface affichée",
+  "@proBasculeSemantique": {
+    "description": "Libellé d'accessibilité de la bascule entre rôles validés (FR-013)"
   }
 }
