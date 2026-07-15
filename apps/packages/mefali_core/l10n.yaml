@@ -1,0 +1,10 @@
+# gen-l10n du PAQUET partagé. Les écrans canoniques (auth, adresses, appareils)
+# vivent dans mefali_core (constitution XI) : leurs chaînes doivent donc y vivre
+# aussi, sinon chaque app les redupliquerait — et divergerait.
+#
+# Les apps ajoutent `MefaliCoreLocalizations.delegate` à leurs
+# `localizationsDelegates`, à côté de leur propre AppLocalizations.
+arb-dir: lib/l10n
+template-arb-file: core_fr.arb
+output-localization-file: mefali_core_localizations.dart
+output-class: MefaliCoreLocalizations

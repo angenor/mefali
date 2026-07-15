@@ -15,24 +15,40 @@ Future<void> main() async {
   // Configuration produit distante démarrée en arrière-plan (cache immédiat +
   // rafraîchissement horaire) — aucun écran, ne bloque pas le lancement.
   unawaited(demarrerServiceConfig(urlApi: _urlApi));
-  runApp(const MefaliProApp());
+  // Session partagée : jetons dans le stockage CHIFFRÉ du système, en-tête
+  // Authorization posé sur le client GÉNÉRÉ (jamais d'appel artisanal).
+  final session = construireSessionAuth(urlApi: _urlApi);
+  runApp(MefaliProApp(session: session));
 }
 
 /// Application pro Mefali. Branche `MefaliTheme` et la localisation fr.
 class MefaliProApp extends StatelessWidget {
   /// Crée l'application pro.
-  const MefaliProApp({super.key});
+  const MefaliProApp({super.key, required this.session});
+
+  /// Session d'authentification de l'application.
+  final SessionAuth session;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: MefaliTheme.light,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: const [
+        ...AppLocalizations.localizationsDelegates,
+        // Les écrans canoniques (auth, adresses, appareils) portent leurs
+        // propres clés fr dans mefali_core.
+        MefaliCoreLocalizations.delegate,
+      ],
       supportedLocales: AppLocalizations.supportedLocales,
       locale: const Locale('fr'),
       debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
+      home: RacineAuth(
+        session: session,
+        nomAppareil: 'Mefali Pro',
+        demarrage: const SplashScreen(),
+        accueil: (_) => AccueilProvisoire(session: session),
+      ),
     );
   }
 }

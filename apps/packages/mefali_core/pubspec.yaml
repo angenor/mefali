@@ -12,12 +12,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Délégué de localisation du paquet (gen-l10n → MefaliCoreLocalizations) :
+  # les écrans canoniques portent leurs propres clés i18n fr.
+  flutter_localizations:
+    sdk: flutter
+  # Épinglé par le SDK Flutter via flutter_localizations (comme les apps).
+  intl: 0.20.2
   # Pictogrammes Material Symbols Rounded (tree-shaking des glyphes). Version
   # figée (research.md R2).
   material_symbols_icons: 4.2951.0
   # Client Dart GÉNÉRÉ (jamais d'appel HTTP artisanal — constitution I).
   mefali_api_client:
     path: ../../../clients/dart
+  # dio apparaît dans la surface publique du client généré (Dio, Interceptor,
+  # DioException) sans y être ré-exporté : dépendance DIRECTE obligatoire pour
+  # poser l'intercepteur d'autorisation. Version alignée sur le client (^5.7.0).
+  dio: 5.10.0
   # Cache local de la configuration distante (hors-ligne — FR-020). Figée (R7).
   shared_preferences: 2.5.5
   # ── Cycle CPT (003) — plugins NATIFS stabilisés tôt (cadrage §10.1 : Shorebird
@@ -40,6 +50,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   fonts:
     # Inter v4.1 embarquée (jamais chargée au runtime — DESIGN §10). OFL 1.1.
     - family: Inter
