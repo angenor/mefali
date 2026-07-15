@@ -2,6 +2,7 @@
 library;
 
 export 'l10n/mefali_core_localizations.dart';
+export 'src/appareils/ecran_appareils.dart';
 export 'src/auth/amorce_session.dart';
 export 'src/auth/cadre_auth.dart';
 export 'src/auth/ecran_consentement.dart';

@@ -66,12 +66,26 @@ class SessionAuth extends ChangeNotifier {
   }
 }
 
-/// Pose `Authorization: Bearer <accès>` sur chaque requête, tant qu'une session
-/// existe. Les endpoints publics (`/auth/otp/*`, `/config`) tolèrent l'en-tête.
+/// Chemin du renouvellement — jamais rafraîchi lui-même (sinon : boucle).
+const String _cheminRafraichir = '/auth/rafraichir';
+
+/// Marqueur posé sur une requête déjà rejouée après renouvellement.
+const String _dejaRejouee = 'mefali.rejouee';
+
+/// Pose `Authorization: Bearer <accès>` sur chaque requête tant qu'une session
+/// existe, et RENOUVELLE silencieusement sur 401 (US2 scénario 2).
+///
+/// Le renouvellement est SÉRIALISÉ (`_enCours`) : sans cela, les N requêtes qui
+/// se prennent un 401 en même temps — l'accès expire pour toutes à la fois —
+/// tourneraient le refresh N fois. Or la rotation R2 invalide le jeton
+/// précédent : les N-1 perdantes rejoueraient un jeton déjà tourné, le serveur
+/// y verrait un vol et révoquerait la session. Un renouvellement partagé évite
+/// à l'app de se déconnecter elle-même.
 class _InterceptorAutorisation extends Interceptor {
   _InterceptorAutorisation(this._session);
 
   final SessionAuth _session;
+  Future<bool>? _enCours;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -80,5 +94,57 @@ class _InterceptorAutorisation extends Interceptor {
       options.headers['Authorization'] = 'Bearer $acces';
     }
     handler.next(options);
+  }
+
+  @override
+  Future<void> onError(
+    DioException erreur,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final requete = erreur.requestOptions;
+    final rejouable = erreur.response?.statusCode == 401 &&
+        !requete.path.contains(_cheminRafraichir) &&
+        requete.extra[_dejaRejouee] != true &&
+        _session.rafraichissement != null;
+    if (!rejouable) return handler.next(erreur);
+
+    final renouvele = await (_enCours ??= _renouveler());
+    if (!renouvele) {
+      // Le serveur a refusé : la session est morte (révoquée à distance, ou
+      // rejeu détecté). On nettoie l'appareil — l'UI repart sur l'auth.
+      await _session.fermer();
+      return handler.next(erreur);
+    }
+
+    try {
+      requete.extra[_dejaRejouee] = true;
+      requete.headers['Authorization'] = 'Bearer ${_session.acces}';
+      handler.resolve(await _session.client.dio.fetch(requete));
+    } on DioException catch (e) {
+      handler.next(e);
+    }
+  }
+
+  Future<bool> _renouveler() async {
+    try {
+      final reponse = await _session.client.getAuthApi().rafraichir(
+            demandeRafraichissement: DemandeRafraichissement(
+              (b) => b..rafraichissement = _session.rafraichissement!,
+            ),
+          );
+      final jetons = reponse.data;
+      if (jetons == null) return false;
+      await _session.ouvrir(
+        JetonsSession(
+          acces: jetons.acces,
+          rafraichissement: jetons.rafraichissement,
+        ),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      _enCours = null;
+    }
   }
 }

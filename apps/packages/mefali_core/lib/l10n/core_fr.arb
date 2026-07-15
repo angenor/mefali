@@ -1,6 +1,5 @@
 {
   "@@locale": "fr",
-
   "authTelephoneTitre": "Votre numéro",
   "@authTelephoneTitre": {
     "description": "Titre de l'écran de saisie du numéro de téléphone"
@@ -25,7 +24,6 @@
   "@authTelephoneVide": {
     "description": "Erreur affichée quand le champ numéro est vide"
   },
-
   "authOtpTitre": "Code de vérification",
   "@authOtpTitre": {
     "description": "Titre de l'écran de saisie du code OTP"
@@ -51,7 +49,6 @@
       }
     }
   },
-
   "authConsentementTitre": "Protection de vos données",
   "@authConsentementTitre": {
     "description": "Titre de l'écran de consentement ARTCI"
@@ -68,7 +65,6 @@
   "@authConsentementAction": {
     "description": "Bouton principal de l'écran de consentement"
   },
-
   "authErreurTelephoneInvalide": "Ce numéro n'est pas valide. Vérifiez-le et réessayez.",
   "@authErreurTelephoneInvalide": {
     "description": "Erreur de format du numéro (422 telephone_invalide)"
@@ -81,7 +77,6 @@
   "@authErreurReseau": {
     "description": "Erreur réseau générique"
   },
-
   "accueilProvisoireTitre": "Vous êtes connecté",
   "@accueilProvisoireTitre": {
     "description": "Titre de l'accueil provisoire posé par le cycle CPT"
@@ -89,5 +84,29 @@
   "accueilProvisoireDeconnexion": "Se déconnecter",
   "@accueilProvisoireDeconnexion": {
     "description": "Action de déconnexion depuis l'accueil provisoire"
+  },
+  "appareilsTitre": "Appareils connectés",
+  "@appareilsTitre": {
+    "description": "Titre de l'écran des sessions/appareils"
+  },
+  "appareilsCourant": "Cet appareil",
+  "@appareilsCourant": {
+    "description": "Puce marquant la session de l'appareil qui consulte"
+  },
+  "appareilsDeconnecter": "Déconnecter cet appareil",
+  "@appareilsDeconnecter": {
+    "description": "Action de déconnexion à distance"
+  },
+  "appareilsVide": "Aucun autre appareil connecté.",
+  "@appareilsVide": {
+    "description": "État vide de la liste des appareils"
+  },
+  "appareilsErreur": "Impossible de charger vos appareils. Vérifiez votre réseau.",
+  "@appareilsErreur": {
+    "description": "Erreur de chargement de la liste des appareils"
+  },
+  "parametresAppareils": "Appareils connectés",
+  "@parametresAppareils": {
+    "description": "Entrée de menu vers l'écran des appareils"
   }
 }

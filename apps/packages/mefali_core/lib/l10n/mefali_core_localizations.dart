@@ -216,6 +216,42 @@ abstract class MefaliCoreLocalizations {
   /// In fr, this message translates to:
   /// **'Se déconnecter'**
   String get accueilProvisoireDeconnexion;
+
+  /// Titre de l'écran des sessions/appareils
+  ///
+  /// In fr, this message translates to:
+  /// **'Appareils connectés'**
+  String get appareilsTitre;
+
+  /// Puce marquant la session de l'appareil qui consulte
+  ///
+  /// In fr, this message translates to:
+  /// **'Cet appareil'**
+  String get appareilsCourant;
+
+  /// Action de déconnexion à distance
+  ///
+  /// In fr, this message translates to:
+  /// **'Déconnecter cet appareil'**
+  String get appareilsDeconnecter;
+
+  /// État vide de la liste des appareils
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun autre appareil connecté.'**
+  String get appareilsVide;
+
+  /// Erreur de chargement de la liste des appareils
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger vos appareils. Vérifiez votre réseau.'**
+  String get appareilsErreur;
+
+  /// Entrée de menu vers l'écran des appareils
+  ///
+  /// In fr, this message translates to:
+  /// **'Appareils connectés'**
+  String get parametresAppareils;
 }
 
 class _MefaliCoreLocalizationsDelegate

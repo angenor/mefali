@@ -75,4 +75,23 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
 
   @override
   String get accueilProvisoireDeconnexion => 'Se déconnecter';
+
+  @override
+  String get appareilsTitre => 'Appareils connectés';
+
+  @override
+  String get appareilsCourant => 'Cet appareil';
+
+  @override
+  String get appareilsDeconnecter => 'Déconnecter cet appareil';
+
+  @override
+  String get appareilsVide => 'Aucun autre appareil connecté.';
+
+  @override
+  String get appareilsErreur =>
+      'Impossible de charger vos appareils. Vérifiez votre réseau.';
+
+  @override
+  String get parametresAppareils => 'Appareils connectés';
 }
