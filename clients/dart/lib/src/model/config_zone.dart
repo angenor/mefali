@@ -18,6 +18,7 @@ part 'config_zone.g.dart';
 /// * [categories] - Catégories actives dans la zone.
 /// * [devise] - Devise résolue.
 /// * [drapeaux] - Drapeaux (clés `drapeau.*` sans préfixe).
+/// * [noteVocaleDureeMaxS] - Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas.
 /// * [parametres] - Paramètres client (clés `client.*` sans préfixe).
 /// * [textes] - Textes (clés `texte.*` sans préfixe) — clés i18n fr.
 /// * [transportsActifs] - Slugs des types de transport actifs.
@@ -36,6 +37,10 @@ abstract class ConfigZone implements Built<ConfigZone, ConfigZoneBuilder> {
   /// Drapeaux (clés `drapeau.*` sans préfixe).
   @BuiltValueField(wireName: r'drapeaux')
   BuiltMap<String, bool> get drapeaux;
+
+  /// Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas.
+  @BuiltValueField(wireName: r'note_vocale_duree_max_s')
+  int? get noteVocaleDureeMaxS;
 
   /// Paramètres client (clés `client.*` sans préfixe).
   @BuiltValueField(wireName: r'parametres')
@@ -95,6 +100,13 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
       object.drapeaux,
       specifiedType: const FullType(BuiltMap, [FullType(String), FullType(bool)]),
     );
+    if (object.noteVocaleDureeMaxS != null) {
+      yield r'note_vocale_duree_max_s';
+      yield serializers.serialize(
+        object.noteVocaleDureeMaxS,
+        specifiedType: const FullType.nullable(int),
+      );
+    }
     yield r'parametres';
     yield serializers.serialize(
       object.parametres,
@@ -163,6 +175,14 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
             specifiedType: const FullType(BuiltMap, [FullType(String), FullType(bool)]),
           ) as BuiltMap<String, bool>;
           result.drapeaux.replace(valueDes);
+          break;
+        case r'note_vocale_duree_max_s':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.noteVocaleDureeMaxS = valueDes;
           break;
         case r'parametres':
           final valueDes = serializers.deserialize(

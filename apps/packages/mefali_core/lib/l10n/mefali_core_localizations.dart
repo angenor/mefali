@@ -252,6 +252,168 @@ abstract class MefaliCoreLocalizations {
   /// In fr, this message translates to:
   /// **'Appareils connectés'**
   String get parametresAppareils;
+
+  /// Entrée de menu vers l'écran des adresses enregistrées
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes adresses'**
+  String get parametresAdresses;
+
+  /// Titre de l'écran des adresses enregistrées (CPT-05)
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes adresses'**
+  String get adressesTitre;
+
+  /// État vide de la liste des adresses
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune adresse enregistrée. Mefali vous proposera d\'en garder une après votre prochaine livraison.'**
+  String get adressesVide;
+
+  /// Erreur de chargement de la liste des adresses
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger vos adresses. Vérifiez votre réseau.'**
+  String get adressesErreur;
+
+  /// Action : renommer une adresse enregistrée (FR-021)
+  ///
+  /// In fr, this message translates to:
+  /// **'Renommer'**
+  String get adressesRenommer;
+
+  /// Action : supprimer une adresse enregistrée (FR-021)
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer'**
+  String get adressesSupprimer;
+
+  /// Titre de la confirmation de suppression d'une adresse
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer « {libelle} » ?'**
+  String adressesSupprimerTitre(String libelle);
+
+  /// Aide de la confirmation de suppression (FR-021 : ne vaut que pour l'avenir)
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos livraisons passées n\'en sont pas affectées.'**
+  String get adressesSupprimerAide;
+
+  /// Action : abandonner la boîte de dialogue
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuler'**
+  String get adressesAnnuler;
+
+  /// Action : confirmer la boîte de dialogue
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider'**
+  String get adressesValider;
+
+  /// Titre de la proposition d'enregistrement après une livraison (FR-019)
+  ///
+  /// In fr, this message translates to:
+  /// **'Garder cette adresse ?'**
+  String get adresseProposerTitre;
+
+  /// Aide de la proposition d'enregistrement d'adresse
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre prochaine commande ici tiendra en un geste.'**
+  String get adresseProposerAide;
+
+  /// Action principale : accepter la proposition d'enregistrement
+  ///
+  /// In fr, this message translates to:
+  /// **'Garder cette adresse'**
+  String get adresseProposerAction;
+
+  /// Action : refuser la proposition — l'enregistrement n'est jamais obligatoire
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas maintenant'**
+  String get adresseProposerRefuser;
+
+  /// Libellé d'adresse proposé
+  ///
+  /// In fr, this message translates to:
+  /// **'Maison'**
+  String get adresseLibelleMaison;
+
+  /// Libellé d'adresse proposé
+  ///
+  /// In fr, this message translates to:
+  /// **'Bureau'**
+  String get adresseLibelleBureau;
+
+  /// Champ : libellé libre de l'adresse
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom de l\'adresse'**
+  String get adresseLibelleLibre;
+
+  /// Champ : repère écrit de l'adresse
+  ///
+  /// In fr, this message translates to:
+  /// **'Repère'**
+  String get adresseRepereTexte;
+
+  /// Exemple de repère écrit (cadrage §8.2)
+  ///
+  /// In fr, this message translates to:
+  /// **'Derrière la pharmacie, portail bleu'**
+  String get adresseRepereExemple;
+
+  /// Action : capter une note vocale de repère
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer un repère vocal'**
+  String get adresseRepereEnregistrer;
+
+  /// Action : remplacer la note vocale déjà captée
+  ///
+  /// In fr, this message translates to:
+  /// **'Repère vocal de {secondes} s — refaire'**
+  String adresseRepereRefaire(int secondes);
+
+  /// Action : arrêter l'enregistrement en cours, avec son compteur
+  ///
+  /// In fr, this message translates to:
+  /// **'Arrêter ({secondes} s)'**
+  String adresseRepereArreter(int secondes);
+
+  /// Borne de durée servie par la configuration de zone (FR-019)
+  ///
+  /// In fr, this message translates to:
+  /// **'{secondes} s au maximum'**
+  String adresseRepereMax(int secondes);
+
+  /// Action : jouer la note vocale de repère (planche de style, bouton audio)
+  ///
+  /// In fr, this message translates to:
+  /// **'Écouter le repère'**
+  String get adresseRepereEcouter;
+
+  /// Durée de la note vocale, à côté du bouton d'écoute
+  ///
+  /// In fr, this message translates to:
+  /// **'{secondes} s'**
+  String adresseRepereDuree(int secondes);
+
+  /// Erreur de lecture de la note vocale
+  ///
+  /// In fr, this message translates to:
+  /// **'Lecture impossible'**
+  String get adresseRepereErreur;
+
+  /// Adresse dont le repère vocal a été purgé après 12 mois sans usage (FR-022)
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun repère vocal — Mefali vous en redemandera un à la prochaine commande.'**
+  String get adresseRepereAbsent;
 }
 
 class _MefaliCoreLocalizationsDelegate

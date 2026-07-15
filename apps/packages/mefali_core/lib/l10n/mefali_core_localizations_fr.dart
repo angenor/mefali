@@ -94,4 +94,100 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
 
   @override
   String get parametresAppareils => 'Appareils connectés';
+
+  @override
+  String get parametresAdresses => 'Mes adresses';
+
+  @override
+  String get adressesTitre => 'Mes adresses';
+
+  @override
+  String get adressesVide =>
+      'Aucune adresse enregistrée. Mefali vous proposera d\'en garder une après votre prochaine livraison.';
+
+  @override
+  String get adressesErreur =>
+      'Impossible de charger vos adresses. Vérifiez votre réseau.';
+
+  @override
+  String get adressesRenommer => 'Renommer';
+
+  @override
+  String get adressesSupprimer => 'Supprimer';
+
+  @override
+  String adressesSupprimerTitre(String libelle) {
+    return 'Supprimer « $libelle » ?';
+  }
+
+  @override
+  String get adressesSupprimerAide =>
+      'Vos livraisons passées n\'en sont pas affectées.';
+
+  @override
+  String get adressesAnnuler => 'Annuler';
+
+  @override
+  String get adressesValider => 'Valider';
+
+  @override
+  String get adresseProposerTitre => 'Garder cette adresse ?';
+
+  @override
+  String get adresseProposerAide =>
+      'Votre prochaine commande ici tiendra en un geste.';
+
+  @override
+  String get adresseProposerAction => 'Garder cette adresse';
+
+  @override
+  String get adresseProposerRefuser => 'Pas maintenant';
+
+  @override
+  String get adresseLibelleMaison => 'Maison';
+
+  @override
+  String get adresseLibelleBureau => 'Bureau';
+
+  @override
+  String get adresseLibelleLibre => 'Nom de l\'adresse';
+
+  @override
+  String get adresseRepereTexte => 'Repère';
+
+  @override
+  String get adresseRepereExemple => 'Derrière la pharmacie, portail bleu';
+
+  @override
+  String get adresseRepereEnregistrer => 'Enregistrer un repère vocal';
+
+  @override
+  String adresseRepereRefaire(int secondes) {
+    return 'Repère vocal de $secondes s — refaire';
+  }
+
+  @override
+  String adresseRepereArreter(int secondes) {
+    return 'Arrêter ($secondes s)';
+  }
+
+  @override
+  String adresseRepereMax(int secondes) {
+    return '$secondes s au maximum';
+  }
+
+  @override
+  String get adresseRepereEcouter => 'Écouter le repère';
+
+  @override
+  String adresseRepereDuree(int secondes) {
+    return '$secondes s';
+  }
+
+  @override
+  String get adresseRepereErreur => 'Lecture impossible';
+
+  @override
+  String get adresseRepereAbsent =>
+      'Aucun repère vocal — Mefali vous en redemandera un à la prochaine commande.';
 }

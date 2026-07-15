@@ -288,6 +288,9 @@ struct ConfigZone {
     categories: Vec<CategorieDto>,
     /// Slugs des types de transport actifs.
     transports_actifs: Vec<String>,
+    /// Durée maximale d'une note vocale, en secondes — borne l'enregistreur des
+    /// apps (FR-019). `null` si la zone ne la résout pas.
+    note_vocale_duree_max_s: Option<i64>,
     /// Textes (clés `texte.*` sans préfixe) — clés i18n fr.
     textes: BTreeMap<String, String>,
     /// Paramètres client (clés `client.*` sans préfixe).
@@ -315,6 +318,7 @@ impl From<zones::ConfigZonePublique> for ConfigZone {
                 })
                 .collect(),
             transports_actifs: d.transports_actifs,
+            note_vocale_duree_max_s: d.note_vocale_duree_max_s,
             textes: d.textes,
             parametres: d.parametres,
         }

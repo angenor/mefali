@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/mefali_core_localizations.dart';
+import '../adresses/liste_adresses.dart';
 import '../appareils/ecran_appareils.dart';
 import '../theme/tokens.dart';
 import 'parcours_auth.dart';
@@ -104,8 +105,22 @@ class AccueilProvisoire extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const Spacer(),
-              // Paramètres : ce cycle n'en pose qu'une entrée — les appareils
-              // connectés (US2). « Mes adresses » viendra avec CPT-05.
+              // Paramètres du cycle CPT : les appareils connectés (US2) et les
+              // adresses enregistrées (US5).
+              SizedBox(
+                height: MefaliTokens.tapMin,
+                child: ListTile(
+                  leading: const Icon(Symbols.bookmark),
+                  title: Text(l10n.parametresAdresses),
+                  trailing: const Icon(Symbols.chevron_right),
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ListeAdresses(session: session),
+                    ),
+                  ),
+                ),
+              ),
               SizedBox(
                 height: MefaliTokens.tapMin,
                 child: ListTile(

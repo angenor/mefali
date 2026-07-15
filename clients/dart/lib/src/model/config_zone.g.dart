@@ -14,6 +14,8 @@ class _$ConfigZone extends ConfigZone {
   @override
   final BuiltMap<String, bool> drapeaux;
   @override
+  final int? noteVocaleDureeMaxS;
+  @override
   final JsonObject parametres;
   @override
   final BuiltMap<String, String> textes;
@@ -31,6 +33,7 @@ class _$ConfigZone extends ConfigZone {
       {required this.categories,
       required this.devise,
       required this.drapeaux,
+      this.noteVocaleDureeMaxS,
       required this.parametres,
       required this.textes,
       required this.transportsActifs,
@@ -51,6 +54,7 @@ class _$ConfigZone extends ConfigZone {
         categories == other.categories &&
         devise == other.devise &&
         drapeaux == other.drapeaux &&
+        noteVocaleDureeMaxS == other.noteVocaleDureeMaxS &&
         parametres == other.parametres &&
         textes == other.textes &&
         transportsActifs == other.transportsActifs &&
@@ -64,6 +68,7 @@ class _$ConfigZone extends ConfigZone {
     _$hash = $jc(_$hash, categories.hashCode);
     _$hash = $jc(_$hash, devise.hashCode);
     _$hash = $jc(_$hash, drapeaux.hashCode);
+    _$hash = $jc(_$hash, noteVocaleDureeMaxS.hashCode);
     _$hash = $jc(_$hash, parametres.hashCode);
     _$hash = $jc(_$hash, textes.hashCode);
     _$hash = $jc(_$hash, transportsActifs.hashCode);
@@ -79,6 +84,7 @@ class _$ConfigZone extends ConfigZone {
           ..add('categories', categories)
           ..add('devise', devise)
           ..add('drapeaux', drapeaux)
+          ..add('noteVocaleDureeMaxS', noteVocaleDureeMaxS)
           ..add('parametres', parametres)
           ..add('textes', textes)
           ..add('transportsActifs', transportsActifs)
@@ -106,6 +112,11 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
       _$this._drapeaux ??= MapBuilder<String, bool>();
   set drapeaux(MapBuilder<String, bool>? drapeaux) =>
       _$this._drapeaux = drapeaux;
+
+  int? _noteVocaleDureeMaxS;
+  int? get noteVocaleDureeMaxS => _$this._noteVocaleDureeMaxS;
+  set noteVocaleDureeMaxS(int? noteVocaleDureeMaxS) =>
+      _$this._noteVocaleDureeMaxS = noteVocaleDureeMaxS;
 
   JsonObject? _parametres;
   JsonObject? get parametres => _$this._parametres;
@@ -140,6 +151,7 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
       _categories = $v.categories.toBuilder();
       _devise = $v.devise.toBuilder();
       _drapeaux = $v.drapeaux.toBuilder();
+      _noteVocaleDureeMaxS = $v.noteVocaleDureeMaxS;
       _parametres = $v.parametres;
       _textes = $v.textes.toBuilder();
       _transportsActifs = $v.transportsActifs.toBuilder();
@@ -171,6 +183,7 @@ class ConfigZoneBuilder implements Builder<ConfigZone, ConfigZoneBuilder> {
             categories: categories.build(),
             devise: devise.build(),
             drapeaux: drapeaux.build(),
+            noteVocaleDureeMaxS: noteVocaleDureeMaxS,
             parametres: BuiltValueNullFieldError.checkNotNull(
                 parametres, r'ConfigZone', 'parametres'),
             textes: textes.build(),

@@ -47,6 +47,13 @@ class ConfigDistante {
   List<String> get transportsActifs =>
       (donnees['transports_actifs'] as List?)?.cast<String>() ?? const [];
 
+  /// Durée maximale d'une note vocale de repère, en secondes (FR-019).
+  ///
+  /// `null` si la config n'a jamais été chargée ou si la zone ne la résout pas :
+  /// l'enregistreur laisse alors le serveur trancher plutôt que d'inventer une
+  /// borne. JAMAIS de constante en dur ici (FR-024).
+  int? get noteVocaleDureeMaxS => (donnees['note_vocale_duree_max_s'] as num?)?.toInt();
+
   /// Sérialise pour le cache local.
   String encoder() => jsonEncode(donnees);
 }

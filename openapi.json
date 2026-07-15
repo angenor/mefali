@@ -1438,6 +1438,14 @@
               "type": "string"
             }
           },
+          "note_vocale_duree_max_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Durée maximale d'une note vocale, en secondes — borne l'enregistreur des\napps (FR-019). `null` si la zone ne la résout pas."
+          },
           "parametres": {
             "type": "object",
             "description": "Paramètres client (clés `client.*` sans préfixe)."

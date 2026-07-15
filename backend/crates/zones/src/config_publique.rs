@@ -2,9 +2,17 @@
 //!
 //! LISTE BLANCHE de namespaces (constitution VIII, clarification Q1) : seuls
 //! `devise`, `drapeau.*`, `texte.*`, `client.*` + les vues dérivées `categories`
-//! (actives) et `transports_actifs` sortent par `/config`. Les namespaces
-//! internes (`dispatch.*`, `tarification.*`, `categorie.*.seuil_activation`,
-//! `transport.actifs` brut…) ne sont JAMAIS exposés.
+//! (actives), `transports_actifs` et `note_vocale_duree_max_s` sortent par
+//! `/config`. Les namespaces internes (`dispatch.*`, `tarification.*`,
+//! `categorie.*.seuil_activation`, `transport.actifs` brut…) ne sont JAMAIS
+//! exposés.
+//!
+//! Une vue DÉRIVÉE est la porte de sortie d'un paramètre interne dont le client
+//! a un besoin légitime et borné : `transport.actifs` devient `transports_actifs`
+//! parce que le coursier doit savoir quoi déclarer ; `medias.note_vocale_duree_max_s`
+//! devient `note_vocale_duree_max_s` parce que l'enregistreur doit se borner
+//! lui-même (FR-019/FR-024 : jamais en dur dans l'app). Élargir la liste blanche
+//! à ces namespaces entiers exposerait, lui, tout ce qu'ils contiendront demain.
 //!
 //! `version` = SHA-256 (hex) du document canonique servi (clés triées) : elle
 //! change si et seulement si la configuration effective change, y compris via un
@@ -34,6 +42,12 @@ pub struct ConfigZonePublique {
     pub categories: Vec<CategorieActive>,
     /// Slugs des types de transport actifs (vue dérivée).
     pub transports_actifs: Vec<String>,
+    /// Durée maximale d'une note vocale, en secondes (vue dérivée de
+    /// `medias.note_vocale_duree_max_s`).
+    ///
+    /// `None` si la zone ne la résout pas : l'app doit alors laisser le serveur
+    /// trancher plutôt que d'inventer une borne (FR-024).
+    pub note_vocale_duree_max_s: Option<i64>,
     /// Textes (clés `texte.*` sans préfixe) — clés i18n fr.
     pub textes: BTreeMap<String, String>,
     /// Paramètres client (clés `client.*` sans préfixe).
@@ -65,8 +79,14 @@ pub fn assembler(
         } else if let Some(suffixe) = cle.strip_prefix("client.") {
             parametres.insert(suffixe.to_owned(), vp.valeur.clone());
         }
-        // devise.*, categorie.*, transport.actifs, dispatch.*… : NON exposés.
+        // devise.*, categorie.*, transport.actifs, medias.*, dispatch.*… : NON
+        // exposés tels quels — seules leurs vues dérivées le sont.
     }
+
+    let note_vocale_duree_max_s = config
+        .valeurs
+        .get("medias.note_vocale_duree_max_s")
+        .and_then(|vp| vp.valeur.as_i64());
 
     let mut document = ConfigZonePublique {
         zone: config.zone,
@@ -75,6 +95,7 @@ pub fn assembler(
         drapeaux,
         categories,
         transports_actifs,
+        note_vocale_duree_max_s,
         textes,
         parametres,
     };
@@ -175,5 +196,32 @@ mod tests {
         assert!(!rendu.contains("dispatch"), "namespace interne exposé");
         assert!(!rendu.contains("rayon_km"));
         assert!(!rendu.contains("seuil_activation"));
+    }
+
+    /// FR-019/FR-024 — la durée max de note vocale sort en vue DÉRIVÉE : les
+    /// apps doivent borner leur enregistreur sans jamais coder 30 en dur.
+    #[test]
+    fn duree_max_note_vocale_derivee_sans_exposer_le_namespace() {
+        let c = config(&[
+            ("medias.note_vocale_duree_max_s", json!(30)),
+            ("medias.futur_parametre_interne", json!("secret")),
+        ]);
+        let doc = assembler(&c, xof(), vec![], vec![]);
+
+        assert_eq!(doc.note_vocale_duree_max_s, Some(30));
+        let rendu = serde_json::to_string(&doc).unwrap();
+        assert!(
+            !rendu.contains("futur_parametre_interne"),
+            "la vue dérivée expose UNE valeur, pas le namespace `medias.*` entier"
+        );
+        assert!(!rendu.contains("secret"));
+    }
+
+    /// Une zone qui ne résout pas la durée ne la rend pas : l'app laissera le
+    /// serveur trancher plutôt que d'inventer une borne.
+    #[test]
+    fn duree_max_note_vocale_absente_rend_null() {
+        let doc = assembler(&config(&[]), xof(), vec![], vec![]);
+        assert_eq!(doc.note_vocale_duree_max_s, None);
     }
 }

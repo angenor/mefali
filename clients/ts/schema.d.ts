@@ -439,6 +439,12 @@ export interface components {
             drapeaux: {
                 [key: string]: boolean;
             };
+            /**
+             * Format: int64
+             * @description Durée maximale d'une note vocale, en secondes — borne l'enregistreur des
+             *     apps (FR-019). `null` si la zone ne la résout pas.
+             */
+            note_vocale_duree_max_s?: number | null;
             /** @description Paramètres client (clés `client.*` sans préfixe). */
             parametres: Record<string, never>;
             /** @description Textes (clés `texte.*` sans préfixe) — clés i18n fr. */
