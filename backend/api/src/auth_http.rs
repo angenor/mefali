@@ -135,6 +135,10 @@ impl From<ErreurComptes> for ErreurApi {
         match erreur {
             E::DefiOtpInvalide => ErreurApi::CodeInvalideOuExpire,
             E::JetonInscriptionInvalide => ErreurApi::JetonInscriptionInvalide,
+            // Refresh inconnu, session révoquée, ou rejeu détecté : le contrat
+            // n'en fait qu'un 401 (dans le dernier cas, la session est déjà
+            // tombée côté domaine — R2).
+            E::RefreshInvalide => ErreurApi::NonAuthentifie,
             E::SessionInconnue(_) => ErreurApi::NonAuthentifie,
             E::RoleRequis(_) => ErreurApi::RoleRequis,
             E::CompteInconnu(_) | E::AdresseInconnue(_) | E::DossierInconnu(_) => {

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.session\n               SET refresh_precedent_hash = refresh_hash,\n                   refresh_hash = $2,\n                   derniere_activite_le = now()\n               WHERE refresh_hash = $1 AND revoquee_le IS NULL\n               RETURNING id, compte_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.session",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "compte_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.session",
+            "name": "compte_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "66e67c4f7914333c36a616d7b927937fb3c0f09a7620c841a83db9b35bf75a39"
+}

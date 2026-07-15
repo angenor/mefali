@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.session SET revoquee_le = $2\n               WHERE id = $1 AND revoquee_le IS NULL\n               RETURNING compte_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "compte_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.session",
+            "name": "compte_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d8c33167e6f43ae166c42df0de373ab33be501c4d4b5c5b855dd3d2080ff0fdf"
+}

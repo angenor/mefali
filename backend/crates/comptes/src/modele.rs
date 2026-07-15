@@ -364,6 +364,14 @@ pub enum ErreurComptes {
     /// Session absente, révoquée ou n'appartenant pas au compte.
     #[error("session inconnue ou révoquée : {0}")]
     SessionInconnue(Uuid),
+    /// Refresh inconnu, session révoquée, OU jeton déjà tourné rejoué.
+    ///
+    /// Variant UNIQUE, comme [`Self::DefiOtpInvalide`] : distinguer « jeton
+    /// inconnu » de « session révoquée » dirait à un voleur si le jeton qu'il
+    /// détient a existé. Le troisième cas — la réutilisation — a en plus un
+    /// EFFET : la session entière tombe (research R2).
+    #[error("jeton de rafraîchissement invalide")]
+    RefreshInvalide,
     /// Rôle valide requis pour l'opération (403 côté API).
     #[error("rôle requis : {0}")]
     RoleRequis(Role),

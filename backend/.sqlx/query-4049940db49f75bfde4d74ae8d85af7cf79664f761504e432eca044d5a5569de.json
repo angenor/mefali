@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT zone_id FROM comptes.compte WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "zone_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4049940db49f75bfde4d74ae8d85af7cf79664f761504e432eca044d5a5569de"
+}

@@ -20,10 +20,13 @@ use std::time::Duration;
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha2::{Digest, Sha256};
+use socle::{ecrire_evenement, NouvelEvenement};
 use uuid::Uuid;
 
-use crate::modele::ErreurComptes;
+use crate::depot::PgComptes;
+use crate::modele::{Appareil, ErreurComptes, OrigineRevocation, Session};
 
 /// Durée de vie du jeton d'accès (research R1). Borne l'effet d'une révocation
 /// à distance — c'est elle que mesure SC-004 (« au plus tard 15 minutes »).
@@ -139,6 +142,261 @@ pub fn hacher_refresh(jeton: &str) -> Vec<u8> {
     let mut hacheur = Sha256::new();
     hacheur.update(jeton.as_bytes());
     hacheur.finalize().to_vec()
+}
+
+// ── Cycle de vie des sessions en base (CPT-02, T011) ───────────────────────
+
+impl PgComptes {
+    /// Échange un refresh contre une nouvelle paire (rotation systématique, R2).
+    ///
+    /// ## La détection de réutilisation
+    ///
+    /// Un jeton déjà tourné qui revient signale que DEUX porteurs détiennent la
+    /// même chaîne : le légitime et un voleur. Impossible de savoir lequel se
+    /// présente — on révoque donc la session ENTIÈRE, et les deux repassent par
+    /// l'OTP. Seul le légitime a le téléphone.
+    ///
+    /// Un client qui rejoue un rafraîchissement (timeout réseau) tombera dans
+    /// ce filet et perdra sa session : c'est le prix assumé de R2, pas un bug.
+    /// La parade est côté client — ne jamais rejouer un refresh à l'aveugle.
+    pub async fn tourner_refresh(&self, jeton: &str) -> Result<Jetons, ErreurComptes> {
+        let presente = hacher_refresh(jeton);
+        let nouveau = generer_refresh();
+        let mut tx = self.pool.begin().await?;
+
+        // Rotation en UNE instruction : la clause `WHERE refresh_hash = $1`
+        // n'est vraie qu'une fois. Deux rotations concurrentes du même jeton ne
+        // peuvent donc pas réussir toutes les deux — la perdante tombera sur la
+        // détection de réutilisation ci-dessous, ce qui est le comportement voulu.
+        let tournee = sqlx::query!(
+            r#"UPDATE comptes.session
+               SET refresh_precedent_hash = refresh_hash,
+                   refresh_hash = $2,
+                   derniere_activite_le = now()
+               WHERE refresh_hash = $1 AND revoquee_le IS NULL
+               RETURNING id, compte_id"#,
+            &presente,
+            hacher_refresh(&nouveau),
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        if let Some(session) = tournee {
+            // AUCUN événement : une rotation n'est pas une transition d'état
+            // (data-model §4). Seule la révocation en émet un.
+            tx.commit().await?;
+            let acces = emettre_acces(&self.secret, session.compte_id, session.id)?;
+            return Ok(Jetons {
+                acces,
+                rafraichissement: nouveau,
+            });
+        }
+
+        // Rien n'a tourné : soit le jeton a DÉJÀ été tourné (réutilisation),
+        // soit il est inconnu ou sa session est révoquée.
+        let precedente = sqlx::query!(
+            r#"SELECT id, compte_id, revoquee_le
+               FROM comptes.session WHERE refresh_precedent_hash = $1"#,
+            &presente,
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        if let Some(session) = precedente {
+            if session.revoquee_le.is_none() {
+                self.revoquer_dans_tx(
+                    &mut tx,
+                    session.id,
+                    session.compte_id,
+                    OrigineRevocation::ReutilisationDetectee,
+                    None,
+                )
+                .await?;
+                tx.commit().await?;
+                tracing::warn!(
+                    session = %session.id,
+                    "refresh déjà tourné rejoué — session révoquée (vol présumé)"
+                );
+                return Err(ErreurComptes::RefreshInvalide);
+            }
+        }
+        tx.rollback().await?;
+        Err(ErreurComptes::RefreshInvalide)
+    }
+
+    /// Révoque une session et émet `session.revoquee`. Renvoie `false` si elle
+    /// était déjà révoquée ou inconnue — la révocation est IDEMPOTENTE : se
+    /// déconnecter deux fois n'est pas une erreur.
+    pub(crate) async fn revoquer_dans_tx(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        session: Uuid,
+        compte: Uuid,
+        origine: OrigineRevocation,
+        revoquee_par: Option<Uuid>,
+    ) -> Result<bool, ErreurComptes> {
+        let maintenant = Utc::now();
+        let touchee = sqlx::query!(
+            r#"UPDATE comptes.session SET revoquee_le = $2
+               WHERE id = $1 AND revoquee_le IS NULL
+               RETURNING compte_id"#,
+            session,
+            maintenant,
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+        if touchee.is_none() {
+            return Ok(false);
+        }
+
+        let zone = sqlx::query_scalar!("SELECT zone_id FROM comptes.compte WHERE id = $1", compte,)
+            .fetch_one(&mut **tx)
+            .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "session.revoquee",
+                entite_type: "session",
+                entite_id: session,
+                payload: json!({
+                    "zone": zone,
+                    "compte": compte,
+                    "origine": origine.comme_str(),
+                    "revoquee_par": revoquee_par,
+                }),
+                survenu_le: maintenant,
+            },
+        )
+        .await?;
+        Ok(true)
+    }
+
+    /// Déconnexion LOCALE : l'appareil révoque sa propre session.
+    pub async fn deconnecter(&self, session: Uuid, compte: Uuid) -> Result<(), ErreurComptes> {
+        let mut tx = self.pool.begin().await?;
+        self.revoquer_dans_tx(
+            &mut tx,
+            session,
+            compte,
+            OrigineRevocation::Locale,
+            Some(compte),
+        )
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Déconnexion À DISTANCE d'un appareil (US2, SC-004).
+    ///
+    /// La propriété est vérifiée dans la MÊME requête que la révocation : sans
+    /// ce `AND compte_id = $2`, n'importe quel compte authentifié pourrait
+    /// déconnecter l'appareil de n'importe qui.
+    pub async fn revoquer_appareil(
+        &self,
+        compte: Uuid,
+        session: Uuid,
+        demandee_par: Uuid,
+    ) -> Result<(), ErreurComptes> {
+        let mut tx = self.pool.begin().await?;
+        let appartient = sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                 SELECT 1 FROM comptes.session WHERE id = $1 AND compte_id = $2
+               )"#,
+            session,
+            compte,
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+        if appartient != Some(true) {
+            return Err(ErreurComptes::SessionInconnue(session));
+        }
+
+        self.revoquer_dans_tx(
+            &mut tx,
+            session,
+            compte,
+            OrigineRevocation::ADistance,
+            Some(demandee_par),
+        )
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Appareils actifs du compte (FR-008), du plus récemment actif au plus ancien.
+    pub async fn sessions_actives(&self, compte: Uuid) -> Result<Vec<Session>, ErreurComptes> {
+        let lignes = sqlx::query!(
+            r#"SELECT id, compte_id, appareil_nom, appareil_plateforme,
+                      cree_le, derniere_activite_le, revoquee_le
+               FROM comptes.session
+               WHERE compte_id = $1 AND revoquee_le IS NULL
+               ORDER BY derniere_activite_le DESC"#,
+            compte,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        lignes
+            .into_iter()
+            .map(|l| {
+                Ok(Session {
+                    id: l.id,
+                    compte_id: l.compte_id,
+                    appareil: Appareil {
+                        nom: l.appareil_nom,
+                        // La colonne porte un CHECK IN ('android','ios') : une
+                        // valeur hors énum signale une base corrompue.
+                        plateforme: l.appareil_plateforme.parse().map_err(|e: String| {
+                            ErreurComptes::Jeton(format!("plateforme en base : {e}"))
+                        })?,
+                    },
+                    cree_le: l.cree_le,
+                    derniere_activite_le: l.derniere_activite_le,
+                    revoquee_le: l.revoquee_le,
+                })
+            })
+            .collect()
+    }
+
+    /// Session ACTIVE par identifiant — base de l'extracteur `Auth` (R5).
+    pub async fn session_active(&self, session: Uuid) -> Result<Session, ErreurComptes> {
+        self.sessions_actives_par_id(session)
+            .await?
+            .ok_or(ErreurComptes::SessionInconnue(session))
+    }
+
+    async fn sessions_actives_par_id(
+        &self,
+        session: Uuid,
+    ) -> Result<Option<Session>, ErreurComptes> {
+        let ligne = sqlx::query!(
+            r#"SELECT id, compte_id, appareil_nom, appareil_plateforme,
+                      cree_le, derniere_activite_le, revoquee_le
+               FROM comptes.session WHERE id = $1 AND revoquee_le IS NULL"#,
+            session,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        ligne
+            .map(|l| {
+                Ok(Session {
+                    id: l.id,
+                    compte_id: l.compte_id,
+                    appareil: Appareil {
+                        nom: l.appareil_nom,
+                        plateforme: l.appareil_plateforme.parse().map_err(|e: String| {
+                            ErreurComptes::Jeton(format!("plateforme en base : {e}"))
+                        })?,
+                    },
+                    cree_le: l.cree_le,
+                    derniere_activite_le: l.derniere_activite_le,
+                    revoquee_le: l.revoquee_le,
+                })
+            })
+            .transpose()
+    }
 }
 
 /// Encodage hexadécimal minuscule.
