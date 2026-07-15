@@ -1,0 +1,172 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, compte_id, libelle, lat, lng, repere_texte,\n                      repere_vocal_cle_objet, repere_vocal_duree_s, zone_id,\n                      livraison_origine, cree_le, derniere_utilisation_le, supprimee_le\n               FROM comptes.adresse\n               WHERE compte_id = $1 AND supprimee_le IS NULL\n               ORDER BY derniere_utilisation_le DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "compte_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "compte_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "libelle",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "libelle"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "lat",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "lat"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "lng",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "lng"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "repere_texte",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_texte"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "repere_vocal_cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_vocal_cle_objet"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "repere_vocal_duree_s",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_vocal_duree_s"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "livraison_origine",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "livraison_origine"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "cree_le"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "derniere_utilisation_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "derniere_utilisation_le"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "supprimee_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "supprimee_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "95b1d7300b8ae2cd1714de5ac4f9e092fe721d109b1dc1b8584bd7bde4174faf"
+}

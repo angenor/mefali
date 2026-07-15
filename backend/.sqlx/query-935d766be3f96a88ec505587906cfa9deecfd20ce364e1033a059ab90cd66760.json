@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.adresse SET libelle = $3, repere_texte = $4\n             WHERE id = $1 AND compte_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "935d766be3f96a88ec505587906cfa9deecfd20ce364e1033a059ab90cd66760"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.adresse\n                 SET repere_vocal_cle_objet = NULL, repere_vocal_duree_s = NULL\n                 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5854606e3ebd66fa38e2c63ff64eaf4a4dc1ee365fa981f75158264d4dbd9fee"
+}

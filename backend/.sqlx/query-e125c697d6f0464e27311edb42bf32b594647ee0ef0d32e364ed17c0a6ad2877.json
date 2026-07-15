@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.adresse SET derniere_utilisation_le = now()\n             WHERE id = $1 AND supprimee_le IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e125c697d6f0464e27311edb42bf32b594647ee0ef0d32e364ed17c0a6ad2877"
+}

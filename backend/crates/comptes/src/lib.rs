@@ -16,6 +16,7 @@
 //!   de sorte que l'atomicité « transition + événement outbox » soit
 //!   impossible à contourner (constitution VI).
 
+pub mod adresse;
 pub mod depot;
 pub mod dossier;
 pub mod inscription;
@@ -27,6 +28,10 @@ pub mod session;
 #[cfg(test)]
 mod test_zones;
 
+pub use adresse::{
+    ModificationAdresse, NouvelleAdresse, NoteVocale, LIBELLE_MAX, NOTE_VOCALE_MIMES,
+    NOTE_VOCALE_TAILLE_MAX, REPERE_TEXTE_MAX,
+};
 pub use depot::{Comptes, PgComptes};
 pub use dossier::{
     DossierCoursierAdmin, IssueSoumission, PieceIdentite, SoumissionDossier, PIECE_MIMES,

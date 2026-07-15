@@ -87,6 +87,29 @@ fn mount_docs(prod: bool, openapi: OpenApi) -> impl FnOnce(&mut web::ServiceConf
 /// Région S3 signée mais non routante côté Garage (`infra/garage/garage.toml`).
 const REGION_S3: &str = "garage";
 
+/// Intervalle du job de purge des repères vocaux (research R8).
+///
+/// Quotidien : la rétention se compte en MOIS (12 par défaut), purger plus
+/// souvent ne minimiserait rien de plus et réveillerait la base pour rien.
+const PURGE_INTERVALLE: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
+
+/// Purge périodique des repères vocaux inutilisés (FR-022, research R8).
+///
+/// Même patron que `WorkerOutbox` : une tâche tokio dans le process existant.
+/// Une erreur est journalisée et le passage suivant retente — un incident de
+/// purge ne doit jamais faire tomber l'API.
+async fn job_purge_reperes(depot: PgComptes) {
+    let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
+    loop {
+        horloge.tick().await;
+        match depot.purger_reperes_vocaux().await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(purgees = n, "repères vocaux purgés (rétention de zone)"),
+            Err(e) => tracing::error!(erreur = %e, "purge des repères vocaux échouée"),
+        }
+    }
+}
+
 /// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
 pub async fn run() -> std::io::Result<()> {
     let prod = std::env::var("APP_ENV")
@@ -133,13 +156,16 @@ pub async fn run() -> std::io::Result<()> {
                 );
                 // PgComptes EST la composition racine du domaine : pool + les
                 // trois ports + le secret. Les handlers ne voient que lui.
-                comptes_opt = Some(PgComptes::new(
+                let depot = PgComptes::new(
                     pool.clone(),
                     Arc::new(ephemere),
                     sms,
                     Arc::new(objets),
                     Arc::from(config.jwt_secret.as_bytes()),
-                ));
+                );
+                tokio::spawn(job_purge_reperes(depot.clone()));
+                eprintln!("job de purge des repères vocaux démarré (quotidien)");
+                comptes_opt = Some(depot);
                 Some(pool)
             }
             Err(e) => {
