@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comptes.vehicule_declare (id, compte_id, type_transport_id)\n               SELECT v.id, $2, v.type_transport\n               FROM unnest($1::uuid[], $3::uuid[]) AS v(id, type_transport)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ae14d79aa9f7b8f01c1e77463b8f503656fa3cbc93a42b9ecf1a24e9d544076c"
+}

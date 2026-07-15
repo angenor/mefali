@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT v.compte_id, t.id, t.slug\n               FROM comptes.vehicule_declare v\n               JOIN zones.type_transport t ON t.id = v.type_transport_id\n               WHERE v.compte_id = ANY($1)\n               ORDER BY v.compte_id, t.ordre",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "compte_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.vehicule_declare",
+            "name": "compte_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "zones.type_transport",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "zones.type_transport",
+            "name": "slug"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4a740aa9ba252975741d9e08113b070191c1ffc9f934cfcef5b96e6d9a2d08a1"
+}

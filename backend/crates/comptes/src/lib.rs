@@ -17,6 +17,7 @@
 //!   impossible à contourner (constitution VI).
 
 pub mod depot;
+pub mod dossier;
 pub mod inscription;
 pub mod modele;
 pub mod otp;
@@ -27,6 +28,10 @@ pub mod session;
 mod test_zones;
 
 pub use depot::{Comptes, PgComptes};
+pub use dossier::{
+    DossierCoursierAdmin, IssueSoumission, PieceIdentite, SoumissionDossier, PIECE_MIMES,
+    PIECE_TAILLE_MAX, REFERENT_NOM_MAX,
+};
 pub use inscription::{IssueVerification, SessionOuverte};
 pub use modele::{
     Adresse, Appareil, AttributionRole, Compte, DossierCoursier, ErreurComptes, ErreurEphemere,

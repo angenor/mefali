@@ -1,0 +1,131 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.compte_id, c.telephone_e164, c.zone_id,\n                      d.piece_cle_objet, d.piece_mime, d.referent_nom,\n                      d.referent_telephone_e164, d.soumis_le,\n                      a.statut::text AS \"statut!\", a.motif\n               FROM comptes.dossier_coursier d\n               JOIN comptes.compte c ON c.id = d.compte_id\n               -- Le statut du dossier EST celui de l'attribution (R9) : le\n               -- filtre porte donc sur `attribution_role`, via son index\n               -- (role, statut).\n               JOIN comptes.attribution_role a\n                 ON a.compte_id = d.compte_id AND a.role = 'coursier'::comptes.role\n               WHERE $1::text IS NULL OR a.statut = $1::text::comptes.statut_role\n               ORDER BY d.soumis_le DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "compte_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "compte_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "telephone_e164",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "telephone_e164"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "piece_cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "piece_cle_objet"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "piece_mime",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "piece_mime"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "referent_nom",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "referent_nom"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "referent_telephone_e164",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "referent_telephone_e164"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "soumis_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "soumis_le"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "motif",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.attribution_role",
+            "name": "motif"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true
+    ]
+  },
+  "hash": "5b66195f05ba4271e9800f4f6e45b46ec42289caf45839854cfe906f815356de"
+}

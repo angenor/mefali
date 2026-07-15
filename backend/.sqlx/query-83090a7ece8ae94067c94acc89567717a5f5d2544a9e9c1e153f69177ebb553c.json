@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.piece_cle_objet, d.piece_mime, d.referent_nom,\n                      d.referent_telephone_e164, d.soumis_le,\n                      a.statut::text AS \"statut!\", a.motif\n               FROM comptes.dossier_coursier d\n               JOIN comptes.attribution_role a\n                 ON a.compte_id = d.compte_id AND a.role = 'coursier'::comptes.role\n               WHERE d.compte_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "piece_cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "piece_cle_objet"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "piece_mime",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "piece_mime"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "referent_nom",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "referent_nom"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "referent_telephone_e164",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "referent_telephone_e164"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "soumis_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "soumis_le"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "motif",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.attribution_role",
+            "name": "motif"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true
+    ]
+  },
+  "hash": "83090a7ece8ae94067c94acc89567717a5f5d2544a9e9c1e153f69177ebb553c"
+}

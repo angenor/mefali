@@ -141,6 +141,43 @@ impl Bac {
         }
     }
 
+    /// Pose le référentiel des transports et les actifs de la ville.
+    ///
+    /// ⚠ Ces lignes vivent dans `seeds/10_zones_tiassale.sql`, et
+    /// `#[sqlx::test]` ne rejoue QUE les migrations : sans cet appel, le
+    /// référentiel est vide et toute déclaration de véhicule échoue. Extrait
+    /// fidèle du seed (mêmes slugs, même ordre) — dont `camion`, présent au
+    /// référentiel mais INACTIF à Tiassalé : c'est lui qui prouve le 422
+    /// `VehiculeHorsZone`.
+    pub async fn seeder_transports(&self) {
+        for (slug, ordre) in [("a_pied", 1), ("velo", 2), ("moto", 3), ("camion", 8)] {
+            sqlx::query(
+                "INSERT INTO zones.type_transport (id, slug, nom_cle, ordre)
+                 VALUES ($1, $2, $3, $4)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(slug)
+            .bind(format!("transport.{slug}.nom"))
+            .bind(ordre)
+            .execute(&self.pool)
+            .await
+            .unwrap();
+        }
+        self.definir_transports_actifs(&["a_pied", "velo", "moto"])
+            .await;
+    }
+
+    /// Redéfinit `transport.actifs` de la VILLE (le seed le pose au niveau
+    /// ville, pas pays — la désactivation d'un type est une décision locale).
+    pub async fn definir_transports_actifs(&self, slugs: &[&str]) {
+        let mut tx = self.pool.begin().await.unwrap();
+        PgZones::new(self.pool.clone())
+            .definir_parametre(&mut tx, self.zone, "transport.actifs", json!(slugs), "test")
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
+
     pub async fn compter(&self, sql: &'static str) -> i64 {
         sqlx::query_scalar(sql).fetch_one(&self.pool).await.unwrap()
     }

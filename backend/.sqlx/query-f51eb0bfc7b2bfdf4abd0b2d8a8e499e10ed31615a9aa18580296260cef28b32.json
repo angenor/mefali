@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM comptes.vehicule_declare WHERE compte_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f51eb0bfc7b2bfdf4abd0b2d8a8e499e10ed31615a9aa18580296260cef28b32"
+}

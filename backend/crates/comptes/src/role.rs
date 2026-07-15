@@ -182,8 +182,8 @@ impl PgComptes {
     ///
     /// Reste `pub(crate)` À DESSEIN : la publier laisserait demander le rôle
     /// coursier SANS dossier, ce que FR-015 interdit. Son unique appelant hors
-    /// tests sera `dossier.rs` (T017) — d'où l'`allow` temporaire.
-    #[allow(dead_code)]
+    /// tests est `dossier.rs` — c'est la visibilité du langage, et non une
+    /// convention de revue, qui tient la règle.
     pub(crate) async fn demander_role_coursier(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
