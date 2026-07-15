@@ -21,6 +21,7 @@ pub mod inscription;
 pub mod modele;
 pub mod otp;
 pub mod ports;
+pub mod role;
 pub mod session;
 #[cfg(test)]
 mod test_zones;
@@ -36,4 +37,5 @@ pub use ports::{
     Compteur, DepotEphemere, DepotObjets, EnvoiSms, HorlogeManuelle, IssueDefi, JetonInscription,
     MemoireEphemere, MemoireObjets, SmsEnvoye, SmsTraces, UrlPresignee,
 };
+pub use role::ActionRole;
 pub use session::{verifier_acces, Claims, Jetons, OrigineSession, ACCES_TTL};
