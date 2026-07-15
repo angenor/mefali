@@ -37,6 +37,10 @@ pub fn api_openapi() -> OpenApi {
         .service(auth_http::mes_sessions)
         .service(auth_http::revoquer_session)
         .service(comptes_http::decider_role)
+        .service(comptes_http::soumettre_dossier_coursier)
+        .service(comptes_http::mon_dossier_coursier)
+        .service(comptes_http::lister_dossiers_coursier)
+        .service(comptes_http::consulter_dossier_coursier)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -174,7 +178,14 @@ pub async fn run() -> std::io::Result<()> {
             .service(auth_http::mes_sessions)
             .service(auth_http::revoquer_session)
             .service(comptes_http::decider_role)
-            .service(comptes_http::decider_role)
+            // ⚠ `/admin/comptes/dossiers-coursier` AVANT
+            // `/admin/comptes/{compte_id}/dossier-coursier` : Actix retient la
+            // première route qui matche, et « dossiers-coursier » se lirait
+            // sinon comme un `{compte_id}` — qui ne parse pas en UUID (404).
+            .service(comptes_http::lister_dossiers_coursier)
+            .service(comptes_http::consulter_dossier_coursier)
+            .service(comptes_http::soumettre_dossier_coursier)
+            .service(comptes_http::mon_dossier_coursier)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -182,7 +193,9 @@ pub async fn run() -> std::io::Result<()> {
             .app_data(zones_http::config_json())
             .app_data(zones_http::config_query())
             // Rôle hors énumération dans le chemin → 404 (ressource inexistante).
-            .app_data(comptes_http::config_path());
+            .app_data(comptes_http::config_path())
+            // Corps multipart démesuré → 422 avant bufferisation (CPT-04/05).
+            .app_data(comptes_http::config_multipart());
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
         }

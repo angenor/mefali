@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/admin/comptes/dossiers-coursier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste des dossiers coursier pour la revue admin (FR-017). */
+        get: operations["lister_dossiers_coursier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/comptes/{compte_id}/dossier-coursier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dossier complet d'un coursier, pièce lisible comprise (FR-017 scénario 2). */
+        get: operations["consulter_dossier_coursier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/comptes/{compte_id}/roles/{role}": {
         parameters: {
             query?: never;
@@ -182,6 +216,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/dossier-coursier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État du dossier coursier du compte courant (FR-013 : l'app Pro l'affiche). */
+        get: operations["mon_dossier_coursier"];
+        put?: never;
+        /**
+         * Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de
+         *     rôle (FR-015).
+         */
+        post: operations["soumettre_dossier_coursier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/sessions": {
         parameters: {
             query?: never;
@@ -334,6 +389,60 @@ export interface components {
              */
             decimales: number;
         };
+        /**
+         * @description Dossier coursier tel que son titulaire le voit (contrat).
+         *
+         *     ⚠ La CLÉ de la pièce n'en fait pas partie : elle n'a de sens que pour le
+         *     serveur, et l'exposer donnerait un identifiant de bucket à deviner.
+         */
+        DossierCoursier: {
+            /** @description Motif de la dernière décision admin. */
+            motif?: string | null;
+            /** @description Référent local (« caution morale », cadrage §7.1). */
+            referent_nom: string;
+            /** @description Téléphone du référent, normalisé E.164. */
+            referent_telephone_e164: string;
+            /**
+             * Format: date-time
+             * @description Dernier dépôt.
+             */
+            soumis_le: string;
+            /** @description Statut = celui de l'attribution `coursier` (R9). */
+            statut: string;
+            /** @description Véhicules déclarés. */
+            vehicules: components["schemas"]["VehiculeDeclare"][];
+        };
+        /** @description Dossier complet pour la revue admin (contrat `DossierCoursierAdmin`). */
+        DossierCoursierAdmin: {
+            /**
+             * Format: uuid
+             * @description Compte du coursier.
+             */
+            compte_id: string;
+            /** @description Motif de la dernière décision admin. */
+            motif?: string | null;
+            /**
+             * @description URL présignée de la pièce (TTL 10 min) — DÉTAIL uniquement, absente en
+             *     liste : présigner N pièces pour un tableau serait du gaspillage, et
+             *     autant de liens vivants qu'aucun œil n'ouvrira.
+             */
+            piece_url?: string | null;
+            /** @description Référent local. */
+            referent_nom: string;
+            /** @description Téléphone du référent. */
+            referent_telephone_e164: string;
+            /**
+             * Format: date-time
+             * @description Dernier dépôt.
+             */
+            soumis_le: string;
+            /** @description Statut = celui de l'attribution `coursier`. */
+            statut: string;
+            /** @description Numéro du coursier — l'admin doit pouvoir le rappeler (FR-017). */
+            telephone_e164: string;
+            /** @description Véhicules déclarés. */
+            vehicules: components["schemas"]["VehiculeDeclare"][];
+        };
         /** @description Corps d'erreur du contrat — `{ code, message_cle }`. */
         ErreurApi: {
             /** @description Code stable, exploitable par le client. */
@@ -444,6 +553,40 @@ export interface components {
              */
             id: string;
         };
+        /**
+         * @description Dossier soumis par le coursier : pièce d'identité, référent local et
+         *     véhicules déclarés (FR-015).
+         */
+        SoumissionDossier: {
+            /**
+             * Format: binary
+             * @description Pièce d'identité — ≤ 10 Mo, jpeg/png/webp/pdf.
+             */
+            piece: string;
+            /** @description Nom du référent local. */
+            referent_nom: string;
+            /** @description Téléphone du référent — normalisé E.164 comme celui du compte. */
+            referent_telephone: string;
+            /**
+             * @description Slugs des types de transport, ACTIFS dans la zone (référentiel ZON-03).
+             * @example [
+             *       "moto"
+             *     ]
+             */
+            vehicules: string[];
+        };
+        /** @description Véhicule déclaré au dossier (contrat). */
+        VehiculeDeclare: {
+            /** @description `false` si le type a été DÉSACTIVÉ dans la zone après la déclaration. */
+            actif_zone: boolean;
+            /** @description Slug du type (ex. `moto`). */
+            slug: string;
+            /**
+             * Format: uuid
+             * @description Type de transport du référentiel ZON-03.
+             */
+            type_transport_id: string;
+        };
         /** @description Corps de `POST /auth/otp/verifier`. */
         VerificationOtp: {
             /** @description Appareil — capté ici, conservé jusqu'à l'inscription (R3). */
@@ -467,6 +610,97 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    lister_dossiers_coursier: {
+        parameters: {
+            query?: {
+                /** @description Filtre — tous les dossiers si absent. */
+                statut?: "en_attente" | "valide" | "refuse" | "suspendu";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossiers, du plus récemment soumis au plus ancien. `piece_url` est absente ici (détail uniquement). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursierAdmin"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    consulter_dossier_coursier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Coursier concerné. */
+                compte_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossier complet — `piece_url` est présignée 10 min. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursierAdmin"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Compte ou dossier inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     decider_role: {
         parameters: {
             query?: never;
@@ -866,6 +1100,107 @@ export interface operations {
             };
             /** @description Session absente, invalide ou révoquée. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mon_dossier_coursier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossier et son statut. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucun dossier soumis. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    soumettre_dossier_coursier: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUIDv7 généré par le client — rejeu réseau idempotent (R14). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["SoumissionDossier"];
+            };
+        };
+        responses: {
+            /** @description Rejeu : un dossier est déjà en attente. Rien n'a changé (R14). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursier"];
+                };
+            };
+            /** @description Dossier soumis — rôle coursier `en_attente`. Émet `role.demande` + `dossier_coursier.soumis` dans la même transaction. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition invalide — dossier déjà `valide` ou `suspendu`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

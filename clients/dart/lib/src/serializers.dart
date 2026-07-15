@@ -25,6 +25,8 @@ import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/devise_dto.dart';
+import 'package:mefali_api_client/src/model/dossier_coursier.dart';
+import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
@@ -37,6 +39,7 @@ import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
 import 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
+import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
 
 part 'serializers.g.dart';
@@ -53,6 +56,8 @@ part 'serializers.g.dart';
   DemandeOtp,
   DemandeRafraichissement,
   DeviseDto,
+  DossierCoursier,
+  DossierCoursierAdmin,
   ErreurApi,
   EtatCategorie,
   EtatRoleDto,
@@ -65,12 +70,21 @@ part 'serializers.g.dart';
   ResultatVerificationOneOf,
   ResultatVerificationOneOf1,
   SessionAppareil,
+  VehiculeDeclare,
   VerificationOtp,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(SessionAppareil)]),
         () => ListBuilder<SessionAppareil>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(String)]),
+        () => ListBuilder<String>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(DossierCoursierAdmin)]),
+        () => ListBuilder<DossierCoursierAdmin>(),
       )
       ..add(const OneOfSerializer())
       ..add(const AnyOfSerializer())

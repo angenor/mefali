@@ -14,6 +14,8 @@ doc/DecisionRole.md
 doc/DemandeOtp.md
 doc/DemandeRafraichissement.md
 doc/DeviseDto.md
+doc/DossierCoursier.md
+doc/DossierCoursierAdmin.md
 doc/ErreurApi.md
 doc/EtatCategorie.md
 doc/EtatRoleDto.md
@@ -28,6 +30,7 @@ doc/ResultatVerificationOneOf.md
 doc/ResultatVerificationOneOf1.md
 doc/SessionAppareil.md
 doc/SocleApi.md
+doc/VehiculeDeclare.md
 doc/VerificationOtp.md
 doc/ZonesApi.md
 lib/mefali_api_client.dart
@@ -56,6 +59,8 @@ lib/src/model/decision_role.dart
 lib/src/model/demande_otp.dart
 lib/src/model/demande_rafraichissement.dart
 lib/src/model/devise_dto.dart
+lib/src/model/dossier_coursier.dart
+lib/src/model/dossier_coursier_admin.dart
 lib/src/model/erreur_api.dart
 lib/src/model/etat_categorie.dart
 lib/src/model/etat_role_dto.dart
@@ -68,6 +73,7 @@ lib/src/model/resultat_verification.dart
 lib/src/model/resultat_verification_one_of.dart
 lib/src/model/resultat_verification_one_of1.dart
 lib/src/model/session_appareil.dart
+lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml

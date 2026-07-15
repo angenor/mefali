@@ -27,6 +27,8 @@ export 'package:mefali_api_client/src/model/decision_role.dart';
 export 'package:mefali_api_client/src/model/demande_otp.dart';
 export 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 export 'package:mefali_api_client/src/model/devise_dto.dart';
+export 'package:mefali_api_client/src/model/dossier_coursier.dart';
+export 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 export 'package:mefali_api_client/src/model/erreur_api.dart';
 export 'package:mefali_api_client/src/model/etat_categorie.dart';
 export 'package:mefali_api_client/src/model/etat_role_dto.dart';
@@ -39,5 +41,6 @@ export 'package:mefali_api_client/src/model/resultat_verification.dart';
 export 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
 export 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
 export 'package:mefali_api_client/src/model/session_appareil.dart';
+export 'package:mefali_api_client/src/model/vehicule_declare.dart';
 export 'package:mefali_api_client/src/model/verification_otp.dart';
 

@@ -5,6 +5,141 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/comptes/dossiers-coursier": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Liste des dossiers coursier pour la revue admin (FR-017).",
+        "operationId": "lister_dossiers_coursier",
+        "parameters": [
+          {
+            "name": "statut",
+            "in": "query",
+            "description": "Filtre — tous les dossiers si absent.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Statut d'un rôle, et donc d'un dossier coursier (R9).",
+              "enum": [
+                "en_attente",
+                "valide",
+                "refuse",
+                "suspendu"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dossiers, du plus récemment soumis au plus ancien. `piece_url` est absente ici (détail uniquement).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DossierCoursierAdmin"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/comptes/{compte_id}/dossier-coursier": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Dossier complet d'un coursier, pièce lisible comprise (FR-017 scénario 2).",
+        "operationId": "consulter_dossier_coursier",
+        "parameters": [
+          {
+            "name": "compte_id",
+            "in": "path",
+            "description": "Coursier concerné.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dossier complet — `piece_url` est présignée 10 min.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursierAdmin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Compte ou dossier inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/comptes/{compte_id}/roles/{role}": {
       "post": {
         "tags": [
@@ -502,6 +637,138 @@
         ]
       }
     },
+    "/moi/dossier-coursier": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "État du dossier coursier du compte courant (FR-013 : l'app Pro l'affiche).",
+        "operationId": "mon_dossier_coursier",
+        "responses": {
+          "200": {
+            "description": "Dossier et son statut.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Aucun dossier soumis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de\nrôle (FR-015).",
+        "operationId": "soumettre_dossier_coursier",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 généré par le client — rejeu réseau idempotent (R14).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SoumissionDossier"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu : un dossier est déjà en attente. Rien n'a changé (R14).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Dossier soumis — rôle coursier `en_attente`. Émet `role.demande` + `dossier_coursier.soumis` dans la même transaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition invalide — dossier déjà `valide` ou `suspendu`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/sessions": {
       "get": {
         "tags": [
@@ -854,6 +1121,112 @@
           }
         }
       },
+      "DossierCoursier": {
+        "type": "object",
+        "description": "Dossier coursier tel que son titulaire le voit (contrat).\n\n⚠ La CLÉ de la pièce n'en fait pas partie : elle n'a de sens que pour le\nserveur, et l'exposer donnerait un identifiant de bucket à deviner.",
+        "required": [
+          "statut",
+          "referent_nom",
+          "referent_telephone_e164",
+          "vehicules",
+          "soumis_le"
+        ],
+        "properties": {
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de la dernière décision admin."
+          },
+          "referent_nom": {
+            "type": "string",
+            "description": "Référent local (« caution morale », cadrage §7.1)."
+          },
+          "referent_telephone_e164": {
+            "type": "string",
+            "description": "Téléphone du référent, normalisé E.164."
+          },
+          "soumis_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernier dépôt."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut = celui de l'attribution `coursier` (R9)."
+          },
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehiculeDeclare"
+            },
+            "description": "Véhicules déclarés."
+          }
+        }
+      },
+      "DossierCoursierAdmin": {
+        "type": "object",
+        "description": "Dossier complet pour la revue admin (contrat `DossierCoursierAdmin`).",
+        "required": [
+          "compte_id",
+          "telephone_e164",
+          "statut",
+          "referent_nom",
+          "referent_telephone_e164",
+          "vehicules",
+          "soumis_le"
+        ],
+        "properties": {
+          "compte_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Compte du coursier."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de la dernière décision admin."
+          },
+          "piece_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de la pièce (TTL 10 min) — DÉTAIL uniquement, absente en\nliste : présigner N pièces pour un tableau serait du gaspillage, et\nautant de liens vivants qu'aucun œil n'ouvrira."
+          },
+          "referent_nom": {
+            "type": "string",
+            "description": "Référent local."
+          },
+          "referent_telephone_e164": {
+            "type": "string",
+            "description": "Téléphone du référent."
+          },
+          "soumis_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernier dépôt."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut = celui de l'attribution `coursier`."
+          },
+          "telephone_e164": {
+            "type": "string",
+            "description": "Numéro du coursier — l'admin doit pouvoir le rappeler (FR-017)."
+          },
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehiculeDeclare"
+            },
+            "description": "Véhicules déclarés."
+          }
+        }
+      },
       "ErreurApi": {
         "type": "object",
         "description": "Corps d'erreur du contrat — `{ code, message_cle }`.",
@@ -1094,6 +1467,67 @@
             "type": "string",
             "format": "uuid",
             "description": "Identifiant de session."
+          }
+        }
+      },
+      "SoumissionDossier": {
+        "type": "object",
+        "description": "Dossier soumis par le coursier : pièce d'identité, référent local et\nvéhicules déclarés (FR-015).",
+        "required": [
+          "piece",
+          "referent_nom",
+          "referent_telephone",
+          "vehicules"
+        ],
+        "properties": {
+          "piece": {
+            "type": "string",
+            "format": "binary",
+            "description": "Pièce d'identité — ≤ 10 Mo, jpeg/png/webp/pdf."
+          },
+          "referent_nom": {
+            "type": "string",
+            "description": "Nom du référent local.",
+            "maxLength": 120
+          },
+          "referent_telephone": {
+            "type": "string",
+            "description": "Téléphone du référent — normalisé E.164 comme celui du compte."
+          },
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Slugs des types de transport, ACTIFS dans la zone (référentiel ZON-03).",
+            "example": [
+              "moto"
+            ],
+            "minItems": 1
+          }
+        }
+      },
+      "VehiculeDeclare": {
+        "type": "object",
+        "description": "Véhicule déclaré au dossier (contrat).",
+        "required": [
+          "type_transport_id",
+          "slug",
+          "actif_zone"
+        ],
+        "properties": {
+          "actif_zone": {
+            "type": "boolean",
+            "description": "`false` si le type a été DÉSACTIVÉ dans la zone après la déclaration."
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug du type (ex. `moto`)."
+          },
+          "type_transport_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Type de transport du référentiel ZON-03."
           }
         }
       },

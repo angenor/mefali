@@ -18,6 +18,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DemandeOtp.serializer)
       ..add(DemandeRafraichissement.serializer)
       ..add(DeviseDto.serializer)
+      ..add(DossierCoursier.serializer)
+      ..add(DossierCoursierAdmin.serializer)
       ..add(ErreurApi.serializer)
       ..add(EtatCategorie.serializer)
       ..add(EtatRoleDto.serializer)
@@ -32,6 +34,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ResultatVerificationOneOf1ResultatEnum.serializer)
       ..add(ResultatVerificationOneOfResultatEnum.serializer)
       ..add(SessionAppareil.serializer)
+      ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CategorieDto)]),
@@ -49,7 +52,13 @@ Serializers _$serializers = (Serializers().toBuilder()
           () => ListBuilder<String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
-          () => ListBuilder<EtatRoleDto>()))
+          () => ListBuilder<EtatRoleDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(VehiculeDeclare)]),
+          () => ListBuilder<VehiculeDeclare>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(VehiculeDeclare)]),
+          () => ListBuilder<VehiculeDeclare>()))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint
