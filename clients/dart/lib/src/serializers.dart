@@ -15,11 +15,13 @@ import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
 import 'package:mefali_api_client/src/model/accepte.dart';
+import 'package:mefali_api_client/src/model/action_role_dto.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
+import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/devise_dto.dart';
@@ -41,11 +43,13 @@ part 'serializers.g.dart';
 
 @SerializersFor([
   Accepte,
+  ActionRoleDto,
   AppareilDto,
   CategorieDto,
   CompteMoi,
   ConfigZone,
   CorpsForcage,
+  DecisionRole,
   DemandeOtp,
   DemandeRafraichissement,
   DeviseDto,

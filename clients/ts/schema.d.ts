@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/admin/comptes/{compte_id}/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Décision admin sur un rôle — machine à états de data-model §4, journalisée. */
+        post: operations["decider_role"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
         parameters: {
             query?: never;
@@ -211,6 +228,11 @@ export interface components {
              */
             message_cle: string;
         };
+        /**
+         * @description Action d'administration sur un rôle (contrat).
+         * @enum {string}
+         */
+        ActionRoleDto: "attribuer" | "valider" | "refuser" | "suspendre" | "retablir";
         /** @description Appareil déclaré par l'app à l'ouverture de session. */
         AppareilDto: {
             /** @description Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste. */
@@ -279,6 +301,13 @@ export interface components {
         CorpsForcage: {
             /** @description Nouveau mode de forçage à appliquer. */
             forcage: components["schemas"]["ForcageDto"];
+        };
+        /** @description Corps de la décision. */
+        DecisionRole: {
+            /** @description Action à appliquer. */
+            action: components["schemas"]["ActionRoleDto"];
+            /** @description Motif — REQUIS pour `refuser` et `suspendre` (FR-017). */
+            motif?: string | null;
         };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
@@ -438,6 +467,80 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    decider_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Compte concerné. */
+                compte_id: string;
+                /** @description Rôle décidé (client exclu : immuable). */
+                role: "coursier" | "vendeur" | "admin";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRole"];
+            };
+        };
+        responses: {
+            /** @description Nouvel état du rôle. Prise d'effet IMMÉDIATE (contrôle par requête, R5). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatRoleDto"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis — seul un admin existant décide (FR-012). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Compte inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition invalide pour l'état courant. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent pour un refus ou une suspension. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     forcer_categorie: {
         parameters: {
             query?: never;

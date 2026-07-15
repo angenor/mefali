@@ -8,11 +8,13 @@ part of 'serializers.dart';
 
 Serializers _$serializers = (Serializers().toBuilder()
       ..add(Accepte.serializer)
+      ..add(ActionRoleDto.serializer)
       ..add(AppareilDto.serializer)
       ..add(CategorieDto.serializer)
       ..add(CompteMoi.serializer)
       ..add(ConfigZone.serializer)
       ..add(CorpsForcage.serializer)
+      ..add(DecisionRole.serializer)
       ..add(DemandeOtp.serializer)
       ..add(DemandeRafraichissement.serializer)
       ..add(DeviseDto.serializer)

@@ -47,12 +47,16 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:mefali_api_client/mefali_api_client.dart';
 
 
-final api = MefaliApiClient().getAuthApi();
+final api = MefaliApiClient().getAdminApi();
+final String compteId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Compte concerné.
+final String role = role_example; // String | Rôle décidé (client exclu : immuable).
+final DecisionRole decisionRole = ; // DecisionRole | 
 
 try {
-    api.deconnexion();
+    final response = await api.deciderRole(compteId, role, decisionRole);
+    print(response);
 } on DioException catch (e) {
-    print("Exception when calling AuthApi->deconnexion: $e\n");
+    print("Exception when calling AdminApi->deciderRole: $e\n");
 }
 
 ```
@@ -63,6 +67,7 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
 [*AuthApi*](doc/AuthApi.md) | [**deconnexion**](doc/AuthApi.md#deconnexion) | **POST** /auth/deconnexion | Révoque la session courante (déconnexion locale).
 [*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
@@ -79,11 +84,13 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [Accepte](doc/Accepte.md)
+ - [ActionRoleDto](doc/ActionRoleDto.md)
  - [AppareilDto](doc/AppareilDto.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [CorpsForcage](doc/CorpsForcage.md)
+ - [DecisionRole](doc/DecisionRole.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
  - [DeviseDto](doc/DeviseDto.md)

@@ -5,6 +5,119 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/comptes/{compte_id}/roles/{role}": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Décision admin sur un rôle — machine à états de data-model §4, journalisée.",
+        "operationId": "decider_role",
+        "parameters": [
+          {
+            "name": "compte_id",
+            "in": "path",
+            "description": "Compte concerné.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "role",
+            "in": "path",
+            "description": "Rôle décidé (client exclu : immuable).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Rôle décidable par l'admin. `client` en est ABSENT : il n'est pas décidable\n(posé à l'inscription, immuable — R9). L'exclure du type le rend\nirreprésentable, plutôt que de le refuser à l'exécution.",
+              "enum": [
+                "coursier",
+                "vendeur",
+                "admin"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRole"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouvel état du rôle. Prise d'effet IMMÉDIATE (contrôle par requête, R5).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatRoleDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis — seul un admin existant décide (FR-012).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Compte inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition invalide pour l'état courant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent pour un refus ou une suspension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
       "put": {
         "tags": [
@@ -496,6 +609,17 @@
           }
         }
       },
+      "ActionRoleDto": {
+        "type": "string",
+        "description": "Action d'administration sur un rôle (contrat).",
+        "enum": [
+          "attribuer",
+          "valider",
+          "refuser",
+          "suspendre",
+          "retablir"
+        ]
+      },
       "AppareilDto": {
         "type": "object",
         "description": "Appareil déclaré par l'app à l'ouverture de session.",
@@ -654,6 +778,27 @@
           "forcage": {
             "$ref": "#/components/schemas/ForcageDto",
             "description": "Nouveau mode de forçage à appliquer."
+          }
+        }
+      },
+      "DecisionRole": {
+        "type": "object",
+        "description": "Corps de la décision.",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ActionRoleDto",
+            "description": "Action à appliquer."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif — REQUIS pour `refuser` et `suspendre` (FR-017).",
+            "maxLength": 500
           }
         }
       },

@@ -5,6 +5,7 @@
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
 pub mod auth_http;
+pub mod comptes_http;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
@@ -35,6 +36,7 @@ pub fn api_openapi() -> OpenApi {
         .service(auth_http::moi)
         .service(auth_http::mes_sessions)
         .service(auth_http::revoquer_session)
+        .service(comptes_http::decider_role)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -171,12 +173,16 @@ pub async fn run() -> std::io::Result<()> {
             .service(auth_http::moi)
             .service(auth_http::mes_sessions)
             .service(auth_http::revoquer_session)
+            .service(comptes_http::decider_role)
+            .service(comptes_http::decider_role)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
             // Corps JSON invalide → 422 ; paramètre `zone` invalide → 400 (clés i18n).
             .app_data(zones_http::config_json())
-            .app_data(zones_http::config_query());
+            .app_data(zones_http::config_query())
+            // Rôle hors énumération dans le chemin → 404 (ressource inexistante).
+            .app_data(comptes_http::config_path());
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
         }

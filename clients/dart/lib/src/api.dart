@@ -9,6 +9,7 @@ import 'package:mefali_api_client/src/auth/api_key_auth.dart';
 import 'package:mefali_api_client/src/auth/basic_auth.dart';
 import 'package:mefali_api_client/src/auth/bearer_auth.dart';
 import 'package:mefali_api_client/src/auth/oauth.dart';
+import 'package:mefali_api_client/src/api/admin_api.dart';
 import 'package:mefali_api_client/src/api/auth_api.dart';
 import 'package:mefali_api_client/src/api/moi_api.dart';
 import 'package:mefali_api_client/src/api/socle_api.dart';
@@ -106,6 +107,12 @@ class MefaliApiClient {
     if (this.dio.interceptors.any((i) => i is ApiKeyAuthInterceptor)) {
       (this.dio.interceptors.firstWhere((element) => element is ApiKeyAuthInterceptor) as ApiKeyAuthInterceptor).apiKeys.remove(name);
     }
+  }
+
+  /// Get AdminApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  AdminApi getAdminApi() {
+    return AdminApi(dio, serializers);
   }
 
   /// Get AuthApi instance, base route and serializer can be overridden by a given but be careful,
