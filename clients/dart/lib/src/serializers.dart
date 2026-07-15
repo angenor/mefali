@@ -21,6 +21,7 @@ import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
+import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/devise_dto.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
@@ -33,6 +34,7 @@ import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
 import 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
+import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
 
 part 'serializers.g.dart';
@@ -45,6 +47,7 @@ part 'serializers.g.dart';
   ConfigZone,
   CorpsForcage,
   DemandeOtp,
+  DemandeRafraichissement,
   DeviseDto,
   ErreurApi,
   EtatCategorie,
@@ -57,9 +60,14 @@ part 'serializers.g.dart';
   ResultatVerification,
   ResultatVerificationOneOf,
   ResultatVerificationOneOf1,
+  SessionAppareil,
   VerificationOtp,
 ])
 Serializers serializers = (_$serializers.toBuilder()
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(SessionAppareil)]),
+        () => ListBuilder<SessionAppareil>(),
+      )
       ..add(const OneOfSerializer())
       ..add(const AnyOfSerializer())
       ..add(const DateSerializer())

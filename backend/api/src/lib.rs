@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use actix_web::{web, App, HttpResponse, HttpServer};
 use comptes::{EnvoiSms, PgComptes, SmsTraces};
-use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{InfoBuilder, OpenApi};
 use utoipa_actix_web::AppExt;
 use utoipa_swagger_ui::SwaggerUi;
@@ -30,18 +30,29 @@ pub fn api_openapi() -> OpenApi {
         .service(auth_http::demander)
         .service(auth_http::verifier)
         .service(auth_http::inscrire)
+        .service(auth_http::rafraichir)
+        .service(auth_http::deconnexion)
+        .service(auth_http::moi)
+        .service(auth_http::mes_sessions)
+        .service(auth_http::revoquer_session)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
         .version("0.1.0")
         .build();
-    // Garde admin du forçage (research R5) : jeton d'en-tête X-Admin-Token.
+    // Jeton d'accès JWT (cycle CPT, research R5). Remplace le SecurityScheme
+    // `adminToken` (X-Admin-Token) du cycle 002, supprimé avec sa garde.
     openapi
         .components
         .get_or_insert_with(Default::default)
         .add_security_scheme(
-            "adminToken",
-            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-Admin-Token"))),
+            "bearerAuth",
+            SecurityScheme::Http(
+                HttpBuilder::new()
+                    .scheme(HttpAuthScheme::Bearer)
+                    .bearer_format("JWT")
+                    .build(),
+            ),
         );
     openapi
 }
@@ -155,6 +166,11 @@ pub async fn run() -> std::io::Result<()> {
             .service(auth_http::demander)
             .service(auth_http::verifier)
             .service(auth_http::inscrire)
+            .service(auth_http::rafraichir)
+            .service(auth_http::deconnexion)
+            .service(auth_http::moi)
+            .service(auth_http::mes_sessions)
+            .service(auth_http::revoquer_session)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

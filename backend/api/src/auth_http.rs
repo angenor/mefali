@@ -18,9 +18,12 @@
 //! déjà le téléphone : ce n'est pas un oracle.
 
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 
-use actix_web::http::StatusCode;
-use actix_web::{post, web, HttpRequest, HttpResponse, ResponseError};
+use actix_web::dev::Payload;
+use actix_web::http::{header, StatusCode};
+use actix_web::{delete, get, post, web, FromRequest, HttpRequest, HttpResponse, ResponseError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -28,7 +31,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use comptes::inscription::{IssueVerification, SessionOuverte};
-use comptes::{Appareil, AttributionRole, Compte, ErreurComptes, PgComptes, Plateforme};
+use comptes::{Appareil, AttributionRole, Compte, ErreurComptes, PgComptes, Plateforme, Role};
 
 // ── Erreurs HTTP du module comptes ─────────────────────────────────────────
 
@@ -477,6 +480,239 @@ pub async fn inscrire(
     Ok(HttpResponse::Created().json(ResultatVerification::from(ouverte)))
 }
 
+// ── Extracteur Auth + exiger_role (research R5) ────────────────────────────
+
+/// Contexte d'autorisation d'une requête : QUI parle, DEPUIS quelle session, et
+/// avec quels rôles VALIDES.
+///
+/// ## Pourquoi une requête en base à chaque appel
+///
+/// Le jeton ne porte aucun rôle (R1). Les rôles sont donc relus ici, à chaque
+/// requête. C'est ce SELECT indexé — et lui seul — qui rend vraies deux
+/// exigences de la spec qu'un JWT porteur de rôles rendrait fausses pendant
+/// 15 minutes : une suspension vaut dès la requête suivante (US3 scénario 6),
+/// et une session révoquée perd l'accès immédiatement, sans attendre
+/// l'expiration de son accès court (US2 scénario 4, mieux que SC-004).
+#[derive(Debug, Clone)]
+pub struct Auth {
+    /// Compte authentifié.
+    pub compte_id: Uuid,
+    /// Session porteuse (claim `sid`).
+    pub session_id: Uuid,
+    /// Rôles au statut `valide` UNIQUEMENT.
+    pub roles_valides: Vec<Role>,
+}
+
+impl Auth {
+    /// Exige un rôle valide, sinon 403 (FR-009).
+    pub fn exiger_role(&self, role: Role) -> Result<(), ErreurApi> {
+        if self.roles_valides.contains(&role) {
+            Ok(())
+        } else {
+            Err(ErreurApi::RoleRequis)
+        }
+    }
+
+    /// `true` si le compte porte ce rôle validé.
+    pub fn a_role(&self, role: Role) -> bool {
+        self.roles_valides.contains(&role)
+    }
+}
+
+impl FromRequest for Auth {
+    type Error = actix_web::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+
+    fn from_request(requete: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        let jeton = requete
+            .headers()
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .map(str::to_owned);
+        let depot = requete.app_data::<web::Data<PgComptes>>().cloned();
+
+        Box::pin(async move {
+            let (Some(jeton), Some(depot)) = (jeton, depot) else {
+                return Err(ErreurApi::NonAuthentifie.into());
+            };
+            // 1. Signature + expiration : sans toucher la base.
+            let claims = comptes::verifier_acces(depot.secret(), &jeton)
+                .map_err(|_| ErreurApi::NonAuthentifie)?;
+            // 2. La base a le dernier mot : session vivante et rôles du moment.
+            let Some((compte_id, roles_valides)) = depot
+                .contexte_auth(claims.sid)
+                .await
+                .map_err(ErreurApi::from)?
+            else {
+                return Err(ErreurApi::NonAuthentifie.into());
+            };
+            // Un jeton parfaitement signé dont le `sub` ne correspond plus au
+            // porteur de la session est une incohérence : on refuse.
+            if compte_id != claims.sub {
+                return Err(ErreurApi::NonAuthentifie.into());
+            }
+            Ok(Auth {
+                compte_id,
+                session_id: claims.sid,
+                roles_valides,
+            })
+        })
+    }
+}
+
+// ── Endpoints de session (CPT-02) ──────────────────────────────────────────
+
+/// Corps de `POST /auth/rafraichir`.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct DemandeRafraichissement {
+    /// Jeton de renouvellement opaque courant.
+    pub rafraichissement: String,
+}
+
+/// Session/appareil du compte (contrat `SessionAppareil`).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SessionAppareil {
+    /// Identifiant de session.
+    pub id: Uuid,
+    /// Nom déclaré par l'app.
+    pub appareil_nom: String,
+    /// Plateforme.
+    pub appareil_plateforme: PlateformeDto,
+    /// Ouverture.
+    pub cree_le: DateTime<Utc>,
+    /// Dernier rafraîchissement.
+    pub derniere_activite_le: DateTime<Utc>,
+    /// Session de l'appareil appelant — celle qu'on ne se coupe pas par erreur.
+    pub courante: bool,
+}
+
+/// Échange le refresh contre un nouvel accès (rotation systématique, R2).
+#[utoipa::path(
+    post,
+    path = "/auth/rafraichir",
+    tag = "auth",
+    request_body = DemandeRafraichissement,
+    responses(
+        (status = 200, description = "Nouveaux jetons — l'ancien refresh est invalidé. Aucune expiration d'inactivité.",
+         body = JetonsDto),
+        (status = 401, description = "Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà tourné —                                       dans ce dernier cas la session est RÉVOQUÉE (détection de vol, R2).",
+         body = ErreurApiDto),
+    ),
+)]
+#[post("/auth/rafraichir")]
+pub async fn rafraichir(
+    corps: web::Json<DemandeRafraichissement>,
+    depot: web::Data<PgComptes>,
+) -> Result<HttpResponse, ErreurApi> {
+    let jetons = depot.tourner_refresh(&corps.rafraichissement).await?;
+    Ok(HttpResponse::Ok().json(JetonsDto {
+        acces: jetons.acces,
+        rafraichissement: jetons.rafraichissement,
+    }))
+}
+
+/// Révoque la session courante (déconnexion locale).
+#[utoipa::path(
+    post,
+    path = "/auth/deconnexion",
+    tag = "auth",
+    responses(
+        (status = 204, description = "Session révoquée."),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/auth/deconnexion")]
+pub async fn deconnexion(
+    auth: Auth,
+    depot: web::Data<PgComptes>,
+) -> Result<HttpResponse, ErreurApi> {
+    depot.deconnecter(auth.session_id, auth.compte_id).await?;
+    Ok(HttpResponse::NoContent().finish())
+}
+
+/// Compte courant et états de TOUS ses rôles.
+#[utoipa::path(
+    get,
+    path = "/moi",
+    tag = "moi",
+    responses(
+        (status = 200, description = "Compte courant.", body = CompteMoi),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/moi")]
+pub async fn moi(auth: Auth, depot: web::Data<PgComptes>) -> Result<HttpResponse, ErreurApi> {
+    let compte = depot.compte(auth.compte_id).await?;
+    let roles = depot.attributions(auth.compte_id).await?;
+    Ok(HttpResponse::Ok().json(CompteMoi::assembler(compte, roles)))
+}
+
+/// Appareils/sessions actifs du compte (FR-008).
+#[utoipa::path(
+    get,
+    path = "/moi/sessions",
+    tag = "moi",
+    responses(
+        (status = 200, description = "Appareils actifs.", body = Vec<SessionAppareil>),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/moi/sessions")]
+pub async fn mes_sessions(
+    auth: Auth,
+    depot: web::Data<PgComptes>,
+) -> Result<HttpResponse, ErreurApi> {
+    let sessions: Vec<SessionAppareil> = depot
+        .sessions_actives(auth.compte_id)
+        .await?
+        .into_iter()
+        .map(|s| SessionAppareil {
+            courante: s.id == auth.session_id,
+            id: s.id,
+            appareil_nom: s.appareil.nom,
+            appareil_plateforme: s.appareil.plateforme.into(),
+            cree_le: s.cree_le,
+            derniere_activite_le: s.derniere_activite_le,
+        })
+        .collect();
+    Ok(HttpResponse::Ok().json(sessions))
+}
+
+/// Déconnexion à distance d'un appareil (SC-004).
+#[utoipa::path(
+    delete,
+    path = "/moi/sessions/{session_id}",
+    tag = "moi",
+    params(("session_id" = Uuid, Path, description = "Appareil à déconnecter.")),
+    responses(
+        (status = 204, description = "Session révoquée — événement `session.revoquee` émis."),
+        (status = 404, description = "Session inconnue ou n'appartenant pas au compte.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[delete("/moi/sessions/{session_id}")]
+pub async fn revoquer_session(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgComptes>,
+) -> Result<HttpResponse, ErreurApi> {
+    depot
+        .revoquer_appareil(auth.compte_id, chemin.into_inner(), auth.compte_id)
+        .await
+        // Une session qui n'est pas la sienne est INTROUVABLE, pas « interdite » :
+        // un 403 confirmerait qu'elle existe.
+        .map_err(|e| match e {
+            ErreurComptes::SessionInconnue(_) => ErreurApi::Introuvable,
+            autre => autre.into(),
+        })?;
+    Ok(HttpResponse::NoContent().finish())
+}
+
 /// Corps d'erreur du contrat — `{ code, message_cle }`.
 #[derive(Debug, Serialize, ToSchema)]
 #[schema(as = ErreurApi)]
@@ -833,5 +1069,294 @@ mod tests {
             json!({ "jeton_inscription": "invente", "consentement_version": "2026-07" })
         );
         assert_eq!(statut, StatusCode::UNAUTHORIZED);
+    }
+}
+
+#[cfg(test)]
+mod tests_sessions {
+    use super::*;
+    use std::sync::Arc;
+
+    use actix_web::{test as atest, App};
+    use comptes::{MemoireEphemere, MemoireObjets, SmsTraces};
+    use sqlx::PgPool;
+
+    const TIASSALE: &str = "01900000-0000-7000-8000-000000000002";
+    const NUMERO: &str = "0709080706";
+    const SECRET: &[u8] = b"secret-de-test-de-32-octets-mini";
+
+    struct Bac {
+        depot: PgComptes,
+        sms: Arc<SmsTraces>,
+    }
+
+    async fn preparer(pool: &PgPool) -> Bac {
+        crate::charger_seeds(pool).await.unwrap();
+        let sms = Arc::new(SmsTraces::new());
+        let depot = PgComptes::new(
+            pool.clone(),
+            Arc::new(MemoireEphemere::new()),
+            sms.clone(),
+            Arc::new(MemoireObjets::new()),
+            Arc::from(SECRET),
+        );
+        Bac { depot, sms }
+    }
+
+    macro_rules! app {
+        ($bac:expr) => {
+            atest::init_service(
+                App::new()
+                    .app_data(web::Data::new($bac.depot.clone()))
+                    .app_data(config_json())
+                    .service(demander)
+                    .service(verifier)
+                    .service(inscrire)
+                    .service(rafraichir)
+                    .service(deconnexion)
+                    .service(moi)
+                    .service(mes_sessions)
+                    .service(revoquer_session),
+            )
+            .await
+        };
+    }
+
+    /// Inscrit un numéro (ou ouvre une session s'il est connu) et renvoie ses
+    /// jetons. Passe par le domaine : ces tests-ci portent sur les endpoints
+    /// PROTÉGÉS, pas sur le parcours OTP (couvert par `tests`).
+    async fn jetons_pour(bac: &Bac, numero: &str) -> (String, String) {
+        bac.depot
+            .demander_otp(TIASSALE.parse().unwrap(), numero, "1.2.3.4")
+            .await
+            .unwrap();
+        let code = bac.sms.envoyes().last().unwrap().params["code"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let issue = bac
+            .depot
+            .verifier_otp(
+                TIASSALE.parse().unwrap(),
+                numero,
+                &code,
+                &Appareil {
+                    nom: "Pixel".to_owned(),
+                    plateforme: Plateforme::Android,
+                },
+            )
+            .await
+            .unwrap();
+        match issue {
+            IssueVerification::ConsentementRequis { jeton_inscription } => {
+                let ouverte = bac
+                    .depot
+                    .inscrire(&jeton_inscription, "2026-07")
+                    .await
+                    .unwrap();
+                (ouverte.jetons.acces, ouverte.jetons.rafraichissement)
+            }
+            IssueVerification::Session(ouverte) => {
+                (ouverte.jetons.acces, ouverte.jetons.rafraichissement)
+            }
+        }
+    }
+
+    /// R5 — sans jeton, avec un jeton bidon, ou après révocation : 401.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn moi_401_sans_session_valide(pool: PgPool) {
+        let bac = preparer(&pool).await;
+        let app = app!(bac);
+
+        for entete in [None, Some("Bearer pas-un-jwt"), Some("jwt-sans-prefixe")] {
+            let mut requete = atest::TestRequest::get().uri("/moi");
+            if let Some(v) = entete {
+                requete = requete.insert_header(("authorization", v));
+            }
+            let resp = atest::call_service(&app, requete.to_request()).await;
+            assert_eq!(
+                resp.status(),
+                StatusCode::UNAUTHORIZED,
+                "en-tête = {entete:?}"
+            );
+        }
+    }
+
+    /// US2 scénario 4 — une session révoquée perd l'accès IMMÉDIATEMENT, sans
+    /// attendre l'expiration des 15 min de son jeton (mieux que SC-004).
+    #[sqlx::test(migrations = "../migrations")]
+    async fn session_revoquee_perd_l_acces_des_la_requete_suivante(pool: PgPool) {
+        let bac = preparer(&pool).await;
+        let app = app!(bac);
+        let (acces, _) = jetons_pour(&bac, NUMERO).await;
+
+        let porteur = format!("Bearer {acces}");
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri("/moi")
+                .insert_header(("authorization", porteur.clone()))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // Déconnexion, puis RÉUTILISATION du même jeton d'accès, toujours
+        // cryptographiquement valide pour 15 minutes.
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::post()
+                .uri("/auth/deconnexion")
+                .insert_header(("authorization", porteur.clone()))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri("/moi")
+                .insert_header(("authorization", porteur))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(
+            resp.status(),
+            StatusCode::UNAUTHORIZED,
+            "le jeton est encore signé et non expiré — c'est la BASE qui refuse"
+        );
+    }
+
+    /// `/moi` expose le compte et TOUS ses rôles.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn moi_200_expose_compte_et_roles(pool: PgPool) {
+        let bac = preparer(&pool).await;
+        let app = app!(bac);
+        let (acces, _) = jetons_pour(&bac, NUMERO).await;
+
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri("/moi")
+                .insert_header(("authorization", format!("Bearer {acces}")))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let corps: serde_json::Value = atest::read_body_json(resp).await;
+        assert_eq!(corps["telephone_e164"], "+2250709080706");
+        assert_eq!(corps["roles"][0]["role"], "client");
+        assert_eq!(corps["roles"][0]["statut"], "valide");
+    }
+
+    /// La rotation délivre de nouveaux jetons ; l'ancien refresh ne vaut plus rien.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn rafraichir_200_puis_ancien_refresh_401(pool: PgPool) {
+        let bac = preparer(&pool).await;
+        let app = app!(bac);
+        let (_, refresh) = jetons_pour(&bac, NUMERO).await;
+
+        let requete = |r: String| {
+            atest::TestRequest::post()
+                .uri("/auth/rafraichir")
+                .set_json(json!({ "rafraichissement": r }))
+                .to_request()
+        };
+
+        let resp = atest::call_service(&app, requete(refresh.clone())).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let corps: serde_json::Value = atest::read_body_json(resp).await;
+        assert!(!corps["acces"].as_str().unwrap().is_empty());
+        assert_ne!(corps["rafraichissement"], refresh.as_str());
+
+        // Rejeu de l'ancien → 401 (et la session tombe — R2).
+        let resp = atest::call_service(&app, requete(refresh)).await;
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    /// SC-004 — deux appareils, révocation à distance depuis l'autre.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn liste_et_revocation_a_distance(pool: PgPool) {
+        let bac = preparer(&pool).await;
+        let app = app!(bac);
+        let (acces_a, _) = jetons_pour(&bac, NUMERO).await;
+        let (acces_b, refresh_b) = jetons_pour(&bac, NUMERO).await;
+
+        // A liste ses appareils : 2, dont le sien marqué `courante`.
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri("/moi/sessions")
+                .insert_header(("authorization", format!("Bearer {acces_a}")))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let sessions: serde_json::Value = atest::read_body_json(resp).await;
+        assert_eq!(sessions.as_array().unwrap().len(), 2);
+        assert_eq!(
+            sessions
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|s| s["courante"] == true)
+                .count(),
+            1
+        );
+
+        // A révoque B.
+        let session_b = comptes::verifier_acces(SECRET, &acces_b).unwrap().sid;
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::delete()
+                .uri(&format!("/moi/sessions/{session_b}"))
+                .insert_header(("authorization", format!("Bearer {acces_a}")))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+        // B ne peut plus rafraîchir, A oui.
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::post()
+                .uri("/auth/rafraichir")
+                .set_json(json!({ "rafraichissement": refresh_b }))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::get()
+                .uri("/moi")
+                .insert_header(("authorization", format!("Bearer {acces_a}")))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK, "A n'est pas affecté");
+    }
+
+    /// La session d'autrui est INTROUVABLE, pas « interdite » : un 403
+    /// confirmerait son existence.
+    #[sqlx::test(migrations = "../migrations")]
+    async fn revoquer_la_session_d_autrui_404(pool: PgPool) {
+        let bac = preparer(&pool).await;
+        let app = app!(bac);
+        let (acces_awa, _) = jetons_pour(&bac, NUMERO).await;
+        let (acces_yao, _) = jetons_pour(&bac, "0705060708").await;
+        let session_yao = comptes::verifier_acces(SECRET, &acces_yao).unwrap().sid;
+
+        let resp = atest::call_service(
+            &app,
+            atest::TestRequest::delete()
+                .uri(&format!("/moi/sessions/{session_yao}"))
+                .insert_header(("authorization", format!("Bearer {acces_awa}")))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 }

@@ -55,7 +55,10 @@
             }
           },
           "401": {
-            "description": "Jeton admin absent ou invalide."
+            "description": "Session absente, invalide ou révoquée."
+          },
+          "403": {
+            "description": "Rôle admin requis."
           },
           "404": {
             "description": "Zone ou catégorie inconnue."
@@ -66,7 +69,36 @@
         },
         "security": [
           {
-            "adminToken": []
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/deconnexion": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Révoque la session courante (déconnexion locale).",
+        "operationId": "deconnexion",
+        "responses": {
+          "204": {
+            "description": "Session révoquée."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
           }
         ]
       }
@@ -214,6 +246,47 @@
         }
       }
     },
+    "/auth/rafraichir": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Échange le refresh contre un nouvel accès (rotation systématique, R2).",
+        "operationId": "rafraichir",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeRafraichissement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouveaux jetons — l'ancien refresh est invalidé. Aucune expiration d'inactivité.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JetonsDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà tourné —                                       dans ce dernier cas la session est RÉVOQUÉE (détection de vol, R2).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/config": {
       "get": {
         "tags": [
@@ -278,6 +351,132 @@
             }
           }
         }
+      }
+    },
+    "/moi": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Compte courant et états de TOUS ses rôles.",
+        "operationId": "moi",
+        "responses": {
+          "200": {
+            "description": "Compte courant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompteMoi"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/sessions": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Appareils/sessions actifs du compte (FR-008).",
+        "operationId": "mes_sessions",
+        "responses": {
+          "200": {
+            "description": "Appareils actifs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionAppareil"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Déconnexion à distance d'un appareil (SC-004).",
+        "operationId": "revoquer_session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "description": "Appareil à déconnecter.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session révoquée — événement `session.revoquee` émis."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -474,6 +673,19 @@
             "type": "string",
             "format": "uuid",
             "description": "Zone de l'app (bootstrap Tiassalé — R13)."
+          }
+        }
+      },
+      "DemandeRafraichissement": {
+        "type": "object",
+        "description": "Corps de `POST /auth/rafraichir`.",
+        "required": [
+          "rafraichissement"
+        ],
+        "properties": {
+          "rafraichissement": {
+            "type": "string",
+            "description": "Jeton de renouvellement opaque courant."
           }
         }
       },
@@ -699,6 +911,47 @@
         ],
         "description": "Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`."
       },
+      "SessionAppareil": {
+        "type": "object",
+        "description": "Session/appareil du compte (contrat `SessionAppareil`).",
+        "required": [
+          "id",
+          "appareil_nom",
+          "appareil_plateforme",
+          "cree_le",
+          "derniere_activite_le",
+          "courante"
+        ],
+        "properties": {
+          "appareil_nom": {
+            "type": "string",
+            "description": "Nom déclaré par l'app."
+          },
+          "appareil_plateforme": {
+            "$ref": "#/components/schemas/PlateformeDto",
+            "description": "Plateforme."
+          },
+          "courante": {
+            "type": "boolean",
+            "description": "Session de l'appareil appelant — celle qu'on ne se coupe pas par erreur."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ouverture."
+          },
+          "derniere_activite_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernier rafraîchissement."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant de session."
+          }
+        }
+      },
       "VerificationOtp": {
         "type": "object",
         "description": "Corps de `POST /auth/otp/verifier`.",
@@ -731,10 +984,10 @@
       }
     },
     "securitySchemes": {
-      "adminToken": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-Admin-Token"
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }

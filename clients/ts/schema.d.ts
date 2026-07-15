@@ -25,6 +25,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/deconnexion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Révoque la session courante (déconnexion locale). */
+        post: operations["deconnexion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/inscription": {
         parameters: {
             query?: never;
@@ -76,6 +93,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/rafraichir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Échange le refresh contre un nouvel accès (rotation systématique, R2). */
+        post: operations["rafraichir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -109,6 +143,57 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compte courant et états de TOUS ses rôles. */
+        get: operations["moi"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appareils/sessions actifs du compte (FR-008). */
+        get: operations["mes_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Déconnexion à distance d'un appareil (SC-004). */
+        delete: operations["revoquer_session"];
         options?: never;
         head?: never;
         patch?: never;
@@ -204,6 +289,11 @@ export interface components {
              * @description Zone de l'app (bootstrap Tiassalé — R13).
              */
             zone: string;
+        };
+        /** @description Corps de `POST /auth/rafraichir`. */
+        DemandeRafraichissement: {
+            /** @description Jeton de renouvellement opaque courant. */
+            rafraichissement: string;
         };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
@@ -301,6 +391,30 @@ export interface components {
             /** @enum {string} */
             resultat: "consentement_requis";
         };
+        /** @description Session/appareil du compte (contrat `SessionAppareil`). */
+        SessionAppareil: {
+            /** @description Nom déclaré par l'app. */
+            appareil_nom: string;
+            /** @description Plateforme. */
+            appareil_plateforme: components["schemas"]["PlateformeDto"];
+            /** @description Session de l'appareil appelant — celle qu'on ne se coupe pas par erreur. */
+            courante: boolean;
+            /**
+             * Format: date-time
+             * @description Ouverture.
+             */
+            cree_le: string;
+            /**
+             * Format: date-time
+             * @description Dernier rafraîchissement.
+             */
+            derniere_activite_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant de session.
+             */
+            id: string;
+        };
         /** @description Corps de `POST /auth/otp/verifier`. */
         VerificationOtp: {
             /** @description Appareil — capté ici, conservé jusqu'à l'inscription (R3). */
@@ -351,8 +465,15 @@ export interface operations {
                     "application/json": components["schemas"]["EtatCategorie"];
                 };
             };
-            /** @description Jeton admin absent ou invalide. */
+            /** @description Session absente, invalide ou révoquée. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle admin requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -371,6 +492,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    deconnexion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session révoquée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };
@@ -491,6 +639,39 @@ export interface operations {
             };
         };
     };
+    rafraichir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeRafraichissement"];
+            };
+        };
+        responses: {
+            /** @description Nouveaux jetons — l'ancien refresh est invalidé. Aucune expiration d'inactivité. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JetonsDto"];
+                };
+            };
+            /** @description Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà tourné —                                       dans ce dernier cas la session est RÉVOQUÉE (détection de vol, R2). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     config: {
         parameters: {
             query: {
@@ -558,6 +739,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    moi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compte courant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteMoi"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mes_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Appareils actifs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionAppareil"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    revoquer_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Appareil à déconnecter. */
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session révoquée — événement `session.revoquee` émis. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Session inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
                 };
             };
         };

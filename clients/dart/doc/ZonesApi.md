@@ -62,10 +62,6 @@ Force l'état d'une catégorie dans une ville (ZON-02). Journalisé via outbox (
 ### Example
 ```dart
 import 'package:mefali_api_client/api.dart';
-// TODO Configure API key authorization: adminToken
-//defaultApiClient.getAuthentication<ApiKeyAuth>('adminToken').apiKey = 'YOUR_API_KEY';
-// uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-//defaultApiClient.getAuthentication<ApiKeyAuth>('adminToken').apiKeyPrefix = 'Bearer';
 
 final api = MefaliApiClient().getZonesApi();
 final String zoneId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Ville dont on force la catégorie.
@@ -94,7 +90,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[adminToken](../README.md#adminToken)
+[bearerAuth](../README.md#bearerAuth)
 
 ### HTTP request headers
 

@@ -147,6 +147,50 @@ impl PgComptes {
         })
     }
 
+    /// Contexte d'autorisation d'une session : le compte et ses rôles VALIDES,
+    /// en UNE requête indexée (research R5).
+    ///
+    /// `None` = session inconnue ou révoquée. C'est cette requête que paie
+    /// chaque requête protégée — et c'est elle qui rend la révocation ET la
+    /// suspension effectives à la requête SUIVANTE, sans attendre les 15 min du
+    /// jeton (US2 scénario 4, US3 scénario 6).
+    ///
+    /// Un LEFT JOIN, pas deux allers : un compte sans aucun rôle valide (tous
+    /// suspendus) doit rendre une session valide avec zéro rôle — pas une
+    /// absence de session.
+    pub async fn contexte_auth(
+        &self,
+        session: Uuid,
+    ) -> Result<Option<(Uuid, Vec<Role>)>, ErreurComptes> {
+        let ligne = sqlx::query!(
+            r#"SELECT s.compte_id,
+                      COALESCE(
+                        array_agg(r.role::text) FILTER (
+                          WHERE r.statut = 'valide'::comptes.statut_role
+                        ),
+                        ARRAY[]::text[]
+                      ) AS "roles!: Vec<String>"
+               FROM comptes.session s
+               LEFT JOIN comptes.attribution_role r ON r.compte_id = s.compte_id
+               WHERE s.id = $1 AND s.revoquee_le IS NULL
+               GROUP BY s.compte_id"#,
+            session,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(ligne) = ligne else {
+            return Ok(None);
+        };
+        let mut roles = ligne
+            .roles
+            .into_iter()
+            .map(|r| r.parse().map_err(ErreurComptes::Jeton))
+            .collect::<Result<Vec<Role>, _>>()?;
+        roles.sort();
+        Ok(Some((ligne.compte_id, roles)))
+    }
+
     /// Toutes les attributions d'un compte, quel que soit leur statut (l'API
     /// `/moi` les expose telles quelles — FR-013).
     pub async fn attributions(&self, compte: Uuid) -> Result<Vec<AttributionRole>, ErreurComptes> {

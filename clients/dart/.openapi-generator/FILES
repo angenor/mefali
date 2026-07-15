@@ -9,6 +9,7 @@ doc/CompteMoi.md
 doc/ConfigZone.md
 doc/CorpsForcage.md
 doc/DemandeOtp.md
+doc/DemandeRafraichissement.md
 doc/DeviseDto.md
 doc/ErreurApi.md
 doc/EtatCategorie.md
@@ -17,16 +18,19 @@ doc/ForcageDto.md
 doc/HealthResponse.md
 doc/Inscription.md
 doc/JetonsDto.md
+doc/MoiApi.md
 doc/PlateformeDto.md
 doc/ResultatVerification.md
 doc/ResultatVerificationOneOf.md
 doc/ResultatVerificationOneOf1.md
+doc/SessionAppareil.md
 doc/SocleApi.md
 doc/VerificationOtp.md
 doc/ZonesApi.md
 lib/mefali_api_client.dart
 lib/src/api.dart
 lib/src/api/auth_api.dart
+lib/src/api/moi_api.dart
 lib/src/api/socle_api.dart
 lib/src/api/zones_api.dart
 lib/src/api_util.dart
@@ -44,6 +48,7 @@ lib/src/model/config_zone.dart
 lib/src/model/corps_forcage.dart
 lib/src/model/date.dart
 lib/src/model/demande_otp.dart
+lib/src/model/demande_rafraichissement.dart
 lib/src/model/devise_dto.dart
 lib/src/model/erreur_api.dart
 lib/src/model/etat_categorie.dart
@@ -56,6 +61,7 @@ lib/src/model/plateforme_dto.dart
 lib/src/model/resultat_verification.dart
 lib/src/model/resultat_verification_one_of.dart
 lib/src/model/resultat_verification_one_of1.dart
+lib/src/model/session_appareil.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
