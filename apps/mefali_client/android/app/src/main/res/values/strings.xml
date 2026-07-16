@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nom affiché sous l'icône du lanceur. C'est une chaîne UTILISATEUR : elle passe
+  par une clé, pas par un littéral du manifest (constitution I). res/values est
+  l'i18n d'Android — les .arb de Flutter ne sont pas lisibles avant que l'app
+  démarre, et le lanceur, lui, affiche ce nom app éteinte.
+
+  `values/` sans qualificateur = le défaut, donc le fr (les apps sont
+  verrouillées sur Locale('fr')). Une autre langue s'ajouterait en
+  `values-<langue>/strings.xml`.
+-->
+<resources>
+    <string name="app_name">Mefali</string>
+</resources>

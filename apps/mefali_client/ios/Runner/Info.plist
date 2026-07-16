@@ -2,6 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Motifs d'accès affichés PAR iOS dans sa propre alerte, au moment de la
+	     demande : ce sont des chaînes utilisateur, en français, et elles disent
+	     à quoi sert l'accès — pas qu'il est « requis ». Une clé manquante n'est
+	     pas une dégradation : iOS TUE le processus dès l'appel à l'API.
+
+	     Les trois y sont bien que l'app cliente ne monte aujourd'hui que la note
+	     vocale (CPT-05) : les écrans à photo vivent dans mefali_core, que les
+	     deux apps embarquent. C'est le choix déjà acté du projet — « plugins
+	     NATIFS stabilisés tôt (Shorebird ne patche que le Dart ; les ajouter
+	     maintenant évite un passage store) », mefali_core/pubspec.yaml. Une clé
+	     posée trop tard coûte une soumission ; posée maintenant, rien. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mefali utilise le micro pour enregistrer une note vocale expliquant comment vous repérer à une adresse de livraison.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mefali utilise l’appareil photo pour photographier un document lorsque vous en joignez un à votre compte.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mefali accède à vos photos pour que vous puissiez y choisir une image à joindre à votre compte.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

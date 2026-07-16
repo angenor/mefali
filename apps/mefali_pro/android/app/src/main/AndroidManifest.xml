@@ -1,6 +1,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Toute la valeur de l'app passe par l'API (OTP, /config, dossier) : sans
+         INTERNET elle ne fait rien. Flutter ne la déclare que dans src/debug et
+         src/profile (l'outillage en a besoin pour le hot reload) — une RELEASE
+         partirait donc sans réseau, et échouerait dès l'écran du téléphone. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Volontairement ABSENTE : android.permission.CAMERA.
+         image_picker ne prend pas la photo lui-même, il délègue par intent à
+         l'app Appareil photo, qui porte ses propres permissions (« Android: No
+         configuration required », README image_picker 1.2.3). La DÉCLARER
+         inverserait le résultat : Android exige alors qu'elle soit accordée à
+         l'exécution avant ACTION_IMAGE_CAPTURE, et rien ici ne la demande (pas
+         de permission_handler dans le projet) — la caméra lèverait une
+         SecurityException. Vérifié sur appareil (photo de pièce, CPT-04).
+
+         RECORD_AUDIO n'est pas listée non plus, mais elle EST dans l'apk : le
+         manifest de record_android la déclare et le merger la fusionne. Le
+         plugin `record` la demande lui-même au runtime
+         (`note_vocale.dart` → `_micro.hasPermission()`). La redéclarer ici ne
+         changerait rien à l'apk et laisserait croire qu'on la pilote. -->
+
     <application
-        android:label="mefali_pro"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

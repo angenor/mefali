@@ -1,6 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Toute la valeur de l'app passe par l'API (OTP, /config, adresses) : sans
+         INTERNET elle ne fait rien. Flutter ne la déclare que dans src/debug et
+         src/profile (l'outillage en a besoin pour le hot reload) — une RELEASE
+         partirait donc sans réseau, et échouerait dès l'écran du téléphone. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- RECORD_AUDIO n'est pas listée mais elle EST dans l'apk : le manifest de
+         record_android la déclare et le merger la fusionne. C'est le micro de la
+         note vocale de repère d'adresse (CPT-05), que `record` demande lui-même
+         au runtime (`note_vocale.dart` → `_micro.hasPermission()`). La
+         redéclarer ici ne changerait rien à l'apk et laisserait croire qu'on la
+         pilote.
+
+         CAMERA est absente, et le reste : cette app ne prend aucune photo — le
+         seul écran qui en prend est le dossier coursier de mefali_pro. -->
+
     <application
-        android:label="mefali_client"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
