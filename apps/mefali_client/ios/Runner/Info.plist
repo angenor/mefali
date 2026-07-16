@@ -15,16 +15,35 @@
 	     posée trop tard coûte une soumission ; posée maintenant, rien. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mefali utilise le micro pour enregistrer une note vocale expliquant comment vous repérer à une adresse de livraison.</string>
+	<!-- ⚠ À PRÉVOIR quand iOS sera vérifié (Xcode manque sur le poste du cycle
+	     PLT) : l'ATS d'Apple a le MÊME clivage que la NetworkSecurityPolicy
+	     d'Android, corrigé côté Android par src/debug/res/xml/network_security_config.xml
+	     — dart:io l'ignore (l'API en http:// passera), AVPlayer la respecte
+	     (just_audio échouera sur un repère vocal servi en http://). Le symptôme
+	     sera « le réseau marche mais l'audio non ». Il faudra une exception ATS
+	     de DÉVELOPPEMENT seulement ; en production tout est en https:// et rien
+	     de ceci ne s'applique. Non posé ici : rien n'a pu être vérifié sur iOS,
+	     et une exception ATS écrite à l'aveugle vaut moins qu'une note. -->
+
+	<!-- Caméra et photos : image_picker est LIÉ au binaire (mefali_core le
+	     déclare, et Flutter lie depuis le graphe pubspec, pas depuis les
+	     imports), mais aucun écran de cette app ne les ouvre aujourd'hui. Les
+	     motifs disent donc à quoi l'accès servirait le jour où un écran de
+	     mefali_core en ouvre un — ils ne promettent rien qui existe déjà. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Mefali utilise l’appareil photo pour photographier un document lorsque vous en joignez un à votre compte.</string>
+	<string>Mefali utilise l’appareil photo pour photographier une pièce justificative quand vous en joignez une à votre compte.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Mefali accède à vos photos pour que vous puissiez y choisir une image à joindre à votre compte.</string>
+	<string>Mefali accède à vos photos pour que vous puissiez y choisir une pièce justificative à joindre à votre compte.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- Nom sous l'icône. « Mefali », pas « Mefali Client » : `flutter create`
+	     l'avait dérivé du nom de module, et l'utilisateur n'a pas à savoir qu'il
+	     existe une app « pro » en face. Doit rester identique à `app_name` de
+	     res/values/strings.xml — une seule identité Android/iOS (constitution). -->
 	<key>CFBundleDisplayName</key>
-	<string>Mefali Client</string>
+	<string>Mefali</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

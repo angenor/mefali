@@ -12,7 +12,10 @@
          inverserait le résultat : Android exige alors qu'elle soit accordée à
          l'exécution avant ACTION_IMAGE_CAPTURE, et rien ici ne la demande (pas
          de permission_handler dans le projet) — la caméra lèverait une
-         SecurityException. Vérifié sur appareil (photo de pièce, CPT-04).
+         SecurityException. Vérifié sur ÉMULATEUR (Android 15 / API 36, photo de
+         pièce du dossier coursier, CPT-04) : sans cette permission, l'app
+         Appareil photo s'ouvre et rend la photo sans un mot. Pas encore rejoué
+         sur un téléphone physique.
 
          RECORD_AUDIO n'est pas listée non plus, mais elle EST dans l'apk : le
          manifest de record_android la déclare et le merger la fusionne. Le

@@ -43,9 +43,17 @@ typedef LireCodeDev = Future<String?> Function({
 /// l'appel dio direct plutôt qu'une méthode générée.
 ///
 /// Rend `null` sur n'importe quel échec — route absente (production), plafond
-/// atteint donc aucun SMS tracé, réseau coupé. L'affordance dev ne doit jamais
-/// faire échouer le parcours qu'elle sert à observer : sans code, l'écran OTP
-/// reste simplement celui de tout le monde.
+/// atteint donc aucun SMS tracé, réseau coupé, corps inattendu. L'affordance
+/// dev ne doit jamais faire échouer le parcours qu'elle sert à observer : sans
+/// code, l'écran OTP reste simplement celui de tout le monde.
+///
+/// D'où le `catch` TOTAL, et non un `on DioException` : l'appelant
+/// (`ParcoursAuth._relireCodeDev`) s'exécute dans le `try` qui rend les erreurs
+/// de la demande d'OTP, si bien que la moindre exception qui remonterait d'ici
+/// afficherait « erreur réseau » sur une demande qui a RÉUSSI — la surface
+/// d'observation ferait mentir ce qu'elle observe. Le cas concret : `data`
+/// n'est pas une map, ou `code` n'est pas une chaîne, et le cast lève un
+/// `TypeError` que `on DioException` laissait passer.
 LireCodeDev lireCodeDevReseau(Dio dio) => ({
       required String telephone,
       required String zone,
@@ -55,8 +63,9 @@ LireCodeDev lireCodeDevReseau(Dio dio) => ({
           '/dev/otp',
           queryParameters: {'telephone': telephone, 'zone': zone},
         );
-        return reponse.data?['code'] as String?;
-      } on DioException {
+        final code = reponse.data?['code'];
+        return code is String ? code : null;
+      } catch (_) {
         return null;
       }
     };

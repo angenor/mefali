@@ -433,14 +433,18 @@ mod tests {
     /// bel et bien. Sans lui, `surface_dev_otp_absente_en_production` passerait
     /// même si la route avait disparu partout, y compris en dev.
     ///
-    /// 400 et non 200 : la zone nulle ne résout aucun indicatif — la requête
-    /// atteint le handler, ce qui est précisément ce qu'on vérifie ici. Le
-    /// chemin passant est joué en réel (quickstart).
+    /// L'assertion porte sur « pas 404 » et rien d'autre : ce test répond à
+    /// « la route est-elle montée ? », pas « que fait-elle ? ». Le handler
+    /// replie toute erreur sur 400, donc le code de sortie exact ne prouverait
+    /// rien de plus. Le chemin passant est joué en réel (quickstart).
     #[actix_web::test]
     async fn surface_dev_otp_montee_hors_production() {
         let depot = PgComptes::new(
-            // Pool jamais interrogé : `normaliser_e164` échoue sur la zone bien
-            // avant, et `PgPool::connect_lazy` n'ouvre aucune connexion.
+            // Le pool EST touché — et c'est ce qui rend le 400 : `normaliser_e164`
+            // lit l'indicatif de la ZONE avant de regarder le numéro
+            // (`zones.parametre` → SELECT), et l'hôte « inutilise » ne résout pas.
+            // `connect_lazy` n'ouvre rien à la construction, mais la première
+            // requête, si.
             sqlx::PgPool::connect_lazy("postgres://inutilise/inutilise").unwrap(),
             Arc::new(comptes::MemoireEphemere::new()),
             Arc::new(SmsTraces::new()),
