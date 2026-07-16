@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG UNIQUEMENT — ce fichier vit dans src/debug, il n'est PAS fusionné dans
+  une release : celle-ci garde le défaut d'Android, HTTPS obligatoire.
+
+  Pourquoi il faut l'écrire. Deux piles réseau cohabitent dans l'app et ne
+  suivent PAS les mêmes règles :
+    - dio (dart:io) ne consulte pas la NetworkSecurityPolicy d'Android — les
+      appels à l'API en http:// passent, même en targetSdk 36 ;
+    - just_audio s'appuie sur ExoPlayer, du code natif, qui la consulte. La
+      lecture d'un repère vocal servi en http:// échoue donc, elle, avec
+      CleartextNotPermittedException — alors que l'app parle à la même machine.
+  Observé sur appareil : « Cleartext HTTP traffic to localhost not permitted »
+  au premier « Écouter le repère ».
+
+  En dev, l'API et Garage sont en http:// sur le poste ; en production tout est
+  en https:// et rien de ceci ne s'applique. Autoriser le clair en debug est
+  donc ce qui rend le dev possible sans rien relâcher là où ça compte.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

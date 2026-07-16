@@ -4,4 +4,12 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Autorise le http:// en DEBUG seulement — le pourquoi (deux piles
+         réseau, une seule respecte la règle) est dans
+         res/xml/network_security_config.xml.
+         Cet <application> ne déclare rien de neuf : le merger fusionne
+         l'attribut dans celui de src/main, pour la variante debug seule. -->
+    <application
+        android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>
