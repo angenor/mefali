@@ -51,14 +51,20 @@ paths:
             schema: { $ref: '#/components/schemas/VerificationOtp' }
       responses:
         '200':
-          description: Vérification réussie — deux issues possibles, discriminées par `resultat`.
+          description: Vérification réussie — deux issues possibles, distinguées par `resultat`.
           content:
             application/json:
               schema:
+                # Pas de `discriminator` : le contrat généré (openapi.json, source
+                # de vérité) l'omet — les deux membres se distinguent par présence
+                # de champ (`jetons`/`compte` vs `jeton_inscription`), et chacun
+                # porte déjà son `resultat`, donc le fil est celui d'un oneOf
+                # discriminé. Le domaine Rust est `#[serde(untagged)]` : ajouter
+                # ici un `discriminator` que le généré n'émet pas rouvrirait la
+                # divergence design↔réalité que ce cycle a fermée.
                 oneOf:
                   - $ref: '#/components/schemas/SessionOuverte'
                   - $ref: '#/components/schemas/ConsentementRequis'
-                discriminator: { propertyName: resultat }
         '401':
           description: >
             Code invalide, expiré (> 5 min) ou essais épuisés (3) — message
