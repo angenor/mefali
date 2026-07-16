@@ -323,27 +323,70 @@ impl CompteMoi {
     }
 }
 
-/// Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
+/// Discriminant de [`SessionOuverteDto`] — une seule valeur possible.
+///
+/// Un type à UNE variante, et non un `String` : la valeur du discriminant ne
+/// peut alors pas diverger du schéma, et ce n'est pas à l'appelant de penser à
+/// l'écrire juste.
 #[derive(Debug, Serialize, ToSchema)]
-#[serde(tag = "resultat", rename_all = "snake_case")]
-pub enum ResultatVerification {
-    /// Numéro connu — session ouverte.
-    Session {
-        /// Jetons de l'appareil.
-        jetons: JetonsDto,
-        /// Compte connecté.
-        compte: CompteMoi,
-    },
-    /// Numéro inconnu — consentement ARTCI exigé avant création (FR-006).
-    ConsentementRequis {
-        /// Jeton d'inscription à usage unique.
-        jeton_inscription: String,
-    },
+#[serde(rename_all = "snake_case")]
+pub enum DiscriminantSession {
+    /// Toujours `session`.
+    Session,
 }
 
-impl From<SessionOuverte> for ResultatVerification {
+/// Discriminant de [`ConsentementRequisDto`].
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DiscriminantConsentement {
+    /// Toujours `consentement_requis`.
+    ConsentementRequis,
+}
+
+/// Session ouverte sur un compte (contrat `SessionOuverte`).
+///
+/// Schéma NOMMÉ et non une variante anonyme du `oneOf` : c'est aussi le corps
+/// entier du 201 de `/auth/inscription`, qui n'a qu'une issue possible.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = SessionOuverte)]
+pub struct SessionOuverteDto {
+    /// Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
+    pub resultat: DiscriminantSession,
+    /// Jetons de l'appareil.
+    pub jetons: JetonsDto,
+    /// Compte connecté.
+    pub compte: CompteMoi,
+}
+
+/// Consentement ARTCI exigé avant création du compte (contrat
+/// `ConsentementRequis`, FR-006).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ConsentementRequis)]
+pub struct ConsentementRequisDto {
+    /// Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
+    pub resultat: DiscriminantConsentement,
+    /// Jeton d'inscription à usage unique.
+    pub jeton_inscription: String,
+}
+
+/// Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
+///
+/// `untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du
+/// câble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose
+/// deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(untagged)]
+pub enum ResultatVerification {
+    /// Numéro connu — session ouverte.
+    Session(SessionOuverteDto),
+    /// Numéro inconnu — consentement ARTCI exigé avant création (FR-006).
+    ConsentementRequis(ConsentementRequisDto),
+}
+
+impl From<SessionOuverte> for SessionOuverteDto {
     fn from(ouverte: SessionOuverte) -> Self {
-        ResultatVerification::Session {
+        SessionOuverteDto {
+            resultat: DiscriminantSession::Session,
             jetons: JetonsDto {
                 acces: ouverte.jetons.acces,
                 rafraichissement: ouverte.jetons.rafraichissement,
@@ -444,9 +487,14 @@ pub async fn verifier(
         .await?;
 
     let resultat = match issue {
-        IssueVerification::Session(ouverte) => ResultatVerification::from(ouverte),
+        IssueVerification::Session(ouverte) => {
+            ResultatVerification::Session(SessionOuverteDto::from(ouverte))
+        }
         IssueVerification::ConsentementRequis { jeton_inscription } => {
-            ResultatVerification::ConsentementRequis { jeton_inscription }
+            ResultatVerification::ConsentementRequis(ConsentementRequisDto {
+                resultat: DiscriminantConsentement::ConsentementRequis,
+                jeton_inscription,
+            })
         }
     };
     Ok(HttpResponse::Ok().json(resultat))
@@ -455,6 +503,11 @@ pub async fn verifier(
 // ── POST /auth/inscription ─────────────────────────────────────────────────
 
 /// Crée le compte après consentement ARTCI, puis ouvre sa session.
+///
+/// Le 201 rend `SessionOuverte` SEULE, et non le `oneOf` de
+/// `/auth/otp/verifier` : ici le consentement vient d'être fourni, donc
+/// `consentement_requis` est une issue que ce chemin ne peut pas produire.
+/// L'annoncer obligerait chaque client à traiter une branche morte.
 #[utoipa::path(
     post,
     path = "/auth/inscription",
@@ -462,7 +515,7 @@ pub async fn verifier(
     request_body = Inscription,
     responses(
         (status = 201, description = "Compte créé (réduit au numéro vérifié) + session ouverte.",
-         body = ResultatVerification),
+         body = SessionOuverteDto),
         (status = 401, description = "Jeton d'inscription invalide, expiré (10 min) ou déjà consommé.",
          body = ErreurApiDto),
         (status = 422, description = "Consentement absent — aucun compte n'est créé (FR-006).",
@@ -477,7 +530,7 @@ pub async fn inscrire(
     let ouverte = depot
         .inscrire(&corps.jeton_inscription, &corps.consentement_version)
         .await?;
-    Ok(HttpResponse::Created().json(ResultatVerification::from(ouverte)))
+    Ok(HttpResponse::Created().json(SessionOuverteDto::from(ouverte)))
 }
 
 // ── Extracteur Auth + exiger_role (research R5) ────────────────────────────

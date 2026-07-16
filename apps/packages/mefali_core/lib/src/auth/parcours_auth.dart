@@ -152,27 +152,34 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
               ..consentementVersion = version,
           ),
         );
-        await _traiterResultat(reponse.data);
+        // Le consentement vient d'être fourni : l'inscription n'a qu'une issue,
+        // et le contrat la type comme telle — rien à discriminer ici.
+        final ouverte = reponse.data;
+        if (ouverte != null) await _ouvrirSession(ouverte);
       });
 
   /// Deux issues possibles, discriminées par le `oneOf` du contrat.
   Future<void> _traiterResultat(ResultatVerification? resultat) async {
     final valeur = resultat?.oneOf.value;
-    if (valeur is ResultatVerificationOneOf) {
-      await widget.session.ouvrir(
-        JetonsSession(
-          acces: valeur.jetons.acces,
-          rafraichissement: valeur.jetons.rafraichissement,
-        ),
-      );
-      if (mounted) widget.onConnecte();
-    } else if (valeur is ResultatVerificationOneOf1) {
+    if (valeur is SessionOuverte) {
+      await _ouvrirSession(valeur);
+    } else if (valeur is ConsentementRequis) {
       if (!mounted) return;
       setState(() {
         _jetonInscription = valeur.jetonInscription;
         _etape = _Etape.consentement;
       });
     }
+  }
+
+  Future<void> _ouvrirSession(SessionOuverte ouverte) async {
+    await widget.session.ouvrir(
+      JetonsSession(
+        acces: ouverte.jetons.acces,
+        rafraichissement: ouverte.jetons.rafraichissement,
+      ),
+    );
+    if (mounted) widget.onConnecte();
   }
 
   @override

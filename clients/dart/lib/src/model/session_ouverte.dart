@@ -4,21 +4,21 @@
 
 // ignore_for_file: unused_element
 import 'package:mefali_api_client/src/model/compte_moi.dart';
-import 'package:built_collection/built_collection.dart';
+import 'package:mefali_api_client/src/model/discriminant_session.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'resultat_verification_one_of.g.dart';
+part 'session_ouverte.g.dart';
 
-/// Numéro connu — session ouverte.
+/// Session ouverte sur un compte (contrat `SessionOuverte`).  Schéma NOMMÉ et non une variante anonyme du `oneOf` : c'est aussi le corps entier du 201 de `/auth/inscription`, qui n'a qu'une issue possible.
 ///
 /// Properties:
 /// * [compte] - Compte connecté.
 /// * [jetons] - Jetons de l'appareil.
-/// * [resultat] 
+/// * [resultat] - Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
 @BuiltValue()
-abstract class ResultatVerificationOneOf implements Built<ResultatVerificationOneOf, ResultatVerificationOneOfBuilder> {
+abstract class SessionOuverte implements Built<SessionOuverte, SessionOuverteBuilder> {
   /// Compte connecté.
   @BuiltValueField(wireName: r'compte')
   CompteMoi get compte;
@@ -27,31 +27,32 @@ abstract class ResultatVerificationOneOf implements Built<ResultatVerificationOn
   @BuiltValueField(wireName: r'jetons')
   JetonsDto get jetons;
 
+  /// Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
   @BuiltValueField(wireName: r'resultat')
-  ResultatVerificationOneOfResultatEnum get resultat;
+  DiscriminantSession get resultat;
   // enum resultatEnum {  session,  };
 
-  ResultatVerificationOneOf._();
+  SessionOuverte._();
 
-  factory ResultatVerificationOneOf([void updates(ResultatVerificationOneOfBuilder b)]) = _$ResultatVerificationOneOf;
+  factory SessionOuverte([void updates(SessionOuverteBuilder b)]) = _$SessionOuverte;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ResultatVerificationOneOfBuilder b) => b;
+  static void _defaults(SessionOuverteBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ResultatVerificationOneOf> get serializer => _$ResultatVerificationOneOfSerializer();
+  static Serializer<SessionOuverte> get serializer => _$SessionOuverteSerializer();
 }
 
-class _$ResultatVerificationOneOfSerializer implements PrimitiveSerializer<ResultatVerificationOneOf> {
+class _$SessionOuverteSerializer implements PrimitiveSerializer<SessionOuverte> {
   @override
-  final Iterable<Type> types = const [ResultatVerificationOneOf, _$ResultatVerificationOneOf];
+  final Iterable<Type> types = const [SessionOuverte, _$SessionOuverte];
 
   @override
-  final String wireName = r'ResultatVerificationOneOf';
+  final String wireName = r'SessionOuverte';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    ResultatVerificationOneOf object, {
+    SessionOuverte object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'compte';
@@ -67,14 +68,14 @@ class _$ResultatVerificationOneOfSerializer implements PrimitiveSerializer<Resul
     yield r'resultat';
     yield serializers.serialize(
       object.resultat,
-      specifiedType: const FullType(ResultatVerificationOneOfResultatEnum),
+      specifiedType: const FullType(DiscriminantSession),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    ResultatVerificationOneOf object, {
+    SessionOuverte object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -85,7 +86,7 @@ class _$ResultatVerificationOneOfSerializer implements PrimitiveSerializer<Resul
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required ResultatVerificationOneOfBuilder result,
+    required SessionOuverteBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -109,8 +110,8 @@ class _$ResultatVerificationOneOfSerializer implements PrimitiveSerializer<Resul
         case r'resultat':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(ResultatVerificationOneOfResultatEnum),
-          ) as ResultatVerificationOneOfResultatEnum;
+            specifiedType: const FullType(DiscriminantSession),
+          ) as DiscriminantSession;
           result.resultat = valueDes;
           break;
         default:
@@ -122,12 +123,12 @@ class _$ResultatVerificationOneOfSerializer implements PrimitiveSerializer<Resul
   }
 
   @override
-  ResultatVerificationOneOf deserialize(
+  SessionOuverte deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = ResultatVerificationOneOfBuilder();
+    final result = SessionOuverteBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(
@@ -140,18 +141,5 @@ class _$ResultatVerificationOneOfSerializer implements PrimitiveSerializer<Resul
     );
     return result.build();
   }
-}
-
-class ResultatVerificationOneOfResultatEnum extends EnumClass {
-
-  @BuiltValueEnumConst(wireName: r'session')
-  static const ResultatVerificationOneOfResultatEnum session = _$resultatVerificationOneOfResultatEnum_session;
-
-  static Serializer<ResultatVerificationOneOfResultatEnum> get serializer => _$resultatVerificationOneOfResultatEnumSerializer;
-
-  const ResultatVerificationOneOfResultatEnum._(String name): super(name);
-
-  static BuiltSet<ResultatVerificationOneOfResultatEnum> get values => _$resultatVerificationOneOfResultatEnumValues;
-  static ResultatVerificationOneOfResultatEnum valueOf(String name) => _$resultatVerificationOneOfResultatEnumValueOf(name);
 }
 

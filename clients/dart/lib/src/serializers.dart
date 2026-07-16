@@ -21,11 +21,14 @@ import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
+import 'package:mefali_api_client/src/model/consentement_requis.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/devise_dto.dart';
+import 'package:mefali_api_client/src/model/discriminant_consentement.dart';
+import 'package:mefali_api_client/src/model/discriminant_session.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
@@ -38,9 +41,8 @@ import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
-import 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
-import 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
+import 'package:mefali_api_client/src/model/session_ouverte.dart';
 import 'package:mefali_api_client/src/model/url_presignee.dart';
 import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
@@ -55,11 +57,14 @@ part 'serializers.g.dart';
   CategorieDto,
   CompteMoi,
   ConfigZone,
+  ConsentementRequis,
   CorpsForcage,
   DecisionRole,
   DemandeOtp,
   DemandeRafraichissement,
   DeviseDto,
+  DiscriminantConsentement,
+  DiscriminantSession,
   DossierCoursier,
   DossierCoursierAdmin,
   ErreurApi,
@@ -72,9 +77,8 @@ part 'serializers.g.dart';
   ModifierAdresse,
   PlateformeDto,
   ResultatVerification,
-  ResultatVerificationOneOf,
-  ResultatVerificationOneOf1,
   SessionAppareil,
+  SessionOuverte,
   UrlPresignee,
   VehiculeDeclare,
   VerificationOtp,

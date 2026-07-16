@@ -3,48 +3,49 @@
 //
 
 // ignore_for_file: unused_element
-import 'package:built_collection/built_collection.dart';
+import 'package:mefali_api_client/src/model/discriminant_consentement.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'resultat_verification_one_of1.g.dart';
+part 'consentement_requis.g.dart';
 
-/// Numéro inconnu — consentement ARTCI exigé avant création (FR-006).
+/// Consentement ARTCI exigé avant création du compte (contrat `ConsentementRequis`, FR-006).
 ///
 /// Properties:
 /// * [jetonInscription] - Jeton d'inscription à usage unique.
-/// * [resultat] 
+/// * [resultat] - Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
 @BuiltValue()
-abstract class ResultatVerificationOneOf1 implements Built<ResultatVerificationOneOf1, ResultatVerificationOneOf1Builder> {
+abstract class ConsentementRequis implements Built<ConsentementRequis, ConsentementRequisBuilder> {
   /// Jeton d'inscription à usage unique.
   @BuiltValueField(wireName: r'jeton_inscription')
   String get jetonInscription;
 
+  /// Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
   @BuiltValueField(wireName: r'resultat')
-  ResultatVerificationOneOf1ResultatEnum get resultat;
+  DiscriminantConsentement get resultat;
   // enum resultatEnum {  consentement_requis,  };
 
-  ResultatVerificationOneOf1._();
+  ConsentementRequis._();
 
-  factory ResultatVerificationOneOf1([void updates(ResultatVerificationOneOf1Builder b)]) = _$ResultatVerificationOneOf1;
+  factory ConsentementRequis([void updates(ConsentementRequisBuilder b)]) = _$ConsentementRequis;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ResultatVerificationOneOf1Builder b) => b;
+  static void _defaults(ConsentementRequisBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ResultatVerificationOneOf1> get serializer => _$ResultatVerificationOneOf1Serializer();
+  static Serializer<ConsentementRequis> get serializer => _$ConsentementRequisSerializer();
 }
 
-class _$ResultatVerificationOneOf1Serializer implements PrimitiveSerializer<ResultatVerificationOneOf1> {
+class _$ConsentementRequisSerializer implements PrimitiveSerializer<ConsentementRequis> {
   @override
-  final Iterable<Type> types = const [ResultatVerificationOneOf1, _$ResultatVerificationOneOf1];
+  final Iterable<Type> types = const [ConsentementRequis, _$ConsentementRequis];
 
   @override
-  final String wireName = r'ResultatVerificationOneOf1';
+  final String wireName = r'ConsentementRequis';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    ResultatVerificationOneOf1 object, {
+    ConsentementRequis object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'jeton_inscription';
@@ -55,14 +56,14 @@ class _$ResultatVerificationOneOf1Serializer implements PrimitiveSerializer<Resu
     yield r'resultat';
     yield serializers.serialize(
       object.resultat,
-      specifiedType: const FullType(ResultatVerificationOneOf1ResultatEnum),
+      specifiedType: const FullType(DiscriminantConsentement),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    ResultatVerificationOneOf1 object, {
+    ConsentementRequis object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -73,7 +74,7 @@ class _$ResultatVerificationOneOf1Serializer implements PrimitiveSerializer<Resu
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required ResultatVerificationOneOf1Builder result,
+    required ConsentementRequisBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -90,8 +91,8 @@ class _$ResultatVerificationOneOf1Serializer implements PrimitiveSerializer<Resu
         case r'resultat':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(ResultatVerificationOneOf1ResultatEnum),
-          ) as ResultatVerificationOneOf1ResultatEnum;
+            specifiedType: const FullType(DiscriminantConsentement),
+          ) as DiscriminantConsentement;
           result.resultat = valueDes;
           break;
         default:
@@ -103,12 +104,12 @@ class _$ResultatVerificationOneOf1Serializer implements PrimitiveSerializer<Resu
   }
 
   @override
-  ResultatVerificationOneOf1 deserialize(
+  ConsentementRequis deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = ResultatVerificationOneOf1Builder();
+    final result = ConsentementRequisBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(
@@ -121,18 +122,5 @@ class _$ResultatVerificationOneOf1Serializer implements PrimitiveSerializer<Resu
     );
     return result.build();
   }
-}
-
-class ResultatVerificationOneOf1ResultatEnum extends EnumClass {
-
-  @BuiltValueEnumConst(wireName: r'consentement_requis')
-  static const ResultatVerificationOneOf1ResultatEnum consentementRequis = _$resultatVerificationOneOf1ResultatEnum_consentementRequis;
-
-  static Serializer<ResultatVerificationOneOf1ResultatEnum> get serializer => _$resultatVerificationOneOf1ResultatEnumSerializer;
-
-  const ResultatVerificationOneOf1ResultatEnum._(String name): super(name);
-
-  static BuiltSet<ResultatVerificationOneOf1ResultatEnum> get values => _$resultatVerificationOneOf1ResultatEnumValues;
-  static ResultatVerificationOneOf1ResultatEnum valueOf(String name) => _$resultatVerificationOneOf1ResultatEnumValueOf(name);
 }
 

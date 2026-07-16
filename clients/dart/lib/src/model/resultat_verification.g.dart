@@ -6,58 +6,6 @@ part of 'resultat_verification.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
-const ResultatVerificationResultatEnum
-    _$resultatVerificationResultatEnum_consentementRequis =
-    const ResultatVerificationResultatEnum._('consentementRequis');
-
-ResultatVerificationResultatEnum _$resultatVerificationResultatEnumValueOf(
-    String name) {
-  switch (name) {
-    case 'consentementRequis':
-      return _$resultatVerificationResultatEnum_consentementRequis;
-    default:
-      throw ArgumentError(name);
-  }
-}
-
-final BuiltSet<ResultatVerificationResultatEnum>
-    _$resultatVerificationResultatEnumValues = BuiltSet<
-        ResultatVerificationResultatEnum>(const <ResultatVerificationResultatEnum>[
-  _$resultatVerificationResultatEnum_consentementRequis,
-]);
-
-Serializer<ResultatVerificationResultatEnum>
-    _$resultatVerificationResultatEnumSerializer =
-    _$ResultatVerificationResultatEnumSerializer();
-
-class _$ResultatVerificationResultatEnumSerializer
-    implements PrimitiveSerializer<ResultatVerificationResultatEnum> {
-  static const Map<String, Object> _toWire = const <String, Object>{
-    'consentementRequis': 'consentement_requis',
-  };
-  static const Map<Object, String> _fromWire = const <Object, String>{
-    'consentement_requis': 'consentementRequis',
-  };
-
-  @override
-  final Iterable<Type> types = const <Type>[ResultatVerificationResultatEnum];
-  @override
-  final String wireName = 'ResultatVerificationResultatEnum';
-
-  @override
-  Object serialize(
-          Serializers serializers, ResultatVerificationResultatEnum object,
-          {FullType specifiedType = FullType.unspecified}) =>
-      _toWire[object.name] ?? object.name;
-
-  @override
-  ResultatVerificationResultatEnum deserialize(
-          Serializers serializers, Object serialized,
-          {FullType specifiedType = FullType.unspecified}) =>
-      ResultatVerificationResultatEnum.valueOf(
-          _fromWire[serialized] ?? (serialized is String ? serialized : ''));
-}
-
 class _$ResultatVerification extends ResultatVerification {
   @override
   final OneOf oneOf;

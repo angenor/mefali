@@ -94,9 +94,11 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **inscrire**
-> ResultatVerification inscrire(inscription)
+> SessionOuverte inscrire(inscription)
 
 Crée le compte après consentement ARTCI, puis ouvre sa session.
+
+Le 201 rend `SessionOuverte` SEULE, et non le `oneOf` de `/auth/otp/verifier` : ici le consentement vient d'être fourni, donc `consentement_requis` est une issue que ce chemin ne peut pas produire. L'annoncer obligerait chaque client à traiter une branche morte.
 
 ### Example
 ```dart
@@ -121,7 +123,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**ResultatVerification**](ResultatVerification.md)
+[**SessionOuverte**](SessionOuverte.md)
 
 ### Authorization
 

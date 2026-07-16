@@ -15,6 +15,7 @@ import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
+import 'package:mefali_api_client/src/model/session_ouverte.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
 
 class AuthApi {
@@ -172,7 +173,7 @@ class AuthApi {
   }
 
   /// Crée le compte après consentement ARTCI, puis ouvre sa session.
-  /// 
+  /// Le 201 rend &#x60;SessionOuverte&#x60; SEULE, et non le &#x60;oneOf&#x60; de &#x60;/auth/otp/verifier&#x60; : ici le consentement vient d&#39;être fourni, donc &#x60;consentement_requis&#x60; est une issue que ce chemin ne peut pas produire. L&#39;annoncer obligerait chaque client à traiter une branche morte.
   ///
   /// Parameters:
   /// * [inscription] 
@@ -183,9 +184,9 @@ class AuthApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [ResultatVerification] as data
+  /// Returns a [Future] containing a [Response] with a [SessionOuverte] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ResultatVerification>> inscrire({ 
+  Future<Response<SessionOuverte>> inscrire({ 
     required Inscription inscription,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -235,14 +236,14 @@ class AuthApi {
       onReceiveProgress: onReceiveProgress,
     );
 
-    ResultatVerification? _responseData;
+    SessionOuverte? _responseData;
 
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
-        specifiedType: const FullType(ResultatVerification),
-      ) as ResultatVerification;
+        specifiedType: const FullType(SessionOuverte),
+      ) as SessionOuverte;
 
     } catch (error, stackTrace) {
       throw DioException(
@@ -254,7 +255,7 @@ class AuthApi {
       );
     }
 
-    return Response<ResultatVerification>(
+    return Response<SessionOuverte>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

@@ -102,7 +102,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Crée le compte après consentement ARTCI, puis ouvre sa session. */
+        /**
+         * Crée le compte après consentement ARTCI, puis ouvre sa session.
+         * @description Le 201 rend `SessionOuverte` SEULE, et non le `oneOf` de
+         *     `/auth/otp/verifier` : ici le consentement vient d'être fourni, donc
+         *     `consentement_requis` est une issue que ce chemin ne peut pas produire.
+         *     L'annoncer obligerait chaque client à traiter une branche morte.
+         */
         post: operations["inscrire"];
         delete?: never;
         options?: never;
@@ -466,6 +472,16 @@ export interface components {
              */
             zone: string;
         };
+        /**
+         * @description Consentement ARTCI exigé avant création du compte (contrat
+         *     `ConsentementRequis`, FR-006).
+         */
+        ConsentementRequis: {
+            /** @description Jeton d'inscription à usage unique. */
+            jeton_inscription: string;
+            /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
+            resultat: components["schemas"]["DiscriminantConsentement"];
+        };
         /** @description Corps de la requête de forçage. */
         CorpsForcage: {
             /** @description Nouveau mode de forçage à appliquer. */
@@ -503,6 +519,20 @@ export interface components {
              */
             decimales: number;
         };
+        /**
+         * @description Discriminant de [`ConsentementRequisDto`].
+         * @enum {string}
+         */
+        DiscriminantConsentement: "consentement_requis";
+        /**
+         * @description Discriminant de [`SessionOuverteDto`] — une seule valeur possible.
+         *
+         *     Un type à UNE variante, et non un `String` : la valeur du discriminant ne
+         *     peut alors pas diverger du schéma, et ce n'est pas à l'appelant de penser à
+         *     l'écrire juste.
+         * @enum {string}
+         */
+        DiscriminantSession: "session";
         /**
          * @description Dossier coursier tel que son titulaire le voit (contrat).
          *
@@ -687,20 +717,14 @@ export interface components {
              */
             note_vocale: string;
         };
-        /** @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`. */
-        ResultatVerification: {
-            /** @description Compte connecté. */
-            compte: components["schemas"]["CompteMoi"];
-            /** @description Jetons de l'appareil. */
-            jetons: components["schemas"]["JetonsDto"];
-            /** @enum {string} */
-            resultat: "session";
-        } | {
-            /** @description Jeton d'inscription à usage unique. */
-            jeton_inscription: string;
-            /** @enum {string} */
-            resultat: "consentement_requis";
-        };
+        /**
+         * @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
+         *
+         *     `untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du
+         *     câble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose
+         *     deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
+         */
+        ResultatVerification: components["schemas"]["SessionOuverte"] | components["schemas"]["ConsentementRequis"];
         /** @description Session/appareil du compte (contrat `SessionAppareil`). */
         SessionAppareil: {
             /** @description Nom déclaré par l'app. */
@@ -724,6 +748,20 @@ export interface components {
              * @description Identifiant de session.
              */
             id: string;
+        };
+        /**
+         * @description Session ouverte sur un compte (contrat `SessionOuverte`).
+         *
+         *     Schéma NOMMÉ et non une variante anonyme du `oneOf` : c'est aussi le corps
+         *     entier du 201 de `/auth/inscription`, qui n'a qu'une issue possible.
+         */
+        SessionOuverte: {
+            /** @description Compte connecté. */
+            compte: components["schemas"]["CompteMoi"];
+            /** @description Jetons de l'appareil. */
+            jetons: components["schemas"]["JetonsDto"];
+            /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
+            resultat: components["schemas"]["DiscriminantSession"];
         };
         /**
          * @description Dossier soumis par le coursier : pièce d'identité, référent local et
@@ -1060,7 +1098,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResultatVerification"];
+                    "application/json": components["schemas"]["SessionOuverte"];
                 };
             };
             /** @description Jeton d'inscription invalide, expiré (10 min) ou déjà consommé. */

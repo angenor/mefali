@@ -1,15 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
-/// Le contrat `/auth/otp/verifier` renvoie un `oneOf` discriminé par `resultat`
-/// (session | consentement_requis). Le générateur dart-dio ne produit PAS de
-/// discriminateur : il essaie chaque variante et garde celle qui désérialise.
+/// Le contrat `/auth/otp/verifier` renvoie un `oneOf` de deux schémas nommés,
+/// discriminé par `resultat` (`SessionOuverte` | `ConsentementRequis`). Le
+/// générateur dart-dio ne produit PAS de discriminateur : il essaie chaque
+/// variante et garde celle qui désérialise.
 ///
 /// Tout le parcours d'authentification repose sur cette résolution. Si elle
 /// échouait — ou pire, choisissait la mauvaise variante — `ParcoursAuth`
 /// n'ouvrirait jamais de session, et rien dans `flutter analyze` ne le
 /// signalerait. Ces tests exercent donc les serializers générés sur les DEUX
 /// formes exactes que le backend émet.
+///
+/// `/auth/inscription`, lui, n'a plus rien à discriminer : son 201 est typé
+/// `SessionOuverte` — la seule issue qu'il puisse produire.
 void main() {
   final serializers = standardSerializers;
 
@@ -33,8 +37,9 @@ void main() {
       });
 
       final valeur = resultat.oneOf.value;
-      expect(valeur, isA<ResultatVerificationOneOf>());
-      final session = valeur as ResultatVerificationOneOf;
+      expect(valeur, isA<SessionOuverte>());
+      final session = valeur as SessionOuverte;
+      expect(session.resultat, DiscriminantSession.session);
       expect(session.jetons.acces, 'jwt-de-test');
       expect(session.jetons.rafraichissement, 'opaque-de-test');
       expect(session.compte.telephoneE164, '+2250701020304');
@@ -48,9 +53,9 @@ void main() {
       });
 
       final valeur = resultat.oneOf.value;
-      expect(valeur, isA<ResultatVerificationOneOf1>());
+      expect(valeur, isA<ConsentementRequis>());
       expect(
-        (valeur as ResultatVerificationOneOf1).jetonInscription,
+        (valeur as ConsentementRequis).jetonInscription,
         'jeton-usage-unique',
       );
     });
@@ -72,8 +77,8 @@ void main() {
         'jeton_inscription': 'j',
       });
 
-      expect(session.oneOf.value, isNot(isA<ResultatVerificationOneOf1>()));
-      expect(consentement.oneOf.value, isNot(isA<ResultatVerificationOneOf>()));
+      expect(session.oneOf.value, isNot(isA<ConsentementRequis>()));
+      expect(consentement.oneOf.value, isNot(isA<SessionOuverte>()));
     });
   });
 }

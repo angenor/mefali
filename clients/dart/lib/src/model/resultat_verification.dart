@@ -4,9 +4,9 @@
 
 // ignore_for_file: unused_element
 import 'package:mefali_api_client/src/model/compte_moi.dart';
-import 'package:built_collection/built_collection.dart';
-import 'package:mefali_api_client/src/model/resultat_verification_one_of.dart';
-import 'package:mefali_api_client/src/model/resultat_verification_one_of1.dart';
+import 'package:mefali_api_client/src/model/discriminant_consentement.dart';
+import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/consentement_requis.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -14,16 +14,16 @@ import 'package:one_of/one_of.dart';
 
 part 'resultat_verification.g.dart';
 
-/// Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
+/// Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.  `untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du câble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
 ///
 /// Properties:
 /// * [compte] - Compte connecté.
 /// * [jetons] - Jetons de l'appareil.
-/// * [resultat] 
+/// * [resultat] - Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
 /// * [jetonInscription] - Jeton d'inscription à usage unique.
 @BuiltValue()
 abstract class ResultatVerification implements Built<ResultatVerification, ResultatVerificationBuilder> {
-  /// One Of [ResultatVerificationOneOf], [ResultatVerificationOneOf1]
+  /// One Of [ConsentementRequis], [SessionOuverte]
   OneOf get oneOf;
 
   ResultatVerification._();
@@ -69,23 +69,10 @@ class _$ResultatVerificationSerializer implements PrimitiveSerializer<ResultatVe
   }) {
     final result = ResultatVerificationBuilder();
     Object? oneOfDataSrc;
-    final targetType = const FullType(OneOf, [FullType(ResultatVerificationOneOf), FullType(ResultatVerificationOneOf1), ]);
+    final targetType = const FullType(OneOf, [FullType(SessionOuverte), FullType(ConsentementRequis), ]);
     oneOfDataSrc = serialized;
     result.oneOf = serializers.deserialize(oneOfDataSrc, specifiedType: targetType) as OneOf;
     return result.build();
   }
-}
-
-class ResultatVerificationResultatEnum extends EnumClass {
-
-  @BuiltValueEnumConst(wireName: r'consentement_requis')
-  static const ResultatVerificationResultatEnum consentementRequis = _$resultatVerificationResultatEnum_consentementRequis;
-
-  static Serializer<ResultatVerificationResultatEnum> get serializer => _$resultatVerificationResultatEnumSerializer;
-
-  const ResultatVerificationResultatEnum._(String name): super(name);
-
-  static BuiltSet<ResultatVerificationResultatEnum> get values => _$resultatVerificationResultatEnumValues;
-  static ResultatVerificationResultatEnum valueOf(String name) => _$resultatVerificationResultatEnumValueOf(name);
 }
 
