@@ -36,6 +36,8 @@ fn nouvelle(libelle: &str) -> NouvelleAdresse {
     }
 }
 
+/// Enregistre et rend l'ADRESSE seule — la note orpheline n'intéresse que le
+/// rejeu concurrent, qui a son propre test.
 async fn enregistrer(
     bac: &Bac,
     id: Uuid,
@@ -50,7 +52,7 @@ async fn enregistrer(
     if r.is_ok() {
         tx.commit().await.unwrap();
     }
-    r
+    r.map(|ecriture| ecriture.adresse)
 }
 
 /// US5 test indépendant — enregistrement, réutilisation à l'identique, gestion.
@@ -313,6 +315,11 @@ async fn repere_vocal_remplacable_apres_purge(pool: PgPool) {
         .unwrap();
     tx.commit().await.unwrap();
 
+    assert!(
+        remplacee.note_orpheline.is_none(),
+        "la purge avait déjà déréférencé l'ancienne note : rien à supprimer"
+    );
+    let remplacee = remplacee.adresse;
     assert!(remplacee.a_repere_vocal());
     assert_eq!(remplacee.repere_vocal_duree_s, Some(8));
     assert_eq!(

@@ -73,6 +73,25 @@ pub struct NouvelleAdresse {
     pub livraison_origine: Option<Uuid>,
 }
 
+/// Adresse rendue par une écriture, et la note vocale que cette écriture a
+/// laissée sans référent.
+///
+/// Un dépôt écrit toujours une clé NEUVE (uuidv7) et n'écrase jamais : dès
+/// qu'une note vocale cesse d'être référencée, ses octets — une donnée
+/// personnelle — survivent dans le stockage objet. La clé est donc REMONTÉE à
+/// l'appelant, qui la supprime APRÈS son commit (constitution VIII —
+/// minimisation ARTCI). Le domaine ne le fait pas lui-même : il ne possède pas
+/// la transaction, et supprimer avant un rollback ferait pointer l'adresse vers
+/// du vide. Même patron que [`PgComptes::purger_reperes_vocaux`], qui possède
+/// sa transaction et peut donc conclure seul.
+#[derive(Debug, Clone)]
+pub struct EcritureAdresse {
+    /// L'adresse telle qu'elle est désormais.
+    pub adresse: Adresse,
+    /// Note vocale devenue orpheline — `None` quand l'écriture n'en a déréférencé aucune.
+    pub note_orpheline: Option<String>,
+}
+
 /// Champs modifiables d'une adresse (FR-021).
 ///
 /// `Option<Option<String>>` sur le repère : `None` = ne pas toucher,
@@ -98,7 +117,7 @@ impl PgComptes {
         id: Uuid,
         compte: Uuid,
         nouvelle: &NouvelleAdresse,
-    ) -> Result<Adresse, ErreurComptes> {
+    ) -> Result<EcritureAdresse, ErreurComptes> {
         let zone = self.zone_du_compte_adresse(tx, compte).await?;
 
         let libelle = nouvelle.libelle.trim();
@@ -108,9 +127,13 @@ impl PgComptes {
         let repere_texte = nettoyer_repere(nouvelle.repere_texte.as_deref())?;
 
         // Rejeu : l'adresse est déjà là. On la rend telle quelle — sans
-        // redéposer la note vocale ni ré-émettre l'événement.
+        // redéposer la note vocale ni ré-émettre l'événement. Rien n'a été
+        // déposé : aucun orphelin.
         if let Some(existante) = self.adresse_dans_tx(tx, id, compte).await? {
-            return Ok(existante);
+            return Ok(EcritureAdresse {
+                adresse: existante,
+                note_orpheline: None,
+            });
         }
 
         let cle_vocale = match &nouvelle.note_vocale {
@@ -146,11 +169,18 @@ impl PgComptes {
         .await?;
 
         if ligne.is_none() {
-            // La course est perdue : l'autre requête a créé l'adresse.
-            return self
+            // La course est perdue : l'autre requête a créé l'adresse. Notre
+            // note vocale, elle, est DÉJÀ déposée sous une clé que plus rien ne
+            // référencera jamais — c'est l'adresse gagnante et sa note qui font
+            // foi. La nôtre est orpheline dès maintenant.
+            let adresse = self
                 .adresse_dans_tx(tx, id, compte)
                 .await?
-                .ok_or(ErreurComptes::AdresseInconnue(id));
+                .ok_or(ErreurComptes::AdresseInconnue(id))?;
+            return Ok(EcritureAdresse {
+                adresse,
+                note_orpheline: cle_vocale,
+            });
         }
 
         ecrire_evenement(
@@ -173,20 +203,24 @@ impl PgComptes {
         )
         .await?;
 
-        Ok(Adresse {
-            id,
-            compte_id: compte,
-            libelle: libelle.to_owned(),
-            lat: nouvelle.lat,
-            lng: nouvelle.lng,
-            repere_texte,
-            repere_vocal_cle_objet: cle_vocale,
-            repere_vocal_duree_s: duree,
-            zone_id: zone,
-            livraison_origine: nouvelle.livraison_origine,
-            cree_le: maintenant,
-            derniere_utilisation_le: maintenant,
-            supprimee_le: None,
+        Ok(EcritureAdresse {
+            adresse: Adresse {
+                id,
+                compte_id: compte,
+                libelle: libelle.to_owned(),
+                lat: nouvelle.lat,
+                lng: nouvelle.lng,
+                repere_texte,
+                repere_vocal_cle_objet: cle_vocale,
+                repere_vocal_duree_s: duree,
+                zone_id: zone,
+                livraison_origine: nouvelle.livraison_origine,
+                cree_le: maintenant,
+                derniere_utilisation_le: maintenant,
+                supprimee_le: None,
+            },
+            // Création : la note déposée est référencée par la ligne.
+            note_orpheline: None,
         })
     }
 
@@ -254,18 +288,24 @@ impl PgComptes {
     }
 
     /// Remplace le repère vocal — après purge, ou pour le refaire (FR-022).
+    ///
+    /// « Refaire » son repère (l'adresse en avait déjà un) déréférence le
+    /// précédent : il ressort en [`EcritureAdresse::note_orpheline`]. Après une
+    /// purge, il n'y a rien à déréférencer — la clé était déjà `NULL`.
     pub async fn remplacer_repere_vocal(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
         id: Uuid,
         compte: Uuid,
         note: &NoteVocale,
-    ) -> Result<Adresse, ErreurComptes> {
+    ) -> Result<EcritureAdresse, ErreurComptes> {
         let existante = self
             .adresse_dans_tx(tx, id, compte)
             .await?
             .ok_or(ErreurComptes::AdresseInconnue(id))?;
 
+        // Capturée avant que `existante` ne soit consommée par le retour.
+        let note_orpheline = existante.repere_vocal_cle_objet.clone();
         let cle = self.deposer_note(compte, existante.zone_id, note).await?;
         let maintenant = Utc::now();
         sqlx::query!(
@@ -283,10 +323,13 @@ impl PgComptes {
         self.emettre_adresse_modifiee(tx, &existante, &["repere_vocal"], maintenant)
             .await?;
 
-        Ok(Adresse {
-            repere_vocal_cle_objet: Some(cle),
-            repere_vocal_duree_s: Some(note.duree_s),
-            ..existante
+        Ok(EcritureAdresse {
+            adresse: Adresse {
+                repere_vocal_cle_objet: Some(cle),
+                repere_vocal_duree_s: Some(note.duree_s),
+                ..existante
+            },
+            note_orpheline,
         })
     }
 

@@ -258,12 +258,19 @@ pub async fn enregistrer_adresse(
         .begin()
         .await
         .map_err(comptes::ErreurComptes::from)?;
-    let adresse = depot
+    let ecriture = depot
         .enregistrer_adresse(&mut tx, id, auth.compte_id, &nouvelle)
         .await?;
     tx.commit().await.map_err(comptes::ErreurComptes::from)?;
 
-    Ok(HttpResponse::Created().json(AdresseDto::from(adresse)))
+    // Rejeu CONCURRENT perdu : notre note vocale a été déposée, mais c'est
+    // l'adresse de la requête gagnante qui fait foi — la nôtre ne sera jamais
+    // référencée. Après le commit, comme partout (constitution VIII).
+    if let Some(cle) = ecriture.note_orpheline {
+        crate::supprimer_objet_orphelin(&depot, &cle, "note vocale d'un rejeu concurrent").await;
+    }
+
+    Ok(HttpResponse::Created().json(AdresseDto::from(ecriture.adresse)))
 }
 
 /// Renomme l'adresse ou met à jour son repère écrit (FR-021).
@@ -416,12 +423,18 @@ pub async fn remplacer_repere_vocal(
         .begin()
         .await
         .map_err(comptes::ErreurComptes::from)?;
-    let adresse = depot
+    let ecriture = depot
         .remplacer_repere_vocal(&mut tx, id, auth.compte_id, &note)
         .await?;
     tx.commit().await.map_err(comptes::ErreurComptes::from)?;
 
-    Ok(HttpResponse::Ok().json(AdresseDto::from(adresse)))
+    // L'adresse avait déjà un repère : l'ancien vient d'être déréférencé. Après
+    // le commit — un rollback laisserait sinon l'adresse pointer vers du vide.
+    if let Some(cle) = ecriture.note_orpheline {
+        crate::supprimer_objet_orphelin(&depot, &cle, "repère vocal remplacé").await;
+    }
+
+    Ok(HttpResponse::Ok().json(AdresseDto::from(ecriture.adresse)))
 }
 
 #[cfg(test)]
@@ -545,6 +558,39 @@ mod tests {
                 .uri("/moi/adresses")
                 .insert_header(("authorization", format!("Bearer {}", $acces)))
                 .insert_header(("idempotency-key", $cle.to_string()))
+                .insert_header(("content-type", type_contenu))
+                .set_payload(corps)
+                .to_request();
+            atest::call_service(&$app, requete).await
+        }};
+    }
+
+    /// Corps multipart d'un (re)dépôt de repère vocal — le format du CÂBLE.
+    fn corps_repere(octets: &[u8], duree: i16) -> (String, Vec<u8>) {
+        const B: &str = "----mefalitest";
+        let mut corps: Vec<u8> = Vec::new();
+        corps.extend_from_slice(
+            format!("--{B}\r\nContent-Disposition: form-data; name=\"duree_s\"\r\n\r\n{duree}\r\n")
+                .as_bytes(),
+        );
+        corps.extend_from_slice(
+            format!(
+                "--{B}\r\nContent-Disposition: form-data; name=\"note_vocale\"; \
+                 filename=\"repere.m4a\"\r\nContent-Type: audio/mp4\r\n\r\n"
+            )
+            .as_bytes(),
+        );
+        corps.extend_from_slice(octets);
+        corps.extend_from_slice(format!("\r\n--{B}--\r\n").as_bytes());
+        (format!("multipart/form-data; boundary={B}"), corps)
+    }
+
+    macro_rules! remplacer_repere {
+        ($app:expr, $acces:expr, $id:expr, $octets:expr, $duree:expr) => {{
+            let (type_contenu, corps) = corps_repere($octets, $duree);
+            let requete = atest::TestRequest::post()
+                .uri(&format!("/moi/adresses/{}/repere-vocal", $id))
+                .insert_header(("authorization", format!("Bearer {}", $acces)))
                 .insert_header(("content-type", type_contenu))
                 .set_payload(corps)
                 .to_request();
@@ -823,29 +869,7 @@ mod tests {
         assert_eq!(corps[0]["libelle"], "Maison", "l'adresse a survécu à sa purge");
 
         // Re-capture.
-        const B: &str = "----mefalitest";
-        let mut nouveau: Vec<u8> = Vec::new();
-        nouveau.extend_from_slice(
-            format!("--{B}\r\nContent-Disposition: form-data; name=\"duree_s\"\r\n\r\n8\r\n")
-                .as_bytes(),
-        );
-        nouveau.extend_from_slice(
-            format!(
-                "--{B}\r\nContent-Disposition: form-data; name=\"note_vocale\"; \
-                 filename=\"repere.m4a\"\r\nContent-Type: audio/mp4\r\n\r\n"
-            )
-            .as_bytes(),
-        );
-        nouveau.extend_from_slice(b"nouvelle-note");
-        nouveau.extend_from_slice(format!("\r\n--{B}--\r\n").as_bytes());
-
-        let requete = atest::TestRequest::post()
-            .uri(&format!("/moi/adresses/{id}/repere-vocal"))
-            .insert_header(("authorization", format!("Bearer {acces}")))
-            .insert_header(("content-type", format!("multipart/form-data; boundary={B}")))
-            .set_payload(nouveau)
-            .to_request();
-        let resp = atest::call_service(&app, requete).await;
+        let resp = remplacer_repere!(app, acces, id, b"nouvelle-note", 8);
         assert_eq!(resp.status(), StatusCode::OK);
         let corps: serde_json::Value = atest::read_body_json(resp).await;
         assert_eq!(corps["a_repere_vocal"], true);
@@ -861,6 +885,50 @@ mod tests {
 
         let resp = atest::call_service(&app, ecouter()).await;
         assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    /// Constitution VIII — refaire un repère qui EXISTE déjà écrit une clé
+    /// neuve : sans suppression après commit, la voix d'Awa — une donnée
+    /// personnelle — resterait dans le bucket indéfiniment, sans que rien ne la
+    /// désigne plus (minimisation ARTCI).
+    #[sqlx::test(migrations = "../migrations")]
+    async fn remplacement_supprime_l_ancien_repere_vocal(pool: PgPool) {
+        let (depot, objets) = preparer(&pool).await;
+        let app = app!(depot);
+        let awa = creer_compte(&depot, "+2250701020304").await;
+        let acces = jeton(&depot, awa).await;
+        let id = Uuid::now_v7();
+        enregistrer!(app, acces, "Maison", id);
+
+        let cle_dela = |depot: PgComptes| async move {
+            depot
+                .adresse(id, awa)
+                .await
+                .unwrap()
+                .repere_vocal_cle_objet
+                .unwrap()
+        };
+        let ancienne = cle_dela(depot.clone()).await;
+        assert_eq!(objets.lire(&ancienne).as_deref(), Some(OCTETS_NOTE));
+
+        // Awa refait son repère — l'adresse en avait DÉJÀ un (ce n'est pas une
+        // re-capture après purge : là, il n'y aurait rien à déréférencer).
+        let resp = remplacer_repere!(app, acces, id, b"repere-refait", 8);
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let nouvelle = cle_dela(depot.clone()).await;
+        assert_ne!(nouvelle, ancienne, "un dépôt n'écrase jamais : clé neuve");
+        assert_eq!(
+            objets.lire(&nouvelle).as_deref(),
+            Some(&b"repere-refait"[..]),
+            "le repère courant est bien celui qu'Awa vient d'enregistrer"
+        );
+        assert_eq!(
+            objets.lire(&ancienne),
+            None,
+            "l'ancienne note a disparu du bucket, pas seulement de la base"
+        );
+        assert_eq!(objets.nombre(), 1, "une seule note vocale subsiste");
     }
 
     /// FR-009 — sans session, rien.

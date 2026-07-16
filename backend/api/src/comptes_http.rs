@@ -409,7 +409,16 @@ pub async fn soumettre_dossier_coursier(
     tx.commit().await.map_err(comptes::ErreurComptes::from)?;
 
     Ok(match issue {
-        IssueSoumission::Soumis(dossier) => {
+        IssueSoumission::Soumis {
+            dossier,
+            piece_orpheline,
+        } => {
+            // Re-soumission après refus : la pièce précédente n'est plus
+            // référencée par rien. APRÈS le commit seulement — avant, un
+            // rollback ferait pointer le dossier vers une pièce absente.
+            if let Some(cle) = piece_orpheline {
+                crate::supprimer_objet_orphelin(&depot, &cle, "pièce d'identité remplacée").await;
+            }
             HttpResponse::Created().json(DossierCoursierDto::from(dossier))
         }
         IssueSoumission::DejaEnAttente(dossier) => {
@@ -530,14 +539,22 @@ mod tests {
     const SECRET: &[u8] = b"secret-de-test-de-32-octets-mini";
 
     async fn preparer(pool: &PgPool) -> PgComptes {
+        preparer_avec_objets(pool).await.0
+    }
+
+    /// Comme [`preparer`], en RETENANT le stockage objet : constater ce qui
+    /// reste vraiment dans le bucket demande de pouvoir le relire.
+    async fn preparer_avec_objets(pool: &PgPool) -> (PgComptes, Arc<MemoireObjets>) {
         crate::charger_seeds(pool).await.unwrap();
-        PgComptes::new(
+        let objets = Arc::new(MemoireObjets::new());
+        let depot = PgComptes::new(
             pool.clone(),
             Arc::new(MemoireEphemere::new()),
             Arc::new(SmsTraces::new()),
-            Arc::new(MemoireObjets::new()),
+            objets.clone(),
             Arc::from(SECRET),
-        )
+        );
+        (depot, objets)
     }
 
     async fn jeton(depot: &PgComptes, compte: Uuid) -> String {
@@ -1055,6 +1072,46 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
         let corps: serde_json::Value = atest::read_body_json(resp).await;
         assert_eq!(corps["message_cle"], "comptes.erreur.corps_invalide");
+    }
+
+    /// Constitution VIII — la re-soumission dépose sous une clé NEUVE : sans
+    /// suppression après commit, la pièce d'identité refusée — une donnée
+    /// personnelle — resterait dans le bucket indéfiniment, sans qu'aucune ligne
+    /// ne la désigne plus (minimisation ARTCI).
+    #[sqlx::test(migrations = "../migrations")]
+    async fn re_soumission_supprime_la_piece_precedente(pool: PgPool) {
+        let (depot, objets) = preparer_avec_objets(&pool).await;
+        let app = app!(depot);
+        let yao = creer_compte(&depot, "+2250709080706").await;
+        let acces = jeton(&depot, yao).await;
+        let acces_admin = jeton(&depot, ADMIN.parse().unwrap()).await;
+
+        let resp = soumettre!(app, acces, &["moto"]);
+        assert_eq!(resp.status(), StatusCode::CREATED);
+        let premiere = depot.dossier_coursier(yao).await.unwrap().piece_cle_objet;
+        assert!(objets.lire(&premiere).is_some(), "la pièce est déposée");
+
+        // Refus motivé, puis Yao renvoie son dossier avec une pièce lisible.
+        let resp = decider!(
+            app,
+            acces_admin,
+            yao,
+            "coursier",
+            json!({ "action": "refuser", "motif": "pièce illisible" })
+        );
+        assert_eq!(resp.status(), StatusCode::OK);
+        let resp = soumettre!(app, acces, &["moto"]);
+        assert_eq!(resp.status(), StatusCode::CREATED);
+
+        let seconde = depot.dossier_coursier(yao).await.unwrap().piece_cle_objet;
+        assert_ne!(seconde, premiere, "un dépôt n'écrase jamais : clé neuve");
+        assert!(objets.lire(&seconde).is_some(), "la pièce courante est là");
+        assert_eq!(
+            objets.lire(&premiere),
+            None,
+            "la pièce refusée a disparu du bucket, pas seulement de la base"
+        );
+        assert_eq!(objets.nombre(), 1, "une seule pièce subsiste");
     }
 
     /// Un dossier déjà VALIDÉ ne se re-soumet pas (409, distinct du rejeu).

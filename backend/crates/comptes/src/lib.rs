@@ -29,8 +29,8 @@ pub mod session;
 mod test_zones;
 
 pub use adresse::{
-    ModificationAdresse, NouvelleAdresse, NoteVocale, LIBELLE_MAX, NOTE_VOCALE_MIMES,
-    NOTE_VOCALE_TAILLE_MAX, REPERE_TEXTE_MAX,
+    EcritureAdresse, ModificationAdresse, NouvelleAdresse, NoteVocale, LIBELLE_MAX,
+    NOTE_VOCALE_MIMES, NOTE_VOCALE_TAILLE_MAX, REPERE_TEXTE_MAX,
 };
 pub use depot::{Comptes, PgComptes};
 pub use dossier::{

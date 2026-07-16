@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT piece_cle_objet FROM comptes.dossier_coursier WHERE compte_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "piece_cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "piece_cle_objet"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2022c089e053492d3d283439796f345b16a01decbcbcbfe8277186d0220953f0"
+}

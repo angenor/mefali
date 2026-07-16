@@ -71,7 +71,19 @@ pub struct SoumissionDossier {
 #[derive(Debug, Clone)]
 pub enum IssueSoumission {
     /// Dossier créé (∅) ou re-soumis après refus : le rôle passe `en_attente`.
-    Soumis(DossierCoursier),
+    Soumis {
+        /// Le dossier tel qu'il est désormais.
+        dossier: DossierCoursier,
+        /// Clé de la pièce d'identité que cette soumission vient de REMPLACER
+        /// (re-soumission après refus) — `None` à la première soumission.
+        ///
+        /// Plus aucune ligne ne la référence : c'est une donnée personnelle
+        /// devenue orpheline dans le stockage objet, que l'appelant doit
+        /// supprimer APRÈS son commit (constitution VIII — minimisation ARTCI).
+        /// Le domaine ne la supprime pas lui-même : il ne possède pas la
+        /// transaction, et un rollback ferait pointer le dossier vers du vide.
+        piece_orpheline: Option<String>,
+    },
     /// Un dossier est DÉJÀ en attente — rejeu réseau. Rien n'a changé, rien
     /// n'a été déposé, aucun événement n'a été émis : on rend l'état courant.
     DejaEnAttente(DossierCoursier),
@@ -99,6 +111,10 @@ impl PgComptes {
     /// choisi pour que le pire cas soit inoffensif : on dépose APRÈS avoir
     /// validé la transition, donc un rollback laisse au pire un objet orphelin
     /// dans le bucket, jamais une ligne qui pointe vers un objet absent.
+    ///
+    /// Une re-soumission écrit une clé NEUVE et n'écrase donc jamais la pièce
+    /// précédente : celle-ci est rendue en [`IssueSoumission::Soumis::piece_orpheline`],
+    /// à charge de l'appelant de la supprimer après commit.
     pub async fn soumettre_dossier_coursier(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
@@ -140,6 +156,16 @@ impl PgComptes {
         // TransitionInvalide. Appelée avant le dépôt de la pièce — un 409 ne
         // doit pas laisser d'octets derrière lui.
         self.demander_role_coursier(tx, compte).await?;
+
+        // La pièce que le UPSERT ci-dessous va déréférencer. Lue AVANT lui, et
+        // dans la transaction : après, la clé est perdue et la donnée
+        // personnelle resterait dans le bucket sans que rien ne la désigne.
+        let piece_orpheline = sqlx::query_scalar!(
+            "SELECT piece_cle_objet FROM comptes.dossier_coursier WHERE compte_id = $1",
+            compte,
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
 
         let cle_piece = format!("comptes/pieces/{compte}/{}", Uuid::now_v7());
         self.objets
@@ -217,17 +243,20 @@ impl PgComptes {
         )
         .await?;
 
-        Ok(IssueSoumission::Soumis(DossierCoursier {
-            compte_id: compte,
-            piece_cle_objet: cle_piece,
-            piece_mime: soumission.piece.mime.clone(),
-            referent_nom: referent_nom.to_owned(),
-            referent_telephone_e164: referent_e164,
-            soumis_le: maintenant,
-            vehicules: types,
-            statut: StatutRole::EnAttente,
-            motif: None,
-        }))
+        Ok(IssueSoumission::Soumis {
+            dossier: DossierCoursier {
+                compte_id: compte,
+                piece_cle_objet: cle_piece,
+                piece_mime: soumission.piece.mime.clone(),
+                referent_nom: referent_nom.to_owned(),
+                referent_telephone_e164: referent_e164,
+                soumis_le: maintenant,
+                vehicules: types,
+                statut: StatutRole::EnAttente,
+                motif: None,
+            },
+            piece_orpheline,
+        })
     }
 
     /// Dossier d'un compte (`GET /moi/dossier-coursier`).

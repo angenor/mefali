@@ -117,6 +117,29 @@ async fn job_purge_reperes(depot: PgComptes) {
     }
 }
 
+/// Supprime du stockage objet une donnée personnelle que la transaction qui
+/// vient d'être COMMITÉE a rendue orpheline (constitution VIII).
+///
+/// ⚠ À n'appeler qu'APRÈS `tx.commit()`. Un dépôt écrit toujours une clé neuve
+/// et n'écrase jamais : une re-soumission de dossier, un repère vocal refait ou
+/// un rejeu concurrent d'adresse laissent derrière eux des octets que plus
+/// aucune ligne ne désigne. Supprimer AVANT le commit inverserait le risque —
+/// un rollback ferait alors pointer une ligne vivante vers du vide.
+///
+/// Best-effort, exactement comme `purger_reperes_vocaux` (R8) : la base est
+/// déjà juste. Un échec ici laisse un orphelin à rattraper, jamais une
+/// incohérence — et ne doit surtout pas transformer en erreur une requête qui a
+/// réussi.
+pub(crate) async fn supprimer_objet_orphelin(depot: &PgComptes, cle: &str, quoi: &str) {
+    if let Err(e) = depot.objets().supprimer(cle).await {
+        tracing::warn!(
+            cle = %cle,
+            erreur = %e,
+            "{quoi} déréférencé en base, objet non supprimé — à rattraper",
+        );
+    }
+}
+
 /// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
 pub async fn run() -> std::io::Result<()> {
     let prod = std::env::var("APP_ENV")

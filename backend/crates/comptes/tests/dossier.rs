@@ -74,12 +74,17 @@ async fn cycle_complet_du_dossier_et_de_la_porte(pool: PgPool) {
     let admin = bac.inscrire("0700000001").await;
 
     // Soumission (scénario 1).
-    let IssueSoumission::Soumis(dossier) = soumettre(&bac, yao, &soumission(&["moto"]))
-        .await
-        .unwrap()
+    let IssueSoumission::Soumis {
+        dossier,
+        piece_orpheline,
+    } = soumettre(&bac, yao, &soumission(&["moto"])).await.unwrap()
     else {
         panic!("un premier dossier est une vraie soumission, pas un rejeu");
     };
+    assert!(
+        piece_orpheline.is_none(),
+        "une première soumission ne déréférence aucune pièce"
+    );
     assert_eq!(dossier.statut, StatutRole::EnAttente);
     assert_eq!(
         dossier.referent_telephone_e164, "+2250705060708",
@@ -121,7 +126,10 @@ async fn cycle_complet_du_dossier_et_de_la_porte(pool: PgPool) {
     assert_eq!(refuse.motif.as_deref(), Some("pièce illisible"));
 
     // Re-soumission : nouvelle pièce, nouvelle flotte, drapeau levé.
-    let IssueSoumission::Soumis(deuxieme) = soumettre(&bac, yao, &soumission(&["velo", "a_pied"]))
+    let IssueSoumission::Soumis {
+        dossier: deuxieme,
+        piece_orpheline,
+    } = soumettre(&bac, yao, &soumission(&["velo", "a_pied"]))
         .await
         .unwrap()
     else {
@@ -132,6 +140,19 @@ async fn cycle_complet_du_dossier_et_de_la_porte(pool: PgPool) {
     assert_ne!(
         deuxieme.piece_cle_objet, dossier.piece_cle_objet,
         "la nouvelle pièce ne réutilise pas la clé de l'ancienne"
+    );
+    // …et parce qu'elle ne la réutilise pas, l'ancienne pièce n'est plus
+    // référencée par rien : le domaine la remonte pour que l'appelant la
+    // supprime après commit (constitution VIII). Le domaine, lui, ne l'a PAS
+    // supprimée — il ne possède pas la transaction.
+    assert_eq!(
+        piece_orpheline.as_deref(),
+        Some(dossier.piece_cle_objet.as_str()),
+        "la pièce déréférencée est remontée à l'appelant"
+    );
+    assert!(
+        bac.objets.lire(&dossier.piece_cle_objet).is_some(),
+        "le domaine ne supprime rien lui-même : c'est le handler, après commit"
     );
     let soumis = bac.evenements("dossier_coursier.soumis").await;
     assert_eq!(soumis.len(), 2);
@@ -285,9 +306,8 @@ async fn rejeu_pendant_en_attente_est_idempotent(pool: PgPool) {
     bac.seeder_transports().await;
     let yao = bac.inscrire(SAISIE_LOCALE).await;
 
-    let IssueSoumission::Soumis(premier) = soumettre(&bac, yao, &soumission(&["moto"]))
-        .await
-        .unwrap()
+    let IssueSoumission::Soumis { dossier: premier, .. } =
+        soumettre(&bac, yao, &soumission(&["moto"])).await.unwrap()
     else {
         panic!("première soumission");
     };
@@ -433,9 +453,8 @@ async fn vehicule_declare_deux_fois_est_dedoublonne(pool: PgPool) {
     bac.seeder_transports().await;
     let yao = bac.inscrire(SAISIE_LOCALE).await;
 
-    let IssueSoumission::Soumis(dossier) = soumettre(&bac, yao, &soumission(&["moto", "moto"]))
-        .await
-        .unwrap()
+    let IssueSoumission::Soumis { dossier, .. } =
+        soumettre(&bac, yao, &soumission(&["moto", "moto"])).await.unwrap()
     else {
         panic!("soumission");
     };
