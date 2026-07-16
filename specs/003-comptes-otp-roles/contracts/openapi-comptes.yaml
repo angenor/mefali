@@ -530,12 +530,28 @@ components:
       type: string
       enum: [en_attente, valide, refuse, suspendu]
 
+    # ── Énumérations : fermées en ENTRÉE, ouvertes en SORTIE ──────────────────
+    #
+    # `Role` et `StatutRole` ci-dessus sont le RÉFÉRENTIEL des valeurs connues
+    # à ce jour. Les ENTRÉES les référencent (paramètre `?statut=`, `{role}` en
+    # chemin) : c'est le serveur qui valide, une valeur inconnue est un 422 —
+    # fermer l'énumération y est un service rendu au client.
+    #
+    # Les RÉPONSES, elles, portent un `string` NU et ne les référencent PAS.
+    # Ce n'est pas un oubli : un client généré sur une énumération fermée
+    # PLANTE à la désérialisation dès que le backend ajoute un statut. Or on ne
+    # peut pas forcer un parc mobile à se mettre à jour — l'app d'Awa doit
+    # survivre à un rôle qu'elle ne connaît pas encore, quitte à l'ignorer.
+    # Fail-closed : une valeur inconnue dégrade l'affichage, elle ne casse pas
+    # la session. Les clients générés NE DOIVENT PAS refermer ces énumérations.
+
     EtatRole:
       type: object
       required: [role, statut]
       properties:
-        role: { $ref: '#/components/schemas/Role' }
-        statut: { $ref: '#/components/schemas/StatutRole' }
+        # `string` nu, pas `$ref Role` — voir la note ci-dessus.
+        role: { type: string, description: valeurs connues à ce jour dans le schéma `Role` — un client ne doit PAS refermer cette énumération }
+        statut: { type: string, description: valeurs connues à ce jour dans le schéma `StatutRole` — un client ne doit PAS refermer cette énumération }
         motif: { type: string, nullable: true }
         decide_le: { type: string, format: date-time, nullable: true }
 
@@ -578,7 +594,9 @@ components:
       type: object
       required: [statut, referent_nom, referent_telephone_e164, vehicules, soumis_le]
       properties:
-        statut: { $ref: '#/components/schemas/StatutRole' }
+        # `string` nu (réponse) — voir la note des énumérations. Le statut du
+        # dossier EST celui de l'attribution `coursier` (R9).
+        statut: { type: string, description: valeurs connues à ce jour dans le schéma `StatutRole` — un client ne doit PAS refermer cette énumération }
         motif: { type: string, nullable: true, description: motif de la dernière décision admin }
         referent_nom: { type: string }
         referent_telephone_e164: { type: string }
