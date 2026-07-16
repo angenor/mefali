@@ -45,6 +45,13 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
   }
 
   @override
+  String get authOtpDevTitre =>
+      'Mode développement — code tracé par le serveur';
+
+  @override
+  String get authOtpDevUtiliser => 'Renseigner';
+
+  @override
   String get authConsentementTitre => 'Protection de vos données';
 
   @override

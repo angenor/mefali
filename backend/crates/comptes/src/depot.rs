@@ -17,7 +17,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
-use zones::PgZones;
+use zones::{ConfigurationZones, PgZones};
 
 use crate::modele::{AttributionRole, Compte, ErreurComptes, Role, TypeTransport};
 use crate::otp::ServiceOtp;
@@ -91,6 +91,17 @@ impl PgComptes {
     /// reconstruire un client.
     pub fn objets(&self) -> &dyn DepotObjets {
         &*self.objets
+    }
+
+    /// Configuration de zone résolue — l'appelant y lit un paramètre hérité
+    /// sans rebrancher un `PgZones` sur le pool.
+    ///
+    /// Exposé pour que la surface DEV de la couche `api` (`/dev/otp`) normalise
+    /// un numéro par le MÊME chemin que `ServiceOtp::demander`, indicatif de
+    /// zone compris (FR-024) : un `+225` en dur là-bas rendrait le code d'un
+    /// autre numéro que celui du SMS.
+    pub fn zones(&self) -> &dyn ConfigurationZones {
+        &self.zones
     }
 
     /// Service OTP monté sur les ports de ce dépôt.

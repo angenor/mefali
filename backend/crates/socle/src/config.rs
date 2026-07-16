@@ -22,6 +22,34 @@ impl AppEnv {
     pub fn is_production(self) -> bool {
         matches!(self, AppEnv::Production)
     }
+
+    /// Lit `APP_ENV` dans l'environnement du processus, en défaut FERMÉ.
+    ///
+    /// Seul le littéral `dev` (espaces et casse ignorés) ouvre les surfaces
+    /// réservées au développement ; TOUT le reste — variable absente, faute de
+    /// frappe, `staging` — vaut production.
+    ///
+    /// ⚠ Le sens de la lecture est l'inverse de [`Config::app_env`], et c'est
+    /// voulu. Ce point de décision est lu AVANT [`Config::from_env`], qui
+    /// échoue quand la configuration est incomplète : un `.env` oublié ne doit
+    /// pas ouvrir Swagger UI ni `/dev/otp` (qui rend un code OTP en clair) au
+    /// premier venu. Un défaut ouvert ne coûte ici qu'un `APP_ENV=dev` à poser
+    /// en développement ; un défaut fermé qui se trompe coûte des comptes.
+    pub fn depuis_env() -> Self {
+        Self::depuis_valeur(std::env::var("APP_ENV").ok().as_deref())
+    }
+
+    /// Cœur pur de [`AppEnv::depuis_env`] : `None` = variable absente.
+    ///
+    /// Séparé pour être testable sans muter l'environnement du processus, que
+    /// les tests parallèles partagent — même raison que le `prod: bool` de
+    /// `mount_docs` côté api.
+    fn depuis_valeur(valeur: Option<&str>) -> Self {
+        match valeur {
+            Some(v) if v.trim().eq_ignore_ascii_case("dev") => AppEnv::Dev,
+            _ => AppEnv::Production,
+        }
+    }
 }
 
 /// Fournisseur d'envoi de SMS sélectionné à l'exécution (cycle CPT, research R6).
@@ -66,6 +94,11 @@ pub struct Config {
     #[serde(default)]
     pub sentry_dsn: Option<String>,
     /// `dev` (défaut) ou `production`.
+    ///
+    /// ⚠ N'est PAS ce qui protège les surfaces réservées au dev : ce champ
+    /// n'existe que si toute la configuration se désérialise, et son défaut est
+    /// OUVERT (`dev`). Le gate lit [`AppEnv::depuis_env`], défaut FERMÉ, avant
+    /// et indépendamment de [`Config::from_env`].
     #[serde(default)]
     pub app_env: AppEnv,
 }
@@ -135,5 +168,31 @@ mod tests {
     #[test]
     fn secret_jwt_de_32_octets_accepte() {
         assert!(config_avec_secret(&"a".repeat(32)).valider().is_ok());
+    }
+
+    #[test]
+    fn seul_dev_explicite_ouvre_les_surfaces_de_dev() {
+        for valeur in ["dev", "DEV", " dev ", "Dev"] {
+            assert_eq!(
+                AppEnv::depuis_valeur(Some(valeur)),
+                AppEnv::Dev,
+                "« {valeur} » désigne bien le développement",
+            );
+        }
+    }
+
+    #[test]
+    fn app_env_absent_ou_inattendu_vaut_production() {
+        // Le cas qui compte : sans `APP_ENV`, l'ancienne comparaison de chaîne
+        // rendait `prod = false` et publiait Swagger UI — et publierait
+        // aujourd'hui `/dev/otp`, qui rend un code OTP en clair.
+        assert_eq!(AppEnv::depuis_valeur(None), AppEnv::Production);
+        for valeur in ["production", "", "staging", "développement", "0"] {
+            assert_eq!(
+                AppEnv::depuis_valeur(Some(valeur)),
+                AppEnv::Production,
+                "« {valeur} » n'est pas `dev` — défaut fermé",
+            );
+        }
     }
 }

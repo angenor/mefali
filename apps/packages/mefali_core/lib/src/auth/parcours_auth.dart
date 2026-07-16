@@ -7,6 +7,7 @@ import '../config/service_config.dart';
 import 'ecran_consentement.dart';
 import 'ecran_otp.dart';
 import 'ecran_telephone.dart';
+import 'otp_dev.dart';
 import 'session_auth.dart';
 import 'stockage_jetons.dart';
 
@@ -30,6 +31,7 @@ class ParcoursAuth extends StatefulWidget {
     this.versionConsentement,
     this.nomAppareil = 'Appareil Mefali',
     this.plateforme = PlateformeDto.android,
+    this.lireCodeDev,
   });
 
   /// Session à ouvrir en cas de succès.
@@ -57,6 +59,12 @@ class ParcoursAuth extends StatefulWidget {
   /// Plateforme déclarée.
   final PlateformeDto plateforme;
 
+  /// Lecteur du code tracé, en mode DEV seulement — doublé par les tests.
+  ///
+  /// `null` = le lecteur réseau du client généré (voir [lireCodeDevReseau]).
+  /// N'est consulté que si [modeDevOtp], donc jamais en build normal.
+  final LireCodeDev? lireCodeDev;
+
   @override
   State<ParcoursAuth> createState() => _ParcoursAuthState();
 }
@@ -67,6 +75,10 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
   String? _jetonInscription;
   String? _erreur;
   bool _enCours = false;
+
+  /// Code relu sur la surface dev, en mode DEV seulement — toujours `null` en
+  /// build normal ([modeDevOtp] est `const false`).
+  String? _codeDev;
 
   AuthApi get _api => widget.session.client.getAuthApi();
 
@@ -119,8 +131,29 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
         setState(() {
           _telephone = telephone;
           _etape = _Etape.otp;
+          // Un renvoi périme le code précédent : ne pas laisser afficher
+          // l'ancien pendant que le nouveau se relit.
+          _codeDev = null;
         });
+        await _relireCodeDev(telephone);
       });
+
+  /// Relit le code que le backend vient de tracer — mode DEV uniquement.
+  ///
+  /// Sort immédiatement en build normal : [modeDevOtp] est une constante à
+  /// `false`, donc tout ce qui suit est du code mort que le compilateur retire.
+  ///
+  /// Un échec est silencieux et laisse `_codeDev` à `null` : la demande d'OTP,
+  /// elle, a réussi — l'écran de saisie doit s'afficher quoi qu'il arrive. Le
+  /// cas le plus courant est le plafond (202 neutre SANS SMS, donc rien de
+  /// tracé à relire).
+  Future<void> _relireCodeDev(String telephone) async {
+    if (!modeDevOtp) return;
+    final lire =
+        widget.lireCodeDev ?? lireCodeDevReseau(widget.session.client.dio);
+    final code = await lire(telephone: telephone, zone: widget.zone);
+    if (mounted) setState(() => _codeDev = code);
+  }
 
   Future<void> _verifier(MefaliCoreLocalizations l10n, String code) =>
       _executer(l10n, () async {
@@ -196,6 +229,7 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
           enCours: _enCours,
           onValider: (code) => _verifier(l10n, code),
           onRenvoyer: () => _demander(l10n, _telephone),
+          codeDev: _codeDev,
         ),
       _Etape.consentement => EcranConsentement(
           erreur: _erreur,

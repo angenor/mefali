@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 /// Monte un écran dans le thème et la localisation fr réels : un test qui
@@ -116,6 +117,50 @@ void main() {
       expect(champ.controller!.text, isEmpty);
 
       // Laisse le minuteur s'éteindre pour ne pas fuir hors du test.
+      await tester.pump(const Duration(seconds: 61));
+    });
+
+    testWidgets('sans code dev, aucun bandeau — c\'est l\'écran de tout le monde',
+        (tester) async {
+      await tester.pumpWidget(
+        _monter(EcranOtp(onValider: (_) {}, onRenvoyer: () {})),
+      );
+
+      expect(find.byIcon(Symbols.construction), findsNothing);
+      expect(find.text('Renseigner'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 61));
+    });
+
+    testWidgets('le bandeau dev affiche le code sans le saisir, le bouton le saisit',
+        (tester) async {
+      String? code;
+      await tester.pumpWidget(
+        _monter(EcranOtp(
+          onValider: (c) => code = c,
+          onRenvoyer: () {},
+          codeDev: '424242',
+        )),
+      );
+
+      // Affiché, mais PAS saisi : les six cases et le clavier restent ce
+      // qu'on est venu vérifier sur appareil.
+      expect(find.text('424242'), findsOneWidget);
+      final champ = tester.widget<TextField>(find.byType(TextField));
+      expect(champ.controller!.text, isEmpty);
+      final bouton = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(bouton.onPressed, isNull, reason: 'rien de saisi, rien à valider');
+
+      // Le bouton renseigne les six cases : « 424242 » y met trois 4 et trois 2.
+      await tester.tap(find.text('Renseigner'));
+      await tester.pump();
+      expect(find.text('4'), findsNWidgets(3));
+      expect(find.text('2'), findsNWidgets(3));
+
+      await tester.tap(find.text('Valider'));
+      await tester.pump();
+      expect(code, '424242');
+
       await tester.pump(const Duration(seconds: 61));
     });
   });

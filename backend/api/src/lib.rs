@@ -7,6 +7,8 @@
 pub mod adresses_http;
 pub mod auth_http;
 pub mod comptes_http;
+/// Surface réservée au dev — montée hors production seulement (voir le module).
+pub mod dev_http;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
@@ -91,6 +93,27 @@ fn mount_docs(prod: bool, openapi: OpenApi) -> impl FnOnce(&mut web::ServiceConf
     }
 }
 
+/// Surface réservée au DEV : `/dev/otp` relit le dernier code OTP tracé
+/// (`dev_http`). Montée sous le MÊME `prod` que Swagger UI — en production, la
+/// route n'est jamais enregistrée et le chemin rend 404.
+///
+/// Le gate porte sur un `bool`, comme [`mount_docs`] : testable sans toucher à
+/// l'environnement du processus, que les tests parallèles partagent.
+///
+/// `traces` est `None` quand la configuration est absente (mode dégradé,
+/// `/health` seul) : pas de journal, donc rien à relire.
+fn mount_dev(
+    prod: bool,
+    traces: Option<Arc<SmsTraces>>,
+) -> impl FnOnce(&mut web::ServiceConfig) {
+    move |cfg: &mut web::ServiceConfig| {
+        if let (false, Some(traces)) = (prod, traces) {
+            cfg.app_data(web::Data::new(traces))
+                .route("/dev/otp", web::get().to(dev_http::dernier_code));
+        }
+    }
+}
+
 /// Région S3 signée mais non routante côté Garage (`infra/garage/garage.toml`).
 const REGION_S3: &str = "garage";
 
@@ -142,9 +165,9 @@ pub(crate) async fn supprimer_objet_orphelin(depot: &PgComptes, cle: &str, quoi:
 
 /// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
 pub async fn run() -> std::io::Result<()> {
-    let prod = std::env::var("APP_ENV")
-        .map(|v| v == "production")
-        .unwrap_or(false);
+    // Gate UNIQUE des surfaces réservées au dev (Swagger UI, `/dev/otp`).
+    // Défaut fermé, lu avant `Config::from_env` : voir `AppEnv::depuis_env`.
+    let prod = socle::AppEnv::depuis_env().is_production();
 
     // Worker outbox + pool applicatif + ports du domaine comptes : démarrés si
     // la configuration est complète. Sans elle, le service sert `/health` seul
@@ -154,6 +177,7 @@ pub async fn run() -> std::io::Result<()> {
     // silencieusement, une configuration PRÉSENTE mais invalide (JWT_SECRET
     // trop court) échoue au démarrage — `socle::Config::from_env` la refuse.
     let mut comptes_opt: Option<PgComptes> = None;
+    let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
             Ok(pool) => {
@@ -175,11 +199,17 @@ pub async fn run() -> std::io::Result<()> {
                     &config.s3_bucket,
                     REGION_S3,
                 );
-                let sms: Arc<dyn EnvoiSms> = match config.sms_mode {
+                // Le type CONCRET est retenu à côté du port : `EnvoiSms` ne sait
+                // qu'envoyer, et `/dev/otp` doit RELIRE le journal. `Arc` partagé
+                // — les deux poignées désignent le même journal, sinon la surface
+                // dev lirait un journal toujours vide.
+                let traces = match config.sms_mode {
                     // Le fournisseur réel arrive au cycle NTF, derrière ce même
                     // port (research R6) — ici le code part dans les logs.
                     socle::SmsMode::Traces => Arc::new(SmsTraces::new()),
                 };
+                let sms: Arc<dyn EnvoiSms> = traces.clone();
+                traces_opt = Some(traces);
                 eprintln!(
                     "ports comptes câblés (Redis, Garage, SMS={:?})",
                     config.sms_mode
@@ -264,7 +294,7 @@ pub async fn run() -> std::io::Result<()> {
         if let Some(depot) = comptes_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
-        app
+        app.configure(mount_dev(prod, traces_opt.clone()))
             // Rate-limit par IP (politeness) sur toute la surface publique.
             .wrap(actix_governor::Governor::new(&gouverneur))
             // Corrélation par requête (request id) dans les logs JSON…
@@ -375,6 +405,64 @@ mod tests {
             .to_request();
         let resp2 = atest::call_service(&app, req2).await;
         assert!(resp2.status().is_success());
+    }
+
+    /// Le garde-fou qui compte : `/dev/otp` rend un code OTP en clair à qui
+    /// connaît un numéro. En production, la route ne doit pas exister.
+    #[actix_web::test]
+    async fn surface_dev_otp_absente_en_production() {
+        let app = atest::init_service(
+            App::new()
+                .configure(mount_dev(true, Some(Arc::new(SmsTraces::new()))))
+                .service(health::health),
+        )
+        .await;
+
+        let req = atest::TestRequest::get()
+            .uri("/dev/otp?telephone=%2B2250701020304&zone=00000000-0000-0000-0000-000000000000")
+            .to_request();
+        let resp = atest::call_service(&app, req).await;
+        assert_eq!(
+            resp.status(),
+            StatusCode::NOT_FOUND,
+            "un journal PRÉSENT ne suffit pas : c'est `prod` qui décide",
+        );
+    }
+
+    /// Contrôle négatif du test ci-dessus : hors production la route EXISTE
+    /// bel et bien. Sans lui, `surface_dev_otp_absente_en_production` passerait
+    /// même si la route avait disparu partout, y compris en dev.
+    ///
+    /// 400 et non 200 : la zone nulle ne résout aucun indicatif — la requête
+    /// atteint le handler, ce qui est précisément ce qu'on vérifie ici. Le
+    /// chemin passant est joué en réel (quickstart).
+    #[actix_web::test]
+    async fn surface_dev_otp_montee_hors_production() {
+        let depot = PgComptes::new(
+            // Pool jamais interrogé : `normaliser_e164` échoue sur la zone bien
+            // avant, et `PgPool::connect_lazy` n'ouvre aucune connexion.
+            sqlx::PgPool::connect_lazy("postgres://inutilise/inutilise").unwrap(),
+            Arc::new(comptes::MemoireEphemere::new()),
+            Arc::new(SmsTraces::new()),
+            Arc::new(comptes::MemoireObjets::new()),
+            Arc::from(&b"secret-de-test-de-32-octets-mini"[..]),
+        );
+        let app = atest::init_service(
+            App::new()
+                .app_data(web::Data::new(depot))
+                .configure(mount_dev(false, Some(Arc::new(SmsTraces::new())))),
+        )
+        .await;
+
+        let req = atest::TestRequest::get()
+            .uri("/dev/otp?telephone=%2B2250701020304&zone=00000000-0000-0000-0000-000000000000")
+            .to_request();
+        let resp = atest::call_service(&app, req).await;
+        assert_ne!(
+            resp.status(),
+            StatusCode::NOT_FOUND,
+            "hors production, la route doit être montée",
+        );
     }
 
     /// T6 — seed sur base vierge puis re-seed → état identique, zéro doublon.

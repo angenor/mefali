@@ -49,6 +49,14 @@
       }
     }
   },
+  "authOtpDevTitre": "Mode développement — code tracé par le serveur",
+  "@authOtpDevTitre": {
+    "description": "En-tête du bandeau DEV de l'écran OTP. Jamais vu par un utilisateur : ce bandeau n'existe que dans un build --dart-define=MEFALI_DEV_OTP=true, où le serveur journalise le code au lieu de l'envoyer par SMS."
+  },
+  "authOtpDevUtiliser": "Renseigner",
+  "@authOtpDevUtiliser": {
+    "description": "Bouton du bandeau DEV qui recopie le code tracé dans les six cases de saisie"
+  },
   "authConsentementTitre": "Protection de vos données",
   "@authConsentementTitre": {
     "description": "Titre de l'écran de consentement ARTCI"

@@ -26,6 +26,7 @@ class EcranOtp extends StatefulWidget {
     required this.onRenvoyer,
     this.erreur,
     this.enCours = false,
+    this.codeDev,
   });
 
   /// Appelé quand un code de 6 chiffres est prêt.
@@ -39,6 +40,13 @@ class EcranOtp extends StatefulWidget {
 
   /// Requête en cours.
   final bool enCours;
+
+  /// Code relu sur la surface DEV du backend — `null` partout ailleurs, et
+  /// toujours `null` en build normal (voir `otp_dev.dart`).
+  ///
+  /// L'écran reste présentationnel : il ne sait pas d'où vient ce code, c'est
+  /// [ParcoursAuth] qui le relit.
+  final String? codeDev;
 
   @override
   State<EcranOtp> createState() => _EcranOtpState();
@@ -116,6 +124,13 @@ class _EcranOtpState extends State<EcranOtp> {
       ),
       corps: [
         _CasesCode(controleur: _controleur, focus: _focus),
+        if (widget.codeDev != null) ...[
+          const SizedBox(height: MefaliTokens.space4),
+          _BandeauCodeDev(
+            code: widget.codeDev!,
+            onUtiliser: () => _controleur.text = widget.codeDev!,
+          ),
+        ],
         const SizedBox(height: MefaliTokens.space4),
         // Cible ≥ 48 dp même désactivée (le libellé change, pas la place).
         SizedBox(
@@ -131,6 +146,72 @@ class _EcranOtpState extends State<EcranOtp> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Bandeau de DÉVELOPPEMENT affichant le code que le serveur a tracé au lieu de
+/// l'envoyer par SMS (`SMS_MODE=traces`).
+///
+/// Rendu seulement quand `codeDev != null`, ce qui n'arrive qu'en build
+/// `--dart-define=MEFALI_DEV_OTP=true` : en build normal, la constante est
+/// `false`, `_codeDev` reste `null` et ce widget n'est jamais construit.
+///
+/// Délibérément voyant (teinte d'avertissement, mention explicite) : une
+/// surface dev qui ressemble à l'app est une surface dev qu'on oublie.
+///
+/// Le code n'est PAS saisi d'office — le bouton le fait. Pré-remplir
+/// escamoterait justement ce qu'on vient valider sur appareil : les six cases,
+/// le clavier et l'autofill SMS.
+class _BandeauCodeDev extends StatelessWidget {
+  const _BandeauCodeDev({required this.code, required this.onUtiliser});
+
+  final String code;
+  final VoidCallback onUtiliser;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = MefaliCoreLocalizations.of(context)!;
+    return Container(
+      padding: const EdgeInsets.all(MefaliTokens.space3),
+      decoration: BoxDecoration(
+        color: MefaliTokens.warningTint,
+        borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
+        border: Border.all(color: MefaliTokens.warning),
+      ),
+      child: Row(
+        children: [
+          const Icon(Symbols.construction, color: MefaliTokens.warning),
+          const SizedBox(width: MefaliTokens.space2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.authOtpDevTitre,
+                  style: const TextStyle(
+                    fontSize: MefaliTokens.captionSize,
+                    fontWeight: MefaliTokens.weightSemiBold,
+                    color: MefaliTokens.warning,
+                  ),
+                ),
+                Text(
+                  code,
+                  style: const TextStyle(
+                    fontSize: MefaliTokens.titleSize,
+                    fontWeight: MefaliTokens.weightBold,
+                    color: MefaliTokens.text,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onUtiliser,
+            child: Text(l10n.authOtpDevUtiliser),
+          ),
+        ],
+      ),
     );
   }
 }

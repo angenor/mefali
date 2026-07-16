@@ -163,6 +163,18 @@ abstract class MefaliCoreLocalizations {
   /// **'Renvoyer le code dans {secondes} s'**
   String authOtpRenvoyerDans(int secondes);
 
+  /// En-tête du bandeau DEV de l'écran OTP. Jamais vu par un utilisateur : ce bandeau n'existe que dans un build --dart-define=MEFALI_DEV_OTP=true, où le serveur journalise le code au lieu de l'envoyer par SMS.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode développement — code tracé par le serveur'**
+  String get authOtpDevTitre;
+
+  /// Bouton du bandeau DEV qui recopie le code tracé dans les six cases de saisie
+  ///
+  /// In fr, this message translates to:
+  /// **'Renseigner'**
+  String get authOtpDevUtiliser;
+
   /// Titre de l'écran de consentement ARTCI
   ///
   /// In fr, this message translates to:
