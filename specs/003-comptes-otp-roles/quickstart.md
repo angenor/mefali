@@ -105,7 +105,9 @@ curl -s -X DELETE localhost:8080/moi/sessions/$SESSION_B -H "authorization: Bear
 ```
 
 Réutiliser un ancien refresh déjà tourné (rotation R2) → 401 + session
-entièrement révoquée (test `reutilisation_refresh_revoque_session`).
+entièrement révoquée (test `reutilisation_du_refresh_revoque_la_session`,
+`backend/crates/comptes/tests/sessions.rs` ; son pendant HTTP est
+`rafraichir_200_puis_ancien_refresh_401`).
 
 ## SC-005 — Porte coursier : zéro contournement
 
@@ -173,7 +175,10 @@ propriétaire ; l'écran coursier sera validé au cycle CRS.
 - `SELECT count(*) FROM comptes.compte WHERE consentement_le IS NULL` → 0
   (colonnes NOT NULL : garanti par le schéma).
 - Toute décision admin porte `decide_par`/`decide_le`/`motif` et son événement
-  `role.*` — test `journalisation_decisions` recoupe la table et l'outbox.
+  `role.*` — test `decision_journalisee` (`backend/api/src/comptes_http.rs`)
+  recoupe la table et l'outbox. Côté dossier, `cycle_complet_du_dossier_et_de_la_porte`
+  (`backend/crates/comptes/tests/dossier.rs`) suit le motif du refus jusqu'à la
+  re-soumission qui l'efface.
 - Seeds ×2 : `cargo run -p api --bin seed` deux fois → état identique
   (test `seed_comptes_idempotent`, patron du cycle 002).
 
