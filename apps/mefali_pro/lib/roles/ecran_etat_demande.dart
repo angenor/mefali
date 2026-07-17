@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
@@ -18,12 +19,12 @@ import 'pied_pro.dart';
 ///
 /// Le cycle CPT s'arrête à l'état : la constitution du dossier (T019) viendra
 /// s'ajouter ici.
-class EcranEtatDemande extends StatelessWidget {
+class EcranEtatDemande extends ConsumerWidget {
   /// Crée l'écran d'état de la demande.
   const EcranEtatDemande({super.key, required this.etat, this.transportsActifs = const []});
 
   /// Rôles du compte connecté.
-  final EtatRoles etat;
+  final EtatRolesData etat;
 
   /// Slugs des types de transport actifs dans la zone, pour le formulaire.
   final List<String> transportsActifs;
@@ -37,17 +38,16 @@ class EcranEtatDemande extends StatelessWidget {
         StatutRolePro.enAttente || StatutRolePro.valide || StatutRolePro.suspendu => false,
       };
 
-  Future<void> _ouvrirFormulaire(BuildContext context) async {
+  Future<void> _ouvrirFormulaire(BuildContext context, WidgetRef ref) async {
     final soumis = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (_) => FormulaireDossierCoursier(
-          session: etat.session,
           transportsActifs: transportsActifs,
         ),
       ),
     );
     // Le dossier est parti : l'état affiché n'est plus le bon.
-    if (soumis ?? false) await etat.charger();
+    if (soumis ?? false) await ref.read(etatRolesProvider.notifier).charger();
   }
 
   /// Situation à mettre en titre.
@@ -68,7 +68,7 @@ class EcranEtatDemande extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final textTheme = Theme.of(context).textTheme;
     final situation = _situation();
@@ -152,16 +152,16 @@ class EcranEtatDemande extends StatelessWidget {
                       ? l10n.proDossierRenvoyer
                       : l10n.proDossierConstituer,
                   picto: Symbols.assignment_ind,
-                  onPresse: () => _ouvrirFormulaire(context),
+                  onPresse: () => _ouvrirFormulaire(context, ref),
                 )
               else
                 BoutonPrincipal(
                   libelle: l10n.proActualiser,
                   picto: Symbols.refresh,
-                  onPresse: etat.charger,
+                  onPresse: () => ref.read(etatRolesProvider.notifier).charger(),
                 ),
               const SizedBox(height: MefaliTokens.space2),
-              PiedPro(session: etat.session),
+              const PiedPro(),
             ],
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import 'ecran_etat_demande.dart';
@@ -15,51 +16,36 @@ import 'interface_pro.dart';
 ///
 /// La porte qui FAIT foi reste celle du serveur (`exiger_role`, à chaque
 /// requête — FR-009) : ce routeur n'est que sa traduction à l'écran.
-class RouteurRoles extends StatefulWidget {
+class RouteurRoles extends ConsumerStatefulWidget {
   /// Crée le routeur.
-  const RouteurRoles({super.key, required this.session, this.config, this.etat});
-
-  /// Session du compte connecté.
-  final SessionAuth session;
-
-  /// Configuration de zone — le formulaire de dossier y lit les véhicules
-  /// déclarables (FR-015). Non attendue au démarrage : l'app ne doit pas
-  /// bloquer son lancement sur un appel réseau, et l'écran d'état se lit très
-  /// bien sans elle.
-  final Future<ServiceConfig>? config;
-
-  /// État injecté — réservé aux tests.
-  ///
-  /// En production l'état NAÎT avec cet écran et MEURT avec lui : à la
-  /// déconnexion `RacineAuth` démonte le routeur, donc les rôles du compte
-  /// précédent ne peuvent pas survivre à un changement de compte sur le même
-  /// appareil.
-  final EtatRoles? etat;
+  const RouteurRoles({super.key});
 
   @override
-  State<RouteurRoles> createState() => _RouteurRolesState();
+  ConsumerState<RouteurRoles> createState() => _RouteurRolesState();
 }
 
-class _RouteurRolesState extends State<RouteurRoles> {
-  late final EtatRoles _etat = widget.etat ?? EtatRoles(session: widget.session);
+class _RouteurRolesState extends ConsumerState<RouteurRoles> {
   List<String> _transportsActifs = const [];
 
   @override
   void initState() {
     super.initState();
-    _etat.charger();
+    // Le chargement est DÉCLENCHÉ ICI (le provider ne charge rien dans build()).
+    // L'état des rôles NAÎT avec cet écran et MEURT avec lui (autoDispose) : à la
+    // déconnexion `RacineAuth` démonte le routeur, et l'arête `.select(connecte)`
+    // le vide de toute façon — les rôles du compte précédent ne survivent pas.
+    ref.read(etatRolesProvider.notifier).charger();
     _lireTransports();
   }
 
   /// Récupère les véhicules déclarables dès que la config est là.
   ///
-  /// En silence : leur absence ne casse pas l'écran d'état, elle se voit dans
-  /// le formulaire — le seul endroit où elle compte.
+  /// INSTANTANÉ FIGÉ (FR-021) : lu par `ref.read`, JAMAIS `ref.watch`. En
+  /// silence : leur absence ne casse pas l'écran d'état, elle se voit dans le
+  /// formulaire — le seul endroit où elle compte.
   Future<void> _lireTransports() async {
-    final config = widget.config;
-    if (config == null) return;
     try {
-      final service = await config;
+      final service = await ref.read(serviceConfigProvider);
       final actifs = service.courante?.transportsActifs ?? const <String>[];
       if (mounted) setState(() => _transportsActifs = actifs);
     } catch (_) {
@@ -68,25 +54,14 @@ class _RouteurRolesState extends State<RouteurRoles> {
   }
 
   @override
-  void dispose() {
-    // On ne dispose que ce que l'on a créé : l'état injecté appartient au test.
-    if (widget.etat == null) _etat.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _etat,
-      builder: (context, _) {
-        if (!_etat.charge) return const ChargementPro();
-        if (_etat.enErreur) return ErreurPro(etat: _etat);
-        // Aucun rôle pro validé : ni coursier, ni vendeur (FR-013).
-        if (_etat.rolesValides.isEmpty) {
-          return EcranEtatDemande(etat: _etat, transportsActifs: _transportsActifs);
-        }
-        return InterfacePro(etat: _etat);
-      },
-    );
+    final etat = ref.watch(etatRolesProvider);
+    if (!etat.charge) return const ChargementPro();
+    if (etat.enErreur) return const ErreurPro();
+    // Aucun rôle pro validé : ni coursier, ni vendeur (FR-013).
+    if (etat.rolesValides.isEmpty) {
+      return EcranEtatDemande(etat: etat, transportsActifs: _transportsActifs);
+    }
+    return InterfacePro(etat: etat);
   }
 }
