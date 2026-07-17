@@ -27,7 +27,7 @@ class Session extends _$Session {
   @override
   EtatSession build() => const EtatSession.initiale();
 
-  /// Traduction FIDÈLE de `ChangeNotifier` : `notifyListeners()` émettait
+  /// Traduction FIDÈLE de l'ancien `ChangeNotifier` : la notification émettait
   /// TOUJOURS, sans comparer (`RacineAuth` rebâtissait à chaque appel). Le défaut
   /// v3 (« all providers now use `==` to filter updates ») filtrerait les
   /// écritures égales et rendrait `expect(emissions, 1)` PLUS FAIBLE que
@@ -38,7 +38,7 @@ class Session extends _$Session {
   /// Relit le stockage au démarrage. À appeler avant le premier `build`.
   ///
   /// Lecture PUIS `state =` : l'état dépend de ce qui est lu. Une seule émission,
-  /// comme le `notifyListeners()` unique d'origine.
+  /// comme l'unique notification d'origine.
   Future<void> charger() async {
     final jetons = await ref.read(stockageJetonsProvider).lire();
     state = EtatSession(charge: true, jetons: jetons);
