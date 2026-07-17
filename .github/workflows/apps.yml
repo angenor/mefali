@@ -33,6 +33,11 @@ jobs:
           flutter-version: 3.44.6
           channel: stable
       - run: flutter pub get
-      - run: flutter analyze
+      # ⚠ dart analyze, PAS flutter analyze : flutter analyze NE CHARGE PAS les
+      # plugins analysis_server_plugin ⇒ les règles riverpod_lint seraient un
+      # no-op silencieux et la CI resterait verte (FR-032/FR-033, R2/R12). La doc
+      # using_plugins.md prétend le contraire : elle est fausse sur Flutter 3.44.6.
+      # (Job complété par la matrice codegen + garde-fou de dérive en T008.)
+      - run: dart analyze
       # Goldens exclus : rendu pixel sensible à la plateforme (générés/vérifiés en local).
       - run: flutter test --exclude-tags golden

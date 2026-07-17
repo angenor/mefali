@@ -4,3 +4,20 @@ analyzer:
   language:
     strict-casts: true
     strict-raw-types: true
+
+# Bloc plugins: TOP-LEVEL (JAMAIS sous analyzer: = système legacy ignoré ;
+# JAMAIS via include: = non hérité — R2/T003). riverpod_lint est figé HORS
+# lockfile : pin EXACT 3.1.4 (sans caret), tenu accordé sur les 3 paquets par
+# scripts/verifier-accord-locks.sh (SC-008). La duplication ×3 est STRUCTURELLE.
+# Les 3 règles INFO escaladées en error : un INFO seul sort en EXIT 0 =
+# « avertissement ignorable » que FR-033 refuse ; analyzer: errors: ne les
+# atteint PAS, SEUL diagnostics: fonctionne (undocumenté, garde-fou = Independent
+# Test d'US1). ZÉRO relâchement ici (FR-032) : pas d'exclude *.g.dart (il
+# s'auto-neutralise par // ignore_for_file), pas d'invalid_annotation_target.
+plugins:
+  riverpod_lint:
+    version: 3.1.4
+    diagnostics:
+      avoid_public_notifier_properties: error
+      avoid_build_context_in_providers: error
+      protected_notifier_properties: error
