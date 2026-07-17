@@ -116,6 +116,13 @@ Raw<Future<ServiceConfig>> serviceConfig(Ref ref) {
   final futurCache = ref.watch(cacheConfigProvider);
   final futur = futurCache
       .then((cache) => demarrerServiceConfig(source: source, cache: cache));
-  ref.onDispose(() => futur.then((s) => s.arreter()).ignore()); // FR-018
+  // FR-018 — annulation SYNCHRONE du Timer horaire à la destruction : on retient
+  // le service dès qu'il existe, plutôt que de chaîner un `.then` sur le Future
+  // (qui n'annulerait qu'au microtask suivant — un test de widget verrait alors
+  // un « Timer still pending » à la destruction de l'arbre). Si le Future n'a pas
+  // encore résolu, aucun Timer n'existe : rien à annuler.
+  ServiceConfig? service;
+  futur.then((s) => service = s).ignore();
+  ref.onDispose(() => service?.arreter());
   return futur;
 }
