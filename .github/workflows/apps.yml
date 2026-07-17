@@ -6,11 +6,13 @@ on:
     paths:
       - 'apps/**'
       - 'clients/dart/**'
+      - 'scripts/verifier-accord-locks.sh'
       - '.github/workflows/apps.yml'
   pull_request:
     paths:
       - 'apps/**'
       - 'clients/dart/**'
+      - 'scripts/verifier-accord-locks.sh'
       - '.github/workflows/apps.yml'
 
 jobs:
@@ -41,3 +43,13 @@ jobs:
       - run: dart analyze
       # Goldens exclus : rendu pixel sensible à la plateforme (générés/vérifiés en local).
       - run: flutter test --exclude-tags golden
+
+  # SC-008 : versions communes accordées entre les 3 pubspec.lock, ET pin
+  # riverpod_lint identique dans les 3 analysis_options.yaml — riverpod_lint
+  # n'est dans AUCUN lockfile, ce script est son seul gel (R1). Tourne depuis la
+  # racine du dépôt (aucun working-directory de matrice ici).
+  accord-locks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/verifier-accord-locks.sh
