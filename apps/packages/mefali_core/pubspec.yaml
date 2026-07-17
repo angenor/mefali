@@ -40,6 +40,8 @@ dependencies:
   record: 7.1.1
   # Lecture de la note vocale de repère d'adresse (research.md R11).
   just_audio: 0.10.6
+  flutter_riverpod: ^3.3.2
+  riverpod_annotation: ^4.0.3
 
 dev_dependencies:
   flutter_test:
@@ -47,6 +49,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   # Horloge simulée pour tester cache/rafraîchissement horaire (T016).
   fake_async: 1.3.3
+  riverpod_generator: ^4.0.4
+  build_runner: ^2.15.1
 
 flutter:
   uses-material-design: true

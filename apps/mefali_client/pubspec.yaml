@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
   # Épinglé par le SDK Flutter 3.44.6 via flutter_localizations (research.md
   # indiquait 0.20.3 ; la contrainte du SDK prime).
+  flutter_riverpod: ^3.3.2
   intl: 0.20.2
   # Utilisé directement dans l'écran de démarrage (Symbols.*).
   material_symbols_icons: 4.2951.0
