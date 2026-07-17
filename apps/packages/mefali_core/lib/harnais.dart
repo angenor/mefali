@@ -23,11 +23,23 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Types des paramètres de `conteneurMefali`. `pasDeRetry`, `StockageJetonsMemoire`
-// et les providers surchargés sont ajoutés à ce `show` quand le corps naît
-// (session US2 T012, config US3 T020) — jamais un `show` d'un symbole inutilisé.
+// `pasDeRetry` est RÉUTILISÉE (constante de PRODUCTION de mefali_core), pas
+// déclarée ici. On surcharge les DÉPENDANCES (stockage, source, cache, url) et
+// le transport ; JAMAIS le sujet (sessionProvider, clientSessionProvider).
 import 'package:mefali_core/mefali_core.dart'
-    show CacheConfig, JetonsSession, SourceConfig;
+    show
+        CacheConfig,
+        ConfigDistante,
+        InterceptorAutorisation,
+        JetonsSession,
+        SourceConfig,
+        StockageJetonsMemoire,
+        cacheConfigProvider,
+        clientSessionProvider,
+        pasDeRetry,
+        sourceConfigProvider,
+        stockageJetonsProvider,
+        urlApiProvider;
 
 /// Remplace les 6 copies de transport des fichiers de test (SC-011).
 ///
@@ -86,18 +98,63 @@ ResponseBody reponseJson(Object corps, {int statut = 200}) =>
 /// (FR-036, par construction). `sessionProvider`/`clientSessionProvider` ne sont
 /// JAMAIS surchargés : on surcharge les DÉPENDANCES, jamais le sujet (R3).
 ///
-/// COMPLÉTÉ story par story : la partie session naît en US2 (T012), la partie
-/// configuration en US3 (T020) — les deux quand leurs providers existent.
 ProviderContainer conteneurMefali({
   JetonsSession? jetons,
   TransportFake? transport,
   SourceConfig? source,
   CacheConfig? cache,
-}) =>
-    throw UnimplementedError(
-      'conteneurMefali : complété story par story '
-      '(dépendances session en US2 T012, configuration en US3 T020).',
-    );
+}) {
+  final container = ProviderContainer(
+    // FR-002 — retry NEUTRE sur TOUTE portée créée par le harnais (jamais réglé
+    // par site). Le retry par défaut de Riverpod 3 (10 essais) ajouterait des
+    // requêtes que ce cycle interdit, tests verts.
+    retry: pasDeRetry,
+    overrides: [
+      // FR-012 — url factice : le cœur ne lit jamais l'environnement.
+      urlApiProvider.overrideWithValue('http://test.invalid'),
+      // On surcharge la DÉPENDANCE (stockage), JAMAIS le sujet (session).
+      stockageJetonsProvider.overrideWith((ref) => StockageJetonsMemoire(jetons)),
+      // Config surchargée PAR DÉFAUT (FR-035, SC-004) : sans ça, les 23 cas de
+      // mefali_pro appelleraient le vrai SharedPreferences (canal de plateforme,
+      // FR-039) + le réseau réel, et SC-004 se perdrait sans qu'aucune assertion
+      // ne bronche. Ne MORD que grâce à la nouvelle signature de
+      // demarrerServiceConfig (T017).
+      sourceConfigProvider.overrideWith((ref) => source ?? _SourceConfigInerte()),
+      // cacheConfig est un Raw<Future<CacheConfig>> : le harnais ENVELOPPE, le
+      // paramètre reste un CacheConfig nu.
+      cacheConfigProvider
+          .overrideWith((ref) => Future.value(cache ?? _CacheConfigMemoire())),
+    ],
+  );
+  if (transport != null) {
+    // FR-036 — posé APRÈS la pose de l'intercepteur : `read(clientSessionProvider)`
+    // exécute le `build` (qui ajoute l'intercepteur), PUIS on remplace
+    // l'adaptateur. Ordre par construction, aucune discipline à tenir (R3).
+    container.read(clientSessionProvider).dio.httpClientAdapter = transport;
+  }
+  return container;
+}
+
+/// Source de configuration INERTE — ne touche jamais le réseau. `recuperer`
+/// lève, et `ServiceConfig.rafraichir` avale l'erreur : le service démarre sur
+/// la valeur du cache (null par défaut). Double PAR DÉFAUT de `conteneurMefali`.
+class _SourceConfigInerte implements SourceConfig {
+  @override
+  Future<ConfigDistante> recuperer(String zone) =>
+      throw StateError('source de configuration inerte (harnais)');
+}
+
+/// Cache de configuration EN MÉMOIRE — vide par défaut, écriture sans effet.
+/// Double PAR DÉFAUT de `conteneurMefali` (aucun canal de plateforme, FR-039).
+class _CacheConfigMemoire implements CacheConfig {
+  ConfigDistante? _config;
+
+  @override
+  Future<ConfigDistante?> lire(String zone) async => _config;
+
+  @override
+  Future<void> ecrire(ConfigDistante config) async => _config = config;
+}
 
 /// Monte l'app de test sous `UncontrolledProviderScope` — le conteneur PRÉEXISTE
 /// toujours (cohérent avec l'amorçage impératif de R10), seule forme compatible
@@ -127,9 +184,8 @@ Widget harnaisApp({
 /// sont des `Interceptor`, donc `whereType<Interceptor>()` ne filtre RIEN et
 /// `.last` est vert par accident. Ce cycle supprime ce geste (FR-013).
 ///
-/// COMPLÉTÉ en US2 (T012), quand `InterceptorAutorisation` devient public :
-/// `dio.interceptors.whereType<InterceptorAutorisation>().length`.
-int compteIntercepteursApp(Dio dio) => throw UnimplementedError(
-      'compteIntercepteursApp : complété en US2 (T012), '
-      'quand InterceptorAutorisation devient public.',
-    );
+/// Les 4 intercepteurs que le client généré installe d'office sont des
+/// `Interceptor` (donc `whereType<Interceptor>()` ne filtrerait RIEN) : on
+/// compte par le TYPE exact `InterceptorAutorisation`.
+int compteIntercepteursApp(Dio dio) =>
+    dio.interceptors.whereType<InterceptorAutorisation>().length;
