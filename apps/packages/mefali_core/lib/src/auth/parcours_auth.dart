@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
 
 import '../../l10n/mefali_core_localizations.dart';
 import '../config/service_config.dart';
+import 'clients.dart';
 import 'ecran_consentement.dart';
 import 'ecran_otp.dart';
 import 'ecran_telephone.dart';
 import 'otp_dev.dart';
-import 'session_auth.dart';
+import 'session.dart';
 import 'stockage_jetons.dart';
 
 /// Étape courante du parcours.
@@ -21,11 +23,10 @@ enum _Etape { telephone, otp, consentement }
 /// c'est le serveur qui tranche, après vérification. Cette ignorance est le
 /// mécanisme même de l'anti-énumération (FR-004) — la dupliquer côté client
 /// avec un « avez-vous déjà un compte ? » ruinerait la propriété.
-class ParcoursAuth extends StatefulWidget {
+class ParcoursAuth extends ConsumerStatefulWidget {
   /// Crée le parcours.
   const ParcoursAuth({
     super.key,
-    required this.session,
     required this.onConnecte,
     this.zone = zoneBootstrapTiassale,
     this.versionConsentement,
@@ -33,9 +34,6 @@ class ParcoursAuth extends StatefulWidget {
     this.plateforme = PlateformeDto.android,
     this.lireCodeDev,
   });
-
-  /// Session à ouvrir en cas de succès.
-  final SessionAuth session;
 
   /// Appelé une fois la session ouverte (l'app route vers son accueil).
   final VoidCallback onConnecte;
@@ -66,10 +64,10 @@ class ParcoursAuth extends StatefulWidget {
   final LireCodeDev? lireCodeDev;
 
   @override
-  State<ParcoursAuth> createState() => _ParcoursAuthState();
+  ConsumerState<ParcoursAuth> createState() => _ParcoursAuthState();
 }
 
-class _ParcoursAuthState extends State<ParcoursAuth> {
+class _ParcoursAuthState extends ConsumerState<ParcoursAuth> {
   _Etape _etape = _Etape.telephone;
   String _telephone = '';
   String? _jetonInscription;
@@ -80,7 +78,7 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
   /// build normal ([modeDevOtp] est `const false`).
   String? _codeDev;
 
-  AuthApi get _api => widget.session.client.getAuthApi();
+  AuthApi get _api => ref.read(clientSessionProvider).getAuthApi();
 
   /// Traduit un échec réseau en message i18n fr.
   ///
@@ -150,7 +148,7 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
   Future<void> _relireCodeDev(String telephone) async {
     if (!modeDevOtp) return;
     final lire =
-        widget.lireCodeDev ?? lireCodeDevReseau(widget.session.client.dio);
+        widget.lireCodeDev ?? lireCodeDevReseau(ref.read(clientSessionProvider).dio);
     final code = await lire(telephone: telephone, zone: widget.zone);
     if (mounted) setState(() => _codeDev = code);
   }
@@ -206,12 +204,12 @@ class _ParcoursAuthState extends State<ParcoursAuth> {
   }
 
   Future<void> _ouvrirSession(SessionOuverte ouverte) async {
-    await widget.session.ouvrir(
-      JetonsSession(
-        acces: ouverte.jetons.acces,
-        rafraichissement: ouverte.jetons.rafraichissement,
-      ),
-    );
+    await ref.read(sessionProvider.notifier).ouvrir(
+          JetonsSession(
+            acces: ouverte.jetons.acces,
+            rafraichissement: ouverte.jetons.rafraichissement,
+          ),
+        );
     if (mounted) widget.onConnecte();
   }
 

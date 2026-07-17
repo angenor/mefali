@@ -1,8 +1,15 @@
 import 'dart:async';
 
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../auth/clients.dart';
+import 'amorce_config.dart';
 import 'cache_config.dart';
 import 'config_distante.dart';
 import 'source_config.dart';
+
+part 'service_config.g.dart';
 
 /// Zone de bootstrap des applications : Tiassalé, ville unique du MVP
 /// (research R7). UUID FIXE posé par le seed backend
@@ -71,4 +78,44 @@ class ServiceConfig {
     _minuteur?.cancel();
     _minuteur = null;
   }
+}
+
+/// La source distante de configuration. `keepAlive` : dépendance d'un service
+/// `keepAlive` (en `autoDispose` elle serait reconstruite sous lui). Surchargée
+/// en test (FR-035).
+@Riverpod(keepAlive: true)
+SourceConfig sourceConfig(Ref ref) =>
+    SourceConfigApi(ref.watch(clientConfigProvider));
+
+/// Le cache local de configuration (`shared_preferences`). `keepAlive`.
+///
+/// `Raw<Future<…>>` et NON `CacheConfig` nu : `CacheConfigPreferences(this._prefs)`
+/// exige un `SharedPreferences` qui ne s'obtient que par un `await` — un
+/// `Provider<CacheConfig>` synchrone NE COMPILE PAS. `Raw` et non `FutureProvider` :
+/// même doctrine que `serviceConfig` — aucun `AsyncValue`, aucun retry (R5, R10).
+/// Surchargé en test — le canal de plateforme n'est pas simulé (FR-035, FR-039).
+@Riverpod(keepAlive: true)
+Raw<Future<CacheConfig>> cacheConfig(Ref ref) =>
+    SharedPreferences.getInstance().then(CacheConfigPreferences.new);
+
+/// FR-021 — le provider HÉBERGE le service, il ne l'OBSERVE JAMAIS : il expose le
+/// SERVICE (un Future dessus), jamais une valeur observée.
+///
+/// `Raw` rend un `Provider` de Future : PAS de `FutureProvider`, donc AUCUN
+/// `AsyncValue` à émettre ⇒ FR-021 devient IMPOSSIBLE à violer, et non tenu par
+/// la discipline `read` vs `watch` ; et AUCUN retry automatique ⇒ un échec ne
+/// refabriquerait pas un `ServiceConfig`, donc pas un 2ᵉ Timer (FR-019).
+///
+/// La fonction reste SYNCHRONE : les deux `ref.watch` sont évalués AVANT tout
+/// point de suspension (un `watch` après un `await` est une arête non
+/// enregistrée), et `cacheConfig` (un `Raw<Future<…>>`) est CHAÎNÉ par `.then`,
+/// pas `await`é — sans quoi on retomberait sur l'`AsyncValue` que FR-021 interdit.
+@Riverpod(keepAlive: true)
+Raw<Future<ServiceConfig>> serviceConfig(Ref ref) {
+  final source = ref.watch(sourceConfigProvider);
+  final futurCache = ref.watch(cacheConfigProvider);
+  final futur = futurCache
+      .then((cache) => demarrerServiceConfig(source: source, cache: cache));
+  ref.onDispose(() => futur.then((s) => s.arreter()).ignore()); // FR-018
+  return futur;
 }

@@ -1,11 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../l10n/mefali_core_localizations.dart';
-import '../auth/session_auth.dart';
+import '../auth/clients.dart';
 import '../theme/etats.dart';
 import '../theme/tokens.dart';
+
+part 'ecran_appareils.g.dart';
+
+/// La liste des appareils/sessions du compte. `@riverpod` nu (autoDispose) :
+/// écran de liste, aucun état à faire survivre.
+@riverpod
+class MesSessions extends _$MesSessions {
+  @override
+  Future<List<SessionAppareil>> build() => _charger();
+
+  Future<List<SessionAppareil>> _charger() async {
+    final reponse = await ref.read(clientSessionProvider).getMoiApi().mesSessions();
+    return reponse.data?.toList() ?? const [];
+  }
+
+  /// FR-023 — le squelette DOIT réapparaître, comme le
+  /// `setState(() => _appareils = _charger())` d'avant (retour en
+  /// `ConnectionState.waiting`). `state = const AsyncLoading()` EXPLICITE : à un
+  /// seul endroit, `.when()` reste aux défauts partout (R9).
+  Future<void> recharger() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_charger);
+  }
+
+  /// Déconnecte un appareil à distance puis réaffiche le squelette (CPT-02).
+  Future<void> revoquer(String sessionId) async {
+    await ref.read(clientSessionProvider).getMoiApi().revoquerSession(
+          sessionId: sessionId,
+        );
+    await recharger();
+  }
+}
 
 /// Appareils connectés au compte, avec déconnexion à distance (CPT-02, FR-008).
 ///
@@ -14,72 +48,28 @@ import '../theme/tokens.dart';
 /// pas de déconnexion à distance — se couper soi-même depuis cette liste
 /// laisserait l'utilisateur sur un écran mort ; la déconnexion locale a son
 /// propre bouton, ailleurs.
-class EcranAppareils extends StatefulWidget {
+class EcranAppareils extends ConsumerWidget {
   /// Crée l'écran des appareils.
-  const EcranAppareils({super.key, required this.session});
-
-  /// Session courante (client généré + jetons).
-  final SessionAuth session;
+  const EcranAppareils({super.key});
 
   @override
-  State<EcranAppareils> createState() => _EcranAppareilsState();
-}
-
-class _EcranAppareilsState extends State<EcranAppareils> {
-  late Future<List<SessionAppareil>> _appareils;
-
-  @override
-  void initState() {
-    super.initState();
-    _appareils = _charger();
-  }
-
-  Future<List<SessionAppareil>> _charger() async {
-    final reponse = await widget.session.client.getMoiApi().mesSessions();
-    return reponse.data?.toList() ?? const [];
-  }
-
-  void _recharger() {
-    // Corps de BLOC, jamais `setState(() => _appareils = _charger())` : la
-    // lambda fléchée RETOURNE le Future de l'affectation, et Flutter rejette
-    // un callback de setState qui rend un Future. La liste ne se serait
-    // jamais rafraîchie après une révocation.
-    setState(() {
-      _appareils = _charger();
-    });
-  }
-
-  Future<void> _revoquer(SessionAppareil appareil) async {
-    await widget.session.client.getMoiApi().revoquerSession(
-          sessionId: appareil.id,
-        );
-    if (!mounted) return;
-    _recharger();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = MefaliCoreLocalizations.of(context)!;
+    final appareils = ref.watch(mesSessionsProvider);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appareilsTitre)),
-      body: FutureBuilder<List<SessionAppareil>>(
-        future: _appareils,
-        builder: (context, instantane) {
-          // Squelettes, jamais un spinner plein écran (docs/design §7).
-          if (instantane.connectionState != ConnectionState.done) {
-            return const SqueletteListe(hauteurLigne: 72);
-          }
-          if (instantane.hasError) {
-            return MessageEtat(
-              texte: l10n.appareilsErreur,
-              picto: Symbols.cloud_off,
-              // Une erreur réseau SANS action est un cul-de-sac — et ici elle
-              // bloquerait la révocation d'un téléphone perdu (règle d'or 5).
-              action: _recharger,
-              libelleAction: l10n.actionReessayer,
-            );
-          }
-          final appareils = instantane.data ?? const [];
+      body: appareils.when(
+        // Squelettes, jamais un spinner plein écran (docs/design §7).
+        loading: () => const SqueletteListe(hauteurLigne: 72),
+        error: (erreur, _) => MessageEtat(
+          texte: l10n.appareilsErreur,
+          picto: Symbols.cloud_off,
+          // Une erreur réseau SANS action est un cul-de-sac — et ici elle
+          // bloquerait la révocation d'un téléphone perdu (règle d'or 5).
+          action: () => ref.read(mesSessionsProvider.notifier).recharger(),
+          libelleAction: l10n.actionReessayer,
+        ),
+        data: (appareils) {
           if (appareils.isEmpty) {
             return MessageEtat(texte: l10n.appareilsVide, picto: Symbols.devices);
           }
@@ -90,7 +80,8 @@ class _EcranAppareilsState extends State<EcranAppareils> {
                 const SizedBox(height: MefaliTokens.space2),
             itemBuilder: (context, i) => _Carte(
               appareil: appareils[i],
-              onRevoquer: () => _revoquer(appareils[i]),
+              onRevoquer: () =>
+                  ref.read(mesSessionsProvider.notifier).revoquer(appareils[i].id),
             ),
           );
         },
@@ -184,4 +175,3 @@ class _Puce extends StatelessWidget {
     );
   }
 }
-
