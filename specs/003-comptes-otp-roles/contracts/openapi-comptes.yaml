@@ -1,0 +1,664 @@
+# Contrat des endpoints du cycle 003 — comptes, OTP, rôles, dossier, adresses.
+# Référence de conception : le contrat FINAL est openapi.json GÉNÉRÉ par utoipa
+# depuis les annotations (#[utoipa::path]) — ce fichier fixe les formes attendues,
+# il n'est jamais consommé par la génération de clients (constitution I).
+openapi: 3.1.0
+info:
+  title: Mefali API — module comptes (CPT-01..05)
+  version: 0.3.0
+  description: >
+    Anti-énumération (SC-003) : toutes les réponses du parcours OTP —
+    /auth/otp/demander et /auth/otp/verifier — sont identiques en contenu et en
+    forme que le numéro possède un compte ou non. Les plafonds (3 SMS/h/numéro,
+    10 demandes/h/IP) répondent le même 202 neutre que le succès.
+    Sécurité : bearerAuth (JWT HS256, 15 min, claims sub/sid) remplace l'ancien
+    SecurityScheme adminToken (X-Admin-Token), supprimé ce cycle — le
+    PUT /admin/zones/{zone_id}/categories/{categorie_slug}/forcage (cycle 002)
+    passe sous bearerAuth + rôle admin sans changement de corps.
+
+paths:
+  # ————————————————— /auth — publics, rate-limités —————————————————
+  /auth/otp/demander:
+    post:
+      operationId: demanderOtp
+      tags: [auth]
+      summary: Demande d'envoi d'un code OTP (réponse toujours neutre)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DemandeOtp' }
+      responses:
+        '202':
+          description: >
+            Réponse UNIQUE du endpoint (numéro connu ou non, plafond atteint ou
+            non) : `{ "message_cle": "comptes.otp.envoye_si_valide" }`.
+            Chaque nouvelle demande invalide le code précédent du numéro.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Accepte' }
+        '422': { $ref: '#/components/responses/FormatInvalide' }
+
+  /auth/otp/verifier:
+    post:
+      operationId: verifierOtp
+      tags: [auth]
+      summary: Vérifie le code — ouvre une session (numéro connu) ou exige le consentement (numéro inconnu)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerificationOtp' }
+      responses:
+        '200':
+          description: Vérification réussie — deux issues possibles, distinguées par `resultat`.
+          content:
+            application/json:
+              schema:
+                # Pas de `discriminator` : le contrat généré (openapi.json, source
+                # de vérité) l'omet — les deux membres se distinguent par présence
+                # de champ (`jetons`/`compte` vs `jeton_inscription`), et chacun
+                # porte déjà son `resultat`, donc le fil est celui d'un oneOf
+                # discriminé. Le domaine Rust est `#[serde(untagged)]` : ajouter
+                # ici un `discriminator` que le généré n'émet pas rouvrirait la
+                # divergence design↔réalité que ce cycle a fermée.
+                oneOf:
+                  - $ref: '#/components/schemas/SessionOuverte'
+                  - $ref: '#/components/schemas/ConsentementRequis'
+        '401':
+          description: >
+            Code invalide, expiré (> 5 min) ou essais épuisés (3) — message
+            NEUTRE unique `comptes.otp.code_invalide_ou_expire`, identique dans
+            tous les cas d'échec.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+        '422': { $ref: '#/components/responses/FormatInvalide' }
+
+  /auth/inscription:
+    post:
+      operationId: inscrire
+      tags: [auth]
+      summary: Crée le compte (numéro inconnu vérifié) après consentement ARTCI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Inscription' }
+      responses:
+        '201':
+          description: Compte créé (réduit au numéro vérifié — aucune donnée de profil) + session ouverte.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionOuverte' }
+        '401':
+          description: Jeton d'inscription invalide, expiré (10 min) ou déjà consommé.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+        '422':
+          description: Consentement absent (`comptes.erreur.consentement_requis`) — aucun compte créé sans consentement (FR-006).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+
+  /auth/rafraichir:
+    post:
+      operationId: rafraichirSession
+      tags: [auth]
+      summary: Échange le refresh contre un nouvel accès (rotation systématique)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rafraichissement]
+              properties:
+                rafraichissement: { type: string }
+      responses:
+        '200':
+          description: Nouveaux jetons — l'ancien refresh est invalidé (rotation R2). Aucune expiration d'inactivité (clarification).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Jetons' }
+        '401':
+          description: >
+            Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà
+            tourné — dans ce dernier cas la session entière est RÉVOQUÉE
+            (détection de vol, R2) et l'appareil repasse par l'OTP.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+
+  /auth/deconnexion:
+    post:
+      operationId: seDeconnecter
+      tags: [auth]
+      summary: Révoque la session courante (déconnexion locale)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Session révoquée. }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  # ————————————————— /moi — authentifiés —————————————————
+  /moi:
+    get:
+      operationId: monCompte
+      tags: [moi]
+      summary: Compte courant et états de tous ses rôles
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompteMoi' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /moi/sessions:
+    get:
+      operationId: mesSessions
+      tags: [moi]
+      summary: Appareils/sessions actifs du compte (multi-appareils)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SessionAppareil' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /moi/sessions/{session_id}:
+    delete:
+      operationId: revoquerSession
+      tags: [moi]
+      summary: Déconnexion à distance d'un appareil (effet ≤ expiration de l'accès court, SC-004)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Session révoquée — événement `session.revoquee` émis. }
+        '404': { $ref: '#/components/responses/Introuvable' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /moi/dossier-coursier:
+    get:
+      operationId: monDossierCoursier
+      tags: [moi]
+      summary: État du dossier coursier (statut = attribution du rôle coursier, R9)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DossierCoursier' }
+        '404': { description: Aucun dossier soumis. }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+    post:
+      operationId: soumettreDossierCoursier
+      tags: [moi]
+      summary: Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle
+      description: >
+        Multipart — pièce d'identité (≤ 10 Mo, jpeg/png/webp/pdf), référent
+        local, véhicules choisis parmi les types de transport ACTIFS de la zone
+        (référentiel ZON-03, par slug). Dossier incomplet = non soumis (422).
+        Émet `role.demande` + `dossier_coursier.soumis` dans la même
+        transaction. Rejeu (même Idempotency-Key) pendant `en_attente` → 200
+        avec l'état courant (R14) ; le 409 reste réservé aux transitions
+        invalides.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUIDv7 généré par le client — rejeu réseau idempotent (R14)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/SoumissionDossier' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DossierCoursier' }
+        '409':
+          description: Transition invalide — dossier déjà `en_attente`, `valide` ou `suspendu` (seul `refuse`/∅ permet une soumission).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+        '422':
+          description: Incomplet, véhicule hors zone (`comptes.erreur.vehicule_hors_zone`), fichier trop volumineux ou type refusé.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /moi/adresses:
+    get:
+      operationId: mesAdresses
+      tags: [moi]
+      summary: Adresses enregistrées (non supprimées)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Adresse' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+    post:
+      operationId: enregistrerAdresse
+      tags: [moi]
+      summary: Enregistre une adresse (proposition post-livraison acceptée)
+      description: >
+        Multipart — libellé, position GPS, repère texte et/ou note vocale
+        (≤ 1,5 Mo, durée ≤ paramètre de zone `medias.note_vocale_duree_max_s`).
+        Émet `adresse.enregistree`. L'Idempotency-Key DEVIENT l'id de
+        l'adresse : rejeu → retour de l'adresse existante, aucun doublon (R14).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUIDv7 généré par le client = id de l'adresse créée — rejeu idempotent (R14)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/NouvelleAdresse' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Adresse' }
+        '422': { $ref: '#/components/responses/FormatInvalide' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /moi/adresses/{adresse_id}:
+    patch:
+      operationId: modifierAdresse
+      tags: [moi]
+      summary: Renomme l'adresse ou met à jour le repère texte
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: adresse_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle: { type: string, maxLength: 60 }
+                repere_texte: { type: string, maxLength: 500, nullable: true }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Adresse' }
+        '404': { $ref: '#/components/responses/Introuvable' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+    delete:
+      operationId: supprimerAdresse
+      tags: [moi]
+      summary: Supprime l'adresse (soft delete — sans effet sur les livraisons passées)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: adresse_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Supprimée — événement `adresse.supprimee`. }
+        '404': { $ref: '#/components/responses/Introuvable' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /moi/adresses/{adresse_id}/repere-vocal:
+    get:
+      operationId: ecouterRepereVocal
+      tags: [moi]
+      summary: URL présignée de lecture du repère vocal (propriétaire ; TTL 10 min)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: adresse_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UrlPresignee' }
+        '404': { description: Adresse inconnue OU repère vocal absent/purgé (FR-022). }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+    post:
+      operationId: remplacerRepereVocal
+      tags: [moi]
+      summary: Enregistre un nouveau repère vocal (après purge ou pour remplacer)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: adresse_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [note_vocale, duree_s]
+              properties:
+                note_vocale: { type: string, format: binary }
+                duree_s: { type: integer, maximum: 30 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Adresse' }
+        '404': { $ref: '#/components/responses/Introuvable' }
+        '422': { $ref: '#/components/responses/FormatInvalide' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  # ————————————————— /admin — rôle admin requis —————————————————
+  /admin/comptes/dossiers-coursier:
+    get:
+      operationId: listerDossiersCoursier
+      tags: [admin]
+      summary: Liste des dossiers coursier, filtrable par statut
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: statut, in: query, required: false, schema: { $ref: '#/components/schemas/StatutRole' } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DossierCoursierAdmin' }
+        '403': { $ref: '#/components/responses/RoleRequis' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /admin/comptes/{compte_id}/dossier-coursier:
+    get:
+      operationId: consulterDossierCoursier
+      tags: [admin]
+      summary: Dossier complet — inclut l'URL présignée de la pièce (TTL 10 min)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: compte_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DossierCoursierAdmin' }
+        '404': { $ref: '#/components/responses/Introuvable' }
+        '403': { $ref: '#/components/responses/RoleRequis' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+  /admin/comptes/{compte_id}/roles/{role}:
+    post:
+      operationId: deciderRole
+      tags: [admin]
+      summary: Décision admin sur un rôle — machine à états de data-model §4, journalisée (FR-014)
+      description: >
+        Actions par rôle — coursier : valider | refuser | suspendre | retablir ;
+        vendeur : attribuer (agrément §5.1) | suspendre | retablir ;
+        admin : attribuer (FR-012). `motif` requis pour refuser/suspendre.
+        Chaque décision émet son événement outbox (`role.*`) dans la même
+        transaction. Prise d'effet immédiate (contrôle de rôle par requête, R5).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: compte_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: role, in: path, required: true, schema: { type: string, enum: [coursier, vendeur, admin] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [attribuer, valider, refuser, suspendre, retablir] }
+                motif: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EtatRole' }
+        '409':
+          description: Transition invalide pour l'état courant (`comptes.erreur.transition_invalide`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErreurApi' }
+        '404': { $ref: '#/components/responses/Introuvable' }
+        '403': { $ref: '#/components/responses/RoleRequis' }
+        '401': { $ref: '#/components/responses/NonAuthentifie' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Remplace adminToken (X-Admin-Token) — supprimé ce cycle (R5).
+
+  responses:
+    NonAuthentifie:
+      description: Session absente, invalide ou révoquée — `comptes.erreur.non_authentifie`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErreurApi' }
+    RoleRequis:
+      description: Rôle requis manquant ou suspendu — `comptes.erreur.role_requis` (contrôle par requête, effet immédiat).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErreurApi' }
+    Introuvable:
+      description: Ressource inconnue ou n'appartenant pas au compte.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErreurApi' }
+    FormatInvalide:
+      description: Corps invalide (format E.164, tailles, types de fichier…) — message neutre.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErreurApi' }
+
+  schemas:
+    ErreurApi:
+      type: object
+      required: [code, message_cle]
+      properties:
+        code: { type: string }
+        message_cle: { type: string, description: clé i18n fr — aucune chaîne UI en dur }
+
+    Accepte:
+      type: object
+      required: [message_cle]
+      properties:
+        message_cle: { type: string, example: comptes.otp.envoye_si_valide }
+
+    DemandeOtp:
+      type: object
+      required: [telephone, zone]
+      properties:
+        telephone: { type: string, description: saisie locale ou E.164 — normalisée avec l'indicatif par défaut de la zone (R4) }
+        zone: { type: string, format: uuid, description: zone de l'app (bootstrap Tiassalé, R13) }
+
+    VerificationOtp:
+      type: object
+      required: [telephone, zone, code, appareil]
+      properties:
+        telephone: { type: string }
+        zone: { type: string, format: uuid }
+        code: { type: string, pattern: '^[0-9]{6}$' }
+        appareil: { $ref: '#/components/schemas/Appareil' }
+
+    Appareil:
+      type: object
+      required: [nom, plateforme]
+      properties:
+        nom: { type: string, maxLength: 80 }
+        plateforme: { type: string, enum: [android, ios] }
+
+    Inscription:
+      type: object
+      required: [jeton_inscription, consentement_version]
+      properties:
+        jeton_inscription: { type: string, description: émis par /auth/otp/verifier (resultat=consentement_requis), usage unique, TTL 10 min — porte l'appareil capté à la vérification, la session est créée sans le redemander (R3) }
+        consentement_version: { type: string, description: version du texte ARTCI accepté — servie par la config de zone (`consentement.artci_version`) }
+
+    Jetons:
+      type: object
+      required: [acces, rafraichissement]
+      properties:
+        acces: { type: string, description: JWT HS256, 15 min (claims sub/sid) }
+        rafraichissement: { type: string, description: opaque 256 bits — tourne à chaque usage }
+
+    SessionOuverte:
+      type: object
+      required: [resultat, jetons, compte]
+      properties:
+        resultat: { type: string, enum: [session] }
+        jetons: { $ref: '#/components/schemas/Jetons' }
+        compte: { $ref: '#/components/schemas/CompteMoi' }
+
+    ConsentementRequis:
+      type: object
+      required: [resultat, jeton_inscription]
+      properties:
+        resultat: { type: string, enum: [consentement_requis] }
+        jeton_inscription: { type: string }
+
+    Role:
+      type: string
+      enum: [client, coursier, vendeur, admin]
+
+    StatutRole:
+      type: string
+      enum: [en_attente, valide, refuse, suspendu]
+
+    # ── Énumérations : fermées en ENTRÉE, ouvertes en SORTIE ──────────────────
+    #
+    # `Role` et `StatutRole` ci-dessus sont le RÉFÉRENTIEL des valeurs connues
+    # à ce jour. Les ENTRÉES les référencent (paramètre `?statut=`, `{role}` en
+    # chemin) : c'est le serveur qui valide, une valeur inconnue est un 422 —
+    # fermer l'énumération y est un service rendu au client.
+    #
+    # Les RÉPONSES, elles, portent un `string` NU et ne les référencent PAS.
+    # Ce n'est pas un oubli : un client généré sur une énumération fermée
+    # PLANTE à la désérialisation dès que le backend ajoute un statut. Or on ne
+    # peut pas forcer un parc mobile à se mettre à jour — l'app d'Awa doit
+    # survivre à un rôle qu'elle ne connaît pas encore, quitte à l'ignorer.
+    # Fail-closed : une valeur inconnue dégrade l'affichage, elle ne casse pas
+    # la session. Les clients générés NE DOIVENT PAS refermer ces énumérations.
+
+    EtatRole:
+      type: object
+      required: [role, statut]
+      properties:
+        # `string` nu, pas `$ref Role` — voir la note ci-dessus.
+        role: { type: string, description: valeurs connues à ce jour dans le schéma `Role` — un client ne doit PAS refermer cette énumération }
+        statut: { type: string, description: valeurs connues à ce jour dans le schéma `StatutRole` — un client ne doit PAS refermer cette énumération }
+        motif: { type: string, nullable: true }
+        decide_le: { type: string, format: date-time, nullable: true }
+
+    CompteMoi:
+      type: object
+      required: [id, telephone_e164, zone_id, roles, cree_le]
+      properties:
+        id: { type: string, format: uuid }
+        telephone_e164: { type: string, description: aucune donnée nominative au MVP (clarification « numéro seul ») }
+        zone_id: { type: string, format: uuid }
+        roles:
+          type: array
+          items: { $ref: '#/components/schemas/EtatRole' }
+        cree_le: { type: string, format: date-time }
+
+    SessionAppareil:
+      type: object
+      required: [id, appareil_nom, appareil_plateforme, cree_le, derniere_activite_le, courante]
+      properties:
+        id: { type: string, format: uuid }
+        appareil_nom: { type: string }
+        appareil_plateforme: { type: string, enum: [android, ios] }
+        cree_le: { type: string, format: date-time }
+        derniere_activite_le: { type: string, format: date-time }
+        courante: { type: boolean, description: session de l'appareil appelant }
+
+    SoumissionDossier:
+      type: object
+      required: [piece, referent_nom, referent_telephone, vehicules]
+      properties:
+        piece: { type: string, format: binary, description: pièce d'identité ≤ 10 Mo (jpeg/png/webp/pdf) }
+        referent_nom: { type: string, maxLength: 120 }
+        referent_telephone: { type: string, description: normalisé E.164 comme le compte }
+        vehicules:
+          type: array
+          minItems: 1
+          items: { type: string, description: SLUG du référentiel zones.type_transport (ex. "moto"), ACTIF dans la zone — source UI = transport.actifs de la config distante, résolu en id côté domaine (analyze C2) }
+
+    DossierCoursier:
+      type: object
+      required: [statut, referent_nom, referent_telephone_e164, vehicules, soumis_le]
+      properties:
+        # `string` nu (réponse) — voir la note des énumérations. Le statut du
+        # dossier EST celui de l'attribution `coursier` (R9).
+        statut: { type: string, description: valeurs connues à ce jour dans le schéma `StatutRole` — un client ne doit PAS refermer cette énumération }
+        motif: { type: string, nullable: true, description: motif de la dernière décision admin }
+        referent_nom: { type: string }
+        referent_telephone_e164: { type: string }
+        vehicules:
+          type: array
+          items: { $ref: '#/components/schemas/VehiculeDeclare' }
+        soumis_le: { type: string, format: date-time }
+
+    DossierCoursierAdmin:
+      allOf:
+        - $ref: '#/components/schemas/DossierCoursier'
+        - type: object
+          required: [compte_id, telephone_e164]
+          properties:
+            compte_id: { type: string, format: uuid }
+            telephone_e164: { type: string }
+            piece_url: { type: string, nullable: true, description: URL présignée GET (TTL 10 min) — détail uniquement }
+
+    VehiculeDeclare:
+      type: object
+      required: [type_transport_id, slug, actif_zone]
+      properties:
+        type_transport_id: { type: string, format: uuid }
+        slug: { type: string, example: moto }
+        actif_zone: { type: boolean, description: false si le type a été désactivé dans la zone APRÈS déclaration (edge case spec) }
+
+    NouvelleAdresse:
+      type: object
+      required: [libelle, lat, lng]
+      properties:
+        libelle: { type: string, maxLength: 60, description: « Maison », « Bureau » ou libre }
+        lat: { type: number, format: double }
+        lng: { type: number, format: double }
+        repere_texte: { type: string, maxLength: 500 }
+        note_vocale: { type: string, format: binary, description: ≤ 1,5 Mo, m4a/aac }
+        duree_s: { type: integer, description: ≤ paramètre de zone medias.note_vocale_duree_max_s (30) }
+        livraison_origine: { type: string, format: uuid, description: PROVISION — posé par CMD/CRS plus tard }
+
+    Adresse:
+      type: object
+      required: [id, libelle, lat, lng, zone_id, cree_le, derniere_utilisation_le, a_repere_vocal]
+      properties:
+        id: { type: string, format: uuid }
+        libelle: { type: string }
+        lat: { type: number, format: double }
+        lng: { type: number, format: double }
+        repere_texte: { type: string, nullable: true }
+        a_repere_vocal: { type: boolean, description: false après purge (12 mois sans utilisation, FR-022) }
+        repere_vocal_duree_s: { type: integer, nullable: true }
+        zone_id: { type: string, format: uuid }
+        cree_le: { type: string, format: date-time }
+        derniere_utilisation_le: { type: string, format: date-time }
+
+    UrlPresignee:
+      type: object
+      required: [url, expire_le]
+      properties:
+        url: { type: string, description: URL présignée S3/Garage, opaque, TTL 10 min }
+        expire_le: { type: string, format: date-time }

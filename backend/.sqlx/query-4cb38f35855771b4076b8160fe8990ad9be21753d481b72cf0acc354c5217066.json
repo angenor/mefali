@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT telephone_e164 FROM comptes.compte WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "telephone_e164",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "telephone_e164"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4cb38f35855771b4076b8160fe8990ad9be21753d481b72cf0acc354c5217066"
+}

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT statut::text AS \"statut!\" FROM comptes.attribution_role\n           WHERE compte_id = $1 AND role = $2::text::comptes.role",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c450b59df8fab14d654ce8cee68ed7caef8b9ea49a001b422dbd8c5599b554a2"
+}

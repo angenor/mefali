@@ -19,6 +19,24 @@ dependencies:
   material_symbols_icons: 4.2951.0
   mefali_core:
     path: ../packages/mefali_core
+  # Client Dart GÉNÉRÉ — l'app pro l'appelle directement depuis le cycle CPT
+  # (`GET /moi` pour les rôles, dossier coursier en multipart). Jamais d'appel
+  # HTTP artisanal (constitution I).
+  mefali_api_client:
+    path: ../../clients/dart
+  # dio apparaît dans la surface publique du client généré (MultipartFile,
+  # DioException) sans y être ré-exporté. Version alignée sur le client.
+  dio: 5.10.0
+  # Collections built_value : le client généré attend des BuiltList (véhicules
+  # du dossier coursier). Non ré-exporté par le client — dépendance directe.
+  built_collection: 5.1.1
+  # Photo de la pièce d'identité du dossier coursier (CPT-04). Déclaré aussi
+  # dans mefali_core (provision des plugins natifs) ; ici parce que l'app pro
+  # l'IMPORTE — le seul écran qui prend une photo est le sien.
+  image_picker: 1.2.3
+  # Clés d'idempotence UUIDv7 des POST créateurs (research R14). Version alignée
+  # sur celle que le client généré résout déjà.
+  uuid: 4.5.3
 
 dev_dependencies:
   flutter_test:

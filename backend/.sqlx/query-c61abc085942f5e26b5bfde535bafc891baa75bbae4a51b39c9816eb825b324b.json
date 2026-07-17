@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.adresse SET supprimee_le = $3 WHERE id = $1 AND compte_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c61abc085942f5e26b5bfde535bafc891baa75bbae4a51b39c9816eb825b324b"
+}

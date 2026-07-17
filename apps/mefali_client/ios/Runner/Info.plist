@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Motifs d'accès affichés PAR iOS dans sa propre alerte, au moment de la
+	     demande : ce sont des chaînes utilisateur, en français, et elles disent
+	     à quoi sert l'accès — pas qu'il est « requis ». Une clé manquante n'est
+	     pas une dégradation : iOS TUE le processus dès l'appel à l'API.
+
+	     Les trois y sont bien que l'app cliente ne monte aujourd'hui que la note
+	     vocale (CPT-05) : les écrans à photo vivent dans mefali_core, que les
+	     deux apps embarquent. C'est le choix déjà acté du projet — « plugins
+	     NATIFS stabilisés tôt (Shorebird ne patche que le Dart ; les ajouter
+	     maintenant évite un passage store) », mefali_core/pubspec.yaml. Une clé
+	     posée trop tard coûte une soumission ; posée maintenant, rien. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mefali utilise le micro pour enregistrer une note vocale expliquant comment vous repérer à une adresse de livraison.</string>
+	<!-- ⚠ À PRÉVOIR quand iOS sera vérifié (Xcode manque sur le poste du cycle
+	     PLT) : l'ATS d'Apple a le MÊME clivage que la NetworkSecurityPolicy
+	     d'Android, corrigé côté Android par src/debug/res/xml/network_security_config.xml
+	     — dart:io l'ignore (l'API en http:// passera), AVPlayer la respecte
+	     (just_audio échouera sur un repère vocal servi en http://). Le symptôme
+	     sera « le réseau marche mais l'audio non ». Il faudra une exception ATS
+	     de DÉVELOPPEMENT seulement ; en production tout est en https:// et rien
+	     de ceci ne s'applique. Non posé ici : rien n'a pu être vérifié sur iOS,
+	     et une exception ATS écrite à l'aveugle vaut moins qu'une note. -->
+
+	<!-- Caméra et photos : image_picker est LIÉ au binaire (mefali_core le
+	     déclare, et Flutter lie depuis le graphe pubspec, pas depuis les
+	     imports), mais aucun écran de cette app ne les ouvre aujourd'hui. Les
+	     motifs disent donc à quoi l'accès servirait le jour où un écran de
+	     mefali_core en ouvre un — ils ne promettent rien qui existe déjà. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Mefali utilise l’appareil photo pour photographier une pièce justificative quand vous en joignez une à votre compte.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mefali accède à vos photos pour que vous puissiez y choisir une pièce justificative à joindre à votre compte.</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- Nom sous l'icône. « Mefali », pas « Mefali Client » : `flutter create`
+	     l'avait dérivé du nom de module, et l'utilisateur n'a pas à savoir qu'il
+	     existe une app « pro » en face. Doit rester identique à `app_name` de
+	     res/values/strings.xml — une seule identité Android/iOS (constitution). -->
+	<key>CFBundleDisplayName</key>
+	<string>Mefali</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>mefali_client</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

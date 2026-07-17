@@ -9,8 +9,10 @@ import 'package:mefali_api_client/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **categories** | [**BuiltList&lt;CategorieDto&gt;**](CategorieDto.md) | Catégories actives dans la zone. | 
+**consentementArtciVersion** | **String** | Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la renvoie telle quelle à l'inscription (FR-006). `null` si non résolue. | [optional] 
 **devise** | [**DeviseDto**](DeviseDto.md) | Devise résolue. | 
 **drapeaux** | **BuiltMap&lt;String, bool&gt;** | Drapeaux (clés `drapeau.*` sans préfixe). | 
+**noteVocaleDureeMaxS** | **int** | Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas. | [optional] 
 **parametres** | [**JsonObject**](.md) | Paramètres client (clés `client.*` sans préfixe). | 
 **textes** | **BuiltMap&lt;String, String&gt;** | Textes (clés `texte.*` sans préfixe) — clés i18n fr. | 
 **transportsActifs** | **BuiltList&lt;String&gt;** | Slugs des types de transport actifs. | 

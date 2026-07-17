@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, telephone_e164, zone_id, consentement_version, consentement_le,\n                      cree_le, derniere_connexion_le\n               FROM comptes.compte WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "telephone_e164",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "telephone_e164"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "consentement_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "consentement_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "consentement_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "consentement_le"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "cree_le"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "derniere_connexion_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "derniere_connexion_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "a50a0cbba2ac0959771bb2acc42344a57ba65d726b3bdaad3b7f118589e65238"
+}

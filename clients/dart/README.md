@@ -47,13 +47,14 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:mefali_api_client/mefali_api_client.dart';
 
 
-final api = MefaliApiClient().getSocleApi();
+final api = MefaliApiClient().getAdminApi();
+final String compteId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Coursier concerné.
 
 try {
-    final response = await api.health();
+    final response = await api.consulterDossierCoursier(compteId);
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling SocleApi->health: $e\n");
+    print("Exception when calling AdminApi->consulterDossierCoursier: $e\n");
 }
 
 ```
@@ -64,6 +65,25 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
+[*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
+[*AdminApi*](doc/AdminApi.md) | [**listerDossiersCoursier**](doc/AdminApi.md#listerdossierscoursier) | **GET** /admin/comptes/dossiers-coursier | Liste des dossiers coursier pour la revue admin (FR-017).
+[*AuthApi*](doc/AuthApi.md) | [**deconnexion**](doc/AuthApi.md#deconnexion) | **POST** /auth/deconnexion | Révoque la session courante (déconnexion locale).
+[*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
+[*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
+[*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
+[*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
+[*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
+[*MoiApi*](doc/MoiApi.md) | [**mesAdresses**](doc/MoiApi.md#mesadresses) | **GET** /moi/adresses | Adresses enregistrées du compte courant (FR-021).
+[*MoiApi*](doc/MoiApi.md) | [**mesSessions**](doc/MoiApi.md#messessions) | **GET** /moi/sessions | Appareils/sessions actifs du compte (FR-008).
+[*MoiApi*](doc/MoiApi.md) | [**modifierAdresse**](doc/MoiApi.md#modifieradresse) | **PATCH** /moi/adresses/{adresse_id} | Renomme l&#39;adresse ou met à jour son repère écrit (FR-021).
+[*MoiApi*](doc/MoiApi.md) | [**moi**](doc/MoiApi.md#moi) | **GET** /moi | Compte courant et états de TOUS ses rôles.
+[*MoiApi*](doc/MoiApi.md) | [**monDossierCoursier**](doc/MoiApi.md#mondossiercoursier) | **GET** /moi/dossier-coursier | État du dossier coursier du compte courant (FR-013 : l&#39;app Pro l&#39;affiche).
+[*MoiApi*](doc/MoiApi.md) | [**remplacerRepereVocal**](doc/MoiApi.md#remplacerreperevocal) | **POST** /moi/adresses/{adresse_id}/repere-vocal | Enregistre un nouveau repère vocal — après purge, ou pour le refaire.
+[*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
+[*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
+[*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
 [*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
@@ -71,24 +91,47 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [Accepte](doc/Accepte.md)
+ - [ActionRoleDto](doc/ActionRoleDto.md)
+ - [Adresse](doc/Adresse.md)
+ - [AppareilDto](doc/AppareilDto.md)
  - [CategorieDto](doc/CategorieDto.md)
+ - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
+ - [ConsentementRequis](doc/ConsentementRequis.md)
  - [CorpsForcage](doc/CorpsForcage.md)
+ - [DecisionRole](doc/DecisionRole.md)
+ - [DemandeOtp](doc/DemandeOtp.md)
+ - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
  - [DeviseDto](doc/DeviseDto.md)
+ - [DiscriminantConsentement](doc/DiscriminantConsentement.md)
+ - [DiscriminantSession](doc/DiscriminantSession.md)
+ - [DossierCoursier](doc/DossierCoursier.md)
+ - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
+ - [ErreurApi](doc/ErreurApi.md)
  - [EtatCategorie](doc/EtatCategorie.md)
+ - [EtatRoleDto](doc/EtatRoleDto.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [HealthResponse](doc/HealthResponse.md)
+ - [Inscription](doc/Inscription.md)
+ - [JetonsDto](doc/JetonsDto.md)
+ - [ModifierAdresse](doc/ModifierAdresse.md)
+ - [PlateformeDto](doc/PlateformeDto.md)
+ - [ResultatVerification](doc/ResultatVerification.md)
+ - [SessionAppareil](doc/SessionAppareil.md)
+ - [SessionOuverte](doc/SessionOuverte.md)
+ - [UrlPresignee](doc/UrlPresignee.md)
+ - [VehiculeDeclare](doc/VehiculeDeclare.md)
+ - [VerificationOtp](doc/VerificationOtp.md)
 
 
 ## Documentation For Authorization
 
 
 Authentication schemes defined for the API:
-### adminToken
+### bearerAuth
 
-- **Type**: API key
-- **API key parameter name**: X-Admin-Token
-- **Location**: HTTP header
+- **Type**: HTTP Bearer Token authentication (JWT)
 
 
 ## Author

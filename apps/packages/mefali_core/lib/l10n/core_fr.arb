@@ -1,0 +1,257 @@
+{
+  "@@locale": "fr",
+  "authTelephoneTitre": "Votre numéro",
+  "@authTelephoneTitre": {
+    "description": "Titre de l'écran de saisie du numéro de téléphone"
+  },
+  "authTelephoneAide": "Nous vous envoyons un code par SMS pour vérifier ce numéro.",
+  "@authTelephoneAide": {
+    "description": "Explication sous le titre de l'écran téléphone"
+  },
+  "authTelephoneChamp": "Numéro de mobile",
+  "@authTelephoneChamp": {
+    "description": "Libellé du champ de saisie du numéro"
+  },
+  "authTelephoneExemple": "Ex. 07 01 02 03 04",
+  "@authTelephoneExemple": {
+    "description": "Exemple de saisie locale, sans indicatif"
+  },
+  "authTelephoneAction": "Recevoir le code",
+  "@authTelephoneAction": {
+    "description": "Bouton principal de l'écran téléphone"
+  },
+  "authTelephoneVide": "Saisissez votre numéro de mobile.",
+  "@authTelephoneVide": {
+    "description": "Erreur affichée quand le champ numéro est vide"
+  },
+  "authOtpTitre": "Code de vérification",
+  "@authOtpTitre": {
+    "description": "Titre de l'écran de saisie du code OTP"
+  },
+  "authOtpAide": "Saisissez le code à 6 chiffres reçu par SMS.",
+  "@authOtpAide": {
+    "description": "Explication sous le titre de l'écran OTP"
+  },
+  "authOtpAction": "Valider",
+  "@authOtpAction": {
+    "description": "Bouton principal de l'écran OTP"
+  },
+  "authOtpRenvoyer": "Renvoyer le code",
+  "@authOtpRenvoyer": {
+    "description": "Bouton de renvoi d'un nouveau code, actif après le compte à rebours"
+  },
+  "authOtpRenvoyerDans": "Renvoyer le code dans {secondes} s",
+  "@authOtpRenvoyerDans": {
+    "description": "Compte à rebours avant de pouvoir redemander un code",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "authOtpDevTitre": "Mode développement — code tracé par le serveur",
+  "@authOtpDevTitre": {
+    "description": "En-tête du bandeau DEV de l'écran OTP. Jamais vu par un utilisateur : ce bandeau n'existe que dans un build --dart-define=MEFALI_DEV_OTP=true, où le serveur journalise le code au lieu de l'envoyer par SMS."
+  },
+  "authOtpDevUtiliser": "Renseigner",
+  "@authOtpDevUtiliser": {
+    "description": "Bouton du bandeau DEV qui recopie le code tracé dans les six cases de saisie"
+  },
+  "authConsentementTitre": "Protection de vos données",
+  "@authConsentementTitre": {
+    "description": "Titre de l'écran de consentement ARTCI"
+  },
+  "authConsentementTexte": "Mefali enregistre votre numéro de mobile pour créer votre compte et vous permettre de commander. Aucune autre donnée personnelle n'est demandée. Vos données sont traitées conformément à la réglementation ivoirienne sur la protection des données personnelles (ARTCI).",
+  "@authConsentementTexte": {
+    "description": "Texte du consentement ARTCI présenté à l'inscription"
+  },
+  "authConsentementCase": "J'accepte le traitement de mes données personnelles.",
+  "@authConsentementCase": {
+    "description": "Libellé de la case à cocher — JAMAIS pré-cochée (FR-006)"
+  },
+  "authConsentementAction": "Créer mon compte",
+  "@authConsentementAction": {
+    "description": "Bouton principal de l'écran de consentement"
+  },
+  "authErreurTelephoneInvalide": "Ce numéro n'est pas valide. Vérifiez-le et réessayez.",
+  "@authErreurTelephoneInvalide": {
+    "description": "Erreur de format du numéro (422 telephone_invalide)"
+  },
+  "authErreurCodeInvalide": "Code invalide ou expiré. Demandez un nouveau code.",
+  "@authErreurCodeInvalide": {
+    "description": "Erreur NEUTRE de vérification — ne révèle jamais si le numéro a un compte (SC-003)"
+  },
+  "authErreurReseau": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+  "@authErreurReseau": {
+    "description": "Erreur réseau générique"
+  },
+  "accueilProvisoireTitre": "Vous êtes connecté",
+  "@accueilProvisoireTitre": {
+    "description": "Titre de l'accueil provisoire posé par le cycle CPT"
+  },
+  "accueilProvisoireDeconnexion": "Se déconnecter",
+  "@accueilProvisoireDeconnexion": {
+    "description": "Action de déconnexion depuis l'accueil provisoire"
+  },
+  "appareilsTitre": "Appareils connectés",
+  "@appareilsTitre": {
+    "description": "Titre de l'écran des sessions/appareils"
+  },
+  "appareilsCourant": "Cet appareil",
+  "@appareilsCourant": {
+    "description": "Puce marquant la session de l'appareil qui consulte"
+  },
+  "appareilsDeconnecter": "Déconnecter cet appareil",
+  "@appareilsDeconnecter": {
+    "description": "Action de déconnexion à distance"
+  },
+  "appareilsVide": "Aucun autre appareil connecté.",
+  "@appareilsVide": {
+    "description": "État vide de la liste des appareils"
+  },
+  "appareilsErreur": "Impossible de charger vos appareils. Vérifiez votre réseau.",
+  "@appareilsErreur": {
+    "description": "Erreur de chargement de la liste des appareils"
+  },
+  "actionReessayer": "Réessayer",
+  "@actionReessayer": {
+    "description": "Action commune des états d'erreur réseau (règle d'or 5 : erreur réseau = réessayer)"
+  },
+  "parametresAppareils": "Appareils connectés",
+  "@parametresAppareils": {
+    "description": "Entrée de menu vers l'écran des appareils"
+  },
+  "parametresAdresses": "Mes adresses",
+  "@parametresAdresses": {
+    "description": "Entrée de menu vers l'écran des adresses enregistrées"
+  },
+  "adressesTitre": "Mes adresses",
+  "@adressesTitre": {
+    "description": "Titre de l'écran des adresses enregistrées (CPT-05)"
+  },
+  "adressesVide": "Aucune adresse enregistrée. Mefali vous proposera d'en garder une après votre prochaine livraison.",
+  "@adressesVide": {
+    "description": "État vide de la liste des adresses"
+  },
+  "adressesErreur": "Impossible de charger vos adresses. Vérifiez votre réseau.",
+  "@adressesErreur": {
+    "description": "Erreur de chargement de la liste des adresses"
+  },
+  "adressesRenommer": "Renommer",
+  "@adressesRenommer": {
+    "description": "Action : renommer une adresse enregistrée (FR-021)"
+  },
+  "adressesSupprimer": "Supprimer",
+  "@adressesSupprimer": {
+    "description": "Action : supprimer une adresse enregistrée (FR-021)"
+  },
+  "adressesSupprimerTitre": "Supprimer « {libelle} » ?",
+  "@adressesSupprimerTitre": {
+    "description": "Titre de la confirmation de suppression d'une adresse",
+    "placeholders": {
+      "libelle": {
+        "type": "String"
+      }
+    }
+  },
+  "adressesSupprimerAide": "Vos livraisons passées n'en sont pas affectées.",
+  "@adressesSupprimerAide": {
+    "description": "Aide de la confirmation de suppression (FR-021 : ne vaut que pour l'avenir)"
+  },
+  "adressesAnnuler": "Annuler",
+  "@adressesAnnuler": {
+    "description": "Action : abandonner la boîte de dialogue"
+  },
+  "adressesValider": "Valider",
+  "@adressesValider": {
+    "description": "Action : confirmer la boîte de dialogue"
+  },
+  "adresseProposerTitre": "Garder cette adresse ?",
+  "@adresseProposerTitre": {
+    "description": "Titre de la proposition d'enregistrement après une livraison (FR-019)"
+  },
+  "adresseProposerAide": "Votre prochaine commande ici tiendra en un geste.",
+  "@adresseProposerAide": {
+    "description": "Aide de la proposition d'enregistrement d'adresse"
+  },
+  "adresseProposerAction": "Garder cette adresse",
+  "@adresseProposerAction": {
+    "description": "Action principale : accepter la proposition d'enregistrement"
+  },
+  "adresseProposerRefuser": "Pas maintenant",
+  "@adresseProposerRefuser": {
+    "description": "Action : refuser la proposition — l'enregistrement n'est jamais obligatoire"
+  },
+  "adresseLibelleMaison": "Maison",
+  "@adresseLibelleMaison": {
+    "description": "Libellé d'adresse proposé"
+  },
+  "adresseLibelleBureau": "Bureau",
+  "@adresseLibelleBureau": {
+    "description": "Libellé d'adresse proposé"
+  },
+  "adresseLibelleLibre": "Nom de l'adresse",
+  "@adresseLibelleLibre": {
+    "description": "Champ : libellé libre de l'adresse"
+  },
+  "adresseRepereTexte": "Repère",
+  "@adresseRepereTexte": {
+    "description": "Champ : repère écrit de l'adresse"
+  },
+  "adresseRepereExemple": "Derrière la pharmacie, portail bleu",
+  "@adresseRepereExemple": {
+    "description": "Exemple de repère écrit (cadrage §8.2)"
+  },
+  "adresseRepereEnregistrer": "Enregistrer un repère vocal",
+  "@adresseRepereEnregistrer": {
+    "description": "Action : capter une note vocale de repère"
+  },
+  "adresseRepereRefaire": "Repère vocal de {secondes} s — refaire",
+  "@adresseRepereRefaire": {
+    "description": "Action : remplacer la note vocale déjà captée",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "adresseRepereArreter": "Arrêter ({secondes} s)",
+  "@adresseRepereArreter": {
+    "description": "Action : arrêter l'enregistrement en cours, avec son compteur",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "adresseRepereMax": "{secondes} s au maximum",
+  "@adresseRepereMax": {
+    "description": "Borne de durée servie par la configuration de zone (FR-019)",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "adresseRepereEcouter": "Écouter le repère",
+  "@adresseRepereEcouter": {
+    "description": "Action : jouer la note vocale de repère (planche de style, bouton audio)"
+  },
+  "adresseRepereDuree": "{secondes} s",
+  "@adresseRepereDuree": {
+    "description": "Durée de la note vocale, à côté du bouton d'écoute",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "adresseRepereErreur": "Lecture impossible",
+  "@adresseRepereErreur": {
+    "description": "Erreur de lecture de la note vocale"
+  },
+  "adresseRepereAbsent": "Aucun repère vocal — Mefali vous en redemandera un à la prochaine commande.",
+  "@adresseRepereAbsent": {
+    "description": "Adresse dont le repère vocal a été purgé après 12 mois sans usage (FR-022)"
+  }
+}

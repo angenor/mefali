@@ -137,10 +137,9 @@ class ZonesApi {
       extra: <String, dynamic>{
         'secure': <Map<String, String>>[
           {
-            'type': 'apiKey',
-            'name': 'adminToken',
-            'keyName': 'X-Admin-Token',
-            'where': 'header',
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
           },
         ],
         ...?extra,

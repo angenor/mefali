@@ -16,8 +16,10 @@ part 'config_zone.g.dart';
 ///
 /// Properties:
 /// * [categories] - Catégories actives dans la zone.
+/// * [consentementArtciVersion] - Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
 /// * [devise] - Devise résolue.
 /// * [drapeaux] - Drapeaux (clés `drapeau.*` sans préfixe).
+/// * [noteVocaleDureeMaxS] - Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas.
 /// * [parametres] - Paramètres client (clés `client.*` sans préfixe).
 /// * [textes] - Textes (clés `texte.*` sans préfixe) — clés i18n fr.
 /// * [transportsActifs] - Slugs des types de transport actifs.
@@ -29,6 +31,10 @@ abstract class ConfigZone implements Built<ConfigZone, ConfigZoneBuilder> {
   @BuiltValueField(wireName: r'categories')
   BuiltList<CategorieDto> get categories;
 
+  /// Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
+  @BuiltValueField(wireName: r'consentement_artci_version')
+  String? get consentementArtciVersion;
+
   /// Devise résolue.
   @BuiltValueField(wireName: r'devise')
   DeviseDto get devise;
@@ -36,6 +42,10 @@ abstract class ConfigZone implements Built<ConfigZone, ConfigZoneBuilder> {
   /// Drapeaux (clés `drapeau.*` sans préfixe).
   @BuiltValueField(wireName: r'drapeaux')
   BuiltMap<String, bool> get drapeaux;
+
+  /// Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas.
+  @BuiltValueField(wireName: r'note_vocale_duree_max_s')
+  int? get noteVocaleDureeMaxS;
 
   /// Paramètres client (clés `client.*` sans préfixe).
   @BuiltValueField(wireName: r'parametres')
@@ -85,6 +95,13 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
       object.categories,
       specifiedType: const FullType(BuiltList, [FullType(CategorieDto)]),
     );
+    if (object.consentementArtciVersion != null) {
+      yield r'consentement_artci_version';
+      yield serializers.serialize(
+        object.consentementArtciVersion,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
     yield r'devise';
     yield serializers.serialize(
       object.devise,
@@ -95,6 +112,13 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
       object.drapeaux,
       specifiedType: const FullType(BuiltMap, [FullType(String), FullType(bool)]),
     );
+    if (object.noteVocaleDureeMaxS != null) {
+      yield r'note_vocale_duree_max_s';
+      yield serializers.serialize(
+        object.noteVocaleDureeMaxS,
+        specifiedType: const FullType.nullable(int),
+      );
+    }
     yield r'parametres';
     yield serializers.serialize(
       object.parametres,
@@ -150,6 +174,14 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
           ) as BuiltList<CategorieDto>;
           result.categories.replace(valueDes);
           break;
+        case r'consentement_artci_version':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.consentementArtciVersion = valueDes;
+          break;
         case r'devise':
           final valueDes = serializers.deserialize(
             value,
@@ -163,6 +195,14 @@ class _$ConfigZoneSerializer implements PrimitiveSerializer<ConfigZone> {
             specifiedType: const FullType(BuiltMap, [FullType(String), FullType(bool)]),
           ) as BuiltMap<String, bool>;
           result.drapeaux.replace(valueDes);
+          break;
+        case r'note_vocale_duree_max_s':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.noteVocaleDureeMaxS = valueDes;
           break;
         case r'parametres':
           final valueDes = serializers.deserialize(

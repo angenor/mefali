@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comptes.attribution_role (compte_id, role, statut)\n               VALUES ($1, 'client'::comptes.role, 'valide'::comptes.statut_role)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d57450fb5d27e8c40ce4451014a3f7736526b85ab39b4324ae09d3627bdc2be3"
+}

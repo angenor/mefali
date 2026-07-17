@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/admin/comptes/dossiers-coursier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste des dossiers coursier pour la revue admin (FR-017). */
+        get: operations["lister_dossiers_coursier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/comptes/{compte_id}/dossier-coursier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dossier complet d'un coursier, pièce lisible comprise (FR-017 scénario 2). */
+        get: operations["consulter_dossier_coursier"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/comptes/{compte_id}/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Décision admin sur un rôle — machine à états de data-model §4, journalisée. */
+        post: operations["decider_role"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
         parameters: {
             query?: never;
@@ -19,6 +70,97 @@ export interface paths {
          */
         put: operations["forcer_categorie"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/deconnexion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Révoque la session courante (déconnexion locale). */
+        post: operations["deconnexion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/inscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crée le compte après consentement ARTCI, puis ouvre sa session.
+         * @description Le 201 rend `SessionOuverte` SEULE, et non le `oneOf` de
+         *     `/auth/otp/verifier` : ici le consentement vient d'être fourni, donc
+         *     `consentement_requis` est une issue que ce chemin ne peut pas produire.
+         *     L'annoncer obligerait chaque client à traiter une branche morte.
+         */
+        post: operations["inscrire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/demander": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demande l'envoi d'un code OTP. Réponse TOUJOURS neutre (SC-003). */
+        post: operations["demander"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/verifier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Vérifie le code : ouvre une session (numéro connu) ou exige le consentement. */
+        post: operations["verifier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/rafraichir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Échange le refresh contre un nouvel accès (rotation systématique, R2). */
+        post: operations["rafraichir"];
         delete?: never;
         options?: never;
         head?: never;
@@ -63,10 +205,205 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compte courant et états de TOUS ses rôles. */
+        get: operations["moi"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/adresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Adresses enregistrées du compte courant (FR-021). */
+        get: operations["mes_adresses"];
+        put?: never;
+        /** Enregistre une adresse — proposition post-livraison acceptée (FR-019). */
+        post: operations["enregistrer_adresse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/adresses/{adresse_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime l'adresse — soft (FR-021). */
+        delete: operations["supprimer_adresse"];
+        options?: never;
+        head?: never;
+        /** Renomme l'adresse ou met à jour son repère écrit (FR-021). */
+        patch: operations["modifier_adresse"];
+        trace?: never;
+    };
+    "/moi/adresses/{adresse_id}/repere-vocal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** URL présignée de lecture du repère vocal (FR-020). */
+        get: operations["ecouter_repere_vocal"];
+        put?: never;
+        /** Enregistre un nouveau repère vocal — après purge, ou pour le refaire. */
+        post: operations["remplacer_repere_vocal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/dossier-coursier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État du dossier coursier du compte courant (FR-013 : l'app Pro l'affiche). */
+        get: operations["mon_dossier_coursier"];
+        put?: never;
+        /**
+         * Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de
+         *     rôle (FR-015).
+         */
+        post: operations["soumettre_dossier_coursier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appareils/sessions actifs du compte (FR-008). */
+        get: operations["mes_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Déconnexion à distance d'un appareil (SC-004). */
+        delete: operations["revoquer_session"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Réponse UNIQUE de `/auth/otp/demander`. */
+        Accepte: {
+            /**
+             * @description Toujours `comptes.otp.envoye_si_valide`.
+             * @example comptes.otp.envoye_si_valide
+             */
+            message_cle: string;
+        };
+        /**
+         * @description Action d'administration sur un rôle (contrat).
+         * @enum {string}
+         */
+        ActionRoleDto: "attribuer" | "valider" | "refuser" | "suspendre" | "retablir";
+        /**
+         * @description Adresse enregistrée (contrat).
+         *
+         *     ⚠ N'expose NI `compte_id` (implicite : c'est le vôtre), NI la clé S3 du
+         *     repère, NI `supprimee_le`, NI `livraison_origine` (provision CPT-06).
+         */
+        Adresse: {
+            /** @description `false` après purge (12 mois sans utilisation — FR-022). */
+            a_repere_vocal: boolean;
+            /**
+             * Format: date-time
+             * @description Enregistrement.
+             */
+            cree_le: string;
+            /**
+             * Format: date-time
+             * @description Base de la purge.
+             */
+            derniere_utilisation_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant = `Idempotency-Key` du POST créateur (R14).
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description Latitude du pin GPS.
+             */
+            lat: number;
+            /** @description « Maison », « Bureau » ou libre. */
+            libelle: string;
+            /**
+             * Format: double
+             * @description Longitude du pin GPS.
+             */
+            lng: number;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+            /**
+             * Format: int32
+             * @description Durée du repère vocal.
+             */
+            repere_vocal_duree_s?: number | null;
+            /**
+             * Format: uuid
+             * @description Zone de l'adresse.
+             */
+            zone_id: string;
+        };
+        /** @description Appareil déclaré par l'app à l'ouverture de session. */
+        AppareilDto: {
+            /** @description Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste. */
+            nom: string;
+            /** @description Plateforme. */
+            plateforme: components["schemas"]["PlateformeDto"];
+        };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
             /** @description Mixable au panier (CMD-01). */
@@ -76,16 +413,49 @@ export interface components {
             /** @description Slug de la catégorie. */
             slug: string;
         };
+        /** @description Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`). */
+        CompteMoi: {
+            /**
+             * Format: date-time
+             * @description Création du compte.
+             */
+            cree_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant du compte.
+             */
+            id: string;
+            /** @description Rôles et leurs statuts (tous, pas seulement les valides). */
+            roles: components["schemas"]["EtatRoleDto"][];
+            /** @description Identité Mefali — aucune donnée nominative au MVP. */
+            telephone_e164: string;
+            /**
+             * Format: uuid
+             * @description Zone de rattachement.
+             */
+            zone_id: string;
+        };
         /** @description Document `/config` (contrat) — sous-ensemble public de la config effective. */
         ConfigZone: {
             /** @description Catégories actives dans la zone. */
             categories: components["schemas"]["CategorieDto"][];
+            /**
+             * @description Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la
+             *     renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
+             */
+            consentement_artci_version?: string | null;
             /** @description Devise résolue. */
             devise: components["schemas"]["DeviseDto"];
             /** @description Drapeaux (clés `drapeau.*` sans préfixe). */
             drapeaux: {
                 [key: string]: boolean;
             };
+            /**
+             * Format: int64
+             * @description Durée maximale d'une note vocale, en secondes — borne l'enregistreur des
+             *     apps (FR-019). `null` si la zone ne la résout pas.
+             */
+            note_vocale_duree_max_s?: number | null;
             /** @description Paramètres client (clés `client.*` sans préfixe). */
             parametres: Record<string, never>;
             /** @description Textes (clés `texte.*` sans préfixe) — clés i18n fr. */
@@ -102,10 +472,42 @@ export interface components {
              */
             zone: string;
         };
+        /**
+         * @description Consentement ARTCI exigé avant création du compte (contrat
+         *     `ConsentementRequis`, FR-006).
+         */
+        ConsentementRequis: {
+            /** @description Jeton d'inscription à usage unique. */
+            jeton_inscription: string;
+            /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
+            resultat: components["schemas"]["DiscriminantConsentement"];
+        };
         /** @description Corps de la requête de forçage. */
         CorpsForcage: {
             /** @description Nouveau mode de forçage à appliquer. */
             forcage: components["schemas"]["ForcageDto"];
+        };
+        /** @description Corps de la décision. */
+        DecisionRole: {
+            /** @description Action à appliquer. */
+            action: components["schemas"]["ActionRoleDto"];
+            /** @description Motif — REQUIS pour `refuser` et `suspendre` (FR-017). */
+            motif?: string | null;
+        };
+        /** @description Corps de `POST /auth/otp/demander`. */
+        DemandeOtp: {
+            /** @description Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4). */
+            telephone: string;
+            /**
+             * Format: uuid
+             * @description Zone de l'app (bootstrap Tiassalé — R13).
+             */
+            zone: string;
+        };
+        /** @description Corps de `POST /auth/rafraichir`. */
+        DemandeRafraichissement: {
+            /** @description Jeton de renouvellement opaque courant. */
+            rafraichissement: string;
         };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
@@ -116,6 +518,81 @@ export interface components {
              * @description Nombre de décimales des unités mineures (0 pour XOF).
              */
             decimales: number;
+        };
+        /**
+         * @description Discriminant de [`ConsentementRequisDto`].
+         * @enum {string}
+         */
+        DiscriminantConsentement: "consentement_requis";
+        /**
+         * @description Discriminant de [`SessionOuverteDto`] — une seule valeur possible.
+         *
+         *     Un type à UNE variante, et non un `String` : la valeur du discriminant ne
+         *     peut alors pas diverger du schéma, et ce n'est pas à l'appelant de penser à
+         *     l'écrire juste.
+         * @enum {string}
+         */
+        DiscriminantSession: "session";
+        /**
+         * @description Dossier coursier tel que son titulaire le voit (contrat).
+         *
+         *     ⚠ La CLÉ de la pièce n'en fait pas partie : elle n'a de sens que pour le
+         *     serveur, et l'exposer donnerait un identifiant de bucket à deviner.
+         */
+        DossierCoursier: {
+            /** @description Motif de la dernière décision admin. */
+            motif?: string | null;
+            /** @description Référent local (« caution morale », cadrage §7.1). */
+            referent_nom: string;
+            /** @description Téléphone du référent, normalisé E.164. */
+            referent_telephone_e164: string;
+            /**
+             * Format: date-time
+             * @description Dernier dépôt.
+             */
+            soumis_le: string;
+            /** @description Statut = celui de l'attribution `coursier` (R9). */
+            statut: string;
+            /** @description Véhicules déclarés. */
+            vehicules: components["schemas"]["VehiculeDeclare"][];
+        };
+        /** @description Dossier complet pour la revue admin (contrat `DossierCoursierAdmin`). */
+        DossierCoursierAdmin: {
+            /**
+             * Format: uuid
+             * @description Compte du coursier.
+             */
+            compte_id: string;
+            /** @description Motif de la dernière décision admin. */
+            motif?: string | null;
+            /**
+             * @description URL présignée de la pièce (TTL 10 min) — DÉTAIL uniquement, absente en
+             *     liste : présigner N pièces pour un tableau serait du gaspillage, et
+             *     autant de liens vivants qu'aucun œil n'ouvrira.
+             */
+            piece_url?: string | null;
+            /** @description Référent local. */
+            referent_nom: string;
+            /** @description Téléphone du référent. */
+            referent_telephone_e164: string;
+            /**
+             * Format: date-time
+             * @description Dernier dépôt.
+             */
+            soumis_le: string;
+            /** @description Statut = celui de l'attribution `coursier`. */
+            statut: string;
+            /** @description Numéro du coursier — l'admin doit pouvoir le rappeler (FR-017). */
+            telephone_e164: string;
+            /** @description Véhicules déclarés. */
+            vehicules: components["schemas"]["VehiculeDeclare"][];
+        };
+        /** @description Corps d'erreur du contrat — `{ code, message_cle }`. */
+        ErreurApi: {
+            /** @description Code stable, exploitable par le client. */
+            code: string;
+            /** @description Clé i18n fr — aucune chaîne UI en dur (constitution VII). */
+            message_cle: string;
         };
         /** @description État effectif d'une catégorie renvoyé après forçage (contrat). */
         EtatCategorie: {
@@ -130,6 +607,20 @@ export interface components {
              * @description Ville concernée.
              */
             zone: string;
+        };
+        /** @description État d'un rôle (contrat). */
+        EtatRoleDto: {
+            /**
+             * Format: date-time
+             * @description Horodatage de la dernière décision.
+             */
+            decide_le?: string | null;
+            /** @description Motif de la dernière décision admin. */
+            motif?: string | null;
+            /** @description Rôle concerné. */
+            role: string;
+            /** @description Statut courant. */
+            statut: string;
         };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
@@ -149,6 +640,187 @@ export interface components {
             /** @description Version du binaire (`CARGO_PKG_VERSION`). */
             version: string;
         };
+        /** @description Corps de `POST /auth/inscription`. */
+        Inscription: {
+            /** @description Version du texte ARTCI accepté — servie par la config de zone. */
+            consentement_version: string;
+            /** @description Émis par `/auth/otp/verifier`, usage unique, TTL 10 min. */
+            jeton_inscription: string;
+        };
+        /** @description Paire de jetons (contrat). */
+        JetonsDto: {
+            /** @description JWT HS256, 15 min (claims sub/sid). */
+            acces: string;
+            /** @description Opaque 256 bits — tourne à chaque usage. */
+            rafraichissement: string;
+        };
+        /** @description Champs modifiables d'une adresse (contrat). */
+        ModifierAdresse: {
+            /** @description Nouveau libellé — absent = inchangé. */
+            libelle?: string | null;
+            /**
+             * @description Nouveau repère écrit — absent = inchangé, `null` = effacé.
+             *
+             *     Le double `Option` porte cette nuance : sans lui, « ne touche pas » et
+             *     « efface » seraient le même corps JSON.
+             */
+            repere_texte?: string | null;
+        };
+        /** @description Adresse à enregistrer après une livraison réussie (FR-019). */
+        NouvelleAdresse: {
+            /**
+             * Format: int32
+             * @description Durée du repère parlé — bornée par le paramètre de zone
+             *     `medias.note_vocale_duree_max_s`.
+             */
+            duree_s?: number | null;
+            /**
+             * Format: double
+             * @description Latitude du pin GPS.
+             */
+            lat: number;
+            /** @description « Maison », « Bureau » ou libre. */
+            libelle: string;
+            /**
+             * Format: uuid
+             * @description PROVISION — posée par les cycles CMD/CRS ; aucune logique ne la lit.
+             */
+            livraison_origine?: string | null;
+            /**
+             * Format: double
+             * @description Longitude du pin GPS.
+             */
+            lng: number;
+            /**
+             * Format: binary
+             * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
+             */
+            note_vocale?: string | null;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+        };
+        /**
+         * @description Plateforme de l'appareil (contrat).
+         * @enum {string}
+         */
+        PlateformeDto: "android" | "ios";
+        /** @description Nouveau repère parlé pour une adresse existante. */
+        RemplacementRepereVocal: {
+            /**
+             * Format: int32
+             * @description Durée — bornée par le paramètre de zone `medias.note_vocale_duree_max_s`.
+             */
+            duree_s: number;
+            /**
+             * Format: binary
+             * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
+             */
+            note_vocale: string;
+        };
+        /**
+         * @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
+         *
+         *     `untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du
+         *     câble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose
+         *     deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
+         */
+        ResultatVerification: components["schemas"]["SessionOuverte"] | components["schemas"]["ConsentementRequis"];
+        /** @description Session/appareil du compte (contrat `SessionAppareil`). */
+        SessionAppareil: {
+            /** @description Nom déclaré par l'app. */
+            appareil_nom: string;
+            /** @description Plateforme. */
+            appareil_plateforme: components["schemas"]["PlateformeDto"];
+            /** @description Session de l'appareil appelant — celle qu'on ne se coupe pas par erreur. */
+            courante: boolean;
+            /**
+             * Format: date-time
+             * @description Ouverture.
+             */
+            cree_le: string;
+            /**
+             * Format: date-time
+             * @description Dernier rafraîchissement.
+             */
+            derniere_activite_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant de session.
+             */
+            id: string;
+        };
+        /**
+         * @description Session ouverte sur un compte (contrat `SessionOuverte`).
+         *
+         *     Schéma NOMMÉ et non une variante anonyme du `oneOf` : c'est aussi le corps
+         *     entier du 201 de `/auth/inscription`, qui n'a qu'une issue possible.
+         */
+        SessionOuverte: {
+            /** @description Compte connecté. */
+            compte: components["schemas"]["CompteMoi"];
+            /** @description Jetons de l'appareil. */
+            jetons: components["schemas"]["JetonsDto"];
+            /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
+            resultat: components["schemas"]["DiscriminantSession"];
+        };
+        /**
+         * @description Dossier soumis par le coursier : pièce d'identité, référent local et
+         *     véhicules déclarés (FR-015).
+         */
+        SoumissionDossier: {
+            /**
+             * Format: binary
+             * @description Pièce d'identité — ≤ 10 Mo, jpeg/png/webp/pdf.
+             */
+            piece: string;
+            /** @description Nom du référent local. */
+            referent_nom: string;
+            /** @description Téléphone du référent — normalisé E.164 comme celui du compte. */
+            referent_telephone: string;
+            /**
+             * @description Slugs des types de transport, ACTIFS dans la zone (référentiel ZON-03).
+             * @example [
+             *       "moto"
+             *     ]
+             */
+            vehicules: string[];
+        };
+        /** @description URL présignée de lecture (contrat). */
+        UrlPresignee: {
+            /**
+             * Format: date-time
+             * @description Expiration.
+             */
+            expire_le: string;
+            /** @description URL opaque, à durée courte. */
+            url: string;
+        };
+        /** @description Véhicule déclaré au dossier (contrat). */
+        VehiculeDeclare: {
+            /** @description `false` si le type a été DÉSACTIVÉ dans la zone après la déclaration. */
+            actif_zone: boolean;
+            /** @description Slug du type (ex. `moto`). */
+            slug: string;
+            /**
+             * Format: uuid
+             * @description Type de transport du référentiel ZON-03.
+             */
+            type_transport_id: string;
+        };
+        /** @description Corps de `POST /auth/otp/verifier`. */
+        VerificationOtp: {
+            /** @description Appareil — capté ici, conservé jusqu'à l'inscription (R3). */
+            appareil: components["schemas"]["AppareilDto"];
+            /** @description Code à 6 chiffres. */
+            code: string;
+            /** @description Le MÊME numéro que celui de la demande. */
+            telephone: string;
+            /**
+             * Format: uuid
+             * @description Zone de l'app.
+             */
+            zone: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -158,6 +830,171 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    lister_dossiers_coursier: {
+        parameters: {
+            query?: {
+                /** @description Filtre — tous les dossiers si absent. */
+                statut?: "en_attente" | "valide" | "refuse" | "suspendu";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossiers, du plus récemment soumis au plus ancien. `piece_url` est absente ici (détail uniquement). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursierAdmin"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    consulter_dossier_coursier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Coursier concerné. */
+                compte_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossier complet — `piece_url` est présignée 10 min. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursierAdmin"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Compte ou dossier inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    decider_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Compte concerné. */
+                compte_id: string;
+                /** @description Rôle décidé (client exclu : immuable). */
+                role: "coursier" | "vendeur" | "admin";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRole"];
+            };
+        };
+        responses: {
+            /** @description Nouvel état du rôle. Prise d'effet IMMÉDIATE (contrôle par requête, R5). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatRoleDto"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis — seul un admin existant décide (FR-012). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Compte inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition invalide pour l'état courant. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent pour un refus ou une suspension. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     forcer_categorie: {
         parameters: {
             query?: never;
@@ -185,8 +1022,15 @@ export interface operations {
                     "application/json": components["schemas"]["EtatCategorie"];
                 };
             };
-            /** @description Jeton admin absent ou invalide. */
+            /** @description Session absente, invalide ou révoquée. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle admin requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -205,6 +1049,183 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    deconnexion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session révoquée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    inscrire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Inscription"];
+            };
+        };
+        responses: {
+            /** @description Compte créé (réduit au numéro vérifié) + session ouverte. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOuverte"];
+                };
+            };
+            /** @description Jeton d'inscription invalide, expiré (10 min) ou déjà consommé. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Consentement absent — aucun compte n'est créé (FR-006). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    demander: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeOtp"];
+            };
+        };
+        responses: {
+            /** @description Réponse UNIQUE : numéro connu ou non, plafond atteint ou non. Chaque demande invalide le code précédent du numéro. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Accepte"];
+                };
+            };
+            /** @description Numéro non normalisable — erreur de FORMAT, neutre quant à l'existence d'un compte. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    verifier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationOtp"];
+            };
+        };
+        responses: {
+            /** @description Vérification réussie — deux issues discriminées par `resultat`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatVerification"];
+                };
+            };
+            /** @description Code faux, expiré (> 5 min) ou essais épuisés (3) — message NEUTRE unique, identique dans TOUS les cas d'échec. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Numéro non normalisable. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    rafraichir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeRafraichissement"];
+            };
+        };
+        responses: {
+            /** @description Nouveaux jetons — l'ancien refresh est invalidé. Aucune expiration d'inactivité. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JetonsDto"];
+                };
+            };
+            /** @description Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà tourné —                                       dans ce dernier cas la session est RÉVOQUÉE (détection de vol, R2). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };
@@ -275,6 +1296,466 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    moi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compte courant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteMoi"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mes_adresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Adresses vivantes, la plus récemment utilisée d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    enregistrer_adresse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUIDv7 généré par le client — DEVIENT l'id de l'adresse (R14). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["NouvelleAdresse"];
+            };
+        };
+        responses: {
+            /** @description Adresse enregistrée — émet `adresse.enregistree`. Un rejeu de la même clé rend l'adresse EXISTANTE, sans doublon (R14). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Libellé, repère, durée (> paramètre de zone) ou note vocale invalides ; en-tête d'idempotence absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    supprimer_adresse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supprimée — émet `adresse.supprimee`. Sans effet sur les livraisons passées. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    modifier_adresse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModifierAdresse"];
+            };
+        };
+        responses: {
+            /** @description Adresse modifiée — ne vaut que pour l'avenir. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Libellé ou repère invalides. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ecouter_repere_vocal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lien opaque, valable 10 min. Les octets rendus sont IDENTIQUES à ceux enregistrés (SC-007). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UrlPresignee"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue, ou repère vocal absent/purgé (FR-022). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remplacer_repere_vocal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Adresse concernée. */
+                adresse_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RemplacementRepereVocal"];
+            };
+        };
+        responses: {
+            /** @description Repère remplacé — émet `adresse.modifiee`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adresse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Adresse inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Durée (> paramètre de zone) ou note vocale invalides. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mon_dossier_coursier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossier et son statut. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucun dossier soumis. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    soumettre_dossier_coursier: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUIDv7 généré par le client — rejeu réseau idempotent (R14). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["SoumissionDossier"];
+            };
+        };
+        responses: {
+            /** @description Rejeu : un dossier est déjà en attente. Rien n'a changé (R14). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursier"];
+                };
+            };
+            /** @description Dossier soumis — rôle coursier `en_attente`. Émet `role.demande` + `dossier_coursier.soumis` dans la même transaction. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierCoursier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition invalide — dossier déjà `valide` ou `suspendu`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mes_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Appareils actifs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionAppareil"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    revoquer_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Appareil à déconnecter. */
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session révoquée — événement `session.revoquee` émis. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Session inconnue ou n'appartenant pas au compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
                 };
             };
         };

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comptes.compte\n                 (id, telephone_e164, zone_id, consentement_version, consentement_le)\n               VALUES ($1, $2, $3, $4, $5)\n               RETURNING cree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "cree_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "915cfa4da738f2d4ff15dab8cb38370581c52646f79dcd42985c0fcb687893c7"
+}

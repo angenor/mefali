@@ -5,6 +5,254 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/comptes/dossiers-coursier": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Liste des dossiers coursier pour la revue admin (FR-017).",
+        "operationId": "lister_dossiers_coursier",
+        "parameters": [
+          {
+            "name": "statut",
+            "in": "query",
+            "description": "Filtre — tous les dossiers si absent.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Statut d'un rôle, et donc d'un dossier coursier (R9).",
+              "enum": [
+                "en_attente",
+                "valide",
+                "refuse",
+                "suspendu"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dossiers, du plus récemment soumis au plus ancien. `piece_url` est absente ici (détail uniquement).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DossierCoursierAdmin"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/comptes/{compte_id}/dossier-coursier": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Dossier complet d'un coursier, pièce lisible comprise (FR-017 scénario 2).",
+        "operationId": "consulter_dossier_coursier",
+        "parameters": [
+          {
+            "name": "compte_id",
+            "in": "path",
+            "description": "Coursier concerné.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dossier complet — `piece_url` est présignée 10 min.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursierAdmin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Compte ou dossier inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/comptes/{compte_id}/roles/{role}": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Décision admin sur un rôle — machine à états de data-model §4, journalisée.",
+        "operationId": "decider_role",
+        "parameters": [
+          {
+            "name": "compte_id",
+            "in": "path",
+            "description": "Compte concerné.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "role",
+            "in": "path",
+            "description": "Rôle décidé (client exclu : immuable).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Rôle décidable par l'admin. `client` en est ABSENT : il n'est pas décidable\n(posé à l'inscription, immuable — R9). L'exclure du type le rend\nirreprésentable, plutôt que de le refuser à l'exécution.",
+              "enum": [
+                "coursier",
+                "vendeur",
+                "admin"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRole"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouvel état du rôle. Prise d'effet IMMÉDIATE (contrôle par requête, R5).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatRoleDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis — seul un admin existant décide (FR-012).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Compte inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition invalide pour l'état courant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent pour un refus ou une suspension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
       "put": {
         "tags": [
@@ -55,7 +303,10 @@
             }
           },
           "401": {
-            "description": "Jeton admin absent ou invalide."
+            "description": "Session absente, invalide ou révoquée."
+          },
+          "403": {
+            "description": "Rôle admin requis."
           },
           "404": {
             "description": "Zone ou catégorie inconnue."
@@ -66,9 +317,223 @@
         },
         "security": [
           {
-            "adminToken": []
+            "bearerAuth": []
           }
         ]
+      }
+    },
+    "/auth/deconnexion": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Révoque la session courante (déconnexion locale).",
+        "operationId": "deconnexion",
+        "responses": {
+          "204": {
+            "description": "Session révoquée."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/inscription": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Crée le compte après consentement ARTCI, puis ouvre sa session.",
+        "description": "Le 201 rend `SessionOuverte` SEULE, et non le `oneOf` de\n`/auth/otp/verifier` : ici le consentement vient d'être fourni, donc\n`consentement_requis` est une issue que ce chemin ne peut pas produire.\nL'annoncer obligerait chaque client à traiter une branche morte.",
+        "operationId": "inscrire",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Inscription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Compte créé (réduit au numéro vérifié) + session ouverte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOuverte"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton d'inscription invalide, expiré (10 min) ou déjà consommé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Consentement absent — aucun compte n'est créé (FR-006).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/otp/demander": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Demande l'envoi d'un code OTP. Réponse TOUJOURS neutre (SC-003).",
+        "operationId": "demander",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeOtp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Réponse UNIQUE : numéro connu ou non, plafond atteint ou non. Chaque demande invalide le code précédent du numéro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepte"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Numéro non normalisable — erreur de FORMAT, neutre quant à l'existence d'un compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/otp/verifier": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.",
+        "operationId": "verifier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationOtp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Vérification réussie — deux issues discriminées par `resultat`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatVerification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Code faux, expiré (> 5 min) ou essais épuisés (3) — message NEUTRE unique, identique dans TOUS les cas d'échec.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Numéro non normalisable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/rafraichir": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Échange le refresh contre un nouvel accès (rotation systématique, R2).",
+        "operationId": "rafraichir",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeRafraichissement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouveaux jetons — l'ancien refresh est invalidé. Aucune expiration d'inactivité.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JetonsDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà tourné —                                       dans ce dernier cas la session est RÉVOQUÉE (détection de vol, R2).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/config": {
@@ -136,10 +601,747 @@
           }
         }
       }
+    },
+    "/moi": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Compte courant et états de TOUS ses rôles.",
+        "operationId": "moi",
+        "responses": {
+          "200": {
+            "description": "Compte courant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompteMoi"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/adresses": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Adresses enregistrées du compte courant (FR-021).",
+        "operationId": "mes_adresses",
+        "responses": {
+          "200": {
+            "description": "Adresses vivantes, la plus récemment utilisée d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Adresse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Enregistre une adresse — proposition post-livraison acceptée (FR-019).",
+        "operationId": "enregistrer_adresse",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 généré par le client — DEVIENT l'id de l'adresse (R14).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/NouvelleAdresse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Adresse enregistrée — émet `adresse.enregistree`. Un rejeu de la même clé rend l'adresse EXISTANTE, sans doublon (R14).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adresse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Libellé, repère, durée (> paramètre de zone) ou note vocale invalides ; en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/adresses/{adresse_id}": {
+      "delete": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Supprime l'adresse — soft (FR-021).",
+        "operationId": "supprimer_adresse",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Supprimée — émet `adresse.supprimee`. Sans effet sur les livraisons passées."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Renomme l'adresse ou met à jour son repère écrit (FR-021).",
+        "operationId": "modifier_adresse",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierAdresse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Adresse modifiée — ne vaut que pour l'avenir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adresse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Libellé ou repère invalides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/adresses/{adresse_id}/repere-vocal": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "URL présignée de lecture du repère vocal (FR-020).",
+        "operationId": "ecouter_repere_vocal",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lien opaque, valable 10 min. Les octets rendus sont IDENTIQUES à ceux enregistrés (SC-007).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UrlPresignee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue, ou repère vocal absent/purgé (FR-022).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Enregistre un nouveau repère vocal — après purge, ou pour le refaire.",
+        "operationId": "remplacer_repere_vocal",
+        "parameters": [
+          {
+            "name": "adresse_id",
+            "in": "path",
+            "description": "Adresse concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RemplacementRepereVocal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Repère remplacé — émet `adresse.modifiee`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adresse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Adresse inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Durée (> paramètre de zone) ou note vocale invalides.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/dossier-coursier": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "État du dossier coursier du compte courant (FR-013 : l'app Pro l'affiche).",
+        "operationId": "mon_dossier_coursier",
+        "responses": {
+          "200": {
+            "description": "Dossier et son statut.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Aucun dossier soumis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de\nrôle (FR-015).",
+        "operationId": "soumettre_dossier_coursier",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 généré par le client — rejeu réseau idempotent (R14).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SoumissionDossier"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu : un dossier est déjà en attente. Rien n'a changé (R14).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Dossier soumis — rôle coursier `en_attente`. Émet `role.demande` + `dossier_coursier.soumis` dans la même transaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition invalide — dossier déjà `valide` ou `suspendu`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/sessions": {
+      "get": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Appareils/sessions actifs du compte (FR-008).",
+        "operationId": "mes_sessions",
+        "responses": {
+          "200": {
+            "description": "Appareils actifs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionAppareil"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Déconnexion à distance d'un appareil (SC-004).",
+        "operationId": "revoquer_session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "description": "Appareil à déconnecter.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session révoquée — événement `session.revoquee` émis."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "Accepte": {
+        "type": "object",
+        "description": "Réponse UNIQUE de `/auth/otp/demander`.",
+        "required": [
+          "message_cle"
+        ],
+        "properties": {
+          "message_cle": {
+            "type": "string",
+            "description": "Toujours `comptes.otp.envoye_si_valide`.",
+            "example": "comptes.otp.envoye_si_valide"
+          }
+        }
+      },
+      "ActionRoleDto": {
+        "type": "string",
+        "description": "Action d'administration sur un rôle (contrat).",
+        "enum": [
+          "attribuer",
+          "valider",
+          "refuser",
+          "suspendre",
+          "retablir"
+        ]
+      },
+      "Adresse": {
+        "type": "object",
+        "description": "Adresse enregistrée (contrat).\n\n⚠ N'expose NI `compte_id` (implicite : c'est le vôtre), NI la clé S3 du\nrepère, NI `supprimee_le`, NI `livraison_origine` (provision CPT-06).",
+        "required": [
+          "id",
+          "libelle",
+          "lat",
+          "lng",
+          "a_repere_vocal",
+          "zone_id",
+          "cree_le",
+          "derniere_utilisation_le"
+        ],
+        "properties": {
+          "a_repere_vocal": {
+            "type": "boolean",
+            "description": "`false` après purge (12 mois sans utilisation — FR-022)."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Enregistrement."
+          },
+          "derniere_utilisation_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Base de la purge."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant = `Idempotency-Key` du POST créateur (R14)."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude du pin GPS."
+          },
+          "libelle": {
+            "type": "string",
+            "description": "« Maison », « Bureau » ou libre."
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude du pin GPS."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit."
+          },
+          "repere_vocal_duree_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Durée du repère vocal."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de l'adresse."
+          }
+        }
+      },
+      "AppareilDto": {
+        "type": "object",
+        "description": "Appareil déclaré par l'app à l'ouverture de session.",
+        "required": [
+          "nom",
+          "plateforme"
+        ],
+        "properties": {
+          "nom": {
+            "type": "string",
+            "description": "Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste.",
+            "maxLength": 80
+          },
+          "plateforme": {
+            "$ref": "#/components/schemas/PlateformeDto",
+            "description": "Plateforme."
+          }
+        }
+      },
       "CategorieDto": {
         "type": "object",
         "description": "Catégorie active (contrat).",
@@ -160,6 +1362,45 @@
           "slug": {
             "type": "string",
             "description": "Slug de la catégorie."
+          }
+        }
+      },
+      "CompteMoi": {
+        "type": "object",
+        "description": "Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`).",
+        "required": [
+          "id",
+          "telephone_e164",
+          "zone_id",
+          "roles",
+          "cree_le"
+        ],
+        "properties": {
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Création du compte."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant du compte."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EtatRoleDto"
+            },
+            "description": "Rôles et leurs statuts (tous, pas seulement les valides)."
+          },
+          "telephone_e164": {
+            "type": "string",
+            "description": "Identité Mefali — aucune donnée nominative au MVP."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de rattachement."
           }
         }
       },
@@ -184,6 +1425,13 @@
             },
             "description": "Catégories actives dans la zone."
           },
+          "consentement_artci_version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la\nrenvoie telle quelle à l'inscription (FR-006). `null` si non résolue."
+          },
           "devise": {
             "$ref": "#/components/schemas/DeviseDto",
             "description": "Devise résolue."
@@ -197,6 +1445,14 @@
             "propertyNames": {
               "type": "string"
             }
+          },
+          "note_vocale_duree_max_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Durée maximale d'une note vocale, en secondes — borne l'enregistreur des\napps (FR-019). `null` si la zone ne la résout pas."
           },
           "parametres": {
             "type": "object",
@@ -230,6 +1486,24 @@
           }
         }
       },
+      "ConsentementRequis": {
+        "type": "object",
+        "description": "Consentement ARTCI exigé avant création du compte (contrat\n`ConsentementRequis`, FR-006).",
+        "required": [
+          "resultat",
+          "jeton_inscription"
+        ],
+        "properties": {
+          "jeton_inscription": {
+            "type": "string",
+            "description": "Jeton d'inscription à usage unique."
+          },
+          "resultat": {
+            "$ref": "#/components/schemas/DiscriminantConsentement",
+            "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
       "CorpsForcage": {
         "type": "object",
         "description": "Corps de la requête de forçage.",
@@ -240,6 +1514,59 @@
           "forcage": {
             "$ref": "#/components/schemas/ForcageDto",
             "description": "Nouveau mode de forçage à appliquer."
+          }
+        }
+      },
+      "DecisionRole": {
+        "type": "object",
+        "description": "Corps de la décision.",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ActionRoleDto",
+            "description": "Action à appliquer."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif — REQUIS pour `refuser` et `suspendre` (FR-017).",
+            "maxLength": 500
+          }
+        }
+      },
+      "DemandeOtp": {
+        "type": "object",
+        "description": "Corps de `POST /auth/otp/demander`.",
+        "required": [
+          "telephone",
+          "zone"
+        ],
+        "properties": {
+          "telephone": {
+            "type": "string",
+            "description": "Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4)."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de l'app (bootstrap Tiassalé — R13)."
+          }
+        }
+      },
+      "DemandeRafraichissement": {
+        "type": "object",
+        "description": "Corps de `POST /auth/rafraichir`.",
+        "required": [
+          "rafraichissement"
+        ],
+        "properties": {
+          "rafraichissement": {
+            "type": "string",
+            "description": "Jeton de renouvellement opaque courant."
           }
         }
       },
@@ -260,6 +1587,144 @@
             "format": "int32",
             "description": "Nombre de décimales des unités mineures (0 pour XOF).",
             "minimum": 0
+          }
+        }
+      },
+      "DiscriminantConsentement": {
+        "type": "string",
+        "description": "Discriminant de [`ConsentementRequisDto`].",
+        "enum": [
+          "consentement_requis"
+        ]
+      },
+      "DiscriminantSession": {
+        "type": "string",
+        "description": "Discriminant de [`SessionOuverteDto`] — une seule valeur possible.\n\nUn type à UNE variante, et non un `String` : la valeur du discriminant ne\npeut alors pas diverger du schéma, et ce n'est pas à l'appelant de penser à\nl'écrire juste.",
+        "enum": [
+          "session"
+        ]
+      },
+      "DossierCoursier": {
+        "type": "object",
+        "description": "Dossier coursier tel que son titulaire le voit (contrat).\n\n⚠ La CLÉ de la pièce n'en fait pas partie : elle n'a de sens que pour le\nserveur, et l'exposer donnerait un identifiant de bucket à deviner.",
+        "required": [
+          "statut",
+          "referent_nom",
+          "referent_telephone_e164",
+          "vehicules",
+          "soumis_le"
+        ],
+        "properties": {
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de la dernière décision admin."
+          },
+          "referent_nom": {
+            "type": "string",
+            "description": "Référent local (« caution morale », cadrage §7.1)."
+          },
+          "referent_telephone_e164": {
+            "type": "string",
+            "description": "Téléphone du référent, normalisé E.164."
+          },
+          "soumis_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernier dépôt."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut = celui de l'attribution `coursier` (R9)."
+          },
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehiculeDeclare"
+            },
+            "description": "Véhicules déclarés."
+          }
+        }
+      },
+      "DossierCoursierAdmin": {
+        "type": "object",
+        "description": "Dossier complet pour la revue admin (contrat `DossierCoursierAdmin`).",
+        "required": [
+          "compte_id",
+          "telephone_e164",
+          "statut",
+          "referent_nom",
+          "referent_telephone_e164",
+          "vehicules",
+          "soumis_le"
+        ],
+        "properties": {
+          "compte_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Compte du coursier."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de la dernière décision admin."
+          },
+          "piece_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de la pièce (TTL 10 min) — DÉTAIL uniquement, absente en\nliste : présigner N pièces pour un tableau serait du gaspillage, et\nautant de liens vivants qu'aucun œil n'ouvrira."
+          },
+          "referent_nom": {
+            "type": "string",
+            "description": "Référent local."
+          },
+          "referent_telephone_e164": {
+            "type": "string",
+            "description": "Téléphone du référent."
+          },
+          "soumis_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernier dépôt."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut = celui de l'attribution `coursier`."
+          },
+          "telephone_e164": {
+            "type": "string",
+            "description": "Numéro du coursier — l'admin doit pouvoir le rappeler (FR-017)."
+          },
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehiculeDeclare"
+            },
+            "description": "Véhicules déclarés."
+          }
+        }
+      },
+      "ErreurApi": {
+        "type": "object",
+        "description": "Corps d'erreur du contrat — `{ code, message_cle }`.",
+        "required": [
+          "code",
+          "message_cle"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Code stable, exploitable par le client."
+          },
+          "message_cle": {
+            "type": "string",
+            "description": "Clé i18n fr — aucune chaîne UI en dur (constitution VII)."
           }
         }
       },
@@ -292,6 +1757,39 @@
           }
         }
       },
+      "EtatRoleDto": {
+        "type": "object",
+        "description": "État d'un rôle (contrat).",
+        "required": [
+          "role",
+          "statut"
+        ],
+        "properties": {
+          "decide_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Horodatage de la dernière décision."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de la dernière décision admin."
+          },
+          "role": {
+            "type": "string",
+            "description": "Rôle concerné."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut courant."
+          }
+        }
+      },
       "ForcageDto": {
         "type": "string",
         "description": "Mode de forçage (contrat) — mappé sur [`zones::Forcage`].",
@@ -319,13 +1817,344 @@
             "description": "Version du binaire (`CARGO_PKG_VERSION`)."
           }
         }
+      },
+      "Inscription": {
+        "type": "object",
+        "description": "Corps de `POST /auth/inscription`.",
+        "required": [
+          "jeton_inscription",
+          "consentement_version"
+        ],
+        "properties": {
+          "consentement_version": {
+            "type": "string",
+            "description": "Version du texte ARTCI accepté — servie par la config de zone."
+          },
+          "jeton_inscription": {
+            "type": "string",
+            "description": "Émis par `/auth/otp/verifier`, usage unique, TTL 10 min."
+          }
+        }
+      },
+      "JetonsDto": {
+        "type": "object",
+        "description": "Paire de jetons (contrat).",
+        "required": [
+          "acces",
+          "rafraichissement"
+        ],
+        "properties": {
+          "acces": {
+            "type": "string",
+            "description": "JWT HS256, 15 min (claims sub/sid)."
+          },
+          "rafraichissement": {
+            "type": "string",
+            "description": "Opaque 256 bits — tourne à chaque usage."
+          }
+        }
+      },
+      "ModifierAdresse": {
+        "type": "object",
+        "description": "Champs modifiables d'une adresse (contrat).",
+        "properties": {
+          "libelle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau libellé — absent = inchangé.",
+            "maxLength": 60
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau repère écrit — absent = inchangé, `null` = effacé.\n\nLe double `Option` porte cette nuance : sans lui, « ne touche pas » et\n« efface » seraient le même corps JSON.",
+            "maxLength": 500
+          }
+        }
+      },
+      "NouvelleAdresse": {
+        "type": "object",
+        "description": "Adresse à enregistrer après une livraison réussie (FR-019).",
+        "required": [
+          "libelle",
+          "lat",
+          "lng"
+        ],
+        "properties": {
+          "duree_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Durée du repère parlé — bornée par le paramètre de zone\n`medias.note_vocale_duree_max_s`."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude du pin GPS."
+          },
+          "libelle": {
+            "type": "string",
+            "description": "« Maison », « Bureau » ou libre.",
+            "maxLength": 60
+          },
+          "livraison_origine": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "PROVISION — posée par les cycles CMD/CRS ; aucune logique ne la lit."
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude du pin GPS."
+          },
+          "note_vocale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit.",
+            "maxLength": 500
+          }
+        }
+      },
+      "PlateformeDto": {
+        "type": "string",
+        "description": "Plateforme de l'appareil (contrat).",
+        "enum": [
+          "android",
+          "ios"
+        ]
+      },
+      "RemplacementRepereVocal": {
+        "type": "object",
+        "description": "Nouveau repère parlé pour une adresse existante.",
+        "required": [
+          "note_vocale",
+          "duree_s"
+        ],
+        "properties": {
+          "duree_s": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Durée — bornée par le paramètre de zone `medias.note_vocale_duree_max_s`."
+          },
+          "note_vocale": {
+            "type": "string",
+            "format": "binary",
+            "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          }
+        }
+      },
+      "ResultatVerification": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SessionOuverte",
+            "description": "Numéro connu — session ouverte."
+          },
+          {
+            "$ref": "#/components/schemas/ConsentementRequis",
+            "description": "Numéro inconnu — consentement ARTCI exigé avant création (FR-006)."
+          }
+        ],
+        "description": "Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.\n\n`untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du\ncâble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose\ndeux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes."
+      },
+      "SessionAppareil": {
+        "type": "object",
+        "description": "Session/appareil du compte (contrat `SessionAppareil`).",
+        "required": [
+          "id",
+          "appareil_nom",
+          "appareil_plateforme",
+          "cree_le",
+          "derniere_activite_le",
+          "courante"
+        ],
+        "properties": {
+          "appareil_nom": {
+            "type": "string",
+            "description": "Nom déclaré par l'app."
+          },
+          "appareil_plateforme": {
+            "$ref": "#/components/schemas/PlateformeDto",
+            "description": "Plateforme."
+          },
+          "courante": {
+            "type": "boolean",
+            "description": "Session de l'appareil appelant — celle qu'on ne se coupe pas par erreur."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ouverture."
+          },
+          "derniere_activite_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernier rafraîchissement."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant de session."
+          }
+        }
+      },
+      "SessionOuverte": {
+        "type": "object",
+        "description": "Session ouverte sur un compte (contrat `SessionOuverte`).\n\nSchéma NOMMÉ et non une variante anonyme du `oneOf` : c'est aussi le corps\nentier du 201 de `/auth/inscription`, qui n'a qu'une issue possible.",
+        "required": [
+          "resultat",
+          "jetons",
+          "compte"
+        ],
+        "properties": {
+          "compte": {
+            "$ref": "#/components/schemas/CompteMoi",
+            "description": "Compte connecté."
+          },
+          "jetons": {
+            "$ref": "#/components/schemas/JetonsDto",
+            "description": "Jetons de l'appareil."
+          },
+          "resultat": {
+            "$ref": "#/components/schemas/DiscriminantSession",
+            "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
+      "SoumissionDossier": {
+        "type": "object",
+        "description": "Dossier soumis par le coursier : pièce d'identité, référent local et\nvéhicules déclarés (FR-015).",
+        "required": [
+          "piece",
+          "referent_nom",
+          "referent_telephone",
+          "vehicules"
+        ],
+        "properties": {
+          "piece": {
+            "type": "string",
+            "format": "binary",
+            "description": "Pièce d'identité — ≤ 10 Mo, jpeg/png/webp/pdf."
+          },
+          "referent_nom": {
+            "type": "string",
+            "description": "Nom du référent local.",
+            "maxLength": 120
+          },
+          "referent_telephone": {
+            "type": "string",
+            "description": "Téléphone du référent — normalisé E.164 comme celui du compte."
+          },
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Slugs des types de transport, ACTIFS dans la zone (référentiel ZON-03).",
+            "example": [
+              "moto"
+            ],
+            "minItems": 1
+          }
+        }
+      },
+      "UrlPresignee": {
+        "type": "object",
+        "description": "URL présignée de lecture (contrat).",
+        "required": [
+          "url",
+          "expire_le"
+        ],
+        "properties": {
+          "expire_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL opaque, à durée courte."
+          }
+        }
+      },
+      "VehiculeDeclare": {
+        "type": "object",
+        "description": "Véhicule déclaré au dossier (contrat).",
+        "required": [
+          "type_transport_id",
+          "slug",
+          "actif_zone"
+        ],
+        "properties": {
+          "actif_zone": {
+            "type": "boolean",
+            "description": "`false` si le type a été DÉSACTIVÉ dans la zone après la déclaration."
+          },
+          "slug": {
+            "type": "string",
+            "description": "Slug du type (ex. `moto`)."
+          },
+          "type_transport_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Type de transport du référentiel ZON-03."
+          }
+        }
+      },
+      "VerificationOtp": {
+        "type": "object",
+        "description": "Corps de `POST /auth/otp/verifier`.",
+        "required": [
+          "telephone",
+          "zone",
+          "code",
+          "appareil"
+        ],
+        "properties": {
+          "appareil": {
+            "$ref": "#/components/schemas/AppareilDto",
+            "description": "Appareil — capté ici, conservé jusqu'à l'inscription (R3)."
+          },
+          "code": {
+            "type": "string",
+            "description": "Code à 6 chiffres.",
+            "pattern": "^[0-9]{6}$"
+          },
+          "telephone": {
+            "type": "string",
+            "description": "Le MÊME numéro que celui de la demande."
+          },
+          "zone": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de l'app."
+          }
+        }
       }
     },
     "securitySchemes": {
-      "adminToken": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-Admin-Token"
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }

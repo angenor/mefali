@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, compte_id, zone_id, derniere_utilisation_le,\n                      repere_vocal_cle_objet AS \"cle!\"\n               FROM comptes.adresse\n               WHERE repere_vocal_cle_objet IS NOT NULL AND supprimee_le IS NULL\n               ORDER BY derniere_utilisation_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "compte_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "compte_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "derniere_utilisation_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "derniere_utilisation_le"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "cle!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_vocal_cle_objet"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "935edb297fa71ab37a706dd6a8a57f6e9a37ae81881ec3f6ec2405b407450e98"
+}

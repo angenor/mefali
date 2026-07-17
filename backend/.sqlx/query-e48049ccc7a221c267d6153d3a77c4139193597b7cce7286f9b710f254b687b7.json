@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comptes.session\n                 (id, compte_id, refresh_hash, appareil_nom, appareil_plateforme)\n               VALUES ($1, $2, $3, $4, $5)\n               RETURNING cree_le, derniere_activite_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.session",
+            "name": "cree_le"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "derniere_activite_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.session",
+            "name": "derniere_activite_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e48049ccc7a221c267d6153d3a77c4139193597b7cce7286f9b710f254b687b7"
+}

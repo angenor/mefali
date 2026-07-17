@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comptes.attribution_role\n                 (compte_id, role, statut, demande_le)\n               VALUES ($1, 'coursier'::comptes.role, 'en_attente'::comptes.statut_role, $2)\n               ON CONFLICT (compte_id, role) DO UPDATE SET\n                 statut = 'en_attente'::comptes.statut_role,\n                 motif = NULL,\n                 decide_par = NULL,\n                 decide_le = NULL,\n                 demande_le = EXCLUDED.demande_le",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "74a391b0cc466ec0b8de282df7853018647d6f551851da559aa7de837e5f59df"
+}

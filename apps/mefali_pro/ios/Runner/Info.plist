@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Motifs d'accès affichés PAR iOS dans sa propre alerte, au moment de la
+	     demande : ce sont des chaînes utilisateur, en français, et elles disent
+	     à quoi sert l'accès — pas qu'il est « requis ». Une clé manquante n'est
+	     pas une dégradation : iOS TUE le processus dès l'appel à l'API.
+
+	     Les trois y sont bien que l'app pro ne monte aujourd'hui que la photo
+	     de pièce (CPT-04) : les écrans à micro (note vocale d'adresse) vivent
+	     dans mefali_core, que les deux apps embarquent. C'est le choix déjà
+	     acté du projet — « plugins NATIFS stabilisés tôt (Shorebird ne patche
+	     que le Dart ; les ajouter maintenant évite un passage store) »,
+	     mefali_core/pubspec.yaml. Une clé posée trop tard coûte une soumission ;
+	     posée maintenant, rien. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Mefali utilise l’appareil photo pour photographier votre pièce d’identité lorsque vous constituez votre dossier de coursier.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mefali accède à vos photos pour que vous puissiez y choisir la photo de votre pièce d’identité.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mefali utilise le micro pour enregistrer une note vocale expliquant comment vous repérer à une adresse.</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Mefali Pro</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>mefali_pro</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

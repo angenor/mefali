@@ -36,7 +36,15 @@ utilisateur en clés i18n fr).
   `cargo sqlx prepare` (obligatoire après tout changement SQL)
 - Contrat + clients : script de génération openapi.json → clients Dart/TS
   (défini au cycle TRX ; la CI échoue sur un diff de client non commité)
-- Apps : `flutter test` / `flutter run` dans chaque app
+- Apps : `flutter test` / `flutter run` dans chaque app. Sur appareil ou
+  émulateur, passer l'URL de l'API — le défaut `localhost` désigne l'appareil
+  lui-même, pas le poste :
+  `flutter run --dart-define=MEFALI_API_URL=http://<ip-lan-du-poste>:8080`
+  Ajouter `--dart-define=MEFALI_DEV_OTP=true` pour lire le code OTP sur l'écran
+  de saisie (`SMS_MODE=traces` + `APP_ENV=dev` ; surface absente en production).
+  ⚠ L'API doit signer ses URLs présignées avec la MÊME ip que l'appareil peut
+  joindre : `S3_ENDPOINT=http://<ip-lan-du-poste>:3900`, sinon les repères
+  vocaux ne se lisent pas. iOS n'est pas vérifié (Xcode/CocoaPods à installer).
 - Web : `pnpm dev` / `pnpm build` dans `web/`
 
 ## Règles impératives (elles changent le comportement — les respecter toutes)
