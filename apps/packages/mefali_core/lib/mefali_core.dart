@@ -11,6 +11,7 @@ export 'src/auth/cadre_auth.dart';
 export 'src/auth/ecran_consentement.dart';
 export 'src/auth/ecran_otp.dart';
 export 'src/auth/ecran_telephone.dart';
+export 'src/auth/etat_session.dart';
 export 'src/auth/otp_dev.dart';
 export 'src/auth/parcours_auth.dart';
 export 'src/auth/racine_auth.dart';
