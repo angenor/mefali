@@ -34,7 +34,15 @@ class _RouteurRolesState extends ConsumerState<RouteurRoles> {
     // L'état des rôles NAÎT avec cet écran et MEURT avec lui (autoDispose) : à la
     // déconnexion `RacineAuth` démonte le routeur, et l'arête `.select(connecte)`
     // le vide de toute façon — les rôles du compte précédent ne survivent pas.
-    ref.read(etatRolesProvider.notifier).charger();
+    //
+    // DIFFÉRÉ d'un microtask : `charger()` modifie l'état SYNCHRONEMENT dès sa
+    // première ligne (charge=false, pour que ChargementPro réapparaisse au
+    // rafraîchissement — FR-022), et Riverpod interdit de modifier un provider
+    // pendant `initState`. `Session.charger()`, lui, `await` avant tout `state =`,
+    // d'où l'absence de ce report côté RacineAuth.
+    Future.microtask(() {
+      if (mounted) ref.read(etatRolesProvider.notifier).charger();
+    });
     _lireTransports();
   }
 

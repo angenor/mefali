@@ -3,42 +3,14 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
 import 'package:mefali_pro/roles/ecran_etat_demande.dart';
 import 'package:mefali_pro/roles/etat_roles.dart';
 import 'package:mefali_pro/roles/formulaire_dossier.dart';
-
-/// Adaptateur dio qui répond des réponses PRÉ-ÉCRITES, sans réseau.
-class _Transport implements HttpClientAdapter {
-  _Transport(this.repondre);
-
-  final ResponseBody Function(RequestOptions requete) repondre;
-  final List<RequestOptions> recues = [];
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    recues.add(options);
-    return repondre(options);
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-ResponseBody _json(Object corps, {int statut = 200}) => ResponseBody.fromString(
-      jsonEncode(corps),
-      statut,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
 
 Map<String, Object?> _dossier() => {
       'statut': 'en_attente',
@@ -48,27 +20,25 @@ Map<String, Object?> _dossier() => {
       'soumis_le': '2026-07-15T10:00:00Z',
     };
 
-(SessionAuth, _Transport) _session(ResponseBody Function(RequestOptions) repondre) {
-  final transport = _Transport(repondre);
-  final client = MefaliApiClient(basePathOverride: 'http://test.invalid');
-  client.dio.httpClientAdapter = transport;
-  final session = SessionAuth(
-    stockage: StockageJetonsMemoire(
-      const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
-    ),
-    client: client,
+/// Conteneur monté sur un transport factice, session connectée.
+(ProviderContainer, TransportFake) _conteneur(
+  ResponseBody Function(RequestOptions requete) repondre,
+) {
+  final transport = TransportFake(repondre);
+  final container = conteneurMefali(
+    jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+    transport: transport,
   );
-  return (session, transport);
+  return (container, transport);
 }
 
-Widget _monter(Widget enfant) => MaterialApp(
-      theme: MefaliTheme.light,
+Widget _monter(ProviderContainer container, Widget enfant) => harnaisApp(
+      container: container,
       localizationsDelegates: const [
         ...AppLocalizations.localizationsDelegates,
         MefaliCoreLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('fr'),
       home: enfant,
     );
 
@@ -94,12 +64,13 @@ Future<void> _remplirReferent(WidgetTester tester) async {
 void main() {
   group('FormulaireDossierCoursier (FR-015)', () {
     testWidgets('un dossier incomplet ne peut pas être envoyé', (tester) async {
-      final (session, transport) = _session((_) => _json(_dossier(), statut: 201));
+      final (container, transport) = _conteneur((_) => reponseJson(_dossier(), statut: 201));
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const ['a_pied', 'velo', 'moto'],
             choisirPiece: _pieceFixe(),
           ),
@@ -140,12 +111,13 @@ void main() {
 
     testWidgets('un dossier complet part en multipart, avec sa clé d\'idempotence',
         (tester) async {
-      final (session, transport) = _session((_) => _json(_dossier(), statut: 201));
+      final (container, transport) = _conteneur((_) => reponseJson(_dossier(), statut: 201));
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const ['a_pied', 'velo', 'moto'],
             choisirPiece: _pieceFixe(),
           ),
@@ -192,17 +164,18 @@ void main() {
     testWidgets('la clé d\'idempotence ne change pas d\'un essai à l\'autre (R14)',
         (tester) async {
       var appels = 0;
-      final (session, transport) = _session((_) {
+      final (container, transport) = _conteneur((_) {
         appels++;
         // Premier envoi : le réseau lâche APRÈS que le serveur a reçu.
-        if (appels == 1) return _json({'code': 'x', 'message_cle': 'y'}, statut: 500);
-        return _json(_dossier(), statut: 200);
+        if (appels == 1) return reponseJson({'code': 'x', 'message_cle': 'y'}, statut: 500);
+        return reponseJson(_dossier(), statut: 200);
       });
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const ['moto'],
             choisirPiece: _pieceFixe(),
           ),
@@ -229,17 +202,18 @@ void main() {
     });
 
     testWidgets('un 422 du serveur s\'affiche sans perdre la saisie', (tester) async {
-      final (session, _) = _session(
-        (_) => _json(
+      final (container, _) = _conteneur(
+        (_) => reponseJson(
           {'code': 'corps_invalide', 'message_cle': 'comptes.erreur.corps_invalide'},
           statut: 422,
         ),
       );
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const ['moto'],
             choisirPiece: _pieceFixe(),
           ),
@@ -268,12 +242,13 @@ void main() {
 
     testWidgets('sans config de zone, le formulaire le dit au lieu d\'un cul-de-sac',
         (tester) async {
-      final (session, _) = _session((_) => _json(_dossier(), statut: 201));
+      final (container, _) = _conteneur((_) => reponseJson(_dossier(), statut: 201));
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const [],
             choisirPiece: _pieceFixe(),
           ),
@@ -286,12 +261,13 @@ void main() {
 
     testWidgets('seuls les véhicules ACTIFS de la zone sont proposés (scénario 6)',
         (tester) async {
-      final (session, _) = _session((_) => _json(_dossier(), statut: 201));
+      final (container, _) = _conteneur((_) => reponseJson(_dossier(), statut: 201));
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const ['a_pied', 'velo', 'moto'],
             choisirPiece: _pieceFixe(),
           ),
@@ -309,12 +285,13 @@ void main() {
     });
 
     testWidgets('annuler la prise de photo ne casse rien', (tester) async {
-      final (session, _) = _session((_) => _json(_dossier(), statut: 201));
+      final (container, _) = _conteneur((_) => reponseJson(_dossier(), statut: 201));
+      addTearDown(container.dispose);
 
       await tester.pumpWidget(
         _monter(
+          container,
           FormulaireDossierCoursier(
-            session: session,
             transportsActifs: const ['moto'],
             choisirPiece: _pieceFixe(annule: true),
           ),
@@ -335,10 +312,27 @@ void main() {
   });
 
   group('EcranEtatDemande — porte vers le dossier (T019)', () {
+    // Préchargement HORS arbre : `charger()` fait un vrai appel dio, et
+    // `testWidgets` fait tourner une horloge SIMULÉE qu'aucun pump n'avance ici —
+    // `runAsync` le rend à l'horloge réelle. L'abonnement (règle 2) maintient
+    // l'etatRolesProvider autoDispose vivant entre le préchargement et le rendu.
+    Future<EtatRolesData> precharger(
+      WidgetTester tester,
+      ProviderContainer container,
+    ) async {
+      final sub = container.listen(etatRolesProvider, (_, _) {});
+      addTearDown(sub.close);
+      await tester.runAsync(() async {
+        await container.read(sessionProvider.notifier).charger();
+        await container.read(etatRolesProvider.notifier).charger();
+      });
+      return container.read(etatRolesProvider);
+    }
+
     testWidgets('sans rôle, l\'action principale est de constituer le dossier',
         (tester) async {
-      final (session, _) = _session(
-        (_) => _json({
+      final (container, _) = _conteneur(
+        (_) => reponseJson({
           'id': '01900000-0000-7000-8000-000000000401',
           'telephone_e164': '+2250701020304',
           'zone_id': '01900000-0000-7000-8000-000000000002',
@@ -348,25 +342,18 @@ void main() {
           'cree_le': '2026-07-14T10:00:00Z',
         }),
       );
-      final etat = EtatRoles(session: session);
-      addTearDown(etat.dispose);
-      // `charger()` fait un vrai appel dio : `testWidgets` fait tourner une
-      // horloge SIMULÉE, et l'attendre directement le suspendrait pour
-      // toujours. `runAsync` le rend à l'horloge réelle.
-      await tester.runAsync(() async {
-        await session.charger();
-        await etat.charger();
-      });
+      addTearDown(container.dispose);
+      final etat = await precharger(tester, container);
 
-      await tester.pumpWidget(_monter(EcranEtatDemande(etat: etat)));
+      await tester.pumpWidget(_monter(container, EcranEtatDemande(etat: etat)));
       await tester.pumpAndSettle();
 
       expect(find.text('Constituer mon dossier'), findsOneWidget);
     });
 
     testWidgets('après un refus, l\'action devient « corriger et renvoyer »', (tester) async {
-      final (session, _) = _session(
-        (_) => _json({
+      final (container, _) = _conteneur(
+        (_) => reponseJson({
           'id': '01900000-0000-7000-8000-000000000401',
           'telephone_e164': '+2250701020304',
           'zone_id': '01900000-0000-7000-8000-000000000002',
@@ -377,17 +364,10 @@ void main() {
           'cree_le': '2026-07-14T10:00:00Z',
         }),
       );
-      final etat = EtatRoles(session: session);
-      addTearDown(etat.dispose);
-      // `charger()` fait un vrai appel dio : `testWidgets` fait tourner une
-      // horloge SIMULÉE, et l'attendre directement le suspendrait pour
-      // toujours. `runAsync` le rend à l'horloge réelle.
-      await tester.runAsync(() async {
-        await session.charger();
-        await etat.charger();
-      });
+      addTearDown(container.dispose);
+      final etat = await precharger(tester, container);
 
-      await tester.pumpWidget(_monter(EcranEtatDemande(etat: etat)));
+      await tester.pumpWidget(_monter(container, EcranEtatDemande(etat: etat)));
       await tester.pumpAndSettle();
 
       expect(find.text('Corriger et renvoyer mon dossier'), findsOneWidget);
@@ -399,8 +379,8 @@ void main() {
     });
 
     testWidgets('en attente, on ne re-soumet pas — on actualise', (tester) async {
-      final (session, _) = _session(
-        (_) => _json({
+      final (container, _) = _conteneur(
+        (_) => reponseJson({
           'id': '01900000-0000-7000-8000-000000000401',
           'telephone_e164': '+2250701020304',
           'zone_id': '01900000-0000-7000-8000-000000000002',
@@ -411,17 +391,10 @@ void main() {
           'cree_le': '2026-07-14T10:00:00Z',
         }),
       );
-      final etat = EtatRoles(session: session);
-      addTearDown(etat.dispose);
-      // `charger()` fait un vrai appel dio : `testWidgets` fait tourner une
-      // horloge SIMULÉE, et l'attendre directement le suspendrait pour
-      // toujours. `runAsync` le rend à l'horloge réelle.
-      await tester.runAsync(() async {
-        await session.charger();
-        await etat.charger();
-      });
+      addTearDown(container.dispose);
+      final etat = await precharger(tester, container);
 
-      await tester.pumpWidget(_monter(EcranEtatDemande(etat: etat)));
+      await tester.pumpWidget(_monter(container, EcranEtatDemande(etat: etat)));
       await tester.pumpAndSettle();
 
       expect(find.text('Actualiser'), findsOneWidget);
