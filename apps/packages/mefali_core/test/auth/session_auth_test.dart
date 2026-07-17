@@ -56,7 +56,7 @@ void main() {
 
       // `container.listen` SANS `fireImmediately` (⇔ `addListener`).
       var emissions = 0;
-      container.listen(sessionProvider, (_, __) => emissions++);
+      container.listen(sessionProvider, (_, _) => emissions++);
 
       await container.read(sessionProvider.notifier).ouvrir(
             const JetonsSession(acces: 'a', rafraichissement: 'r'),
@@ -77,7 +77,7 @@ void main() {
       addTearDown(container.dispose);
 
       var emissions = 0;
-      container.listen(sessionProvider, (_, __) => emissions++);
+      container.listen(sessionProvider, (_, _) => emissions++);
 
       const jetons = JetonsSession(acces: 'a', rafraichissement: 'r');
       await container.read(sessionProvider.notifier).ouvrir(jetons);
