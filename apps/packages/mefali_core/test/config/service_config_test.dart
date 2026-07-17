@@ -1,5 +1,6 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 /// Source configurable : renvoie les réponses en séquence (ConfigDistante) ou
@@ -46,33 +47,43 @@ ConfigDistante _config(String version) => ConfigDistante(
 void main() {
   test('zone de bootstrap = Tiassalé (UUID fixe du seed)', () {
     expect(zoneBootstrapTiassale, '01900000-0000-7000-8000-000000000002');
+    // ServiceConfig NON démarré (aucun Timer) : on ne vérifie que la zone.
     final service = ServiceConfig(source: _SourceFake([]), cache: _CacheFake());
     expect(service.zone, '01900000-0000-7000-8000-000000000002');
   });
 
   test('hors-ligne au démarrage → sert le cache sans erreur (SC-007)', () {
     fakeAsync((async) {
-      final cache = _CacheFake(_config('v-cache'));
-      final source = _SourceFake([Exception('pas de réseau')]);
-      final service = ServiceConfig(source: source, cache: cache);
+      // Conteneur CRÉÉ, LU et DISPOSÉ dans fakeAsync : le Timer.periodic capte
+      // Zone.current à sa création, et le `build` d'un provider est PARESSEUX —
+      // c'est le `container.read(...)` qui doit être dans la zone. ProviderContainer
+      // NU (retry: pasDeRetry via conteneurMefali), JAMAIS .test() (qui différerait
+      // son dispose au tearDown, hors zone).
+      final container = conteneurMefali(
+        source: _SourceFake([Exception('pas de réseau')]),
+        cache: _CacheFake(_config('v-cache')),
+      );
 
-      service.demarrer();
+      ServiceConfig? service;
+      container.read(serviceConfigProvider).then((s) => service = s);
       async.flushMicrotasks();
 
-      expect(service.courante?.version, 'v-cache', reason: 'dernière config connue');
-      service.arreter();
+      expect(service?.courante?.version, 'v-cache',
+          reason: 'dernière config connue');
+      container.dispose();
     });
   });
 
   test('rafraîchit au démarrage puis toutes les heures (FR-020)', () {
     fakeAsync((async) {
       final source = _SourceFake([_config('v1'), _config('v1'), _config('v2')]);
-      final service = ServiceConfig(source: source, cache: _CacheFake());
+      final container = conteneurMefali(source: source, cache: _CacheFake());
 
-      service.demarrer();
+      ServiceConfig? service;
+      container.read(serviceConfigProvider).then((s) => service = s);
       async.flushMicrotasks();
       expect(source.appels, 1, reason: 'rafraîchi au démarrage');
-      expect(service.courante?.version, 'v1');
+      expect(service?.courante?.version, 'v1');
 
       async.elapse(const Duration(hours: 1));
       async.flushMicrotasks();
@@ -81,28 +92,29 @@ void main() {
       async.elapse(const Duration(hours: 1));
       async.flushMicrotasks();
       expect(source.appels, 3);
-      expect(service.courante?.version, 'v2', reason: 'nouvelle version adoptée');
+      expect(service?.courante?.version, 'v2', reason: 'nouvelle version adoptée');
 
-      service.arreter();
+      container.dispose();
     });
   });
 
   test('une nouvelle version remplace la valeur et le cache (FR-019)', () {
     fakeAsync((async) {
       final cache = _CacheFake(_config('v1'));
-      final source = _SourceFake([_config('v2')]);
-      final service = ServiceConfig(source: source, cache: cache);
+      final container =
+          conteneurMefali(source: _SourceFake([_config('v2')]), cache: cache);
 
-      service.demarrer();
+      ServiceConfig? service;
+      container.read(serviceConfigProvider).then((s) => service = s);
       async.flushMicrotasks();
-      expect(service.courante?.version, 'v2');
+      expect(service?.courante?.version, 'v2');
 
       ConfigDistante? enCache;
       cache.lire(zoneBootstrapTiassale).then((c) => enCache = c);
       async.flushMicrotasks();
       expect(enCache?.version, 'v2', reason: 'cache mis à jour');
 
-      service.arreter();
+      container.dispose();
     });
   });
 
@@ -110,15 +122,16 @@ void main() {
     fakeAsync((async) {
       var ecritures = 0;
       final cache = _CacheCompteur(_config('v1'), () => ecritures++);
-      final source = _SourceFake([_config('v1')]);
-      final service = ServiceConfig(source: source, cache: cache);
+      final container =
+          conteneurMefali(source: _SourceFake([_config('v1')]), cache: cache);
 
-      service.demarrer();
+      ServiceConfig? service;
+      container.read(serviceConfigProvider).then((s) => service = s);
       async.flushMicrotasks();
-      expect(service.courante?.version, 'v1');
+      expect(service?.courante?.version, 'v1');
       expect(ecritures, 0, reason: 'même version → aucune écriture');
 
-      service.arreter();
+      container.dispose();
     });
   });
 }

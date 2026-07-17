@@ -1,10 +1,7 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 /// FR-006/FR-024 — la version du texte ARTCI que l'app RENVOIE doit être celle
@@ -14,34 +11,6 @@ import 'package:mefali_core/mefali_core.dart';
 /// seul chemin réel rend le paramètre de zone INERTE — l'admin éditerait la
 /// version sans aucun effet, et le consentement serait horodaté sur un texte
 /// que personne n'a plus.
-
-class _Transport implements HttpClientAdapter {
-  _Transport(this.repondre);
-
-  final ResponseBody Function(RequestOptions requete) repondre;
-  final List<RequestOptions> recues = [];
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    recues.add(options);
-    return repondre(options);
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-ResponseBody _json(Object corps, {int statut = 200}) => ResponseBody.fromString(
-      jsonEncode(corps),
-      statut,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
 
 Map<String, Object?> _sessionOuverte() => {
       'resultat': 'session',
@@ -55,27 +24,26 @@ Map<String, Object?> _sessionOuverte() => {
       },
     };
 
-(SessionAuth, _Transport) _session() {
-  final transport = _Transport((requete) {
+(ProviderContainer, TransportFake) _conteneur() {
+  final transport = TransportFake((requete) {
     if (requete.path.contains('/auth/otp/demander')) {
-      return _json({'message_cle': 'comptes.otp.envoye_si_valide'}, statut: 202);
+      return reponseJson({'message_cle': 'comptes.otp.envoye_si_valide'},
+          statut: 202);
     }
     if (requete.path.contains('/auth/otp/verifier')) {
-      return _json({'resultat': 'consentement_requis', 'jeton_inscription': 'jet0n'});
+      return reponseJson(
+          {'resultat': 'consentement_requis', 'jeton_inscription': 'jet0n'});
     }
-    return _json(_sessionOuverte(), statut: 201);
+    return reponseJson(_sessionOuverte(), statut: 201);
   });
-  final client = MefaliApiClient(basePathOverride: 'http://test.invalid');
-  client.dio.httpClientAdapter = transport;
-  final session = SessionAuth(stockage: StockageJetonsMemoire(), client: client);
-  return (session, transport);
+  final container = conteneurMefali(transport: transport);
+  return (container, transport);
 }
 
-Widget _monter(Widget enfant) => MaterialApp(
-      theme: MefaliTheme.light,
+Widget _monter(ProviderContainer container, Widget enfant) => harnaisApp(
+      container: container,
       localizationsDelegates: MefaliCoreLocalizations.localizationsDelegates,
       supportedLocales: MefaliCoreLocalizations.supportedLocales,
-      locale: const Locale('fr'),
       home: enfant,
     );
 
@@ -100,13 +68,14 @@ Future<void> _allerJusquAuConsentement(WidgetTester tester) async {
 void main() {
   testWidgets('la version envoyée est celle de la ZONE, pas une constante',
       (tester) async {
-    final (session, transport) = _session();
-    await session.charger();
+    final (container, transport) = _conteneur();
+    addTearDown(container.dispose);
+    await container.read(sessionProvider.notifier).charger();
 
     await tester.pumpWidget(
       _monter(
+        container,
         ParcoursAuth(
-          session: session,
           onConnecte: () {},
           // Une zone qui a fait évoluer son texte : c'est CETTE version qui
           // doit partir, et elle ne ressemble à aucun défaut de code.
@@ -132,13 +101,14 @@ void main() {
 
   testWidgets('sans version connue, l\'inscription est refusée au lieu d\'inventer',
       (tester) async {
-    final (session, transport) = _session();
-    await session.charger();
+    final (container, transport) = _conteneur();
+    addTearDown(container.dispose);
+    await container.read(sessionProvider.notifier).charger();
 
     await tester.pumpWidget(
       _monter(
+        container,
         ParcoursAuth(
-          session: session,
           onConnecte: () {},
           // Config jamais chargée.
           versionConsentement: null,
@@ -156,6 +126,6 @@ void main() {
       reason: 'FR-006 — on n\'horodate pas un consentement sur une version que '
           'l\'on ne connaît pas : mieux vaut un refus qu\'un faux consentement',
     );
-    expect(session.connecte, isFalse);
+    expect(container.read(sessionProvider).connecte, isFalse);
   });
 }

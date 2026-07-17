@@ -54,7 +54,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 
 | Module | Préfixe | P0 | P1 | P2/Prov. | Tranche principale |
 |--------|---------|----|----|----------------|--------------------|
-| Transverse & infra | TRX | 5 | 2 | — | T1 |
+| Transverse & infra | TRX | 5 | 3 | — | T1 |
 | Zones & configuration | ZON | 4 | 1 | — | T1 |
 | Comptes & identité | CPT | 5 | 1 | — | T1 |
 | Vendeurs & catalogue | VND | 4 | 3 | 2 | T1/T3/T4 |
@@ -96,6 +96,10 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 
 **TRX-07 — Conformité ARTCI (P1)**
 - Export/suppression des données d'un utilisateur (endpoint admin) ; rétention photos et **notes vocales** limitée (90 jours, paramétrable) ; consentement à l'inscription.
+
+**TRX-08 — Moule de gestion d'état des apps Flutter (P1)**
+- Un pattern unique pour l'état des apps (Riverpod, providers générés), injecté par la portée et vérifié à la compilation ; état local réservé à ce qui ne sort pas du widget ; règles d'analyse dédiées ; CI : code généré commité, diff non commité = build en échec.
+- Refactor pur : aucun changement visible pour l'utilisateur — les tests existants font contrat. Règle inscrite dans la constitution pour que les cycles suivants (VND, CMD, DSP, CRS…) partent du même moule.
 
 ---
 

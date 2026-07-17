@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
@@ -21,7 +22,7 @@ class InterfacePro extends StatelessWidget {
   const InterfacePro({super.key, required this.etat});
 
   /// Rôles du compte connecté.
-  final EtatRoles etat;
+  final EtatRolesData etat;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +54,7 @@ class InterfacePro extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (valides.length > 1) ...[
-                _Bascule(etat: etat, valides: valides, actif: actif),
+                _Bascule(valides: valides, actif: actif),
                 const SizedBox(height: MefaliTokens.space4),
               ],
               Expanded(
@@ -78,7 +79,7 @@ class InterfacePro extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: MefaliTokens.space3),
-              PiedPro(session: etat.session),
+              const PiedPro(),
             ],
           ),
         ),
@@ -91,15 +92,14 @@ class InterfacePro extends StatelessWidget {
 ///
 /// `SegmentedButton` M3 : la bascule est un choix entre deux vues, pas une
 /// navigation — l'utilisateur ne quitte pas son écran et ne perd rien.
-class _Bascule extends StatelessWidget {
-  const _Bascule({required this.etat, required this.valides, required this.actif});
+class _Bascule extends ConsumerWidget {
+  const _Bascule({required this.valides, required this.actif});
 
-  final EtatRoles etat;
   final List<RolePro> valides;
   final RolePro actif;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
 
     return Semantics(
@@ -118,7 +118,8 @@ class _Bascule extends StatelessWidget {
           selected: {actif},
           // Aucun appel réseau, aucun jeton touché : c'est ce qui rend la
           // bascule instantanée et « sans reconnexion » (SC-006).
-          onSelectionChanged: (choix) => etat.basculer(choix.first),
+          onSelectionChanged: (choix) =>
+              ref.read(etatRolesProvider.notifier).basculer(choix.first),
           showSelectedIcon: false,
         ),
       ),
@@ -159,15 +160,12 @@ class ChargementPro extends StatelessWidget {
 
 /// Échec de lecture des rôles : on le DIT, et on offre de réessayer
 /// (règle d'or 5 — chaque écran gère son erreur réseau).
-class ErreurPro extends StatelessWidget {
+class ErreurPro extends ConsumerWidget {
   /// Crée l'écran d'erreur.
-  const ErreurPro({super.key, required this.etat});
-
-  /// Rôles du compte connecté (pour relancer la lecture).
-  final EtatRoles etat;
+  const ErreurPro({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final textTheme = Theme.of(context).textTheme;
 
@@ -210,10 +208,10 @@ class ErreurPro extends StatelessWidget {
               BoutonPrincipal(
                 libelle: l10n.proErreurAction,
                 picto: Symbols.refresh,
-                onPresse: etat.charger,
+                onPresse: () => ref.read(etatRolesProvider.notifier).charger(),
               ),
               const SizedBox(height: MefaliTokens.space2),
-              PiedPro(session: etat.session),
+              const PiedPro(),
             ],
           ),
         ),

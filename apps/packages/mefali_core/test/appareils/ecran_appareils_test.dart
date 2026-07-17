@@ -1,45 +1,12 @@
-import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
-
-/// Adaptateur dio qui répond des réponses PRÉ-ÉCRITES, sans réseau.
-///
-/// On branche l'API générée sur un faux transport plutôt que de simuler
-/// `MoiApi` : ce qui doit être prouvé, c'est que l'écran parle bien au client
-/// GÉNÉRÉ et sait lire ce que le backend émet réellement.
-class _Transport implements HttpClientAdapter {
-  _Transport(this.repondre);
-
-  final ResponseBody Function(RequestOptions requete) repondre;
-  final List<RequestOptions> recues = [];
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    recues.add(options);
-    return repondre(options);
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-ResponseBody _json(Object corps, {int statut = 200}) => ResponseBody.fromString(
-      jsonEncode(corps),
-      statut,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
 
 Map<String, Object?> _appareil(
   String id,
@@ -58,40 +25,45 @@ Map<String, Object?> _appareil(
 const String _idA = '01900000-0000-7000-8000-0000000000a1';
 const String _idB = '01900000-0000-7000-8000-0000000000b2';
 
-(SessionAuth, _Transport) _session(
-  ResponseBody Function(RequestOptions) repondre, {
+/// Conteneur monté sur un transport factice. On surcharge les DÉPENDANCES
+/// (stockage via `jetons`, transport) ; JAMAIS `sessionProvider`.
+(ProviderContainer, TransportFake) _conteneur(
+  FutureOr<ResponseBody> Function(RequestOptions) repondre, {
   JetonsSession? jetons = const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
 }) {
-  final transport = _Transport(repondre);
-  final client = MefaliApiClient(basePathOverride: 'http://test.invalid');
-  client.dio.httpClientAdapter = transport;
-  final session = SessionAuth(
-    stockage: StockageJetonsMemoire(jetons),
-    client: client,
-  );
-  return (session, transport);
+  final transport = TransportFake(repondre);
+  final container = conteneurMefali(jetons: jetons, transport: transport);
+  return (container, transport);
 }
 
-Widget _monter(Widget enfant) => MaterialApp(
-      theme: MefaliTheme.light,
+Widget _monter(ProviderContainer container, Widget home) => harnaisApp(
+      container: container,
       localizationsDelegates: MefaliCoreLocalizations.localizationsDelegates,
       supportedLocales: MefaliCoreLocalizations.supportedLocales,
-      locale: const Locale('fr'),
-      home: enfant,
+      home: home,
     );
+
+/// Démonte l'arbre puis dispose le conteneur DANS le corps (cas montant
+/// RacineAuth : ServiceConfig porte un Timer que flutter_test verrait « pending »
+/// si le conteneur n'était disposé qu'en addTearDown).
+Future<void> _fin(WidgetTester tester, ProviderContainer container) async {
+  await tester.pumpWidget(const SizedBox());
+  container.dispose();
+}
 
 void main() {
   group('EcranAppareils', () {
     testWidgets('liste les appareils et marque celui-ci', (tester) async {
-      final (session, _) = _session(
-        (_) => _json([
+      final (container, _) = _conteneur(
+        (_) => reponseJson([
           _appareil(_idA, 'Pixel de poche', courante: true),
           _appareil(_idB, 'Téléphone perdu'),
         ]),
       );
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(EcranAppareils(session: session)));
+      await tester.pumpWidget(_monter(container, const EcranAppareils()));
       await tester.pumpAndSettle();
 
       expect(find.text('Pixel de poche'), findsOneWidget);
@@ -102,15 +74,16 @@ void main() {
     testWidgets(
         'la session courante n\'offre PAS de déconnexion à distance — se couper '
         'soi-même laisserait un écran mort', (tester) async {
-      final (session, _) = _session(
-        (_) => _json([
+      final (container, _) = _conteneur(
+        (_) => reponseJson([
           _appareil(_idA, 'Pixel de poche', courante: true),
           _appareil(_idB, 'Téléphone perdu'),
         ]),
       );
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(EcranAppareils(session: session)));
+      await tester.pumpWidget(_monter(container, const EcranAppareils()));
       await tester.pumpAndSettle();
 
       expect(
@@ -123,19 +96,20 @@ void main() {
     testWidgets('révoquer appelle DELETE puis recharge la liste',
         (tester) async {
       var supprime = false;
-      final (session, transport) = _session((requete) {
+      final (container, transport) = _conteneur((requete) {
         if (requete.method == 'DELETE') {
           supprime = true;
           return ResponseBody.fromString('', 204);
         }
-        return _json([
+        return reponseJson([
           _appareil(_idA, 'Pixel de poche', courante: true),
           if (!supprime) _appareil(_idB, 'Téléphone perdu'),
         ]);
       });
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(EcranAppareils(session: session)));
+      await tester.pumpWidget(_monter(container, const EcranAppareils()));
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Symbols.logout));
       await tester.pumpAndSettle();
@@ -152,10 +126,11 @@ void main() {
 
     testWidgets('un échec réseau affiche un message, pas un écran blanc',
         (tester) async {
-      final (session, _) = _session((_) => _json({'code': 'x'}, statut: 500));
-      await session.charger();
+      final (container, _) = _conteneur((_) => reponseJson({'code': 'x'}, statut: 500));
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(EcranAppareils(session: session)));
+      await tester.pumpWidget(_monter(container, const EcranAppareils()));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Impossible de charger'), findsOneWidget);
@@ -166,26 +141,27 @@ void main() {
     testWidgets('un 401 déclenche le renouvellement et rejoue la requête',
         (tester) async {
       var appelsMoi = 0;
-      final (session, transport) = _session((requete) {
+      final (container, transport) = _conteneur((requete) {
         if (requete.path.contains('/auth/rafraichir')) {
-          return _json({'acces': 'jwt-neuf', 'rafraichissement': 'r-neuf'});
+          return reponseJson({'acces': 'jwt-neuf', 'rafraichissement': 'r-neuf'});
         }
         appelsMoi++;
         // Le premier appel tombe sur un accès expiré ; le rejeu passe.
         if (appelsMoi == 1) {
-          return _json({'code': 'non_authentifie'}, statut: 401);
+          return reponseJson({'code': 'non_authentifie'}, statut: 401);
         }
-        return _json([_appareil(_idA, 'Pixel de poche', courante: true)]);
+        return reponseJson([_appareil(_idA, 'Pixel de poche', courante: true)]);
       });
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(EcranAppareils(session: session)));
+      await tester.pumpWidget(_monter(container, const EcranAppareils()));
       await tester.pumpAndSettle();
 
       expect(find.text('Pixel de poche'), findsOneWidget,
-          reason: 'le renouvellement est SILENCIEUX — aucun OTB redemandé');
-      expect(session.acces, 'jwt-neuf');
-      expect(session.rafraichissement, 'r-neuf');
+          reason: 'le renouvellement est SILENCIEUX — aucun OTP redemandé');
+      expect(container.read(sessionProvider).acces, 'jwt-neuf');
+      expect(container.read(sessionProvider).rafraichissement, 'r-neuf');
       expect(
         transport.recues.where((r) => r.path.contains('/auth/rafraichir')).length,
         1,
@@ -196,42 +172,44 @@ void main() {
     testWidgets(
         'un refresh REFUSÉ ferme la session : l\'appareil révoqué à distance '
         'repart sur l\'authentification (SC-004)', (tester) async {
-      final (session, _) = _session((requete) {
-        if (requete.path.contains('/auth/rafraichir')) {
-          return _json({'code': 'non_authentifie'}, statut: 401);
-        }
-        return _json({'code': 'non_authentifie'}, statut: 401);
-      });
+      // Ne PAS appeler charger() : le déclenchement repose sur RacineAuth.initState
+      // (FR-002) — le trigger doit y rester.
+      final (container, _) = _conteneur(
+        (requete) => reponseJson({'code': 'non_authentifie'}, statut: 401),
+      );
 
       await tester.pumpWidget(
         _monter(
+          container,
           RacineAuth(
-            session: session,
             nomAppareil: 'Test',
             demarrage: const Scaffold(body: Text('démarrage')),
-            accueil: (_) => EcranAppareils(session: session),
+            accueil: (_) => const EcranAppareils(),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(session.connecte, isFalse, reason: 'les jetons sont effacés');
+      expect(container.read(sessionProvider).connecte, isFalse,
+          reason: 'les jetons sont effacés');
       expect(find.text('Votre numéro'), findsOneWidget);
+      await _fin(tester, container);
     });
 
     testWidgets('le renouvellement ne se renouvelle pas lui-même (anti-boucle)',
         (tester) async {
       var appels = 0;
-      final (session, _) = _session((requete) {
+      final (container, _) = _conteneur((requete) {
         if (requete.path.contains('/auth/rafraichir')) {
           appels++;
-          return _json({'code': 'non_authentifie'}, statut: 401);
+          return reponseJson({'code': 'non_authentifie'}, statut: 401);
         }
-        return _json({'code': 'non_authentifie'}, statut: 401);
+        return reponseJson({'code': 'non_authentifie'}, statut: 401);
       });
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(EcranAppareils(session: session)));
+      await tester.pumpWidget(_monter(container, const EcranAppareils()));
       await tester.pumpAndSettle();
 
       expect(appels, 1, reason: 'un 401 sur /auth/rafraichir ne se rejoue jamais');

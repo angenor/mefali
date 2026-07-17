@@ -3,38 +3,10 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
-
-/// Adaptateur dio qui répond des réponses PRÉ-ÉCRITES, sans réseau.
-class _Transport implements HttpClientAdapter {
-  _Transport(this.repondre);
-
-  final ResponseBody Function(RequestOptions requete) repondre;
-  final List<RequestOptions> recues = [];
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    recues.add(options);
-    return repondre(options);
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-ResponseBody _json(Object corps, {int statut = 200}) => ResponseBody.fromString(
-      jsonEncode(corps),
-      statut,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
 
 const String _idMaison = '01900000-0000-7000-8000-0000000000a1';
 const String _idChantier = '01900000-0000-7000-8000-0000000000a2';
@@ -59,19 +31,29 @@ Map<String, Object?> _adresse(
       'derniere_utilisation_le': '2026-07-14T12:00:00Z',
     };
 
-(SessionAuth, _Transport) _session(ResponseBody Function(RequestOptions) repondre) {
-  final transport = _Transport(repondre);
-  final client = MefaliApiClient(basePathOverride: 'http://test.invalid');
-  client.dio.httpClientAdapter = transport;
-  final session = SessionAuth(
-    stockage: StockageJetonsMemoire(
-      const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
-    ),
-    client: client,
+/// Conteneur monté sur un transport factice, session connectée. On surcharge les
+/// DÉPENDANCES (stockage via `jetons`, transport) ; JAMAIS `sessionProvider`.
+(ProviderContainer, TransportFake) _conteneur(
+  ResponseBody Function(RequestOptions requete) repondre,
+) {
+  final transport = TransportFake(repondre);
+  final container = conteneurMefali(
+    jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+    transport: transport,
   );
-  return (session, transport);
+  return (container, transport);
 }
 
+/// Montage des écrans de LISTE (Consumer) — sous la portée du conteneur.
+Widget _monterListe(ProviderContainer container, Widget enfant) => harnaisApp(
+      container: container,
+      localizationsDelegates: MefaliCoreLocalizations.localizationsDelegates,
+      supportedLocales: MefaliCoreLocalizations.supportedLocales,
+      home: enfant,
+    );
+
+/// Montage NU des widgets sans état de liste (FeuilleEnregistrerAdresse ne lit
+/// aucun provider — FR-011/FR-009) : MaterialApp simple, aucune portée requise.
 Widget _monter(Widget enfant) => MaterialApp(
       theme: MefaliTheme.light,
       localizationsDelegates: MefaliCoreLocalizations.localizationsDelegates,
@@ -83,10 +65,11 @@ Widget _monter(Widget enfant) => MaterialApp(
 void main() {
   group('ListeAdresses (FR-021)', () {
     testWidgets('liste les adresses avec leur repère', (tester) async {
-      final (session, _) = _session((_) => _json([_adresse(_idMaison, 'Maison')]));
-      await session.charger();
+      final (container, _) = _conteneur((_) => reponseJson([_adresse(_idMaison, 'Maison')]));
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(ListeAdresses(session: session)));
+      await tester.pumpWidget(_monterListe(container, const ListeAdresses()));
       await tester.pumpAndSettle();
 
       expect(find.text('Maison'), findsOneWidget);
@@ -97,15 +80,16 @@ void main() {
 
     testWidgets('une adresse au repère PURGÉ reste utilisable et en redemande un (FR-022)',
         (tester) async {
-      final (session, _) = _session(
-        (_) => _json([
+      final (container, _) = _conteneur(
+        (_) => reponseJson([
           _adresse(_idChantier, 'Chantier',
               aRepereVocal: false, repereTexte: null, dureeS: null),
         ]),
       );
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(ListeAdresses(session: session)));
+      await tester.pumpWidget(_monterListe(container, const ListeAdresses()));
       await tester.pumpAndSettle();
 
       expect(
@@ -124,23 +108,22 @@ void main() {
     testWidgets('écouter demande une URL présignée FRAÎCHE et joue les octets',
         (tester) async {
       String? joue;
-      final (session, transport) = _session((requete) {
+      final (container, transport) = _conteneur((requete) {
         if (requete.path.contains('repere-vocal')) {
-          return _json({
+          return reponseJson({
             'url': 'http://garage.invalid/comptes/reperes/x?sig=abc',
             'expire_le': '2026-07-15T12:10:00Z',
           });
         }
-        return _json([_adresse(_idMaison, 'Maison')]);
+        return reponseJson([_adresse(_idMaison, 'Maison')]);
       });
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
       await tester.pumpWidget(
-        _monter(
-          ListeAdresses(
-            session: session,
-            jouerNote: (url) async => joue = url,
-          ),
+        _monterListe(
+          container,
+          ListeAdresses(jouerNote: (url) async => joue = url),
         ),
       );
       await tester.pumpAndSettle();
@@ -158,15 +141,16 @@ void main() {
     });
 
     testWidgets('supprimer confirme puis appelle DELETE et recharge', (tester) async {
-      final (session, transport) = _session(
+      final (container, transport) = _conteneur(
         (requete) => requete.method == 'DELETE'
             // 204 sans corps — le contrat.
             ? ResponseBody.fromString('', 204)
-            : _json([_adresse(_idMaison, 'Maison')]),
+            : reponseJson([_adresse(_idMaison, 'Maison')]),
       );
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(ListeAdresses(session: session)));
+      await tester.pumpWidget(_monterListe(container, const ListeAdresses()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Supprimer'));
@@ -189,15 +173,16 @@ void main() {
     });
 
     testWidgets('renommer envoie un PATCH avec le seul libellé', (tester) async {
-      final (session, transport) = _session(
+      final (container, transport) = _conteneur(
         (requete) => requete.method == 'PATCH'
             // Le PATCH rend l'adresse, pas la liste : c'est le contrat.
-            ? _json(_adresse(_idMaison, 'Chez maman'))
-            : _json([_adresse(_idMaison, 'Maison')]),
+            ? reponseJson(_adresse(_idMaison, 'Chez maman'))
+            : reponseJson([_adresse(_idMaison, 'Maison')]),
       );
-      await session.charger();
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(ListeAdresses(session: session)));
+      await tester.pumpWidget(_monterListe(container, const ListeAdresses()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Renommer'));
@@ -218,20 +203,22 @@ void main() {
     });
 
     testWidgets('un échec réseau affiche un message, pas un écran blanc', (tester) async {
-      final (session, _) = _session((_) => _json({'code': 'x'}, statut: 500));
-      await session.charger();
+      final (container, _) = _conteneur((_) => reponseJson({'code': 'x'}, statut: 500));
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(ListeAdresses(session: session)));
+      await tester.pumpWidget(_monterListe(container, const ListeAdresses()));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Impossible de charger vos adresses'), findsOneWidget);
     });
 
     testWidgets('sans adresse, l\'écran explique quand il s\'en créera', (tester) async {
-      final (session, _) = _session((_) => _json(<Object>[]));
-      await session.charger();
+      final (container, _) = _conteneur((_) => reponseJson(<Object>[]));
+      addTearDown(container.dispose);
+      await container.read(sessionProvider.notifier).charger();
 
-      await tester.pumpWidget(_monter(ListeAdresses(session: session)));
+      await tester.pumpWidget(_monterListe(container, const ListeAdresses()));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Aucune adresse enregistrée'), findsOneWidget);

@@ -64,6 +64,13 @@ utilisateur en clés i18n fr).
   `docs/design/tokens.md` — ne JAMAIS transposer la structure DOM/CSS des
   exports `docs/design/html/` (exception : l'admin Nuxt peut s'en inspirer).
   Une seule identité Android/iOS : constructeurs `.adaptive`, pas de Cupertino.
+- État des apps Flutter : **Riverpod codegen** (constitution XII). Tout porteur
+  d'état est un provider GÉNÉRÉ par annotation (`.g.dart` commité, jamais édité) ;
+  injection par la PORTÉE, jamais par constructeur ni conteneur global ; l'état
+  strictement local reste local ; `retry: pasDeRetry` sur toute portée ; durée de
+  vie EXPLICITE (`@Riverpod(keepAlive: true)` vs `@riverpod` nu) ; DEUX MOULES —
+  `Notifier<Etat…>` (session, rôles) / `AsyncNotifier` (listes), jamais
+  `AsyncValue` uniforme. Analyse par `dart analyze` (JAMAIS `flutter analyze`).
 - « Prêt ≠ construit » : les PROVISIONS sont des tables/enums seulement —
   aucune UI, aucune logique.
 

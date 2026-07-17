@@ -6,11 +6,13 @@ on:
     paths:
       - 'apps/**'
       - 'clients/dart/**'
+      - 'scripts/verifier-accord-locks.sh'
       - '.github/workflows/apps.yml'
   pull_request:
     paths:
       - 'apps/**'
       - 'clients/dart/**'
+      - 'scripts/verifier-accord-locks.sh'
       - '.github/workflows/apps.yml'
 
 jobs:
@@ -19,10 +21,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package:
-          - apps/packages/mefali_core
-          - apps/mefali_client
-          - apps/mefali_pro
+        include:
+          - package: apps/packages/mefali_core
+            codegen: true
+          - package: apps/mefali_pro
+            codegen: true
+          # mefali_client n'a ni riverpod_annotation ni riverpod_generator :
+          # riverpod_generator/build.yaml déclare `auto_apply: dependents`, donc
+          # aucun builder ne s'y active. Il porte flutter_riverpod pour
+          # ProviderScope (FR-010) et le pin riverpod_lint, rien d'autre (R1).
+          - package: apps/mefali_client
+            codegen: false
     defaults:
       run:
         working-directory: ${{ matrix.package }}
@@ -32,7 +41,34 @@ jobs:
         with:
           flutter-version: 3.44.6
           channel: stable
+      # Régénère AUSSI les l10n (generate: true dans les 3 pubspec.yaml) —
+      # d'où la portée du contrôle de dérive ci-dessous (FR-031, règle 4).
       - run: flutter pub get
-      - run: flutter analyze
-      # Goldens exclus : rendu pixel sensible à la plateforme (générés/vérifiés en local).
+      # FR-034 : la régénération PRÉCÈDE le contrôle de dérive. Commande NUE :
+      # --delete-conflicting-outputs est supprimé de build_runner 2.15.x.
+      - if: matrix.codegen
+        run: dart run build_runner build
+      # FR-031 — tout diff = échec, sur le modèle de contrat-clients.yml.
+      # Scopé `-- .` (le paquet de la matrice) : un échec nomme le coupable.
+      # Portée = répertoire du paquet (pas *.g.dart) : couvre aussi les l10n de
+      # mefali_core (commitées, gardées par rien) et pubspec.lock (SC-008).
+      - name: Aucun diff (dérive interdite)
+        run: git diff --exit-code -- .
+      # ⚠ dart analyze, PAS flutter analyze : flutter analyze NE CHARGE PAS les
+      # plugins analysis_server_plugin ⇒ les 15 règles riverpod_lint seraient un
+      # no-op silencieux et la CI resterait verte (FR-032/FR-033, règle 1).
+      # La doc using_plugins.md prétend le contraire : elle est fausse (R2).
+      - run: dart analyze
+      # Goldens exclus : rendu pixel sensible à la plateforme (générés/vérifiés
+      # en local). À rejouer À LA MAIN avant fusion, JAMAIS --update-goldens.
       - run: flutter test --exclude-tags golden
+
+  # SC-008 : versions communes accordées entre les 3 pubspec.lock, ET pin
+  # riverpod_lint identique dans les 3 analysis_options.yaml — riverpod_lint
+  # n'est dans AUCUN lockfile, ce script est son seul gel (R1). Tourne depuis la
+  # racine du dépôt (aucun working-directory de matrice ici).
+  accord-locks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/verifier-accord-locks.sh

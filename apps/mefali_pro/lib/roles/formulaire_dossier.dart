@@ -2,6 +2,7 @@ import 'package:built_collection/built_collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
@@ -57,17 +58,13 @@ Future<PieceChoisie?> choisirPieceAppareil(ImageSource source) async {
 /// zone (référentiel ZON-03) : jamais d'une liste en dur. Le serveur refuse de
 /// toute façon tout ce qui n'y est pas — proposer un choix impossible ne ferait
 /// que promettre un 422.
-class FormulaireDossierCoursier extends StatefulWidget {
+class FormulaireDossierCoursier extends ConsumerStatefulWidget {
   /// Crée le formulaire.
   const FormulaireDossierCoursier({
     super.key,
-    required this.session,
     required this.transportsActifs,
     this.choisirPiece = choisirPieceAppareil,
   });
-
-  /// Session du compte connecté (porte le client généré, authentifié).
-  final SessionAuth session;
 
   /// Slugs des types de transport actifs dans la zone.
   final List<String> transportsActifs;
@@ -76,10 +73,12 @@ class FormulaireDossierCoursier extends StatefulWidget {
   final ChoisirPiece choisirPiece;
 
   @override
-  State<FormulaireDossierCoursier> createState() => _FormulaireDossierCoursierState();
+  ConsumerState<FormulaireDossierCoursier> createState() =>
+      _FormulaireDossierCoursierState();
 }
 
-class _FormulaireDossierCoursierState extends State<FormulaireDossierCoursier> {
+class _FormulaireDossierCoursierState
+    extends ConsumerState<FormulaireDossierCoursier> {
   final TextEditingController _nom = TextEditingController();
   final TextEditingController _telephone = TextEditingController();
   final Set<String> _vehicules = {};
@@ -131,7 +130,7 @@ class _FormulaireDossierCoursierState extends State<FormulaireDossierCoursier> {
     });
 
     try {
-      await widget.session.client.getMoiApi().soumettreDossierCoursier(
+      await ref.read(clientSessionProvider).getMoiApi().soumettreDossierCoursier(
             idempotencyKey: _cleIdempotence,
             piece: MultipartFile.fromBytes(
               piece.octets,

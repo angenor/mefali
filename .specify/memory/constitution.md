@@ -1,30 +1,31 @@
 <!--
-SYNC IMPACT REPORT — /speckit.constitution du 2026-07-13 (amendement)
-Version : 1.0.0 → 1.0.1 (PATCH — clarification sans changement de sens)
+SYNC IMPACT REPORT — /speckit.constitution du 2026-07-17 (amendement)
+Version : 1.0.1 → 1.1.0 (MINOR — ajout d'un principe)
 Principes modifiés :
-  II. Architecture — « MinIO est accédé via l'API S3 » → « Garage est accédé
-      via l'API S3 » (la règle — accès exclusif par l'API S3 — est inchangée ;
-      seule la brique nommée change)
-  X. Versions à jour puis figées — liste des briques : MinIO → Garage
-Motif : MinIO community archivé le 2026-04-25 (plus de patchs de sécurité,
-  dernière image sept. 2025) ; bascule sur Garage v2.3.0 (S3-compatible,
-  mono-nœud replication_mode=1) décidée et validée le 2026-07-13 au cycle
-  001-socle-monorepo. Docs produit déjà à jour : docs/cadrage-v5.md
-  (§10, §10.4, §10.10), docs/user-stories-v2.md, CLAUDE.md.
-Sections ajoutées : aucune. Sections supprimées : aucune.
+  X. Versions à jour puis figées — ajout de « Riverpod » à la liste nommée des
+     briques (chaîne codegen : flutter_riverpod, riverpod_annotation,
+     riverpod_generator, build_runner, riverpod_lint ; riverpod_lint figé HORS
+     lockfile par scripts/verifier-accord-locks.sh, écart X consigné au cycle 004).
+Sections ajoutées :
+  XII. Gestion d'état des apps Flutter — Riverpod codegen (nouveau principe).
+Sections supprimées : aucune. Principes I–XI inchangés (hors ajout à X).
+Motif : cycle 004-riverpod-etat-flutter (TRX-08, P1) — la gestion d'état des apps
+  Flutter migre de ChangeNotifier + ListenableBuilder injectés par constructeur
+  vers Riverpod codegen. Le principe DÉCRIT une pratique déjà livrée par le cycle
+  (moule opposable aux cycles métier suivants : CRS, VND, CMD, DSP).
 Templates propagés :
-  ✅ .specify/templates/plan-template.md — arborescence monorepo : MinIO → Garage
-  ✅ .specify/templates/spec-template.md — aucune référence, rien à faire
-  ✅ .specify/templates/tasks-template.md — aucune référence, rien à faire
+  ✅ .specify/templates/plan-template.md — Constitution Check référence les
+     principes par numéro ; XII s'ajoute sans invalider I–XI (aucun nombre en dur)
+  ✅ .specify/templates/spec-template.md — aucune référence au nombre de principes
+  ✅ .specify/templates/tasks-template.md — aucune référence au nombre de principes
   ✅ .specify/templates/checklist-template.md — aucune référence, rien à faire
   — .specify/templates/commands/*.md : répertoire absent, rien à faire
-Suivis différés (mis à jour) :
-  - TODO(taxonomie-evenements) : docs/taxonomie-evenements.md à créer par la
-    tâche T020 du cycle 001-socle-monorepo (planifiée).
-  - TODO(git) résolu : dépôt initialisé ; la CI (diff de clients) arrive au
-    cycle 001-socle-monorepo (tâches T016, T029–T031).
+  ✅ CLAUDE.md — règle correspondante ajoutée en parallèle (FR-041, cycle 004 T029)
+Suivis différés : aucun nouveau.
 Historique : ratification initiale 1.0.0 du 2026-07-13 (11 principes créés,
-  sections Contexte produit, Workflow & portes qualité, Governance).
+  sections Contexte produit, Workflow & portes qualité, Governance) ; amendement
+  PATCH 1.0.1 du 2026-07-13 (MinIO → Garage) ; amendement MINOR 1.1.0 du
+  2026-07-17 (principe XII — Riverpod codegen).
 -->
 
 # Constitution Mefali
@@ -140,10 +141,12 @@ par refonte du tronc.
 
 ### X. Versions à jour puis figées
 
-- Chaque brique (Rust, Actix, sqlx, utoipa, Flutter, Shorebird, Nuxt 4,
-  Postgres, Redis, Garage, OSRM, Metabase) est prise en dernière version
+- Chaque brique (Rust, Actix, sqlx, utoipa, Flutter, Riverpod, Shorebird,
+  Nuxt 4, Postgres, Redis, Garage, OSRM, Metabase) est prise en dernière version
   STABLE, vérifiée à l'initialisation du module concerné, puis figée par
-  lockfile.
+  lockfile. Exception nommée : `riverpod_lint` se déclare dans
+  `analysis_options.yaml`, hors de tout lockfile ; il est figé par version exacte
+  répétée et gardée accordée par `scripts/verifier-accord-locks.sh`.
 - Revue mensuelle des versions.
 
 ### XI. Référence visuelle unique
@@ -159,6 +162,31 @@ par refonte du tronc.
   s'appuyer sur la structure HTML, adaptée aux composants du projet.
 - Une seule identité visuelle sur Android et iOS : pas de variante Cupertino ;
   conventions système via les constructeurs `.adaptive`.
+
+### XII. Gestion d'état des apps Flutter — Riverpod codegen
+
+- Tout PORTEUR d'état des apps Flutter est un provider GÉNÉRÉ par annotation
+  (`@riverpod` / `@Riverpod`) ; son `.g.dart` est commité à côté de sa
+  bibliothèque, gardé par un contrôle de dérive, et JAMAIS édité à la main (même
+  règle que `clients/dart`, principe I).
+- L'INJECTION se fait par la PORTÉE (`ProviderScope` / `overrides`), jamais par
+  constructeur ni par conteneur global (anti-pattern explicite de Riverpod).
+- L'état strictement LOCAL — contrôleurs de saisie, focus, comptes à rebours
+  ergonomiques, brouillons non soumis, ressources natives liées au widget —
+  reste où il est, jamais providerifié.
+- `retry: pasDeRetry` sur TOUTE création de portée : le retry automatique de
+  Riverpod 3 (10 essais) rejouerait des requêtes qu'aucun comportement n'attend.
+- La DURÉE DE VIE est EXPLICITE et ARGUMENTÉE : `@Riverpod(keepAlive: true)` pour
+  les porteurs de processus, `@riverpod` nu (autoDispose) pour les états
+  jetables. Aucun lint ne garde cette opposition — elle relève des tests et de la
+  revue.
+- DEUX MOULES, nommés : `Notifier<Etat…>` pour les porteurs à sémantique propre
+  (session, rôles) ; `AsyncNotifier` pour les chargements de liste (adresses,
+  appareils). Ne JAMAIS uniformiser derrière `AsyncValue` — cela détruirait les
+  deux sémantiques opposées de chargement.
+- L'analyse statique passe par `dart analyze` (JAMAIS `flutter analyze`, qui ne
+  charge pas le plugin) ; `riverpod_lint` est actif, ses 3 règles INFO escaladées
+  en `error`.
 
 ## Contexte produit & contraintes
 
@@ -210,4 +238,4 @@ par refonte du tronc.
 - `CLAUDE.md` (racine) est le guide d'exécution courant ; il reste synchronisé
   avec la constitution et ne la contredit jamais.
 
-**Version**: 1.0.1 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
+**Version**: 1.1.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-17

@@ -1,74 +1,91 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../l10n/mefali_core_localizations.dart';
-import '../auth/session_auth.dart';
+import '../auth/clients.dart';
 import '../theme/etats.dart';
 import '../theme/tokens.dart';
 import 'note_vocale.dart';
+
+part 'liste_adresses.g.dart';
+
+/// La liste des adresses du compte. `@riverpod` nu (autoDispose) : écran de
+/// liste, aucun état à faire survivre.
+@riverpod
+class MesAdresses extends _$MesAdresses {
+  @override
+  Future<List<Adresse>> build() => _charger();
+
+  Future<List<Adresse>> _charger() async {
+    final reponse = await ref.read(clientSessionProvider).getMoiApi().mesAdresses();
+    return reponse.data?.toList() ?? const [];
+  }
+
+  /// FR-023 — le squelette DOIT réapparaître, comme le
+  /// `setState(() => _adresses = _charger())` d'avant (retour en
+  /// `ConnectionState.waiting`). `state = const AsyncLoading()` EXPLICITE : à un
+  /// seul endroit, `.when()` reste aux défauts partout (R9).
+  Future<void> recharger() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_charger);
+  }
+
+  /// URL présignée du repère vocal d'une adresse (lecture, pas mutation).
+  Future<String> urlRepere(String id) async {
+    final reponse =
+        await ref.read(clientSessionProvider).getMoiApi().ecouterRepereVocal(adresseId: id);
+    return reponse.data!.url;
+  }
+
+  /// Renomme une adresse puis réaffiche le squelette.
+  Future<void> renommer(String id, String libelle) async {
+    await ref.read(clientSessionProvider).getMoiApi().modifierAdresse(
+          adresseId: id,
+          modifierAdresse: ModifierAdresse((b) => b..libelle = libelle),
+        );
+    await recharger();
+  }
+
+  /// Supprime une adresse puis réaffiche le squelette.
+  Future<void> supprimer(String id) async {
+    await ref.read(clientSessionProvider).getMoiApi().supprimerAdresse(adresseId: id);
+    await recharger();
+  }
+}
 
 /// « Mes adresses » — lister, renommer, supprimer (FR-021).
 ///
 /// Une adresse dont le repère vocal a été purgé (12 mois sans utilisation,
 /// FR-022) reste ici et reste utilisable : elle affiche simplement de quoi en
 /// réenregistrer un.
-class ListeAdresses extends StatefulWidget {
+class ListeAdresses extends ConsumerWidget {
   /// Crée l'écran.
-  const ListeAdresses({super.key, required this.session, this.jouerNote = jouerNoteReseau});
+  const ListeAdresses({super.key, this.jouerNote = jouerNoteReseau});
 
-  /// Session du compte connecté (porte le client généré, authentifié).
-  final SessionAuth session;
-
-  /// Lecteur de note — doublé par les tests.
+  /// Lecteur de note — doublé par les tests (FR-011 : reste un callback).
   final JouerNote jouerNote;
 
-  @override
-  State<ListeAdresses> createState() => _ListeAdressesState();
-}
-
-class _ListeAdressesState extends State<ListeAdresses> {
-  late Future<List<Adresse>> _adresses;
-
-  @override
-  void initState() {
-    super.initState();
-    _adresses = _charger();
-  }
-
-  Future<List<Adresse>> _charger() async {
-    final reponse = await widget.session.client.getMoiApi().mesAdresses();
-    return reponse.data?.toList() ?? const [];
-  }
-
-  void _recharger() {
-    // Corps de BLOC : `setState(() => x = f())` rendrait un Future, que Flutter
-    // rejette.
-    setState(() {
-      _adresses = _charger();
-    });
-  }
-
-  Future<String> _urlRepere(String id) async {
-    final reponse = await widget.session.client.getMoiApi().ecouterRepereVocal(adresseId: id);
-    return reponse.data!.url;
-  }
-
-  Future<void> _renommer(Adresse adresse) async {
+  Future<void> _renommer(
+    BuildContext context,
+    WidgetRef ref,
+    Adresse adresse,
+  ) async {
     final nouveau = await showDialog<String>(
       context: context,
       builder: (context) => _DialogueRenommer(libelle: adresse.libelle),
     );
     if (nouveau == null || nouveau.isEmpty) return;
-
-    await widget.session.client.getMoiApi().modifierAdresse(
-          adresseId: adresse.id,
-          modifierAdresse: ModifierAdresse((b) => b..libelle = nouveau),
-        );
-    if (mounted) _recharger();
+    await ref.read(mesAdressesProvider.notifier).renommer(adresse.id, nouveau);
   }
 
-  Future<void> _supprimer(Adresse adresse) async {
+  Future<void> _supprimer(
+    BuildContext context,
+    WidgetRef ref,
+    Adresse adresse,
+  ) async {
     final l10n = MefaliCoreLocalizations.of(context)!;
     final confirme = await showDialog<bool>(
       context: context,
@@ -88,35 +105,28 @@ class _ListeAdressesState extends State<ListeAdresses> {
       ),
     );
     if (confirme != true) return;
-
-    await widget.session.client.getMoiApi().supprimerAdresse(adresseId: adresse.id);
-    if (mounted) _recharger();
+    await ref.read(mesAdressesProvider.notifier).supprimer(adresse.id);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = MefaliCoreLocalizations.of(context)!;
+    final adresses = ref.watch(mesAdressesProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.adressesTitre)),
-      body: FutureBuilder<List<Adresse>>(
-        future: _adresses,
-        builder: (context, instantane) {
-          // Squelettes, jamais un spinner plein écran (docs/design §7).
-          if (instantane.connectionState != ConnectionState.done) {
-            return const SqueletteListe();
-          }
-          if (instantane.hasError) {
-            return MessageEtat(
-              texte: l10n.adressesErreur,
-              picto: Symbols.wifi_off,
-              // Une erreur réseau SANS action est un cul-de-sac : l'utilisateur
-              // n'a plus qu'à tuer l'app (règle d'or 5).
-              action: _recharger,
-              libelleAction: l10n.actionReessayer,
-            );
-          }
-          final adresses = instantane.data ?? const <Adresse>[];
+      body: adresses.when(
+        // Squelettes, jamais un spinner plein écran (docs/design §7).
+        loading: () => const SqueletteListe(),
+        error: (erreur, _) => MessageEtat(
+          texte: l10n.adressesErreur,
+          picto: Symbols.wifi_off,
+          // Une erreur réseau SANS action est un cul-de-sac : l'utilisateur
+          // n'a plus qu'à tuer l'app (règle d'or 5).
+          action: () => ref.read(mesAdressesProvider.notifier).recharger(),
+          libelleAction: l10n.actionReessayer,
+        ),
+        data: (adresses) {
           if (adresses.isEmpty) {
             return MessageEtat(texte: l10n.adressesVide, picto: Symbols.bookmark);
           }
@@ -126,10 +136,11 @@ class _ListeAdressesState extends State<ListeAdresses> {
             separatorBuilder: (_, _) => const SizedBox(height: MefaliTokens.space3),
             itemBuilder: (context, i) => _Carte(
               adresse: adresses[i],
-              urlRepere: () => _urlRepere(adresses[i].id),
-              jouerNote: widget.jouerNote,
-              onRenommer: () => _renommer(adresses[i]),
-              onSupprimer: () => _supprimer(adresses[i]),
+              urlRepere: () =>
+                  ref.read(mesAdressesProvider.notifier).urlRepere(adresses[i].id),
+              jouerNote: jouerNote,
+              onRenommer: () => _renommer(context, ref, adresses[i]),
+              onSupprimer: () => _supprimer(context, ref, adresses[i]),
             ),
           );
         },
@@ -275,4 +286,3 @@ class _Carte extends StatelessWidget {
     );
   }
 }
-
