@@ -636,6 +636,135 @@ pub async fn deposer_charte(
     }))
 }
 
+// ── Agrément (FR-004/005, VND-01) ──────────────────────────────────────────
+
+/// Agrée un prospect : la fiche devient servie et commandable, l'identité de
+/// plaque est créée au premier passage, l'activation de catégorie recalculée.
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/agrement",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire (prospect).")),
+    responses(
+        (status = 200, description = "Agréé — jeton de plaque + code de secours posés au \
+         PREMIER agrément (FR-013), compteur de la catégorie recalculé dans la même \
+         transaction (SC-010). Émet `prestataire.agree`.", body = PrestataireAdminDetailDto),
+        (status = 409, description = "Transition interdite (déjà agréé, suspendu — FR-004).",
+         body = ErreurApiDto),
+        (status = 422, description = "Agrément incomplet — le corps porte `manques` \
+         (identifiants stables : `photo`, `charte_signee`, `site`, `horaires` — FR-005).",
+         body = ErreurApiDto),
+        (status = 404, description = "Prestataire inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/agrement")]
+pub async fn agreer_prestataire(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot.agreer(&mut tx, prestataire, auth.compte_id).await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
+}
+
+// ── Rattachements (FR-006..008) ────────────────────────────────────────────
+
+/// Corps du rattachement.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RattacherCompteDto {
+    /// Compte vérifié à rattacher.
+    pub compte_id: Uuid,
+}
+
+/// Rattache un compte vérifié — attribue le rôle vendeur si absent,
+/// IDEMPOTENT (FR-007, research R11).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/rattachements",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire AGRÉÉ.")),
+    request_body = RattacherCompteDto,
+    responses(
+        (status = 200, description = "Rattaché (ou déjà rattaché — même réponse, rien rejoué). \
+         Le rôle vendeur est attribué si le compte n'en portait aucun : l'agrément vaut \
+         validation.", body = PrestataireAdminDetailDto),
+        (status = 409, description = "Prestataire non agréé — le rattachement exige l'état \
+         agree (FR-007, analyse A1).", body = ErreurApiDto),
+        (status = 404, description = "Prestataire ou compte inconnus.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/rattachements")]
+pub async fn rattacher_compte(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<RattacherCompteDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let issue = depot
+        .rattacher_compte(&mut tx, prestataire, corps.compte_id, auth.compte_id)
+        .await;
+    match issue {
+        Ok(()) => {}
+        // FR-007 (A1) : 409 — l'état du prestataire, pas un refus de rôle.
+        Err(prestataires::ErreurPrestataires::PrestataireNonAgree(_)) => {
+            return Err(ErreurPresta::TransitionInvalide);
+        }
+        Err(e) => return Err(e.into()),
+    }
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
+}
+
+/// Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
+#[utoipa::path(
+    delete,
+    path = "/admin/prestataires/{id}/rattachements/{compte_id}",
+    tag = "admin",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire."),
+        ("compte_id" = Uuid, Path, description = "Compte à détacher."),
+    ),
+    responses(
+        (status = 204, description = "Détaché. Émet `rattachement.supprime` — le rôle du \
+         compte est INTACT (aucune cascade)."),
+        (status = 404, description = "Rattachement inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[delete("/admin/prestataires/{id}/rattachements/{compte_id}")]
+pub async fn detacher_compte(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let (prestataire, compte) = chemin.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .detacher_compte(&mut tx, prestataire, compte, auth.compte_id)
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::NoContent().finish())
+}
+
 // ── Site unique (FR-018/019) ───────────────────────────────────────────────
 
 /// Crée ou met à jour LE site (position GPS, horaires, statut initial).

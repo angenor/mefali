@@ -91,6 +91,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/agrement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agrée un prospect : la fiche devient servie et commandable, l'identité de
+         *     plaque est créée au premier passage, l'activation de catégorie recalculée.
+         */
+        post: operations["agreer_prestataire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/charte": {
         parameters: {
             query?: never;
@@ -137,6 +157,43 @@ export interface paths {
         post?: never;
         /** Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026). */
         delete: operations["supprimer_photo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/rattachements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rattache un compte vérifié — attribue le rôle vendeur si absent,
+         *     IDEMPOTENT (FR-007, research R11).
+         */
+        post: operations["rattacher_compte"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/rattachements/{compte_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008). */
+        delete: operations["detacher_compte"];
         options?: never;
         head?: never;
         patch?: never;
@@ -467,6 +524,23 @@ export interface paths {
          *     canal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).
          */
         get: operations["consulter_prestataire"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prestataires que ce compte pilote (rattachements du cycle VND). */
+        get: operations["mes_prestataires"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1089,6 +1163,20 @@ export interface components {
             /** @description Motif de la dernière décision (suspension). */
             statut_motif?: string | null;
         };
+        /** @description Prestataire pilotable par le compte (résumé — l'app prend le premier). */
+        PrestatairePilotable: {
+            /** @description État effectif de la boutique. */
+            boutique: components["schemas"]["EtatEffectifBoutique"];
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /** @description Nom public. */
+            nom: string;
+            /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
+            statut: components["schemas"]["StatutPrestataire"];
+        };
         /** @description Rattachement compte ↔ prestataire. */
         RattachementDto: {
             /**
@@ -1101,6 +1189,14 @@ export interface components {
              * @description Depuis quand.
              */
             rattache_le: string;
+        };
+        /** @description Corps du rattachement. */
+        RattacherCompteDto: {
+            /**
+             * Format: uuid
+             * @description Compte vérifié à rattacher.
+             */
+            compte_id: string;
         };
         /** @description Nouveau repère parlé pour une adresse existante. */
         RemplacementRepereVocal: {
@@ -1663,6 +1759,74 @@ export interface operations {
             };
         };
     };
+    agreer_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire (prospect). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agréé — jeton de plaque + code de secours posés au PREMIER agrément (FR-013), compteur de la catégorie recalculé dans la même transaction (SC-010). Émet `prestataire.agree`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition interdite (déjà agréé, suspendu — FR-004). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Agrément incomplet — le corps porte `manques` (identifiants stables : `photo`, `charte_signee`, `site`, `horaires` — FR-005). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     deposer_charte: {
         parameters: {
             query?: never;
@@ -1829,6 +1993,119 @@ export interface operations {
                 };
             };
             /** @description Photo ou prestataire inconnus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    rattacher_compte: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire AGRÉÉ. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RattacherCompteDto"];
+            };
+        };
+        responses: {
+            /** @description Rattaché (ou déjà rattaché — même réponse, rien rejoué). Le rôle vendeur est attribué si le compte n'en portait aucun : l'agrément vaut validation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire ou compte inconnus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire non agréé — le rattachement exige l'état agree (FR-007, analyse A1). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    detacher_compte: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Compte à détacher. */
+                compte_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Détaché. Émet `rattachement.supprime` — le rôle du compte est INTACT (aucune cascade). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rattachement inconnu. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2744,6 +3021,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    mes_prestataires: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prestataires rattachés, plus ancien rattachement d'abord — l'app pilote le premier au MVP (aucune sélection de site n'existe, FR-019). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestatairePilotable"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle vendeur requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };

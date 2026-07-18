@@ -550,6 +550,94 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/agrement": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Agrée un prospect : la fiche devient servie et commandable, l'identité de\nplaque est créée au premier passage, l'activation de catégorie recalculée.",
+        "operationId": "agreer_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire (prospect).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agréé — jeton de plaque + code de secours posés au PREMIER agrément (FR-013), compteur de la catégorie recalculé dans la même transaction (SC-010). Émet `prestataire.agree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition interdite (déjà agréé, suspendu — FR-004).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Agrément incomplet — le corps porte `manques` (identifiants stables : `photo`, `charte_signee`, `site`, `horaires` — FR-005).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/charte": {
       "post": {
         "tags": [
@@ -781,6 +869,165 @@
           },
           "404": {
             "description": "Photo ou prestataire inconnus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/rattachements": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Rattache un compte vérifié — attribue le rôle vendeur si absent,\nIDEMPOTENT (FR-007, research R11).",
+        "operationId": "rattacher_compte",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire AGRÉÉ.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RattacherCompteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rattaché (ou déjà rattaché — même réponse, rien rejoué). Le rôle vendeur est attribué si le compte n'en portait aucun : l'agrément vaut validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire ou compte inconnus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Prestataire non agréé — le rattachement exige l'état agree (FR-007, analyse A1).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/rattachements/{compte_id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).",
+        "operationId": "detacher_compte",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "compte_id",
+            "in": "path",
+            "description": "Compte à détacher.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Détaché. Émet `rattachement.supprime` — le rôle du compte est INTACT (aucune cascade)."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rattachement inconnu.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1959,6 +2206,55 @@
             "description": "Rate-limit par IP."
           }
         }
+      }
+    },
+    "/vendeur/prestataires": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Prestataires que ce compte pilote (rattachements du cycle VND).",
+        "operationId": "mes_prestataires",
+        "responses": {
+          "200": {
+            "description": "Prestataires rattachés, plus ancien rattachement d'abord — l'app pilote le premier au MVP (aucune sélection de site n'existe, FR-019).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestatairePilotable"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle vendeur requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -3178,6 +3474,35 @@
         ],
         "description": "Fiche COMPLÈTE, vue admin."
       },
+      "PrestatairePilotable": {
+        "type": "object",
+        "description": "Prestataire pilotable par le compte (résumé — l'app prend le premier).",
+        "required": [
+          "id",
+          "nom",
+          "statut",
+          "boutique"
+        ],
+        "properties": {
+          "boutique": {
+            "$ref": "#/components/schemas/EtatEffectifBoutique",
+            "description": "État effectif de la boutique."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom public."
+          },
+          "statut": {
+            "$ref": "#/components/schemas/StatutPrestataire",
+            "description": "Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact."
+          }
+        }
+      },
       "RattachementDto": {
         "type": "object",
         "description": "Rattachement compte ↔ prestataire.",
@@ -3195,6 +3520,20 @@
             "type": "string",
             "format": "date-time",
             "description": "Depuis quand."
+          }
+        }
+      },
+      "RattacherCompteDto": {
+        "type": "object",
+        "description": "Corps du rattachement.",
+        "required": [
+          "compte_id"
+        ],
+        "properties": {
+          "compte_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Compte vérifié à rattacher."
           }
         }
       },

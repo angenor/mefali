@@ -14,6 +14,7 @@ pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
 pub mod prestataires_http;
+pub mod vendeur_http;
 pub mod zones_http;
 
 use std::sync::Arc;
@@ -60,6 +61,10 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_prestataires_http::supprimer_photo)
         .service(admin_prestataires_http::deposer_charte)
         .service(admin_prestataires_http::definir_site)
+        .service(admin_prestataires_http::agreer_prestataire)
+        .service(admin_prestataires_http::rattacher_compte)
+        .service(admin_prestataires_http::detacher_compte)
+        .service(vendeur_http::mes_prestataires)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
         .split_for_parts();
@@ -314,6 +319,10 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_prestataires_http::supprimer_photo)
         .service(admin_prestataires_http::deposer_charte)
         .service(admin_prestataires_http::definir_site)
+        .service(admin_prestataires_http::agreer_prestataire)
+        .service(admin_prestataires_http::rattacher_compte)
+        .service(admin_prestataires_http::detacher_compte)
+        .service(vendeur_http::mes_prestataires)
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .split_for_parts();

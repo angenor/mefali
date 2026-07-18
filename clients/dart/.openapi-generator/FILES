@@ -42,8 +42,10 @@ doc/PlageDto.md
 doc/PlateformeDto.md
 doc/PrestataireAdmin.md
 doc/PrestataireAdminDetail.md
+doc/PrestatairePilotable.md
 doc/PrestatairesApi.md
 doc/RattachementDto.md
+doc/RattacherCompteDto.md
 doc/ResolutionPlaque.md
 doc/ResultatVerification.md
 doc/SessionAppareil.md
@@ -55,6 +57,7 @@ doc/StatutBoutique.md
 doc/StatutPrestataire.md
 doc/UrlPresignee.md
 doc/VehiculeDeclare.md
+doc/VendeurApi.md
 doc/VerificationOtp.md
 doc/ZonesApi.md
 lib/mefali_api_client.dart
@@ -64,6 +67,7 @@ lib/src/api/auth_api.dart
 lib/src/api/moi_api.dart
 lib/src/api/prestataires_api.dart
 lib/src/api/socle_api.dart
+lib/src/api/vendeur_api.dart
 lib/src/api/zones_api.dart
 lib/src/api_util.dart
 lib/src/auth/api_key_auth.dart
@@ -111,7 +115,9 @@ lib/src/model/plage_dto.dart
 lib/src/model/plateforme_dto.dart
 lib/src/model/prestataire_admin.dart
 lib/src/model/prestataire_admin_detail.dart
+lib/src/model/prestataire_pilotable.dart
 lib/src/model/rattachement_dto.dart
+lib/src/model/rattacher_compte_dto.dart
 lib/src/model/resolution_plaque.dart
 lib/src/model/resultat_verification.dart
 lib/src/model/session_appareil.dart
@@ -125,14 +131,6 @@ lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/charte_admin_dto_test.dart
-test/creer_prestataire_dto_test.dart
-test/modifier_prestataire_dto_test.dart
-test/photo_admin_dto_test.dart
-test/prestataire_admin_detail_test.dart
-test/prestataire_admin_test.dart
-test/rattachement_dto_test.dart
-test/site_admin_dto_test.dart
-test/site_admin_vue_dto_test.dart
-test/statut_boutique_test.dart
-test/statut_prestataire_test.dart
+test/prestataire_pilotable_test.dart
+test/rattacher_compte_dto_test.dart
+test/vendeur_api_test.dart

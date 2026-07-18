@@ -48,14 +48,13 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 
 final api = MefaliApiClient().getAdminApi();
-final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
-final MultipartFile fichier = BINARY_DATA_HERE; // MultipartFile | La photo.
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire (prospect).
 
 try {
-    final response = await api.ajouterPhoto(id, fichier);
+    final response = await api.agreerPrestataire(id);
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling AdminApi->ajouterPhoto: $e\n");
+    print("Exception when calling AdminApi->agreerPrestataire: $e\n");
 }
 
 ```
@@ -66,6 +65,7 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AdminApi*](doc/AdminApi.md) | [**agreerPrestataire**](doc/AdminApi.md#agreerprestataire) | **POST** /admin/prestataires/{id}/agrement | Agrée un prospect : la fiche devient servie et commandable, l&#39;identité de plaque est créée au premier passage, l&#39;activation de catégorie recalculée.
 [*AdminApi*](doc/AdminApi.md) | [**ajouterPhoto**](doc/AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
 [*AdminApi*](doc/AdminApi.md) | [**consulterPrestataireAdmin**](doc/AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
@@ -73,9 +73,11 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
 [*AdminApi*](doc/AdminApi.md) | [**definirSite**](doc/AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
 [*AdminApi*](doc/AdminApi.md) | [**deposerCharte**](doc/AdminApi.md#deposercharte) | **POST** /admin/prestataires/{id}/charte | Dépose la charte signée scannée — condition NÉCESSAIRE de l&#39;agrément.
+[*AdminApi*](doc/AdminApi.md) | [**detacherCompte**](doc/AdminApi.md#detachercompte) | **DELETE** /admin/prestataires/{id}/rattachements/{compte_id} | Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
 [*AdminApi*](doc/AdminApi.md) | [**listerDossiersCoursier**](doc/AdminApi.md#listerdossierscoursier) | **GET** /admin/comptes/dossiers-coursier | Liste des dossiers coursier pour la revue admin (FR-017).
 [*AdminApi*](doc/AdminApi.md) | [**listerPrestataires**](doc/AdminApi.md#listerprestataires) | **GET** /admin/prestataires | Liste les prestataires (filtres statut / ville / catégorie).
 [*AdminApi*](doc/AdminApi.md) | [**modifierPrestataire**](doc/AdminApi.md#modifierprestataire) | **PUT** /admin/prestataires/{id} | Modifie la fiche (nom, contact, délai) — administrable à tout statut.
+[*AdminApi*](doc/AdminApi.md) | [**rattacherCompte**](doc/AdminApi.md#rattachercompte) | **POST** /admin/prestataires/{id}/rattachements | Rattache un compte vérifié — attribue le rôle vendeur si absent, IDEMPOTENT (FR-007, research R11).
 [*AdminApi*](doc/AdminApi.md) | [**supprimerPhoto**](doc/AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
 [*AuthApi*](doc/AuthApi.md) | [**deconnexion**](doc/AuthApi.md#deconnexion) | **POST** /auth/deconnexion | Révoque la session courante (déconnexion locale).
 [*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
@@ -96,6 +98,7 @@ Class | Method | HTTP request | Description
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
+[*VendeurApi*](doc/VendeurApi.md) | [**mesPrestataires**](doc/VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
 [*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
 
@@ -140,7 +143,9 @@ Class | Method | HTTP request | Description
  - [PlateformeDto](doc/PlateformeDto.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
+ - [PrestatairePilotable](doc/PrestatairePilotable.md)
  - [RattachementDto](doc/RattachementDto.md)
+ - [RattacherCompteDto](doc/RattacherCompteDto.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)

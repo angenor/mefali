@@ -52,7 +52,9 @@ import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
+import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
+import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
@@ -106,7 +108,9 @@ part 'serializers.g.dart';
   PlateformeDto,
   PrestataireAdmin,
   PrestataireAdminDetail,
+  PrestatairePilotable,
   RattachementDto,
+  RattacherCompteDto,
   ResolutionPlaque,
   ResultatVerification,
   SessionAppareil,
@@ -135,6 +139,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(String)]),
         () => ListBuilder<String>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PrestatairePilotable)]),
+        () => ListBuilder<PrestatairePilotable>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(DossierCoursierAdmin)]),

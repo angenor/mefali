@@ -15,6 +15,7 @@ export 'package:mefali_api_client/src/api/auth_api.dart';
 export 'package:mefali_api_client/src/api/moi_api.dart';
 export 'package:mefali_api_client/src/api/prestataires_api.dart';
 export 'package:mefali_api_client/src/api/socle_api.dart';
+export 'package:mefali_api_client/src/api/vendeur_api.dart';
 export 'package:mefali_api_client/src/api/zones_api.dart';
 
 export 'package:mefali_api_client/src/model/accepte.dart';
@@ -55,7 +56,9 @@ export 'package:mefali_api_client/src/model/plage_dto.dart';
 export 'package:mefali_api_client/src/model/plateforme_dto.dart';
 export 'package:mefali_api_client/src/model/prestataire_admin.dart';
 export 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
+export 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
 export 'package:mefali_api_client/src/model/rattachement_dto.dart';
+export 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
 export 'package:mefali_api_client/src/model/resolution_plaque.dart';
 export 'package:mefali_api_client/src/model/resultat_verification.dart';
 export 'package:mefali_api_client/src/model/session_appareil.dart';
