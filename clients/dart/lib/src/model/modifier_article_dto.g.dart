@@ -15,13 +15,19 @@ class _$ModifierArticleDto extends ModifierArticleDto {
   final int? prixBarreUnites;
   @override
   final int? prixUnites;
+  @override
+  final bool? retirerPrixBarre;
 
   factory _$ModifierArticleDto(
           [void Function(ModifierArticleDtoBuilder)? updates]) =>
       (ModifierArticleDtoBuilder()..update(updates))._build();
 
   _$ModifierArticleDto._(
-      {this.categorieInterne, this.nom, this.prixBarreUnites, this.prixUnites})
+      {this.categorieInterne,
+      this.nom,
+      this.prixBarreUnites,
+      this.prixUnites,
+      this.retirerPrixBarre})
       : super._();
   @override
   ModifierArticleDto rebuild(
@@ -39,7 +45,8 @@ class _$ModifierArticleDto extends ModifierArticleDto {
         categorieInterne == other.categorieInterne &&
         nom == other.nom &&
         prixBarreUnites == other.prixBarreUnites &&
-        prixUnites == other.prixUnites;
+        prixUnites == other.prixUnites &&
+        retirerPrixBarre == other.retirerPrixBarre;
   }
 
   @override
@@ -49,6 +56,7 @@ class _$ModifierArticleDto extends ModifierArticleDto {
     _$hash = $jc(_$hash, nom.hashCode);
     _$hash = $jc(_$hash, prixBarreUnites.hashCode);
     _$hash = $jc(_$hash, prixUnites.hashCode);
+    _$hash = $jc(_$hash, retirerPrixBarre.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -59,7 +67,8 @@ class _$ModifierArticleDto extends ModifierArticleDto {
           ..add('categorieInterne', categorieInterne)
           ..add('nom', nom)
           ..add('prixBarreUnites', prixBarreUnites)
-          ..add('prixUnites', prixUnites))
+          ..add('prixUnites', prixUnites)
+          ..add('retirerPrixBarre', retirerPrixBarre))
         .toString();
   }
 }
@@ -86,6 +95,11 @@ class ModifierArticleDtoBuilder
   int? get prixUnites => _$this._prixUnites;
   set prixUnites(int? prixUnites) => _$this._prixUnites = prixUnites;
 
+  bool? _retirerPrixBarre;
+  bool? get retirerPrixBarre => _$this._retirerPrixBarre;
+  set retirerPrixBarre(bool? retirerPrixBarre) =>
+      _$this._retirerPrixBarre = retirerPrixBarre;
+
   ModifierArticleDtoBuilder() {
     ModifierArticleDto._defaults(this);
   }
@@ -97,6 +111,7 @@ class ModifierArticleDtoBuilder
       _nom = $v.nom;
       _prixBarreUnites = $v.prixBarreUnites;
       _prixUnites = $v.prixUnites;
+      _retirerPrixBarre = $v.retirerPrixBarre;
       _$v = null;
     }
     return this;
@@ -122,6 +137,7 @@ class ModifierArticleDtoBuilder
           nom: nom,
           prixBarreUnites: prixBarreUnites,
           prixUnites: prixUnites,
+          retirerPrixBarre: retirerPrixBarre,
         );
     replace(_$result);
     return _$result;

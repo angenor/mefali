@@ -920,7 +920,13 @@ pub async fn modifier_article_admin(
             &prestataires::ModificationArticle {
                 nom: corps.nom,
                 prix_unites: corps.prix_unites,
-                prix_barre_unites: corps.prix_barre_unites,
+                // `retirer_prix_barre` ≡ `prix_barre_unites: null` (clients
+                // générés — built_value ne sérialise pas un null explicite).
+                prix_barre_unites: if corps.retirer_prix_barre.unwrap_or(false) {
+                    Some(None)
+                } else {
+                    corps.prix_barre_unites
+                },
                 categorie_interne: corps.categorie_interne,
             },
             prestataires::SourceBascule::Admin,

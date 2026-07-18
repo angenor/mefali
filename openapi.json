@@ -4273,6 +4273,13 @@
             "format": "int64",
             "description": "Nouveau prix courant.",
             "minimum": 0
+          },
+          "retirer_prix_barre": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Retire la promotion — équivalent de `prix_barre_unites: null` pour les\nclients générés qui ne savent pas sérialiser un `null` EXPLICITE\n(built_value omet les champs nuls)."
           }
         }
       },

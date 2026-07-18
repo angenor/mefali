@@ -15,6 +15,7 @@ part 'modifier_article_dto.g.dart';
 /// * [nom] - Nouveau nom.
 /// * [prixBarreUnites] - Nouveau prix barré — `null` retire la promotion EXPLICITEMENT (jamais en silence : un prix barré devenu ≤ prix fait échouer l'opération).
 /// * [prixUnites] - Nouveau prix courant.
+/// * [retirerPrixBarre] - Retire la promotion — équivalent de `prix_barre_unites: null` pour les clients générés qui ne savent pas sérialiser un `null` EXPLICITE (built_value omet les champs nuls).
 @BuiltValue()
 abstract class ModifierArticleDto implements Built<ModifierArticleDto, ModifierArticleDtoBuilder> {
   /// Nouvelle étiquette — `null` l'efface.
@@ -32,6 +33,10 @@ abstract class ModifierArticleDto implements Built<ModifierArticleDto, ModifierA
   /// Nouveau prix courant.
   @BuiltValueField(wireName: r'prix_unites')
   int? get prixUnites;
+
+  /// Retire la promotion — équivalent de `prix_barre_unites: null` pour les clients générés qui ne savent pas sérialiser un `null` EXPLICITE (built_value omet les champs nuls).
+  @BuiltValueField(wireName: r'retirer_prix_barre')
+  bool? get retirerPrixBarre;
 
   ModifierArticleDto._();
 
@@ -82,6 +87,13 @@ class _$ModifierArticleDtoSerializer implements PrimitiveSerializer<ModifierArti
       yield serializers.serialize(
         object.prixUnites,
         specifiedType: const FullType.nullable(int),
+      );
+    }
+    if (object.retirerPrixBarre != null) {
+      yield r'retirer_prix_barre';
+      yield serializers.serialize(
+        object.retirerPrixBarre,
+        specifiedType: const FullType.nullable(bool),
       );
     }
   }
@@ -138,6 +150,14 @@ class _$ModifierArticleDtoSerializer implements PrimitiveSerializer<ModifierArti
           ) as int?;
           if (valueDes == null) continue;
           result.prixUnites = valueDes;
+          break;
+        case r'retirer_prix_barre':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(bool),
+          ) as bool?;
+          if (valueDes == null) continue;
+          result.retirerPrixBarre = valueDes;
           break;
         default:
           unhandled.add(key);

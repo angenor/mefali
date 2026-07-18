@@ -1276,6 +1276,12 @@ export interface components {
              * @description Nouveau prix courant.
              */
             prix_unites?: number | null;
+            /**
+             * @description Retire la promotion — équivalent de `prix_barre_unites: null` pour les
+             *     clients générés qui ne savent pas sérialiser un `null` EXPLICITE
+             *     (built_value omet les champs nuls).
+             */
+            retirer_prix_barre?: boolean | null;
         };
         /** @description Modification partielle de la fiche. */
         ModifierPrestataireDto: {

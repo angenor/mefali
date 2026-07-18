@@ -139,7 +139,3 @@ lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/article_vendeur_test.dart
-test/creer_article_dto_test.dart
-test/modifier_article_dto_test.dart
-test/source_bascule_test.dart

@@ -570,6 +570,11 @@ pub struct ModifierArticleDto {
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<i64>, nullable)]
     pub prix_barre_unites: Option<Option<i64>>,
+    /// Retire la promotion — équivalent de `prix_barre_unites: null` pour les
+    /// clients générés qui ne savent pas sérialiser un `null` EXPLICITE
+    /// (built_value omet les champs nuls).
+    #[serde(default)]
+    pub retirer_prix_barre: Option<bool>,
     /// Nouvelle étiquette — `null` l'efface.
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<String>, nullable)]

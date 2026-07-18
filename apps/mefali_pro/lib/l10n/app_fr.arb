@@ -116,6 +116,50 @@
   "@proOngletArticles": {
     "description": "Onglet V2 : catalogue et stock"
   },
+  "proArticlesRecherche": "Chercher un article…",
+  "@proArticlesRecherche": {
+    "description": "Placeholder de la recherche du catalogue (V2)"
+  },
+  "proArticlesCompte": "{nombre} articles · {ruptures} en rupture",
+  "@proArticlesCompte": {
+    "description": "Compteur du catalogue (V2)",
+    "placeholders": {
+      "nombre": {"type": "int"},
+      "ruptures": {"type": "int"}
+    }
+  },
+  "proArticlesPromo": "PROMO",
+  "@proArticlesPromo": {
+    "description": "Badge d'un article à prix barré"
+  },
+  "proArticleEnStock": "En stock",
+  "@proArticleEnStock": {
+    "description": "État d'un article disponible"
+  },
+  "proArticleRupture": "Rupture",
+  "@proArticleRupture": {
+    "description": "État d'un article indisponible"
+  },
+  "proArticlesRetires": "Articles retirés",
+  "@proArticlesRetires": {
+    "description": "Section repliée des articles hors catalogue (FR-055)"
+  },
+  "proArticleRemettre": "Remettre au catalogue",
+  "@proArticleRemettre": {
+    "description": "Action de remise d'un article retiré (FR-055)"
+  },
+  "proArticlesVide": "Aucun article — ajoutez le premier.",
+  "@proArticlesVide": {
+    "description": "Catalogue vide (V2)"
+  },
+  "proArticlesSansPrestataire": "Aucun prestataire n'est rattaché à votre compte.",
+  "@proArticlesSansPrestataire": {
+    "description": "Rôle vendeur sans rattachement (FR-011)"
+  },
+  "proArticlesErreur": "Impossible de charger le catalogue.",
+  "@proArticlesErreur": {
+    "description": "Erreur réseau du catalogue (V2)"
+  },
   "proInterfaceVendeurAide": "Votre boutique et vos commandes s'afficheront ici.",
   "@proInterfaceVendeurAide": {
     "description": "Aide de l'interface vendeur tant que le module vendeur (VND) n'est pas construit"
