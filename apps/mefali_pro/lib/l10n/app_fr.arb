@@ -108,6 +108,14 @@
   "@proInterfaceVendeurTitre": {
     "description": "Titre de l'interface vendeur"
   },
+  "proOngletBoutique": "Boutique",
+  "@proOngletBoutique": {
+    "description": "Onglet V1 : statut de la boutique"
+  },
+  "proOngletArticles": "Articles",
+  "@proOngletArticles": {
+    "description": "Onglet V2 : catalogue et stock"
+  },
   "proInterfaceVendeurAide": "Votre boutique et vos commandes s'afficheront ici.",
   "@proInterfaceVendeurAide": {
     "description": "Aide de l'interface vendeur tant que le module vendeur (VND) n'est pas construit"

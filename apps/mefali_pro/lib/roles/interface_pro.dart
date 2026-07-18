@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../l10n/app_localizations.dart';
+import '../vendeur/interface_vendeur.dart';
 import 'etat_roles.dart';
 import 'libelles_roles.dart';
 import 'pied_pro.dart';
@@ -13,10 +14,9 @@ import 'pied_pro.dart';
 /// La bascule n'apparaît QUE si le compte porte deux rôles validés — un
 /// coursier seul ne doit pas voir un sélecteur à une case.
 ///
-/// Les interfaces elles-mêmes sont des placeholders : les vrais écrans coursier
-/// (K1..K5) et vendeur (V1..V3) sont les cibles des cycles CRS et VND. Ce cycle
-/// ne livre que la porte et le routeur — construire les écrans ici sortirait du
-/// périmètre (constitution IX).
+/// Le rôle VENDEUR est servi par l'espace du cycle 005 (`InterfaceVendeur` —
+/// écrans V1/V2) ; le rôle coursier reste un placeholder jusqu'au cycle CRS
+/// (K1..K5). Porte et routeur inchangés (FR-046).
 class InterfacePro extends StatelessWidget {
   /// Crée l'interface du rôle actif.
   const InterfacePro({super.key, required this.etat});
@@ -34,16 +34,15 @@ class InterfacePro extends StatelessWidget {
     // Défensif : ce widget n'est construit qu'avec au moins un rôle validé.
     if (actif == null) return const SizedBox.shrink();
 
-    final (titre, aide) = switch (actif) {
-      RolePro.coursier => (
-          l10n.proInterfaceCoursierTitre,
-          l10n.proInterfaceCoursierAide,
-        ),
-      RolePro.vendeur => (
-          l10n.proInterfaceVendeurTitre,
-          l10n.proInterfaceVendeurAide,
-        ),
-    };
+    // L'espace vendeur du cycle 005 remplace le placeholder (FR-046).
+    if (actif == RolePro.vendeur) {
+      return InterfaceVendeur(etat: etat);
+    }
+
+    final (titre, aide) = (
+      l10n.proInterfaceCoursierTitre,
+      l10n.proInterfaceCoursierAide,
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(titre)),
@@ -54,7 +53,7 @@ class InterfacePro extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (valides.length > 1) ...[
-                _Bascule(valides: valides, actif: actif),
+                BasculeRoles(valides: valides, actif: actif),
                 const SizedBox(height: MefaliTokens.space4),
               ],
               Expanded(
@@ -92,10 +91,16 @@ class InterfacePro extends StatelessWidget {
 ///
 /// `SegmentedButton` M3 : la bascule est un choix entre deux vues, pas une
 /// navigation — l'utilisateur ne quitte pas son écran et ne perd rien.
-class _Bascule extends ConsumerWidget {
-  const _Bascule({required this.valides, required this.actif});
+/// PUBLIC depuis le cycle 005 : l'espace vendeur (`InterfaceVendeur`) la rend
+/// en tête, comportement STRICTEMENT inchangé (FR-046).
+class BasculeRoles extends ConsumerWidget {
+  /// Crée la bascule.
+  const BasculeRoles({super.key, required this.valides, required this.actif});
 
+  /// Rôles validés du compte (la bascule ne s'affiche qu'à partir de deux).
   final List<RolePro> valides;
+
+  /// Rôle dont l'interface est affichée.
   final RolePro actif;
 
   @override
