@@ -84,6 +84,8 @@ Class | Method | HTTP request | Description
 [*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
 [*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
+[*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
+[*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
 [*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
@@ -94,7 +96,9 @@ Class | Method | HTTP request | Description
  - [Accepte](doc/Accepte.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
  - [Adresse](doc/Adresse.md)
+ - [AffichageRupture](doc/AffichageRupture.md)
  - [AppareilDto](doc/AppareilDto.md)
+ - [ArticlePublic](doc/ArticlePublic.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
@@ -110,13 +114,18 @@ Class | Method | HTTP request | Description
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
  - [ErreurApi](doc/ErreurApi.md)
  - [EtatCategorie](doc/EtatCategorie.md)
+ - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
+ - [FichePublique](doc/FichePublique.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [HealthResponse](doc/HealthResponse.md)
+ - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
  - [JetonsDto](doc/JetonsDto.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
+ - [PlageDto](doc/PlageDto.md)
  - [PlateformeDto](doc/PlateformeDto.md)
+ - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)

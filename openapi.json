@@ -1225,6 +1225,109 @@
           }
         ]
       }
+    },
+    "/prestataires/plaque/{jeton}": {
+      "get": {
+        "tags": [
+          "prestataires"
+        ],
+        "summary": "Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier\n(analyse C1 : seule la consultation de la fiche échappe au principe VIII).",
+        "operationId": "resoudre_plaque",
+        "parameters": [
+          {
+            "name": "jeton",
+            "in": "path",
+            "description": "Jeton signé porté par la plaque.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jeton connu — la révocation est OBSERVABLE : un prestataire suspendu rend `valide=false`, sans autre donnée (FR-016/017).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionPlaque"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Jeton inconnu ou forgé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/prestataires/{id}": {
+      "get": {
+        "tags": [
+          "prestataires"
+        ],
+        "summary": "Fiche + catalogue, lecture seule, SANS authentification — la plaque est un\ncanal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).",
+        "operationId": "consulter_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire consulté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prestataire AGRÉÉ — boutique ouverte ou fermée (fermée : catalogue en lecture seule + horaires + réouverture estimée, FR-029). Articles retirés absents ; en rupture : servis `disponible=false` si le mode est `grise`, ABSENTS si `masque` (FR-042).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FichePublique"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Réponse NEUTRE — id inconnu, prospect et suspendu sont indistinguables, sans photo ni motif (FR-017, SC-013).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate-limit par IP."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1323,6 +1426,14 @@
           }
         }
       },
+      "AffichageRupture": {
+        "type": "string",
+        "description": "Mode de rendu des articles en rupture (paramètre de catégorie — FR-050).",
+        "enum": [
+          "grise",
+          "masque"
+        ]
+      },
       "AppareilDto": {
         "type": "object",
         "description": "Appareil déclaré par l'app à l'ouverture de session.",
@@ -1339,6 +1450,63 @@
           "plateforme": {
             "$ref": "#/components/schemas/PlateformeDto",
             "description": "Plateforme."
+          }
+        }
+      },
+      "ArticlePublic": {
+        "type": "object",
+        "description": "Article du catalogue public.",
+        "required": [
+          "id",
+          "nom",
+          "prix_unites",
+          "devise",
+          "disponible"
+        ],
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Étiquette libre de regroupement."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Code ISO 4217 de la zone."
+          },
+          "disponible": {
+            "type": "boolean",
+            "description": "Faux = rupture (servi seulement si le mode de la catégorie est `grise`)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom."
+          },
+          "photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de la photo (TTL 10 min)."
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix barré (présent ⇒ promotion, strictement supérieur — FR-023)."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix courant — ENTIER en unités mineures (constitution III)."
           }
         }
       },
@@ -1757,6 +1925,27 @@
           }
         }
       },
+      "EtatEffectifBoutique": {
+        "type": "object",
+        "description": "État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032).",
+        "required": [
+          "ouvert"
+        ],
+        "properties": {
+          "ouvert": {
+            "type": "boolean",
+            "description": "La boutique reçoit-elle des commandes en cet instant ?"
+          },
+          "reouverture_estimee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Prochaine réouverture estimée quand fermée (FR-029)."
+          }
+        }
+      },
       "EtatRoleDto": {
         "type": "object",
         "description": "État d'un rôle (contrat).",
@@ -1790,6 +1979,72 @@
           }
         }
       },
+      "FichePublique": {
+        "type": "object",
+        "description": "Fiche publique : le sous-ensemble EXACT de FR-027 — ni contact\ntéléphonique, ni coordonnées de site, ni donnée d'exploitation (SC-013).",
+        "required": [
+          "id",
+          "nom",
+          "categorie",
+          "photos",
+          "delai_preparation_min",
+          "boutique",
+          "horaires",
+          "commandable",
+          "affichage_rupture",
+          "articles"
+        ],
+        "properties": {
+          "affichage_rupture": {
+            "$ref": "#/components/schemas/AffichageRupture",
+            "description": "Mode de rendu des ruptures, résolu pour la catégorie."
+          },
+          "articles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticlePublic"
+            },
+            "description": "Catalogue servi (retirés absents ; ruptures selon le mode)."
+          },
+          "boutique": {
+            "$ref": "#/components/schemas/EtatEffectifBoutique",
+            "description": "État effectif de la boutique."
+          },
+          "categorie": {
+            "type": "string",
+            "description": "Slug de la catégorie de service."
+          },
+          "commandable": {
+            "type": "boolean",
+            "description": "FR-028 — la SEULE définition de « commandable »."
+          },
+          "delai_preparation_min": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Délai de préparation moyen déclaré (minutes)."
+          },
+          "horaires": {
+            "$ref": "#/components/schemas/HorairesSemaineDto",
+            "description": "Horaires hebdomadaires."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant du prestataire."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom public."
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "URLs présignées des photos de fiche."
+          }
+        }
+      },
       "ForcageDto": {
         "type": "string",
         "description": "Mode de forçage (contrat) — mappé sur [`zones::Forcage`].",
@@ -1815,6 +2070,27 @@
           "version": {
             "type": "string",
             "description": "Version du binaire (`CARGO_PKG_VERSION`)."
+          }
+        }
+      },
+      "HorairesSemaineDto": {
+        "type": "object",
+        "description": "Horaires hebdomadaires : 7 tableaux de plages, index 0 = lundi ; un jour\nsans plage est un jour de fermeture.",
+        "required": [
+          "jours"
+        ],
+        "properties": {
+          "jours": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/PlageDto"
+              }
+            },
+            "description": "Plages par jour (lundi → dimanche).",
+            "maxItems": 7,
+            "minItems": 7
           }
         }
       },
@@ -1934,6 +2210,26 @@
           }
         }
       },
+      "PlageDto": {
+        "type": "object",
+        "description": "Une plage d'ouverture, heures locales `HH:MM` (FR-031).",
+        "required": [
+          "debut",
+          "fin"
+        ],
+        "properties": {
+          "debut": {
+            "type": "string",
+            "description": "Début (inclus), ex. `08:00`.",
+            "example": "08:00"
+          },
+          "fin": {
+            "type": "string",
+            "description": "Fin (exclue), ex. `19:00`.",
+            "example": "19:00"
+          }
+        }
+      },
       "PlateformeDto": {
         "type": "string",
         "description": "Plateforme de l'appareil (contrat).",
@@ -1959,6 +2255,25 @@
             "type": "string",
             "format": "binary",
             "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          }
+        }
+      },
+      "ResolutionPlaque": {
+        "type": "object",
+        "description": "Résolution d'un jeton de plaque (contrat).",
+        "required": [
+          "prestataire_id",
+          "valide"
+        ],
+        "properties": {
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Prestataire que la plaque désigne."
+          },
+          "valide": {
+            "type": "boolean",
+            "description": "Validité courante — DÉRIVÉE de l'état d'agrément (FR-015)."
           }
         }
       },

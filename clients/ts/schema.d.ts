@@ -331,6 +331,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/prestataires/plaque/{jeton}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier
+         *     (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
+         */
+        get: operations["resoudre_plaque"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/prestataires/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fiche + catalogue, lecture seule, SANS authentification — la plaque est un
+         *     canal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).
+         */
+        get: operations["consulter_prestataire"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -397,12 +437,45 @@ export interface components {
              */
             zone_id: string;
         };
+        /**
+         * @description Mode de rendu des articles en rupture (paramètre de catégorie — FR-050).
+         * @enum {string}
+         */
+        AffichageRupture: "grise" | "masque";
         /** @description Appareil déclaré par l'app à l'ouverture de session. */
         AppareilDto: {
             /** @description Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste. */
             nom: string;
             /** @description Plateforme. */
             plateforme: components["schemas"]["PlateformeDto"];
+        };
+        /** @description Article du catalogue public. */
+        ArticlePublic: {
+            /** @description Étiquette libre de regroupement. */
+            categorie_interne?: string | null;
+            /** @description Code ISO 4217 de la zone. */
+            devise: string;
+            /** @description Faux = rupture (servi seulement si le mode de la catégorie est `grise`). */
+            disponible: boolean;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /** @description Nom. */
+            nom: string;
+            /** @description URL présignée de la photo (TTL 10 min). */
+            photo_url?: string | null;
+            /**
+             * Format: int64
+             * @description Prix barré (présent ⇒ promotion, strictement supérieur — FR-023).
+             */
+            prix_barre_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Prix courant — ENTIER en unités mineures (constitution III).
+             */
+            prix_unites: number;
         };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
@@ -608,6 +681,16 @@ export interface components {
              */
             zone: string;
         };
+        /** @description État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032). */
+        EtatEffectifBoutique: {
+            /** @description La boutique reçoit-elle des commandes en cet instant ? */
+            ouvert: boolean;
+            /**
+             * Format: date-time
+             * @description Prochaine réouverture estimée quand fermée (FR-029).
+             */
+            reouverture_estimee?: string | null;
+        };
         /** @description État d'un rôle (contrat). */
         EtatRoleDto: {
             /**
@@ -621,6 +704,38 @@ export interface components {
             role: string;
             /** @description Statut courant. */
             statut: string;
+        };
+        /**
+         * @description Fiche publique : le sous-ensemble EXACT de FR-027 — ni contact
+         *     téléphonique, ni coordonnées de site, ni donnée d'exploitation (SC-013).
+         */
+        FichePublique: {
+            /** @description Mode de rendu des ruptures, résolu pour la catégorie. */
+            affichage_rupture: components["schemas"]["AffichageRupture"];
+            /** @description Catalogue servi (retirés absents ; ruptures selon le mode). */
+            articles: components["schemas"]["ArticlePublic"][];
+            /** @description État effectif de la boutique. */
+            boutique: components["schemas"]["EtatEffectifBoutique"];
+            /** @description Slug de la catégorie de service. */
+            categorie: string;
+            /** @description FR-028 — la SEULE définition de « commandable ». */
+            commandable: boolean;
+            /**
+             * Format: int32
+             * @description Délai de préparation moyen déclaré (minutes).
+             */
+            delai_preparation_min: number;
+            /** @description Horaires hebdomadaires. */
+            horaires: components["schemas"]["HorairesSemaineDto"];
+            /**
+             * Format: uuid
+             * @description Identifiant du prestataire.
+             */
+            id: string;
+            /** @description Nom public. */
+            nom: string;
+            /** @description URLs présignées des photos de fiche. */
+            photos: string[];
         };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
@@ -639,6 +754,14 @@ export interface components {
             status: string;
             /** @description Version du binaire (`CARGO_PKG_VERSION`). */
             version: string;
+        };
+        /**
+         * @description Horaires hebdomadaires : 7 tableaux de plages, index 0 = lundi ; un jour
+         *     sans plage est un jour de fermeture.
+         */
+        HorairesSemaineDto: {
+            /** @description Plages par jour (lundi → dimanche). */
+            jours: components["schemas"]["PlageDto"][][];
         };
         /** @description Corps de `POST /auth/inscription`. */
         Inscription: {
@@ -699,6 +822,19 @@ export interface components {
             /** @description Repère écrit. */
             repere_texte?: string | null;
         };
+        /** @description Une plage d'ouverture, heures locales `HH:MM` (FR-031). */
+        PlageDto: {
+            /**
+             * @description Début (inclus), ex. `08:00`.
+             * @example 08:00
+             */
+            debut: string;
+            /**
+             * @description Fin (exclue), ex. `19:00`.
+             * @example 19:00
+             */
+            fin: string;
+        };
         /**
          * @description Plateforme de l'appareil (contrat).
          * @enum {string}
@@ -716,6 +852,16 @@ export interface components {
              * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
              */
             note_vocale: string;
+        };
+        /** @description Résolution d'un jeton de plaque (contrat). */
+        ResolutionPlaque: {
+            /**
+             * Format: uuid
+             * @description Prestataire que la plaque désigne.
+             */
+            prestataire_id: string;
+            /** @description Validité courante — DÉRIVÉE de l'état d'agrément (FR-015). */
+            valide: boolean;
         };
         /**
          * @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
@@ -1757,6 +1903,86 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErreurApi"];
                 };
+            };
+        };
+    };
+    resoudre_plaque: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Jeton signé porté par la plaque. */
+                jeton: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Jeton connu — la révocation est OBSERVABLE : un prestataire suspendu rend `valide=false`, sans autre donnée (FR-016/017). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionPlaque"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Jeton inconnu ou forgé. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    consulter_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire consulté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prestataire AGRÉÉ — boutique ouverte ou fermée (fermée : catalogue en lecture seule + horaires + réouverture estimée, FR-029). Articles retirés absents ; en rupture : servis `disponible=false` si le mode est `grise`, ABSENTS si `masque` (FR-042). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FichePublique"];
+                };
+            };
+            /** @description Réponse NEUTRE — id inconnu, prospect et suspendu sont indistinguables, sans photo ni motif (FR-017, SC-013). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rate-limit par IP. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

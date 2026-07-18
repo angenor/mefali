@@ -12,6 +12,7 @@ pub mod dev_http;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
+pub mod prestataires_http;
 pub mod zones_http;
 
 use std::sync::Arc;
@@ -50,6 +51,8 @@ pub fn api_openapi() -> OpenApi {
         .service(adresses_http::supprimer_adresse)
         .service(adresses_http::ecouter_repere_vocal)
         .service(adresses_http::remplacer_repere_vocal)
+        .service(prestataires_http::consulter_prestataire)
+        .service(prestataires_http::resoudre_plaque)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -294,6 +297,8 @@ pub async fn run() -> std::io::Result<()> {
             .service(adresses_http::supprimer_adresse)
             .service(adresses_http::ecouter_repere_vocal)
             .service(adresses_http::remplacer_repere_vocal)
+            .service(prestataires_http::consulter_prestataire)
+            .service(prestataires_http::resoudre_plaque)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

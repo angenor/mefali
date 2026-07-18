@@ -10,7 +10,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Accepte.serializer)
       ..add(ActionRoleDto.serializer)
       ..add(Adresse.serializer)
+      ..add(AffichageRupture.serializer)
       ..add(AppareilDto.serializer)
+      ..add(ArticlePublic.serializer)
       ..add(CategorieDto.serializer)
       ..add(CompteMoi.serializer)
       ..add(ConfigZone.serializer)
@@ -26,19 +28,35 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DossierCoursierAdmin.serializer)
       ..add(ErreurApi.serializer)
       ..add(EtatCategorie.serializer)
+      ..add(EtatEffectifBoutique.serializer)
       ..add(EtatRoleDto.serializer)
+      ..add(FichePublique.serializer)
       ..add(ForcageDto.serializer)
       ..add(HealthResponse.serializer)
+      ..add(HorairesSemaineDto.serializer)
       ..add(Inscription.serializer)
       ..add(JetonsDto.serializer)
       ..add(ModifierAdresse.serializer)
+      ..add(PlageDto.serializer)
       ..add(PlateformeDto.serializer)
+      ..add(ResolutionPlaque.serializer)
       ..add(ResultatVerification.serializer)
       ..add(SessionAppareil.serializer)
       ..add(SessionOuverte.serializer)
       ..add(UrlPresignee.serializer)
       ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ArticlePublic)]),
+          () => ListBuilder<ArticlePublic>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(BuiltList, const [const FullType(PlageDto)])
+          ]),
+          () => ListBuilder<BuiltList<PlageDto>>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CategorieDto)]),
           () => ListBuilder<CategorieDto>())

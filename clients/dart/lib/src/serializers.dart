@@ -17,7 +17,9 @@ import 'package:mefali_api_client/src/model/date.dart';
 import 'package:mefali_api_client/src/model/accepte.dart';
 import 'package:mefali_api_client/src/model/action_role_dto.dart';
 import 'package:mefali_api_client/src/model/adresse.dart';
+import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
+import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
@@ -33,13 +35,18 @@ import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
+import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
+import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
+import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
+import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
+import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
@@ -53,7 +60,9 @@ part 'serializers.g.dart';
   Accepte,
   ActionRoleDto,
   Adresse,
+  AffichageRupture,
   AppareilDto,
+  ArticlePublic,
   CategorieDto,
   CompteMoi,
   ConfigZone,
@@ -69,13 +78,18 @@ part 'serializers.g.dart';
   DossierCoursierAdmin,
   ErreurApi,
   EtatCategorie,
+  EtatEffectifBoutique,
   EtatRoleDto,
+  FichePublique,
   ForcageDto,
   HealthResponse,
+  HorairesSemaineDto,
   Inscription,
   JetonsDto,
   ModifierAdresse,
+  PlageDto,
   PlateformeDto,
+  ResolutionPlaque,
   ResultatVerification,
   SessionAppareil,
   SessionOuverte,
