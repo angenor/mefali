@@ -432,6 +432,78 @@ abstract class MefaliCoreLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun repère vocal — Mefali vous en redemandera un à la prochaine commande.'**
   String get adresseRepereAbsent;
+
+  /// Entrée de l'accueil provisoire vers l'atelier DEV — visible seulement en build --dart-define=MEFALI_DEV_ADRESSE
+  ///
+  /// In fr, this message translates to:
+  /// **'Repère vocal (atelier DEV)'**
+  String get atelierRepereEntree;
+
+  /// Titre de l'écran de l'atelier DEV du repère vocal
+  ///
+  /// In fr, this message translates to:
+  /// **'Atelier repère vocal'**
+  String get atelierRepereTitre;
+
+  /// Bandeau explicatif de l'atelier DEV
+  ///
+  /// In fr, this message translates to:
+  /// **'Surface de DÉVELOPPEMENT, absente des builds de production. Ouvre la feuille d\'enregistrement sur un pin GPS bouchon (Tiassalé) pour éprouver, sur appareil, la permission micro, l\'enregistrement, la réécoute et l\'envoi réel.'**
+  String get atelierRepereAide;
+
+  /// Action : présenter FeuilleEnregistrerAdresse sur le pin bouchon
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir la feuille d\'enregistrement'**
+  String get atelierRepereOuvrir;
+
+  /// Titre de la carte récapitulant ce que la feuille a rendu
+  ///
+  /// In fr, this message translates to:
+  /// **'Repère capté'**
+  String get atelierRepereCaptee;
+
+  /// Taille de la note vocale captée, avant envoi
+  ///
+  /// In fr, this message translates to:
+  /// **'{octets} octets captés'**
+  String atelierRepereOctets(int octets);
+
+  /// La capture n'a pas de note vocale (l'utilisateur n'en a pas enregistré)
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune note vocale dans cette capture — repère écrit seul.'**
+  String get atelierRepereSansNote;
+
+  /// Action : téléverser la capture vers le serveur pour de vrai
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer (POST /moi/adresses)'**
+  String get atelierRepereEnvoyer;
+
+  /// Libellé du bouton d'envoi pendant l'appel réseau
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoi en cours…'**
+  String get atelierRepereEnvoi;
+
+  /// Confirmation de l'enregistrement, avec l'id rendu par le serveur
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse enregistrée : {id}'**
+  String atelierRepereEnvoyee(String id);
+
+  /// Diagnostic DEV d'un envoi échoué (code HTTP et message)
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec de l\'envoi : {details}'**
+  String atelierRepereErreur(String details);
+
+  /// Action : nettoyer l'adresse créée par l'atelier (DELETE)
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer l\'adresse de test'**
+  String get atelierRepereSupprimer;
 }
 
 class _MefaliCoreLocalizationsDelegate

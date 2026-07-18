@@ -200,4 +200,48 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
   @override
   String get adresseRepereAbsent =>
       'Aucun repère vocal — Mefali vous en redemandera un à la prochaine commande.';
+
+  @override
+  String get atelierRepereEntree => 'Repère vocal (atelier DEV)';
+
+  @override
+  String get atelierRepereTitre => 'Atelier repère vocal';
+
+  @override
+  String get atelierRepereAide =>
+      'Surface de DÉVELOPPEMENT, absente des builds de production. Ouvre la feuille d\'enregistrement sur un pin GPS bouchon (Tiassalé) pour éprouver, sur appareil, la permission micro, l\'enregistrement, la réécoute et l\'envoi réel.';
+
+  @override
+  String get atelierRepereOuvrir => 'Ouvrir la feuille d\'enregistrement';
+
+  @override
+  String get atelierRepereCaptee => 'Repère capté';
+
+  @override
+  String atelierRepereOctets(int octets) {
+    return '$octets octets captés';
+  }
+
+  @override
+  String get atelierRepereSansNote =>
+      'Aucune note vocale dans cette capture — repère écrit seul.';
+
+  @override
+  String get atelierRepereEnvoyer => 'Envoyer (POST /moi/adresses)';
+
+  @override
+  String get atelierRepereEnvoi => 'Envoi en cours…';
+
+  @override
+  String atelierRepereEnvoyee(String id) {
+    return 'Adresse enregistrée : $id';
+  }
+
+  @override
+  String atelierRepereErreur(String details) {
+    return 'Échec de l\'envoi : $details';
+  }
+
+  @override
+  String get atelierRepereSupprimer => 'Supprimer l\'adresse de test';
 }

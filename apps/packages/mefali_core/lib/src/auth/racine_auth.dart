@@ -6,6 +6,7 @@ import '../../l10n/mefali_core_localizations.dart';
 import '../adresses/liste_adresses.dart';
 import '../appareils/ecran_appareils.dart';
 import '../config/service_config.dart';
+import '../dev/atelier_repere_vocal.dart';
 import '../theme/tokens.dart';
 import 'parcours_auth.dart';
 import 'session.dart';
@@ -146,6 +147,26 @@ class AccueilProvisoire extends ConsumerWidget {
                   ),
                 ),
               ),
+              // Atelier DEV du repère vocal — pour éprouver micro + réécoute +
+              // envoi sur appareil avant le cycle CMD. Absent des builds de
+              // production : `modeDevAdresse` est une constante à `false` sans le
+              // `--dart-define=MEFALI_DEV_ADRESSE=true`, donc ce sous-arbre (et
+              // l'écran qu'il pousse) est éliminé comme code mort.
+              if (modeDevAdresse)
+                SizedBox(
+                  height: MefaliTokens.tapMin,
+                  child: ListTile(
+                    leading: const Icon(Symbols.mic),
+                    title: Text(l10n.atelierRepereEntree),
+                    trailing: const Icon(Symbols.chevron_right),
+                    contentPadding: EdgeInsets.zero,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AtelierRepereVocal(),
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: MefaliTokens.space3),
               SizedBox(
                 height: MefaliTokens.buttonHeight,
