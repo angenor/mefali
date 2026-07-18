@@ -42,6 +42,11 @@ utilisateur en clés i18n fr).
   `flutter run --dart-define=MEFALI_API_URL=http://<ip-lan-du-poste>:8080`
   Ajouter `--dart-define=MEFALI_DEV_OTP=true` pour lire le code OTP sur l'écran
   de saisie (`SMS_MODE=traces` + `APP_ENV=dev` ; surface absente en production).
+  Ajouter `--dart-define=MEFALI_DEV_ADRESSE=true` (client) pour ouvrir l'atelier
+  DEV du repère vocal depuis l'accueil provisoire : il déroule micro + permission
+  + enregistrement + réécoute + envoi RÉEL (`POST /moi/adresses`) sur un pin GPS
+  bouchon, avant que le cycle CMD ne fournisse le vrai déclencheur post-livraison.
+  Gaté comme `/dev/otp` (constante de compilation, éliminée en release).
   ⚠ L'API doit signer ses URLs présignées avec la MÊME ip que l'appareil peut
   joindre : `S3_ENDPOINT=http://<ip-lan-du-poste>:3900`, sinon les repères
   vocaux ne se lisent pas. iOS n'est pas vérifié (Xcode/CocoaPods à installer).

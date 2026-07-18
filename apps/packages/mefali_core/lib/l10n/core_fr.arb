@@ -253,5 +253,68 @@
   "adresseRepereAbsent": "Aucun repère vocal — Mefali vous en redemandera un à la prochaine commande.",
   "@adresseRepereAbsent": {
     "description": "Adresse dont le repère vocal a été purgé après 12 mois sans usage (FR-022)"
+  },
+  "atelierRepereEntree": "Repère vocal (atelier DEV)",
+  "@atelierRepereEntree": {
+    "description": "Entrée de l'accueil provisoire vers l'atelier DEV — visible seulement en build --dart-define=MEFALI_DEV_ADRESSE"
+  },
+  "atelierRepereTitre": "Atelier repère vocal",
+  "@atelierRepereTitre": {
+    "description": "Titre de l'écran de l'atelier DEV du repère vocal"
+  },
+  "atelierRepereAide": "Surface de DÉVELOPPEMENT, absente des builds de production. Ouvre la feuille d'enregistrement sur un pin GPS bouchon (Tiassalé) pour éprouver, sur appareil, la permission micro, l'enregistrement, la réécoute et l'envoi réel.",
+  "@atelierRepereAide": {
+    "description": "Bandeau explicatif de l'atelier DEV"
+  },
+  "atelierRepereOuvrir": "Ouvrir la feuille d'enregistrement",
+  "@atelierRepereOuvrir": {
+    "description": "Action : présenter FeuilleEnregistrerAdresse sur le pin bouchon"
+  },
+  "atelierRepereCaptee": "Repère capté",
+  "@atelierRepereCaptee": {
+    "description": "Titre de la carte récapitulant ce que la feuille a rendu"
+  },
+  "atelierRepereOctets": "{octets} octets captés",
+  "@atelierRepereOctets": {
+    "description": "Taille de la note vocale captée, avant envoi",
+    "placeholders": {
+      "octets": {
+        "type": "int"
+      }
+    }
+  },
+  "atelierRepereSansNote": "Aucune note vocale dans cette capture — repère écrit seul.",
+  "@atelierRepereSansNote": {
+    "description": "La capture n'a pas de note vocale (l'utilisateur n'en a pas enregistré)"
+  },
+  "atelierRepereEnvoyer": "Envoyer (POST /moi/adresses)",
+  "@atelierRepereEnvoyer": {
+    "description": "Action : téléverser la capture vers le serveur pour de vrai"
+  },
+  "atelierRepereEnvoi": "Envoi en cours…",
+  "@atelierRepereEnvoi": {
+    "description": "Libellé du bouton d'envoi pendant l'appel réseau"
+  },
+  "atelierRepereEnvoyee": "Adresse enregistrée : {id}",
+  "@atelierRepereEnvoyee": {
+    "description": "Confirmation de l'enregistrement, avec l'id rendu par le serveur",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "atelierRepereErreur": "Échec de l'envoi : {details}",
+  "@atelierRepereErreur": {
+    "description": "Diagnostic DEV d'un envoi échoué (code HTTP et message)",
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "atelierRepereSupprimer": "Supprimer l'adresse de test",
+  "@atelierRepereSupprimer": {
+    "description": "Action : nettoyer l'adresse créée par l'atelier (DELETE)"
   }
 }
