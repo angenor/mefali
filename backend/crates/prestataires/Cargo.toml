@@ -6,4 +6,35 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine PUR (constitution II) : aucune dépendance d'infrastructure ici —
+# Garage/S3 n'entre que par le port `socle::DepotObjets` (reprise R1), le
+# module commandes par le port `CommandesActives` (R5), leurs impls réelles
+# vivant dans la couche `api`.
 [dependencies]
+socle.workspace = true
+# Seuil/fenêtre de masquage, affichage rupture par catégorie, fuseau et devise
+# sont des paramètres hérités, lus via `ConfigurationZones` (R7, R8) ; le
+# recalcul d'activation est une méthode inhérente de `PgZones` (ZON-03).
+zones.workspace = true
+# Attribution du rôle vendeur au rattachement (`PgComptes::decider_role`, R11)
+# et types `Role`/`StatutRole` de la machine à états du cycle 003.
+comptes.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+# État effectif de boutique : horaires interprétés dans le fuseau de la zone
+# (`zone.fuseau_horaire`) — jamais celui du serveur (R3, R8).
+chrono-tz.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+# Jeton de plaque : HMAC-SHA256 signé par PLAQUE_SECRET (R2).
+hmac.workspace = true
+sha2.workspace = true
+# CSPRNG : nonce du jeton de plaque et code de secours à 4 chiffres (R2).
+rand.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

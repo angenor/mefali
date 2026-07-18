@@ -87,6 +87,11 @@ pub struct Config {
     /// Sert aussi à dériver la clé HMAC des défis OTP (R3). ≥ 32 octets —
     /// vérifié par [`Config::valider`].
     pub jwt_secret: String,
+    /// Secret HMAC des jetons de plaque des prestataires (cycle VND, research
+    /// R2). DISTINCT du secret JWT : un jeton de plaque est gravé sur une
+    /// plaque physique et vit des années — sa clé tourne indépendamment des
+    /// sessions. ≥ 32 octets — vérifié par [`Config::valider`].
+    pub plaque_secret: String,
     /// Fournisseur d'envoi de SMS (cycle CPT, research R6).
     #[serde(default)]
     pub sms_mode: SmsMode,
@@ -135,6 +140,13 @@ impl Config {
                 self.jwt_secret.len()
             )));
         }
+        if self.plaque_secret.len() < JWT_SECRET_OCTETS_MIN {
+            return Err(config::ConfigError::Message(format!(
+                "PLAQUE_SECRET fait {} octets — minimum {JWT_SECRET_OCTETS_MIN} (256 bits, \
+                 HMAC-SHA256). Générer : openssl rand -hex 32",
+                self.plaque_secret.len()
+            )));
+        }
         Ok(())
     }
 }
@@ -153,6 +165,7 @@ mod tests {
             s3_bucket: "b".to_owned(),
             osrm_url: "http://x".to_owned(),
             jwt_secret: secret.to_owned(),
+            plaque_secret: "p".repeat(32),
             sms_mode: SmsMode::Traces,
             sentry_dsn: None,
             app_env: AppEnv::Dev,
@@ -168,6 +181,14 @@ mod tests {
     #[test]
     fn secret_jwt_de_32_octets_accepte() {
         assert!(config_avec_secret(&"a".repeat(32)).valider().is_ok());
+    }
+
+    #[test]
+    fn secret_plaque_trop_court_refuse() {
+        let mut config = config_avec_secret(&"a".repeat(32));
+        config.plaque_secret = "court".to_owned();
+        let erreur = config.valider().unwrap_err();
+        assert!(erreur.to_string().contains("PLAQUE_SECRET"));
     }
 
     #[test]
