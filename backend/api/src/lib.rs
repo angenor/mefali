@@ -691,7 +691,7 @@ mod tests {
                 objets.clone(),
                 std::sync::Arc::from(&b"secret-de-test-de-32-octets-mini"[..]),
             ),
-            objets,
+            objets.clone(),
             std::sync::Arc::new(prestataires::AucuneCommandeActive),
             std::sync::Arc::from(&b"secret-plaque-de-test-32-octets!"[..]),
         );
@@ -706,6 +706,50 @@ mod tests {
             .expect("jeton du seed résolu");
         assert!(resolution.valide);
         assert_eq!(resolution.prestataire_id, tantie);
+
+        // Catalogues (seed 35) : 3 + 3 articles, promo de Kofi, savon en
+        // rupture (grisé — servi indisponible).
+        assert_eq!(
+            compter(&pool, "SELECT count(*) FROM prestataires.article").await,
+            6
+        );
+        assert_eq!(
+            compter(
+                &pool,
+                "SELECT count(*) FROM prestataires.disponibilite_article WHERE NOT disponible",
+            )
+            .await,
+            1
+        );
+        let kofi: uuid::Uuid = "01900000-0000-7000-8000-000000000502".parse().unwrap();
+        // Les clés du seed sont des POINTEURS (les objets ne sont pas dans
+        // Garage) ; le double mémoire, plus strict que S3, refuse de présigner
+        // une clé absente — on dépose donc l'octet correspondant.
+        objets
+            .deposer(
+                &format!("prestataires/fiches/{kofi}/seed-1"),
+                vec![0xFF],
+                "image/jpeg",
+            )
+            .await
+            .unwrap();
+        let fiche = depot
+            .fiche_publique_de(kofi)
+            .await
+            .unwrap()
+            .expect("fiche de Kofi servie");
+        let alloco = fiche
+            .articles
+            .iter()
+            .find(|a| a.nom == "Alloco")
+            .expect("promo au catalogue");
+        assert_eq!((alloco.prix_unites, alloco.prix_barre_unites), (800, Some(1000)));
+        let savon = fiche
+            .articles
+            .iter()
+            .find(|a| a.nom == "Savon de Marseille")
+            .expect("rupture servie GRISÉE (mode seed)");
+        assert!(!savon.disponible);
     }
 
     /// T009 — double seed du module comptes → état strictement identique

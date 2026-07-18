@@ -640,10 +640,19 @@ mod tests {
             corps["consentement_artci_version"], "2026-07",
             "l'app renvoie la version du texte qu'elle a affiché (FR-006)"
         );
+        // Depuis le cycle 005, le seed POSE deux catégories actives
+        // (restauration + boutique_superette — FR-054) : la config distante
+        // les sert, triées par slug.
+        let slugs_actifs: Vec<&str> = corps["categories"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["slug"].as_str().unwrap())
+            .collect();
         assert_eq!(
-            corps["categories"],
-            json!([]),
-            "aucun vendeur → aucune catégorie active"
+            slugs_actifs,
+            vec!["boutique_superette", "restauration"],
+            "les catégories ACTIVÉES par le seed prestataires, elles seules"
         );
         let version = corps["version"].as_str().unwrap();
         assert!(!version.is_empty());
