@@ -12,6 +12,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+use chrono::{DateTime, NaiveTime, Utc};
 use uuid::Uuid;
 
 // ── Statuts et sources ─────────────────────────────────────────────────────
@@ -150,6 +151,159 @@ impl FromStr for SourceBascule {
             autre => Err(format!("source de bascule inconnue : {autre}")),
         }
     }
+}
+
+/// Rendu des articles en rupture, résolu par catégorie dans la configuration
+/// de zone (`categorie.<slug>.affichage_rupture` — FR-042, FR-050, R8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AffichageRupture {
+    /// L'article est servi, grisé, non commandable (seed — maquettes V2/C2).
+    Grise,
+    /// L'article est ABSENT de la consultation.
+    Masque,
+}
+
+impl AffichageRupture {
+    /// Valeur du paramètre de zone.
+    pub fn comme_str(self) -> &'static str {
+        match self {
+            AffichageRupture::Grise => "grise",
+            AffichageRupture::Masque => "masque",
+        }
+    }
+}
+
+impl FromStr for AffichageRupture {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "grise" => Ok(AffichageRupture::Grise),
+            "masque" => Ok(AffichageRupture::Masque),
+            autre => Err(format!("affichage de rupture inconnu : {autre}")),
+        }
+    }
+}
+
+// ── Types dérivés (jamais stockés) et de consultation ──────────────────────
+
+/// Une plage d'ouverture dans la journée (heures LOCALES de la zone — FR-031).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Plage {
+    /// Début (inclus).
+    pub debut: NaiveTime,
+    /// Fin (exclue) — strictement après le début (CHECK en base).
+    pub fin: NaiveTime,
+}
+
+/// Horaires hebdomadaires : index 0 = lundi … 6 = dimanche ; un jour sans
+/// plage est un jour de fermeture (FR-031).
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+pub struct HorairesSemaine {
+    /// Plages par jour, triées par heure de début.
+    pub jours: [Vec<Plage>; 7],
+}
+
+/// État EFFECTIF d'une boutique — DÉRIVÉ à chaque lecture, jamais stocké
+/// (FR-032, research R3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct EffectifBoutique {
+    /// La boutique reçoit-elle des commandes en cet instant ?
+    pub ouvert: bool,
+    /// Prochaine réouverture estimée quand `ouvert` est faux (fin de pause
+    /// recalée dans les horaires, sinon prochaine plage — FR-029).
+    pub reouverture_estimee: Option<DateTime<Utc>>,
+}
+
+/// Décomposition de l'état « commandable » (FR-028) — la SEULE définition ;
+/// les modules ultérieurs (CMD) s'y réfèrent sans la redupliquer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Commandabilite {
+    /// Le prestataire est à l'état `agree`.
+    pub agree: bool,
+    /// Sa catégorie de service est active dans sa ville (ZON-03).
+    pub categorie_active: bool,
+    /// L'état effectif de sa boutique est ouvert.
+    pub boutique_ouverte: bool,
+}
+
+impl Commandabilite {
+    /// VRAI si et seulement si les trois conditions tiennent (FR-028).
+    pub fn commandable(self) -> bool {
+        self.agree && self.categorie_active && self.boutique_ouverte
+    }
+}
+
+/// Résolution d'un jeton de plaque (FR-016) — la validité DÉRIVE de l'état
+/// d'agrément, sans liste de révocation (FR-015).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ResolutionPlaque {
+    /// Prestataire que la plaque désigne.
+    pub prestataire_id: Uuid,
+    /// `statut = agree` à l'instant de la résolution.
+    pub valide: bool,
+}
+
+/// Article tel que la consultation publique le sert (sous-ensemble FR-027).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ArticlePublic {
+    /// Identifiant.
+    pub id: Uuid,
+    /// Nom (contenu vendeur).
+    pub nom: String,
+    /// Prix courant, entier en unités mineures (constitution III).
+    pub prix_unites: i64,
+    /// Code ISO 4217 de la zone.
+    pub devise: String,
+    /// Prix barré (présent ⇒ promotion, strictement supérieur — FR-023).
+    pub prix_barre_unites: Option<i64>,
+    /// URL présignée de la photo (TTL court), s'il y en a une.
+    pub photo_url: Option<String>,
+    /// Étiquette libre de regroupement (FR-021).
+    pub categorie_interne: Option<String>,
+    /// Faux = rupture (servi seulement si `affichage_rupture = grise`).
+    pub disponible: bool,
+}
+
+/// Fiche publique : le sous-ensemble EXACT que FR-027 autorise — ni contact,
+/// ni coordonnées de site, ni donnée d'exploitation (SC-013).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FichePublique {
+    /// Identifiant du prestataire.
+    pub id: Uuid,
+    /// Nom public.
+    pub nom: String,
+    /// Slug de la catégorie de service.
+    pub categorie: String,
+    /// URLs présignées des photos de fiche, dans l'ordre.
+    pub photos: Vec<String>,
+    /// Délai de préparation moyen déclaré (minutes).
+    pub delai_preparation_min: i32,
+    /// État effectif de la boutique (dérivé).
+    pub boutique: EffectifBoutique,
+    /// Horaires hebdomadaires.
+    pub horaires: HorairesSemaine,
+    /// FR-028 — la seule définition.
+    pub commandable: bool,
+    /// Mode de rendu des ruptures, résolu pour la catégorie (FR-050).
+    pub affichage_rupture: AffichageRupture,
+    /// Catalogue servi (retirés absents ; ruptures selon le mode).
+    pub articles: Vec<ArticlePublic>,
+}
+
+/// Article vu par le module commandes (trait `Vendeurs`) : uniquement les
+/// articles COMMANDABLES — disponibles, non retirés, chez un prestataire
+/// commandable (SC-004).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ArticleCommandable {
+    /// Identifiant.
+    pub id: Uuid,
+    /// Nom.
+    pub nom: String,
+    /// Prix courant, entier en unités mineures.
+    pub prix_unites: i64,
+    /// Code ISO 4217.
+    pub devise: String,
 }
 
 // ── Erreurs ────────────────────────────────────────────────────────────────

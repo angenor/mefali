@@ -177,6 +177,7 @@ pub async fn run() -> std::io::Result<()> {
     // silencieusement, une configuration PRÉSENTE mais invalide (JWT_SECRET
     // trop court) échoue au démarrage — `socle::Config::from_env` la refuse.
     let mut comptes_opt: Option<PgComptes> = None;
+    let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -192,13 +193,15 @@ pub async fn run() -> std::io::Result<()> {
 
                 let ephemere = infra_redis::RedisEphemere::nouveau(&config.redis_url)
                     .map_err(|e| std::io::Error::other(format!("Redis : {e}")))?;
-                let objets = infra_s3::S3Objets::nouveau(
+                // Port PARTAGÉ entre comptes (pièces, repères vocaux) et
+                // prestataires (photos, chartes) — un seul client S3.
+                let objets: Arc<dyn socle::DepotObjets> = Arc::new(infra_s3::S3Objets::nouveau(
                     &config.s3_endpoint,
                     &config.s3_access_key,
                     &config.s3_secret_key,
                     &config.s3_bucket,
                     REGION_S3,
-                );
+                ));
                 // Le type CONCRET est retenu à côté du port : `EnvoiSms` ne sait
                 // qu'envoyer, et `/dev/otp` doit RELIRE le journal. `Arc` partagé
                 // — les deux poignées désignent le même journal, sinon la surface
@@ -220,11 +223,24 @@ pub async fn run() -> std::io::Result<()> {
                     pool.clone(),
                     Arc::new(ephemere),
                     sms,
-                    Arc::new(objets),
+                    objets.clone(),
                     Arc::from(config.jwt_secret.as_bytes()),
                 );
                 tokio::spawn(job_purge_reperes(depot.clone()));
                 eprintln!("job de purge des repères vocaux démarré (quotidien)");
+                // PgPrestataires — composition racine du domaine prestataires
+                // (cycle 005) : réutilise le dépôt comptes (rôle vendeur au
+                // rattachement, R11), le MÊME port objets, et le bouchon
+                // CommandesActives — aucune commande active n'existe avant le
+                // cycle CMD, donc aucun signalement coursier n'est recevable
+                // (R5, exact et voulu).
+                prestataires_opt = Some(prestataires::PgPrestataires::new(
+                    pool.clone(),
+                    depot.clone(),
+                    objets,
+                    Arc::new(prestataires::AucuneCommandeActive),
+                    Arc::from(config.plaque_secret.as_bytes()),
+                ));
                 comptes_opt = Some(depot);
                 Some(pool)
             }
@@ -292,6 +308,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(pool));
         }
         if let Some(depot) = comptes_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = prestataires_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))

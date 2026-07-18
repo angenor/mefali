@@ -31,6 +31,7 @@ tokio.workspace = true
 socle.workspace = true
 zones.workspace = true
 comptes.workspace = true
+prestataires.workspace = true
 sqlx.workspace = true
 # Impls RÉELLES des ports du crate `comptes` : la composition racine connaît
 # l'infra, le domaine ne connaît que ses traits (constitution II). Consommées par
@@ -57,6 +58,7 @@ sentry-actix.workspace = true
 # Tests d'intégration des impls réelles des ports (infra_redis, infra_s3 — T005).
 tokio.workspace = true
 comptes.workspace = true
+prestataires.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 # Consomme une URL présignée Garage pour prouver l'aller-retour d'octets (SC-007).

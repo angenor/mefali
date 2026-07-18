@@ -18,10 +18,16 @@
 //!   `&mut PgTransaction` — l'atomicité « transition + événement outbox » est
 //!   impossible à contourner (constitution VI).
 
+pub mod depot;
 pub mod modele;
 pub mod ports;
 
-pub use modele::{ErreurPrestataires, SourceBascule, StatutBoutique, StatutPrestataire};
+pub use depot::{PgPrestataires, Prestataires, Vendeurs};
+pub use modele::{
+    AffichageRupture, ArticleCommandable, ArticlePublic, Commandabilite, EffectifBoutique,
+    ErreurPrestataires, FichePublique, HorairesSemaine, Plage, ResolutionPlaque, SourceBascule,
+    StatutBoutique, StatutPrestataire,
+};
 pub use ports::{
     AucuneCommandeActive, CommandesActives, CommandesActivesFixes, ErreurCommandesActives,
 };
