@@ -21,8 +21,13 @@
 pub mod depot;
 pub mod modele;
 pub mod ports;
+pub mod prestataire;
 
 pub use depot::{PgPrestataires, Prestataires, Vendeurs};
+pub use prestataire::{
+    CharteSignee, ModificationPrestataire, NouveauPrestataire, PhotoPrestataire, Prestataire,
+    CHARTE_MIMES, CHARTE_TAILLE_MAX, PHOTO_MIMES, PHOTO_TAILLE_MAX,
+};
 pub use modele::{
     AffichageRupture, ArticleCommandable, ArticlePublic, Commandabilite, EffectifBoutique,
     ErreurPrestataires, FichePublique, HorairesSemaine, Plage, ResolutionPlaque, SourceBascule,

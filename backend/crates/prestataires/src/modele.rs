@@ -399,12 +399,21 @@ pub enum ErreurPrestataires {
     /// ce prestataire portant cet article (403, compté nulle part — FR-038).
     #[error("signalement refusé : aucune commande active éligible")]
     SignalementInterdit,
+    /// Champ de fiche inexploitable (nom vide, délai négatif…).
+    #[error("fiche invalide : {0}")]
+    FicheInvalide(String),
+    /// Aucune photo pour cet identifiant chez ce prestataire.
+    #[error("photo inconnue : {0}")]
+    PhotoInconnue(Uuid),
     /// Média au-delà de la taille autorisée.
     #[error("objet trop volumineux")]
     ObjetTropVolumineux,
     /// Média de type refusé.
     #[error("média invalide : {0}")]
     MediaInvalide(String),
+    /// Stockage objet (Garage/S3) indisponible.
+    #[error("stockage objet indisponible : {0}")]
+    Objets(#[from] socle::ErreurObjets),
     /// Paramètre de zone requis absent de toute la chaîne d'héritage, ou
     /// inexploitable — le SERVICE est mal configuré (500), pas le client
     /// (patron du cycle 003).

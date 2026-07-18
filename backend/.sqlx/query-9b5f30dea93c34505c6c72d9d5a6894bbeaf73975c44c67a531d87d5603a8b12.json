@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.prestataire\n             SET nom = $2, contact_telephone = $3, delai_preparation_min = $4,\n                 modifie_le = now()\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9b5f30dea93c34505c6c72d9d5a6894bbeaf73975c44c67a531d87d5603a8b12"
+}

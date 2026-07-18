@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(MAX(position) + 1, 0) AS \"position!\"\n               FROM prestataires.photo_prestataire WHERE prestataire_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "position!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "db205104b4f2ce34efa517cadf62c45cb4de149b62e23ae9b5bacd85aa02cf8c"
+}

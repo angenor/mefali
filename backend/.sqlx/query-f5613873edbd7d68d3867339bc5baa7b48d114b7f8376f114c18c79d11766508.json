@@ -1,0 +1,191 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id, p.nom, p.categorie_id, c.slug AS categorie_slug, p.ville_id,\n                      p.contact_telephone, p.delai_preparation_min,\n                      p.statut::text AS \"statut!\", p.statut_decide_par, p.statut_decide_le,\n                      p.statut_motif, p.jeton_plaque, p.code_secours, p.cree_le, p.modifie_le\n               FROM prestataires.prestataire p\n               JOIN zones.categorie c ON c.id = p.categorie_id\n               WHERE p.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "nom",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "nom"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "categorie_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "categorie_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "categorie_slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "zones.categorie",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "ville_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "ville_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "contact_telephone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "contact_telephone"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "delai_preparation_min",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "delai_preparation_min"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "statut_decide_par",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "statut_decide_par"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "statut_decide_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "statut_decide_le"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "statut_motif",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "statut_motif"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "jeton_plaque",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "jeton_plaque"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "code_secours",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "code_secours"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "cree_le"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "modifie_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "modifie_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f5613873edbd7d68d3867339bc5baa7b48d114b7f8376f114c18c79d11766508"
+}
