@@ -60,7 +60,19 @@ INSERT INTO zones.parametre_zone (zone_id, cle, valeur) VALUES
     ('01900000-0000-7000-8000-000000000001', 'categorie.marche.mixable',             'true'),
     ('01900000-0000-7000-8000-000000000001', 'categorie.pharmacie.mixable',          'true'),
     ('01900000-0000-7000-8000-000000000001', 'categorie.gaz.mixable',                'true'),
-    ('01900000-0000-7000-8000-000000000001', 'categorie.quincaillerie.mixable',      'true')
+    ('01900000-0000-7000-8000-000000000001', 'categorie.quincaillerie.mixable',      'true'),
+    -- Cycle VND (005, research R8) — natures de catégorie et règles pays,
+    -- héritées par toute ville. Récapitulatif des paramètres de zone :
+    -- affichage d'un article en rupture = « grisé » (FR-042/FR-050),
+    -- conservation de la charte post-relation = 5 ans (FR-026).
+    ('01900000-0000-7000-8000-000000000001', 'zone.fuseau_horaire',                       '"Africa/Abidjan"'),
+    ('01900000-0000-7000-8000-000000000001', 'charte.conservation_post_relation_annees',  '5'),
+    ('01900000-0000-7000-8000-000000000001', 'categorie.restauration.affichage_rupture',       '"grise"'),
+    ('01900000-0000-7000-8000-000000000001', 'categorie.boutique_superette.affichage_rupture', '"grise"'),
+    ('01900000-0000-7000-8000-000000000001', 'categorie.marche.affichage_rupture',             '"grise"'),
+    ('01900000-0000-7000-8000-000000000001', 'categorie.pharmacie.affichage_rupture',          '"grise"'),
+    ('01900000-0000-7000-8000-000000000001', 'categorie.gaz.affichage_rupture',                '"grise"'),
+    ('01900000-0000-7000-8000-000000000001', 'categorie.quincaillerie.affichage_rupture',      '"grise"')
 ON CONFLICT (zone_id, cle) DO UPDATE SET valeur = EXCLUDED.valeur, modifie_le = now();
 
 -- ── Paramètres au niveau VILLE (Tiassalé) ──────────────────────────────────
@@ -75,7 +87,11 @@ INSERT INTO zones.parametre_zone (zone_id, cle, valeur) VALUES
     ('01900000-0000-7000-8000-000000000002', 'categorie.marche.seuil_activation',             '3'),
     ('01900000-0000-7000-8000-000000000002', 'categorie.pharmacie.seuil_activation',          '1'),
     ('01900000-0000-7000-8000-000000000002', 'categorie.gaz.seuil_activation',                '2'),
-    ('01900000-0000-7000-8000-000000000002', 'categorie.quincaillerie.seuil_activation',      '2')
+    ('01900000-0000-7000-8000-000000000002', 'categorie.quincaillerie.seuil_activation',      '2'),
+    -- Cycle VND (005) — masquage automatique après signalements coursier
+    -- (FR-040) : 2 coursiers DISTINCTS en 7 jours (Récapitulatif, VND-04).
+    ('01900000-0000-7000-8000-000000000002', 'rupture.masquage_seuil',         '2'),
+    ('01900000-0000-7000-8000-000000000002', 'rupture.masquage_fenetre_jours', '7')
 ON CONFLICT (zone_id, cle) DO UPDATE SET valeur = EXCLUDED.valeur, modifie_le = now();
 
 -- ── État d'activation par ville (6 lignes Tiassalé) ────────────────────────

@@ -538,8 +538,11 @@ mod tests {
         assert_eq!(apres_un.2, 6, "6 catégories");
         assert_eq!(apres_un.3, 6, "6 activations Tiassalé");
         // 8 (pays, cycle 002) + 4 (pays, cycle 003 : indicatif, rétention du
-        // repère vocal, durée max de note vocale, version ARTCI) + 10 (ville).
-        assert_eq!(apres_un.4, 22, "12 (pays) + 10 (ville) paramètres");
+        // repère vocal, durée max de note vocale, version ARTCI) + 8 (pays,
+        // cycle 005 : fuseau, conservation charte, 6 affichages de rupture)
+        // + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 : seuil et
+        // fenêtre du masquage automatique).
+        assert_eq!(apres_un.4, 32, "20 (pays) + 12 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

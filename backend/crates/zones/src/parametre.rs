@@ -139,26 +139,62 @@ impl PgZones {
             _ if cle.starts_with("categorie.") => {
                 self.valider_cle_categorie(tx, cle, valeur).await?;
             }
+            // Masquage automatique après signalements coursier (cycle VND,
+            // FR-040) : seuil de coursiers DISTINCTS et fenêtre glissante.
+            "rupture.masquage_seuil" | "rupture.masquage_fenetre_jours" => {
+                if valeur.as_i64().filter(|&n| n >= 1).is_none() {
+                    return invalide("entier ≥ 1 attendu");
+                }
+            }
+            // Conservation de la charte signée après la fin de la relation
+            // (cycle VND, FR-026 — Récapitulatif des paramètres de zone).
+            "charte.conservation_post_relation_annees" => {
+                if valeur.as_i64().filter(|&n| n >= 0).is_none() {
+                    return invalide("entier ≥ 0 attendu");
+                }
+            }
+            // Fuseau des horaires d'ouverture (cycle VND, research R8) : un
+            // identifiant IANA valide — une faute de frappe échouerait sinon
+            // en 500 à CHAQUE lecture d'état de boutique.
+            "zone.fuseau_horaire" => {
+                let ok = valeur
+                    .as_str()
+                    .is_some_and(|s| s.parse::<chrono_tz::Tz>().is_ok());
+                if !ok {
+                    return invalide("fuseau IANA attendu (ex. Africa/Abidjan)");
+                }
+            }
             // client.* (libre) et tout autre namespace (FR-011) : acceptés.
             _ => {}
         }
         Ok(())
     }
 
-    /// Valide les clés `categorie.<slug>.seuil_activation` / `.mixable`
-    /// (slug existant + type de la valeur). Toute autre clé `categorie.*` est
-    /// acceptée telle quelle (FR-011).
+    /// Valide les clés `categorie.<slug>.seuil_activation` / `.mixable` /
+    /// `.affichage_rupture` (slug existant + type de la valeur). Toute autre
+    /// clé `categorie.*` est acceptée telle quelle (FR-011).
     async fn valider_cle_categorie(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
         cle: &str,
         valeur: &Value,
     ) -> Result<(), ErreurZones> {
+        // Forme attendue de la valeur, selon le suffixe de la clé.
+        enum Forme {
+            EntierAuMoinsUn,
+            Booleen,
+            /// `grise` | `masque` — rendu des articles en rupture (cycle VND,
+            /// FR-042/FR-050, seed « grise »).
+            AffichageRupture,
+        }
+
         let reste = cle.strip_prefix("categorie.").unwrap_or_default();
-        let (slug, attendu_entier) = if let Some(slug) = reste.strip_suffix(".seuil_activation") {
-            (slug, true)
+        let (slug, forme) = if let Some(slug) = reste.strip_suffix(".seuil_activation") {
+            (slug, Forme::EntierAuMoinsUn)
         } else if let Some(slug) = reste.strip_suffix(".mixable") {
-            (slug, false)
+            (slug, Forme::Booleen)
+        } else if let Some(slug) = reste.strip_suffix(".affichage_rupture") {
+            (slug, Forme::AffichageRupture)
         } else {
             return Ok(());
         };
@@ -173,18 +209,28 @@ impl PgZones {
             return Err(ErreurZones::CategorieInconnue(slug.to_owned()));
         }
 
-        if attendu_entier {
-            if valeur.as_i64().filter(|&n| n >= 1).is_none() {
-                return Err(ErreurZones::ValeurInvalide {
-                    cle: cle.to_owned(),
-                    raison: "entier ≥ 1 attendu".to_owned(),
-                });
-            }
-        } else if !valeur.is_boolean() {
-            return Err(ErreurZones::ValeurInvalide {
+        let invalide = |raison: &str| {
+            Err(ErreurZones::ValeurInvalide {
                 cle: cle.to_owned(),
-                raison: "booléen attendu".to_owned(),
-            });
+                raison: raison.to_owned(),
+            })
+        };
+        match forme {
+            Forme::EntierAuMoinsUn => {
+                if valeur.as_i64().filter(|&n| n >= 1).is_none() {
+                    return invalide("entier ≥ 1 attendu");
+                }
+            }
+            Forme::Booleen => {
+                if !valeur.is_boolean() {
+                    return invalide("booléen attendu");
+                }
+            }
+            Forme::AffichageRupture => {
+                if !matches!(valeur.as_str(), Some("grise" | "masque")) {
+                    return invalide("« grise » ou « masque » attendu");
+                }
+            }
         }
         Ok(())
     }
@@ -240,6 +286,12 @@ mod tests {
             ("transport.actifs", json!(["a_pied", "moto"])),
             ("categorie.restauration.seuil_activation", json!(8)),
             ("categorie.restauration.mixable", json!(false)),
+            ("categorie.restauration.affichage_rupture", json!("grise")),
+            ("categorie.restauration.affichage_rupture", json!("masque")),
+            ("rupture.masquage_seuil", json!(2)),
+            ("rupture.masquage_fenetre_jours", json!(7)),
+            ("charte.conservation_post_relation_annees", json!(5)),
+            ("zone.fuseau_horaire", json!("Africa/Abidjan")),
             ("texte.bandeau", json!("Bienvenue")),
             ("client.theme", json!({ "mode": "clair" })),
             ("dispatch.rayon_km", json!(3)), // namespace libre (FR-011)
@@ -256,6 +308,11 @@ mod tests {
             ("drapeau.pluie", json!("oui")),
             ("transport.actifs", json!("moto")),
             ("categorie.restauration.seuil_activation", json!(0)),
+            ("categorie.restauration.affichage_rupture", json!("invisible")),
+            ("rupture.masquage_seuil", json!(0)),
+            ("rupture.masquage_fenetre_jours", json!("7")),
+            ("charte.conservation_post_relation_annees", json!(-1)),
+            ("zone.fuseau_horaire", json!("Africa/Nulle_Part")),
             ("texte.bandeau", json!(42)),
         ] {
             let err = z
