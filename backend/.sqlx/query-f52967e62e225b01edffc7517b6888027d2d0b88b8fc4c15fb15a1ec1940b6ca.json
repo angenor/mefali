@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT prestataire_id FROM prestataires.rattachement_compte\n             WHERE compte_id = $1 ORDER BY rattache_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prestataire_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.rattachement_compte",
+            "name": "prestataire_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f52967e62e225b01edffc7517b6888027d2d0b88b8fc4c15fb15a1ec1940b6ca"
+}

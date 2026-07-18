@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                 EXISTS(SELECT 1 FROM prestataires.rattachement_compte\n                        WHERE prestataire_id = $1 AND compte_id = $2) AS \"rattache!\",\n                 (SELECT statut::text FROM prestataires.prestataire WHERE id = $1) AS statut",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rattache!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "statut",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "f5f016599bc6e535931291543dfec80efdcb168d365f7e12d0ea808e63c0efde"
+}

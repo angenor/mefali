@@ -24,6 +24,7 @@ pub mod modele;
 pub mod plaque;
 pub mod ports;
 pub mod prestataire;
+pub mod rattachement;
 pub mod site;
 
 pub use depot::{PgPrestataires, Prestataires, Vendeurs};
@@ -31,6 +32,7 @@ pub use prestataire::{
     transition, ActionPrestataire, CharteSignee, ModificationPrestataire, NouveauPrestataire,
     PhotoPrestataire, Prestataire, CHARTE_MIMES, CHARTE_TAILLE_MAX, PHOTO_MIMES, PHOTO_TAILLE_MAX,
 };
+pub use rattachement::Rattachement;
 pub use site::{etat_effectif, Site};
 pub use modele::{
     AffichageRupture, ArticleCommandable, ArticlePublic, Commandabilite, EffectifBoutique,
