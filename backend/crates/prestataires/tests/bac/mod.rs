@@ -11,8 +11,12 @@
 
 use std::sync::Arc;
 
+use chrono::NaiveDate;
 use comptes::{MemoireEphemere, PgComptes, SmsTraces};
-use prestataires::{CommandesActives, CommandesActivesFixes, PgPrestataires};
+use prestataires::modele::{HorairesSemaine, Plage};
+use prestataires::{
+    CommandesActives, CommandesActivesFixes, NouveauPrestataire, PgPrestataires, Prestataire,
+};
 use serde_json::json;
 use socle::{DepotObjets, MemoireObjets};
 use sqlx::PgPool;
@@ -160,6 +164,95 @@ impl Bac {
         .await
         .unwrap();
         id
+    }
+
+    /// Horaires type de Tantie Affoué : 8 h — 19 h du lundi au samedi.
+    pub fn horaires_type() -> HorairesSemaine {
+        let mut horaires = HorairesSemaine::default();
+        for jour in 0..6 {
+            horaires.jours[jour].push(Plage {
+                debut: chrono::NaiveTime::from_hms_opt(8, 0, 0).unwrap(),
+                fin: chrono::NaiveTime::from_hms_opt(19, 0, 0).unwrap(),
+            });
+        }
+        horaires
+    }
+
+    /// Crée une fiche prospect (sans photo, charte ni site).
+    pub async fn creer_fiche(&self, nom: &str, categorie_slug: &str) -> Uuid {
+        let mut tx = self.pool.begin().await.unwrap();
+        let p = self
+            .depot
+            .creer_prestataire(
+                &mut tx,
+                &NouveauPrestataire {
+                    nom: nom.to_owned(),
+                    categorie_slug: categorie_slug.to_owned(),
+                    ville_id: self.ville,
+                    contact_telephone: "+2250700000099".to_owned(),
+                    delai_preparation_min: 20,
+                },
+                self.admin,
+            )
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        p.id
+    }
+
+    /// Complète un prospect : photo, charte signée, site avec horaires type.
+    pub async fn completer_fiche(&self, prestataire: Uuid) {
+        let mut tx = self.pool.begin().await.unwrap();
+        self.depot
+            .ajouter_photo(
+                &mut tx,
+                prestataire,
+                vec![0xFF, 0xD8, 0xFF],
+                "image/jpeg",
+                self.admin,
+            )
+            .await
+            .unwrap();
+        self.depot
+            .deposer_charte(
+                &mut tx,
+                prestataire,
+                vec![0x25, 0x50, 0x44, 0x46],
+                "application/pdf",
+                "2026-07",
+                NaiveDate::from_ymd_opt(2026, 7, 18).unwrap(),
+                self.admin,
+            )
+            .await
+            .unwrap();
+        self.depot
+            .definir_site(
+                &mut tx,
+                prestataire,
+                5.898,
+                -4.823,
+                &Self::horaires_type(),
+                None,
+                self.admin,
+            )
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    /// Fiche prospect COMPLÈTE (prête à agréer).
+    pub async fn prospect_complet(&self, nom: &str, categorie_slug: &str) -> Uuid {
+        let id = self.creer_fiche(nom, categorie_slug).await;
+        self.completer_fiche(id).await;
+        id
+    }
+
+    /// Agrée (transaction dédiée) et rend la fiche.
+    pub async fn agreer(&self, prestataire: Uuid) -> Prestataire {
+        let mut tx = self.pool.begin().await.unwrap();
+        let p = self.depot.agreer(&mut tx, prestataire, self.admin).await.unwrap();
+        tx.commit().await.unwrap();
+        p
     }
 
     pub async fn compter(&self, sql: &'static str) -> i64 {
