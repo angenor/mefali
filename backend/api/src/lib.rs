@@ -605,6 +605,87 @@ mod tests {
         );
     }
 
+    /// T016 (cycle 005) — double seed prestataires → état strictement
+    /// identique (SC-012), AUCUN événement, agréés du seed prêts à être
+    /// commandables (l'ouverture effective suit l'horloge — horaires
+    /// 8 h — 19 h Abidjan, c'est voulu).
+    #[sqlx::test(migrations = "../migrations")]
+    async fn seed_prestataires_idempotent(pool: sqlx::PgPool) {
+        const TANTIE: &str = "01900000-0000-7000-8000-000000000501";
+        const JETON_TANTIE: &str =
+            "019000000000700080000000000005015eed5eed5eed5eed0123456789abcdef0123456789abcdef";
+
+        async fn compter(pool: &sqlx::PgPool, sql: &'static str) -> i64 {
+            sqlx::query_scalar(sql).fetch_one(pool).await.unwrap()
+        }
+        async fn etat(pool: &sqlx::PgPool) -> (i64, i64, i64, i64, i64, i64, i64) {
+            (
+                compter(pool, "SELECT count(*) FROM prestataires.prestataire").await,
+                compter(pool, "SELECT count(*) FROM prestataires.vendeur").await,
+                compter(pool, "SELECT count(*) FROM prestataires.site").await,
+                compter(pool, "SELECT count(*) FROM prestataires.horaire_site").await,
+                compter(pool, "SELECT count(*) FROM prestataires.charte_signee").await,
+                compter(
+                    pool,
+                    "SELECT count(*) FROM prestataires.rattachement_compte",
+                )
+                .await,
+                compter(
+                    pool,
+                    "SELECT count(*) FROM outbox.evenement WHERE entite_type IN \
+                     ('prestataire','site','charte_signee','rattachement','article',\
+                     'signalement_rupture')",
+                )
+                .await,
+            )
+        }
+
+        charger_seeds(&pool).await.unwrap();
+        let apres_un = etat(&pool).await;
+        charger_seeds(&pool).await.unwrap();
+        let apres_deux = etat(&pool).await;
+
+        assert_eq!(
+            apres_un, apres_deux,
+            "double seed → état strictement identique"
+        );
+        assert_eq!(apres_un.0, 3, "Tantie Affoué, Kofi, prospect pharmacie");
+        assert_eq!(apres_un.1, 3, "3 extensions vendeur");
+        assert_eq!(apres_un.2, 3, "un site par prestataire (FR-019)");
+        assert_eq!(apres_un.3, 18, "6 plages (lun–sam) × 3 sites");
+        assert_eq!(apres_un.4, 3, "une charte par prestataire");
+        assert_eq!(apres_un.5, 1, "seul le compte de Kofi est rattaché");
+        assert_eq!(apres_un.6, 0, "les seeds n'émettent RIEN (FR-054)");
+
+        // Commandabilité : agréé + catégorie POSÉE active (sans recalcul).
+        let objets: std::sync::Arc<dyn socle::DepotObjets> =
+            std::sync::Arc::new(socle::MemoireObjets::new());
+        let depot = prestataires::PgPrestataires::new(
+            pool.clone(),
+            PgComptes::new(
+                pool.clone(),
+                std::sync::Arc::new(comptes::MemoireEphemere::new()),
+                std::sync::Arc::new(SmsTraces::new()),
+                objets.clone(),
+                std::sync::Arc::from(&b"secret-de-test-de-32-octets-mini"[..]),
+            ),
+            objets,
+            std::sync::Arc::new(prestataires::AucuneCommandeActive),
+            std::sync::Arc::from(&b"secret-plaque-de-test-32-octets!"[..]),
+        );
+        let tantie: uuid::Uuid = TANTIE.parse().unwrap();
+        let c = depot.commandabilite(tantie).await.unwrap();
+        assert!(c.agree, "Tantie Affoué est agréée");
+        assert!(c.categorie_active, "restauration posée active (FR-054)");
+        let resolution = depot
+            .resolution_plaque(JETON_TANTIE)
+            .await
+            .unwrap()
+            .expect("jeton du seed résolu");
+        assert!(resolution.valide);
+        assert_eq!(resolution.prestataire_id, tantie);
+    }
+
     /// T009 — double seed du module comptes → état strictement identique
     /// (SC-008), et le premier admin est bien amorcé hors parcours applicatif.
     #[sqlx::test(migrations = "../migrations")]
@@ -642,8 +723,10 @@ mod tests {
             apres_un, apres_deux,
             "double seed → état strictement identique (horodatages figés compris)"
         );
-        assert_eq!(apres_un.0, 1, "le seul compte est le premier admin");
-        assert_eq!(apres_un.1, 2, "ses rôles : client + admin");
+        // 2 comptes : le premier admin (seed 20) + Kofi (seed 30, cycle 005).
+        assert_eq!(apres_un.0, 2, "premier admin + Kofi (vendeur seedé)");
+        // 4 rôles : client + admin (admin), client + vendeur (Kofi).
+        assert_eq!(apres_un.1, 4, "client+admin (401) et client+vendeur (402)");
 
         // FR-012 — c'est le seed, et lui seul, qui amorce la chaîne des admins.
         // Colonne QUALIFIÉE : tri par l'énum (client, coursier, vendeur, admin)
