@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT jour, debut, fin FROM prestataires.horaire_site\n             WHERE site_id = $1 ORDER BY jour, debut",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "jour",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "prestataires.horaire_site",
+            "name": "jour"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "debut",
+        "type_info": "Time",
+        "origin": {
+          "Table": {
+            "table": "prestataires.horaire_site",
+            "name": "debut"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "fin",
+        "type_info": "Time",
+        "origin": {
+          "Table": {
+            "table": "prestataires.horaire_site",
+            "name": "fin"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ac21f2aa9d652610cbb242dc9a39e99f407793d501236129eb1f361eda818541"
+}

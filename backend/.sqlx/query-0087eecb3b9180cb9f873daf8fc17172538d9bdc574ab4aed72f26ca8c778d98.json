@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM prestataires.horaire_site WHERE site_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0087eecb3b9180cb9f873daf8fc17172538d9bdc574ab4aed72f26ca8c778d98"
+}

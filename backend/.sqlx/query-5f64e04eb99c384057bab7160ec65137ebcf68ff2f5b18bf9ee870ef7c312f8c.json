@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.horaire_site (site_id, jour, debut, fin)\n                     VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int2",
+        "Time",
+        "Time"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5f64e04eb99c384057bab7160ec65137ebcf68ff2f5b18bf9ee870ef7c312f8c"
+}

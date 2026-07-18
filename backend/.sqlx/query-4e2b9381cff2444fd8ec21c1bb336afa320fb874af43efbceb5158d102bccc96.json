@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.site SET position_lat = $2, position_lng = $3\n                     WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4e2b9381cff2444fd8ec21c1bb336afa320fb874af43efbceb5158d102bccc96"
+}

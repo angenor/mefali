@@ -1,0 +1,119 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, prestataire_id, position_lat, position_lng,\n                      statut_boutique::text AS \"statut_boutique!\",\n                      pause_fin, ferme_journee_le, statut_change_par, statut_change_le\n               FROM prestataires.site WHERE prestataire_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "prestataire_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "prestataire_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "position_lat",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "position_lat"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "position_lng",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "position_lng"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "statut_boutique!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "pause_fin",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "pause_fin"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "ferme_journee_le",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "ferme_journee_le"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "statut_change_par",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "statut_change_par"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "statut_change_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.site",
+            "name": "statut_change_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "607a6b47fb253f26146813bbff675c59b7d5cf34a4e655bd233ded09a87d3308"
+}

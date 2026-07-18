@@ -18,12 +18,15 @@
 //!   `&mut PgTransaction` — l'atomicité « transition + événement outbox » est
 //!   impossible à contourner (constitution VI).
 
+pub mod consultation;
 pub mod depot;
 pub mod modele;
 pub mod ports;
 pub mod prestataire;
+pub mod site;
 
 pub use depot::{PgPrestataires, Prestataires, Vendeurs};
+pub use site::{etat_effectif, Site};
 pub use prestataire::{
     CharteSignee, ModificationPrestataire, NouveauPrestataire, PhotoPrestataire, Prestataire,
     CHARTE_MIMES, CHARTE_TAILLE_MAX, PHOTO_MIMES, PHOTO_TAILLE_MAX,
