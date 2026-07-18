@@ -7,6 +7,7 @@ import 'package:mefali_core/mefali_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../roles/composants.dart';
 import '../pilotage.dart';
+import 'fiche_article.dart';
 import 'mes_articles.dart';
 
 /// Écran V2 · « Mes articles » — catalogue & stock
@@ -131,9 +132,22 @@ class _Catalogue extends ConsumerWidget {
                   : ListView(
                       children: [
                         for (final article in auCatalogue) ...[
-                          _LigneArticle(
-                            article: article,
-                            prestataireId: prestataireId,
+                          InkWell(
+                            borderRadius: BorderRadius.circular(
+                              MefaliTokens.radiusCard,
+                            ),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => FicheArticle(
+                                  prestataireId: prestataireId,
+                                  article: article,
+                                ),
+                              ),
+                            ),
+                            child: _LigneArticle(
+                              article: article,
+                              prestataireId: prestataireId,
+                            ),
                           ),
                           const SizedBox(height: MefaliTokens.space2),
                         ],
@@ -162,6 +176,17 @@ class _Catalogue extends ConsumerWidget {
                           ),
                       ],
                     ),
+            ),
+            const SizedBox(height: MefaliTokens.space3),
+            // Bouton principal EN BAS (usage une main — règle d'or 3).
+            BoutonPrincipal(
+              libelle: l10n.proArticleAjouter,
+              picto: Symbols.add,
+              onPresse: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => FicheArticle(prestataireId: prestataireId),
+                ),
+              ),
             ),
           ],
         );

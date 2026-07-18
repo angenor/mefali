@@ -160,6 +160,46 @@
   "@proArticlesErreur": {
     "description": "Erreur réseau du catalogue (V2)"
   },
+  "proArticleAjouter": "Ajouter un article",
+  "@proArticleAjouter": {
+    "description": "Bouton principal du catalogue (V2)"
+  },
+  "proArticleNouveauTitre": "Nouvel article",
+  "@proArticleNouveauTitre": {
+    "description": "Titre de la fiche article en création"
+  },
+  "proArticleNom": "Nom de l'article",
+  "@proArticleNom": {
+    "description": "Champ nom de la fiche article"
+  },
+  "proArticlePrixNormal": "Prix normal",
+  "@proArticlePrixNormal": {
+    "description": "Carte du prix courant (V2 1b)"
+  },
+  "proArticlePrixPromo": "Prix promo",
+  "@proArticlePrixPromo": {
+    "description": "Carte du prix promotionnel (V2 1b)"
+  },
+  "proArticleApercu": "Le client verra :",
+  "@proArticleApercu": {
+    "description": "Aperçu du rendu client (V2 1b)"
+  },
+  "proArticlePasDePrix": "Par pas de 100 FCFA",
+  "@proArticlePasDePrix": {
+    "description": "Aide des steppers de prix"
+  },
+  "proArticlePromoInvalide": "Le prix barré doit rester supérieur au prix.",
+  "@proArticlePromoInvalide": {
+    "description": "FR-023 côté écran — promo invalide"
+  },
+  "proArticleEnregistrer": "Enregistrer",
+  "@proArticleEnregistrer": {
+    "description": "Action principale de la fiche article"
+  },
+  "proArticleErreurEnregistrement": "Impossible d'enregistrer l'article.",
+  "@proArticleErreurEnregistrement": {
+    "description": "Échec réseau ou refus serveur de la fiche article"
+  },
   "proInterfaceVendeurAide": "Votre boutique et vos commandes s'afficheront ici.",
   "@proInterfaceVendeurAide": {
     "description": "Aide de l'interface vendeur tant que le module vendeur (VND) n'est pas construit"
