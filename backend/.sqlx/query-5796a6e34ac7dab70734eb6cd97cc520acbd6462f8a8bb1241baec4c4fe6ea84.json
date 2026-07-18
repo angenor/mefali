@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.article\n                 (id, vendeur_id, nom, prix_unites, devise, prix_barre_unites, categorie_interne)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int8",
+        "Text",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5796a6e34ac7dab70734eb6cd97cc520acbd6462f8a8bb1241baec4c4fe6ea84"
+}

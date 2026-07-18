@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, article_id, prix_unites, devise, prix_barre_unites, fige_le\n             FROM prestataires.prix_fige WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "article_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "article_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "prix_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "prix_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "prix_barre_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "prix_barre_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "fige_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "fige_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ea026c531c839f166df620b432adc0f87a37d4eaf30a01ec31004455f18360da"
+}

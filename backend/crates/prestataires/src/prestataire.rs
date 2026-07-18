@@ -920,8 +920,9 @@ fn valider_champs(
     Ok(())
 }
 
-/// Validation commune des médias (type + taille) — FR-025.
-fn valider_media(
+/// Validation commune des médias (type + taille) — FR-025. Partagée avec le
+/// catalogue (photos d'articles).
+pub(crate) fn valider_media(
     octets: &[u8],
     mime: &str,
     acceptes: &[&str],

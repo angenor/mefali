@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.article\n             SET nom = $3, prix_unites = $4, prix_barre_unites = $5,\n                 categorie_interne = $6, modifie_le = now()\n             WHERE id = $2 AND vendeur_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "65ddff9ee99a6bf6c5a840999b0006c5c70788affa7705cef2e2cd71e024b21b"
+}

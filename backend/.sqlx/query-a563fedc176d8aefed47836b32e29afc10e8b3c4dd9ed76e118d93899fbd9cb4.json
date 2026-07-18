@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.disponibilite_article (article_id, site_id)\n             SELECT $1, id FROM prestataires.site WHERE prestataire_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a563fedc176d8aefed47836b32e29afc10e8b3c4dd9ed76e118d93899fbd9cb4"
+}

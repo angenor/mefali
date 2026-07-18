@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.article SET photo_cle = $3, modifie_le = now()\n             WHERE id = $2 AND vendeur_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f86bfb22138e27d7f70bf04a7b884abc54cb1ef0b0d5137369571c3d1c2ebf27"
+}
