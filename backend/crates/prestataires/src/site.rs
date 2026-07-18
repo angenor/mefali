@@ -273,6 +273,175 @@ impl PgPrestataires {
     }
 }
 
+/// Geste de l'écran V1 (FR-033) — TOUJOURS une décision, jamais une échéance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionBoutique {
+    /// Interrupteur → OUVERT.
+    Ouvrir,
+    /// Interrupteur → FERMÉ (le rappel FR-035 vise cet état).
+    Fermer,
+    /// Pause temporisée : rouvre TOUTE SEULE à l'échéance (FR-033).
+    MettreEnPause {
+        /// Durée choisie (30/60/120 côté app — constantes MVP).
+        duree_minutes: i64,
+    },
+    /// Repousse l'échéance de la pause EN COURS.
+    ProlongerPause {
+        /// Pas de prolongation (+30 côté app).
+        duree_minutes: i64,
+    },
+    /// Fermé jusqu'au prochain jour d'ouverture, sans action de réouverture
+    /// (FR-030) — c'est aussi « je reste fermé aujourd'hui » (research R4).
+    FermerPourLaJournee,
+}
+
+/// Données de l'écran V1 (FR-044).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoutiqueVendeur {
+    /// Statut DÉCLARÉ.
+    pub statut: StatutBoutique,
+    /// Échéance de pause, si une pause court.
+    pub pause_fin: Option<DateTime<Utc>>,
+    /// État EFFECTIF dérivé (FR-032).
+    pub effectif: crate::modele::EffectifBoutique,
+    /// Horaires hebdomadaires.
+    pub horaires: HorairesSemaine,
+    /// Plages du jour courant (fuseau de la zone).
+    pub horaires_du_jour: Vec<Plage>,
+    /// FR-035 — fermé MANUELLEMENT pendant les horaires habituels : le rappel
+    /// non bloquant s'affiche ; « je reste fermé aujourd'hui » (→ journée) le
+    /// fait taire sans état supplémentaire (research R4).
+    pub rappel_ouverture: bool,
+}
+
+impl PgPrestataires {
+    /// Applique un geste de boutique (vendeur OU admin — FR-012/FR-036).
+    /// Émet `site.statut_boutique_change` dans la même transaction ; les
+    /// ÉCHÉANCES, elles, n'émettent jamais rien (research R3).
+    pub async fn changer_statut_boutique(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+        action: ActionBoutique,
+        source: SourceBascule,
+        acteur: Uuid,
+    ) -> Result<Site, ErreurPrestataires> {
+        let p = self.prestataire_dans_tx(tx, prestataire).await?;
+        let site = self.site_dans_tx(tx, prestataire).await?;
+
+        let (statut, pause_fin, ferme_journee_le) = match action {
+            ActionBoutique::Ouvrir => (StatutBoutique::Ouvert, None, None),
+            ActionBoutique::Fermer => (StatutBoutique::Ferme, None, None),
+            ActionBoutique::MettreEnPause { duree_minutes } => {
+                if duree_minutes <= 0 {
+                    return Err(ErreurPrestataires::DureeRequise);
+                }
+                (
+                    StatutBoutique::EnPause,
+                    Some(Utc::now() + Duration::minutes(duree_minutes)),
+                    None,
+                )
+            }
+            ActionBoutique::ProlongerPause { duree_minutes } => {
+                if duree_minutes <= 0 {
+                    return Err(ErreurPrestataires::DureeRequise);
+                }
+                let Some(echeance) = site.pause_fin.filter(|_| {
+                    site.statut_boutique == StatutBoutique::EnPause
+                }) else {
+                    return Err(ErreurPrestataires::ProlongationSansPause);
+                };
+                // Depuis l'échéance si la pause court encore, depuis
+                // MAINTENANT si elle était déjà échue.
+                let base = echeance.max(Utc::now());
+                (
+                    StatutBoutique::EnPause,
+                    Some(base + Duration::minutes(duree_minutes)),
+                    None,
+                )
+            }
+            ActionBoutique::FermerPourLaJournee => {
+                let fuseau = self.fuseau_de(p.ville_id).await?;
+                let aujourd_hui = Utc::now().with_timezone(&fuseau).date_naive();
+                (StatutBoutique::FermeJournee, None, Some(aujourd_hui))
+            }
+        };
+
+        sqlx::query!(
+            "UPDATE prestataires.site
+             SET statut_boutique = $2::text::prestataires.statut_boutique,
+                 pause_fin = $3, ferme_journee_le = $4,
+                 statut_change_par = $5, statut_change_le = now()
+             WHERE id = $1",
+            site.id,
+            statut.comme_str(),
+            pause_fin,
+            ferme_journee_le,
+            acteur,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "site.statut_boutique_change",
+                entite_type: "site",
+                entite_id: site.id,
+                payload: json!({
+                    "prestataire": prestataire,
+                    "avant": site.statut_boutique.comme_str(),
+                    "apres": statut.comme_str(),
+                    "pause_fin": pause_fin,
+                    "source": source.comme_str(),
+                    "acteur": acteur,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+        self.site_dans_tx(tx, prestataire).await
+    }
+
+    /// Données de l'écran V1 (statut déclaré + effectif + horaires + rappel).
+    pub async fn boutique_vendeur(
+        &self,
+        prestataire: Uuid,
+    ) -> Result<BoutiqueVendeur, ErreurPrestataires> {
+        let mut tx = self.pool.begin().await?;
+        let p = self.prestataire_dans_tx(&mut tx, prestataire).await?;
+        let agree = p.statut == crate::modele::StatutPrestataire::Agree;
+        let site = self.site_dans_tx(&mut tx, prestataire).await?;
+        let horaires = self.horaires_dans_tx(&mut tx, site.id).await?;
+        tx.commit().await?;
+
+        let fuseau = self.fuseau_de(p.ville_id).await?;
+        let maintenant = Utc::now().with_timezone(&fuseau);
+        let effectif = etat_effectif(
+            agree,
+            site.statut_boutique,
+            site.pause_fin,
+            site.ferme_journee_le,
+            &horaires,
+            maintenant,
+        );
+        let jour = maintenant.weekday().num_days_from_monday() as usize;
+        let heure = maintenant.time();
+        let dans_horaires = horaires.jours[jour]
+            .iter()
+            .any(|plage| plage.debut <= heure && heure < plage.fin);
+
+        Ok(BoutiqueVendeur {
+            statut: site.statut_boutique,
+            pause_fin: site.pause_fin,
+            effectif,
+            horaires_du_jour: horaires.jours[jour].clone(),
+            horaires,
+            rappel_ouverture: site.statut_boutique == StatutBoutique::Ferme && dans_horaires,
+        })
+    }
+}
+
 // ── Dérivation pure de l'état effectif (FR-032, research R3) ───────────────
 
 /// État effectif d'une boutique à l'instant `maintenant_local` (horloge DANS
