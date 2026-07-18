@@ -21,10 +21,12 @@ import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
+import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/consentement_requis.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
+import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
@@ -44,12 +46,21 @@ import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
+import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/photo_admin_dto.dart';
 import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
+import 'package:mefali_api_client/src/model/prestataire_admin.dart';
+import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
+import 'package:mefali_api_client/src/model/rattachement_dto.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/site_admin_dto.dart';
+import 'package:mefali_api_client/src/model/site_admin_vue_dto.dart';
+import 'package:mefali_api_client/src/model/statut_boutique.dart';
+import 'package:mefali_api_client/src/model/statut_prestataire.dart';
 import 'package:mefali_api_client/src/model/url_presignee.dart';
 import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
@@ -64,10 +75,12 @@ part 'serializers.g.dart';
   AppareilDto,
   ArticlePublic,
   CategorieDto,
+  CharteAdminDto,
   CompteMoi,
   ConfigZone,
   ConsentementRequis,
   CorpsForcage,
+  CreerPrestataireDto,
   DecisionRole,
   DemandeOtp,
   DemandeRafraichissement,
@@ -87,12 +100,21 @@ part 'serializers.g.dart';
   Inscription,
   JetonsDto,
   ModifierAdresse,
+  ModifierPrestataireDto,
+  PhotoAdminDto,
   PlageDto,
   PlateformeDto,
+  PrestataireAdmin,
+  PrestataireAdminDetail,
+  RattachementDto,
   ResolutionPlaque,
   ResultatVerification,
   SessionAppareil,
   SessionOuverte,
+  SiteAdminDto,
+  SiteAdminVueDto,
+  StatutBoutique,
+  StatutPrestataire,
   UrlPresignee,
   VehiculeDeclare,
   VerificationOtp,
@@ -101,6 +123,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Adresse)]),
         () => ListBuilder<Adresse>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PrestataireAdmin)]),
+        () => ListBuilder<PrestataireAdmin>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(SessionAppareil)]),

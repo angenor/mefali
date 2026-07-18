@@ -55,6 +55,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les prestataires (filtres statut / ville / catégorie). */
+        get: operations["lister_prestataires"];
+        put?: never;
+        /** Crée un prestataire (prospect) — ville de type `ville` uniquement. */
+        post: operations["creer_prestataire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fiche complète (contact, GPS, plaque, chartes présignées, rattachements). */
+        get: operations["consulter_prestataire_admin"];
+        /** Modifie la fiche (nom, contact, délai) — administrable à tout statut. */
+        put: operations["modifier_prestataire"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/charte": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dépose la charte signée scannée — condition NÉCESSAIRE de l'agrément. */
+        post: operations["deposer_charte"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ajoute une photo de fiche. */
+        post: operations["ajouter_photo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/photos/{photo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026). */
+        delete: operations["supprimer_photo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/site": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Crée ou met à jour LE site (position GPS, horaires, statut initial). */
+        put: operations["definir_site"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
         parameters: {
             query?: never;
@@ -486,6 +590,28 @@ export interface components {
             /** @description Slug de la catégorie. */
             slug: string;
         };
+        /** @description Charte signée, présignée pour l'admin (pièce contractuelle — FR-003). */
+        CharteAdminDto: {
+            /**
+             * Format: date-time
+             * @description Dépôt du scan.
+             */
+            deposee_le: string;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /**
+             * Format: date
+             * @description Date de signature manuscrite.
+             */
+            signee_le: string;
+            /** @description URL présignée de lecture (TTL 10 min). */
+            url: string;
+            /** @description Version de charte en vigueur à la signature. */
+            version_charte: string;
+        };
         /** @description Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`). */
         CompteMoi: {
             /**
@@ -560,6 +686,25 @@ export interface components {
             /** @description Nouveau mode de forçage à appliquer. */
             forcage: components["schemas"]["ForcageDto"];
         };
+        /** @description Création d'une fiche (statut initial : prospect). */
+        CreerPrestataireDto: {
+            /** @description Slug de la catégorie de service (référentiel ZON). */
+            categorie_slug: string;
+            /** @description Contact téléphonique (servi à l'admin seulement). */
+            contact_telephone: string;
+            /**
+             * Format: int32
+             * @description Délai de préparation moyen déclaré (minutes).
+             */
+            delai_preparation_min: number;
+            /** @description Nom public. */
+            nom: string;
+            /**
+             * Format: uuid
+             * @description Ville de rattachement — type `ville` exigé (FR-002).
+             */
+            ville_id: string;
+        };
         /** @description Corps de la décision. */
         DecisionRole: {
             /** @description Action à appliquer. */
@@ -581,6 +726,29 @@ export interface components {
         DemandeRafraichissement: {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
+        };
+        /** @description Scan de charte signée + métadonnées de signature. */
+        DeposerCharte: {
+            /**
+             * Format: binary
+             * @description Le scan — ≤ 10 Mo, jpeg/png/webp/pdf.
+             */
+            fichier: string;
+            /**
+             * Format: date
+             * @description Date de signature (AAAA-MM-JJ).
+             */
+            signee_le: string;
+            /** @description Version de charte en vigueur à la signature. */
+            version_charte: string;
+        };
+        /** @description Photo envoyée en multipart (≤ 5 Mo, jpeg/png/webp). */
+        DepotPhoto: {
+            /**
+             * Format: binary
+             * @description La photo.
+             */
+            fichier: string;
         };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
@@ -789,6 +957,18 @@ export interface components {
              */
             repere_texte?: string | null;
         };
+        /** @description Modification partielle de la fiche. */
+        ModifierPrestataireDto: {
+            /** @description Nouveau contact. */
+            contact_telephone?: string | null;
+            /**
+             * Format: int32
+             * @description Nouveau délai (minutes).
+             */
+            delai_preparation_min?: number | null;
+            /** @description Nouveau nom. */
+            nom?: string | null;
+        };
         /** @description Adresse à enregistrer après une livraison réussie (FR-019). */
         NouvelleAdresse: {
             /**
@@ -822,6 +1002,21 @@ export interface components {
             /** @description Repère écrit. */
             repere_texte?: string | null;
         };
+        /** @description Photo de fiche, présignée pour l'admin. */
+        PhotoAdminDto: {
+            /**
+             * Format: uuid
+             * @description Identifiant (pour la suppression).
+             */
+            id: string;
+            /**
+             * Format: int32
+             * @description Ordre d'affichage.
+             */
+            position: number;
+            /** @description URL présignée (TTL 10 min). */
+            url: string;
+        };
         /** @description Une plage d'ouverture, heures locales `HH:MM` (FR-031). */
         PlageDto: {
             /**
@@ -840,6 +1035,73 @@ export interface components {
          * @enum {string}
          */
         PlateformeDto: "android" | "ios";
+        /** @description Résumé admin d'un prestataire. */
+        PrestataireAdmin: {
+            /** @description Slug de la catégorie de service. */
+            categorie: string;
+            /** @description FR-028, dérivé à la lecture. */
+            commandable: boolean;
+            /** @description Contact téléphonique — surface ADMIN uniquement. */
+            contact_telephone: string;
+            /**
+             * Format: int32
+             * @description Délai de préparation (minutes).
+             */
+            delai_preparation_min: number;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /** @description Nom public. */
+            nom: string;
+            /** @description Cycle de vie. */
+            statut: components["schemas"]["StatutPrestataire"];
+            /**
+             * Format: uuid
+             * @description Ville de rattachement.
+             */
+            ville_id: string;
+        };
+        /** @description Fiche COMPLÈTE, vue admin. */
+        PrestataireAdminDetail: components["schemas"]["PrestataireAdmin"] & {
+            /** @description Chartes déposées, la plus récente d'abord. */
+            chartes: components["schemas"]["CharteAdminDto"][];
+            /** @description Code de secours — AUCUNE recherche par ce code n'existe (FR-014). */
+            code_secours?: string | null;
+            /** @description Jeton de plaque (posé au premier agrément, stable — FR-013). */
+            jeton_plaque?: string | null;
+            /** @description Photos présignées. */
+            photos: components["schemas"]["PhotoAdminDto"][];
+            /** @description Comptes rattachés. */
+            rattachements: components["schemas"]["RattachementDto"][];
+            site?: null | components["schemas"]["SiteAdminVueDto"];
+            /**
+             * Format: date-time
+             * @description Horodatage de la dernière décision.
+             */
+            statut_decide_le?: string | null;
+            /**
+             * Format: uuid
+             * @description Auteur de la dernière décision de cycle de vie.
+             */
+            statut_decide_par?: string | null;
+            /** @description Motif de la dernière décision (suspension). */
+            statut_motif?: string | null;
+        };
+        /** @description Rattachement compte ↔ prestataire. */
+        RattachementDto: {
+            /**
+             * Format: uuid
+             * @description Compte rattaché.
+             */
+            compte_id: string;
+            /**
+             * Format: date-time
+             * @description Depuis quand.
+             */
+            rattache_le: string;
+        };
         /** @description Nouveau repère parlé pour une adresse existante. */
         RemplacementRepereVocal: {
             /**
@@ -910,6 +1172,47 @@ export interface components {
             resultat: components["schemas"]["DiscriminantSession"];
         };
         /**
+         * @description Corps de `PUT /admin/prestataires/{id}/site` — upsert du site UNIQUE
+         *     (FR-019 : aucune sélection de site n'existe nulle part).
+         */
+        SiteAdminDto: {
+            /** @description Horaires hebdomadaires (remplacement complet). */
+            horaires: components["schemas"]["HorairesSemaineDto"];
+            /**
+             * Format: double
+             * @description Latitude relevée sur place.
+             */
+            position_lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            position_lng: number;
+            statut_initial?: null | components["schemas"]["StatutBoutique"];
+        };
+        /** @description LE site unique, vue admin (GPS compris — jamais servi en public). */
+        SiteAdminVueDto: {
+            /** @description Horaires hebdomadaires. */
+            horaires: components["schemas"]["HorairesSemaineDto"];
+            /**
+             * Format: date-time
+             * @description Échéance de pause, le cas échéant.
+             */
+            pause_fin?: string | null;
+            /**
+             * Format: double
+             * @description Latitude relevée sur place.
+             */
+            position_lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            position_lng: number;
+            /** @description Statut DÉCLARÉ de la boutique. */
+            statut_boutique: components["schemas"]["StatutBoutique"];
+        };
+        /**
          * @description Dossier soumis par le coursier : pièce d'identité, référent local et
          *     véhicules déclarés (FR-015).
          */
@@ -931,6 +1234,16 @@ export interface components {
              */
             vehicules: string[];
         };
+        /**
+         * @description Statut de boutique DÉCLARÉ (FR-030).
+         * @enum {string}
+         */
+        StatutBoutique: "ouvert" | "ferme" | "ferme_journee" | "en_pause";
+        /**
+         * @description Statut du cycle de vie (FR-004).
+         * @enum {string}
+         */
+        StatutPrestataire: "prospect" | "agree" | "suspendu";
         /** @description URL présignée de lecture (contrat). */
         UrlPresignee: {
             /**
@@ -1131,6 +1444,454 @@ export interface operations {
                 };
             };
             /** @description Motif absent pour un refus ou une suspension. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    lister_prestataires: {
+        parameters: {
+            query?: {
+                /** @description prospect | agree | suspendu. */
+                statut?: string;
+                /** @description Ville de rattachement. */
+                ville?: string;
+                /** @description Slug de catégorie. */
+                categorie?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prestataires, plus anciens d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdmin"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    creer_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreerPrestataireDto"];
+            };
+        };
+        responses: {
+            /** @description Fiche créée à l'état prospect, extension vendeur et plan « gratuit » posés. Émet `prestataire.cree`. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdmin"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Zone qui n'est pas une ville, catégorie inconnue, champ vide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    consulter_prestataire_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Vue admin complète — la SEULE surface qui serve le contact et les coordonnées du site (SC-013). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    modifier_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModifierPrestataireDto"];
+            };
+        };
+        responses: {
+            /** @description Fiche mise à jour. Émet `prestataire.modifie` (noms de champs seulement — FR-052). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdmin"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Champ invalide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    deposer_charte: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DeposerCharte"];
+            };
+        };
+        responses: {
+            /** @description Charte déposée (0..n par prestataire — une re-signature n'écrase jamais). Émet `charte.deposee`. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharteAdminDto"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Type refusé, fichier trop volumineux, version vide ou date illisible. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ajouter_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DepotPhoto"];
+            };
+        };
+        responses: {
+            /** @description Photo déposée (clé S3 neuve), en dernière position. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoAdminDto"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Type refusé ou fichier trop volumineux. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    supprimer_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Photo à supprimer. */
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supprimée — l'objet S3 est purgé après le commit. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Photo ou prestataire inconnus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    definir_site: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteAdminDto"];
+            };
+        };
+        responses: {
+            /** @description Site en place. Un changement d'horaires émet `site.horaires_modifies` (source admin — FR-036). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Horaires invalides ou statut initial illégal. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -48,13 +48,14 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 
 final api = MefaliApiClient().getAdminApi();
-final String compteId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Coursier concerné.
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final MultipartFile fichier = BINARY_DATA_HERE; // MultipartFile | La photo.
 
 try {
-    final response = await api.consulterDossierCoursier(compteId);
+    final response = await api.ajouterPhoto(id, fichier);
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling AdminApi->consulterDossierCoursier: $e\n");
+    print("Exception when calling AdminApi->ajouterPhoto: $e\n");
 }
 
 ```
@@ -65,9 +66,17 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AdminApi*](doc/AdminApi.md) | [**ajouterPhoto**](doc/AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
+[*AdminApi*](doc/AdminApi.md) | [**consulterPrestataireAdmin**](doc/AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
+[*AdminApi*](doc/AdminApi.md) | [**creerPrestataire**](doc/AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
+[*AdminApi*](doc/AdminApi.md) | [**definirSite**](doc/AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
+[*AdminApi*](doc/AdminApi.md) | [**deposerCharte**](doc/AdminApi.md#deposercharte) | **POST** /admin/prestataires/{id}/charte | Dépose la charte signée scannée — condition NÉCESSAIRE de l&#39;agrément.
 [*AdminApi*](doc/AdminApi.md) | [**listerDossiersCoursier**](doc/AdminApi.md#listerdossierscoursier) | **GET** /admin/comptes/dossiers-coursier | Liste des dossiers coursier pour la revue admin (FR-017).
+[*AdminApi*](doc/AdminApi.md) | [**listerPrestataires**](doc/AdminApi.md#listerprestataires) | **GET** /admin/prestataires | Liste les prestataires (filtres statut / ville / catégorie).
+[*AdminApi*](doc/AdminApi.md) | [**modifierPrestataire**](doc/AdminApi.md#modifierprestataire) | **PUT** /admin/prestataires/{id} | Modifie la fiche (nom, contact, délai) — administrable à tout statut.
+[*AdminApi*](doc/AdminApi.md) | [**supprimerPhoto**](doc/AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
 [*AuthApi*](doc/AuthApi.md) | [**deconnexion**](doc/AuthApi.md#deconnexion) | **POST** /auth/deconnexion | Révoque la session courante (déconnexion locale).
 [*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
@@ -100,10 +109,12 @@ Class | Method | HTTP request | Description
  - [AppareilDto](doc/AppareilDto.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [CategorieDto](doc/CategorieDto.md)
+ - [CharteAdminDto](doc/CharteAdminDto.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [ConsentementRequis](doc/ConsentementRequis.md)
  - [CorpsForcage](doc/CorpsForcage.md)
+ - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
@@ -123,12 +134,21 @@ Class | Method | HTTP request | Description
  - [Inscription](doc/Inscription.md)
  - [JetonsDto](doc/JetonsDto.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
+ - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
+ - [PhotoAdminDto](doc/PhotoAdminDto.md)
  - [PlageDto](doc/PlageDto.md)
  - [PlateformeDto](doc/PlateformeDto.md)
+ - [PrestataireAdmin](doc/PrestataireAdmin.md)
+ - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
+ - [RattachementDto](doc/RattachementDto.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SiteAdminDto](doc/SiteAdminDto.md)
+ - [SiteAdminVueDto](doc/SiteAdminVueDto.md)
+ - [StatutBoutique](doc/StatutBoutique.md)
+ - [StatutPrestataire](doc/StatutPrestataire.md)
  - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)
  - [VerificationOtp](doc/VerificationOtp.md)

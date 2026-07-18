@@ -301,6 +301,7 @@ dependencies = [
  "chrono",
  "comptes",
  "deadpool-redis",
+ "prestataires",
  "redis",
  "reqwest",
  "sentry-actix",

@@ -4,6 +4,7 @@
 //! `/health`, Swagger UI en dev (absente en production, constitution VIII),
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
+pub mod admin_prestataires_http;
 pub mod adresses_http;
 pub mod auth_http;
 pub mod comptes_http;
@@ -51,6 +52,14 @@ pub fn api_openapi() -> OpenApi {
         .service(adresses_http::supprimer_adresse)
         .service(adresses_http::ecouter_repere_vocal)
         .service(adresses_http::remplacer_repere_vocal)
+        .service(admin_prestataires_http::creer_prestataire)
+        .service(admin_prestataires_http::lister_prestataires)
+        .service(admin_prestataires_http::consulter_prestataire_admin)
+        .service(admin_prestataires_http::modifier_prestataire)
+        .service(admin_prestataires_http::ajouter_photo)
+        .service(admin_prestataires_http::supprimer_photo)
+        .service(admin_prestataires_http::deposer_charte)
+        .service(admin_prestataires_http::definir_site)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
         .split_for_parts();
@@ -297,7 +306,15 @@ pub async fn run() -> std::io::Result<()> {
             .service(adresses_http::supprimer_adresse)
             .service(adresses_http::ecouter_repere_vocal)
             .service(adresses_http::remplacer_repere_vocal)
-            .service(prestataires_http::consulter_prestataire)
+            .service(admin_prestataires_http::creer_prestataire)
+        .service(admin_prestataires_http::lister_prestataires)
+        .service(admin_prestataires_http::consulter_prestataire_admin)
+        .service(admin_prestataires_http::modifier_prestataire)
+        .service(admin_prestataires_http::ajouter_photo)
+        .service(admin_prestataires_http::supprimer_photo)
+        .service(admin_prestataires_http::deposer_charte)
+        .service(admin_prestataires_http::definir_site)
+        .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .split_for_parts();
         let mut app = app

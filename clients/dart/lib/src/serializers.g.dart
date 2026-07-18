@@ -14,10 +14,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AppareilDto.serializer)
       ..add(ArticlePublic.serializer)
       ..add(CategorieDto.serializer)
+      ..add(CharteAdminDto.serializer)
       ..add(CompteMoi.serializer)
       ..add(ConfigZone.serializer)
       ..add(ConsentementRequis.serializer)
       ..add(CorpsForcage.serializer)
+      ..add(CreerPrestataireDto.serializer)
       ..add(DecisionRole.serializer)
       ..add(DemandeOtp.serializer)
       ..add(DemandeRafraichissement.serializer)
@@ -37,12 +39,21 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Inscription.serializer)
       ..add(JetonsDto.serializer)
       ..add(ModifierAdresse.serializer)
+      ..add(ModifierPrestataireDto.serializer)
+      ..add(PhotoAdminDto.serializer)
       ..add(PlageDto.serializer)
       ..add(PlateformeDto.serializer)
+      ..add(PrestataireAdmin.serializer)
+      ..add(PrestataireAdminDetail.serializer)
+      ..add(RattachementDto.serializer)
       ..add(ResolutionPlaque.serializer)
       ..add(ResultatVerification.serializer)
       ..add(SessionAppareil.serializer)
       ..add(SessionOuverte.serializer)
+      ..add(SiteAdminDto.serializer)
+      ..add(SiteAdminVueDto.serializer)
+      ..add(StatutBoutique.serializer)
+      ..add(StatutPrestataire.serializer)
       ..add(UrlPresignee.serializer)
       ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
@@ -71,6 +82,15 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CharteAdminDto)]),
+          () => ListBuilder<CharteAdminDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PhotoAdminDto)]),
+          () => ListBuilder<PhotoAdminDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RattachementDto)]),
+          () => ListBuilder<RattachementDto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
           () => ListBuilder<EtatRoleDto>())
