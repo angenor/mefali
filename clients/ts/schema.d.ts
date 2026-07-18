@@ -111,6 +111,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crée un article pour le compte du prestataire (source admin). */
+        post: operations["creer_article_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/articles/{article_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Modifie un article (source admin). */
+        put: operations["modifier_article_admin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/articles/{article_id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Photo d'article (source admin). */
+        post: operations["photo_article_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/articles/{article_id}/remise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remet un article retiré au catalogue (source admin — FR-055). */
+        post: operations["remettre_article_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/articles/{article_id}/retrait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire un article du catalogue (source admin — FR-055). */
+        post: operations["retirer_article_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/charte": {
         parameters: {
             query?: never;
@@ -549,6 +634,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vendeur/prestataires/{id}/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin). */
+        get: operations["mes_articles"];
+        put?: never;
+        /** Ajoute un article au catalogue (V2 — « + Ajouter un article »). */
+        post: operations["creer_article"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/articles/{article_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Modifie nom / prix / prix barré / étiquette (fiche article V2). */
+        put: operations["modifier_article"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/articles/{article_id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dépose/remplace la photo de l'article (multipart, ≤ 5 Mo). */
+        post: operations["photo_article"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/articles/{article_id}/remise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remet un article retiré au catalogue, sans ressaisie (FR-055). */
+        post: operations["remettre_article"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/articles/{article_id}/retrait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire l'article du catalogue — RÉVERSIBLE (FR-055). */
+        post: operations["retirer_article"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -655,6 +826,42 @@ export interface components {
              */
             prix_unites: number;
         };
+        /**
+         * @description Article du catalogue de PILOTAGE (écran V2) : ruptures, retirés et verrou
+         *     admin visibles — contrairement à la consultation publique.
+         */
+        ArticleVendeur: {
+            /** @description Étiquette libre de regroupement. */
+            categorie_interne?: string | null;
+            /** @description Code ISO 4217 (posé par le serveur — R13). */
+            devise: string;
+            /** @description Faux = rupture. */
+            disponible: boolean;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /** @description Nom. */
+            nom: string;
+            /** @description URL présignée de la photo (TTL 10 min). */
+            photo_url?: string | null;
+            /**
+             * Format: int64
+             * @description Prix barré (strictement supérieur — FR-023).
+             */
+            prix_barre_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Prix courant, entier en unités mineures.
+             */
+            prix_unites: number;
+            /** @description Retiré du catalogue — remise possible sans ressaisie (FR-055). */
+            retire: boolean;
+            /** @description Rupture posée par l'Admin — la bascule vendeur sera refusée (FR-041). */
+            rupture_admin: boolean;
+            source_derniere_bascule?: null | components["schemas"]["SourceBascule"];
+        };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
             /** @description Mixable au panier (CMD-01). */
@@ -759,6 +966,24 @@ export interface components {
         CorpsForcage: {
             /** @description Nouveau mode de forçage à appliquer. */
             forcage: components["schemas"]["ForcageDto"];
+        };
+        /** @description Création d'un article (disponible par défaut — FR-020). */
+        CreerArticleDto: {
+            /** @description Étiquette libre de regroupement. */
+            categorie_interne?: string | null;
+            /** @description Nom. */
+            nom: string;
+            /**
+             * Format: int64
+             * @description Prix barré optionnel (strictement supérieur — FR-023).
+             */
+            prix_barre_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Prix courant, entier en unités mineures — la devise est POSÉE PAR LE
+             *     SERVEUR depuis la zone (constitution III).
+             */
+            prix_unites: number;
         };
         /** @description Création d'une fiche (statut initial : prospect). */
         CreerPrestataireDto: {
@@ -1030,6 +1255,27 @@ export interface components {
              *     « efface » seraient le même corps JSON.
              */
             repere_texte?: string | null;
+        };
+        /**
+         * @description Modification partielle — champ ABSENT = inchangé, `null` EXPLICITE = effacé
+         *     (c'est ainsi qu'on retire une promotion : `prix_barre_unites: null`).
+         */
+        ModifierArticleDto: {
+            /** @description Nouvelle étiquette — `null` l'efface. */
+            categorie_interne?: string | null;
+            /** @description Nouveau nom. */
+            nom?: string | null;
+            /**
+             * Format: int64
+             * @description Nouveau prix barré — `null` retire la promotion EXPLICITEMENT (jamais
+             *     en silence : un prix barré devenu ≤ prix fait échouer l'opération).
+             */
+            prix_barre_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Nouveau prix courant.
+             */
+            prix_unites?: number | null;
         };
         /** @description Modification partielle de la fiche. */
         ModifierPrestataireDto: {
@@ -1330,6 +1576,11 @@ export interface components {
              */
             vehicules: string[];
         };
+        /**
+         * @description Source d'une bascule de disponibilité (FR-037).
+         * @enum {string}
+         */
+        SourceBascule: "vendeur" | "coursier" | "admin";
         /**
          * @description Statut de boutique DÉCLARÉ (FR-030).
          * @enum {string}
@@ -1818,6 +2069,303 @@ export interface operations {
             };
             /** @description Agrément incomplet — le corps porte `manques` (identifiants stables : `photo`, `charte_signee`, `site`, `horaires` — FR-005). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    creer_article_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreerArticleDto"];
+            };
+        };
+        responses: {
+            /** @description Article créé (source admin). Émet `article.cree`. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prix barré ≤ prix, montant négatif, nom vide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    modifier_article_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModifierArticleDto"];
+            };
+        };
+        responses: {
+            /** @description Modifié. Émet `article.modifie`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prix barré qui deviendrait ≤ prix : échec explicite. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    photo_article_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DepotPhoto"];
+            };
+        };
+        responses: {
+            /** @description Photo remplacée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Type refusé ou fichier trop volumineux. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remettre_article_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Remis au catalogue. Émet `article.remis_au_catalogue`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    retirer_article_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Retiré (réversible). Émet `article.retire_du_catalogue`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3053,6 +3601,335 @@ export interface operations {
             };
             /** @description Rôle vendeur requis. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mes_articles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catalogue de pilotage — les retirés en tête de leur groupe, remise possible sans ressaisie (FR-055). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"][];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle vendeur absent, non rattaché, ou prestataire non agréé (trois codes distincts — R11). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    creer_article: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreerArticleDto"];
+            };
+        };
+        responses: {
+            /** @description Article créé, disponible par défaut (FR-020). Émet `article.cree`. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage (trois codes distincts). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prix barré ≤ prix (FR-023), montant négatif, nom vide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    modifier_article: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModifierArticleDto"];
+            };
+        };
+        responses: {
+            /** @description Modifié — `prix_barre_unites: null` retire la promotion EXPLICITEMENT. Un montant déjà FIGÉ ne bouge jamais (SC-005). Émet `article.modifie`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré du catalogue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prix barré qui deviendrait ≤ prix : l'opération ÉCHOUE, la promotion n'est pas retirée en silence (FR-023). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    photo_article: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DepotPhoto"];
+            };
+        };
+        responses: {
+            /** @description Photo remplacée (clé neuve, l'ancienne purgée après commit). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Type refusé ou fichier trop volumineux. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remettre_article: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Remis : il revient avec son historique et sa disponibilité telle qu'elle était. Émet `article.remis_au_catalogue`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    retirer_article: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Retiré : plus servi, plus commandable, plus signalable — la ligne subsiste. Émet `article.retire_du_catalogue`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

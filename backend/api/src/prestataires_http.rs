@@ -453,6 +453,139 @@ impl From<FichePublique> for FichePubliqueDto {
     }
 }
 
+// ── DTO du catalogue de pilotage (V2 — vendeur ET admin) ───────────────────
+
+/// Source d'une bascule de disponibilité (FR-037).
+#[derive(Debug, Clone, Copy, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+#[schema(as = SourceBascule)]
+pub enum SourceBasculeDto {
+    /// Le vendeur, depuis Mefali Pro.
+    Vendeur,
+    /// Le coursier sur place (masquage automatique).
+    Coursier,
+    /// L'Admin.
+    Admin,
+}
+
+impl From<prestataires::SourceBascule> for SourceBasculeDto {
+    fn from(s: prestataires::SourceBascule) -> Self {
+        match s {
+            prestataires::SourceBascule::Vendeur => SourceBasculeDto::Vendeur,
+            prestataires::SourceBascule::Coursier => SourceBasculeDto::Coursier,
+            prestataires::SourceBascule::Admin => SourceBasculeDto::Admin,
+        }
+    }
+}
+
+/// Article du catalogue de PILOTAGE (écran V2) : ruptures, retirés et verrou
+/// admin visibles — contrairement à la consultation publique.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ArticleVendeur)]
+pub struct ArticleVendeurDto {
+    /// Identifiant.
+    pub id: Uuid,
+    /// Nom.
+    pub nom: String,
+    /// Prix courant, entier en unités mineures.
+    pub prix_unites: i64,
+    /// Code ISO 4217 (posé par le serveur — R13).
+    pub devise: String,
+    /// Prix barré (strictement supérieur — FR-023).
+    pub prix_barre_unites: Option<i64>,
+    /// URL présignée de la photo (TTL 10 min).
+    pub photo_url: Option<String>,
+    /// Étiquette libre de regroupement.
+    pub categorie_interne: Option<String>,
+    /// Faux = rupture.
+    pub disponible: bool,
+    /// Source de la dernière bascule (FR-037).
+    pub source_derniere_bascule: Option<SourceBasculeDto>,
+    /// Rupture posée par l'Admin — la bascule vendeur sera refusée (FR-041).
+    pub rupture_admin: bool,
+    /// Retiré du catalogue — remise possible sans ressaisie (FR-055).
+    pub retire: bool,
+}
+
+/// Assemble le DTO (photo présignée à la volée).
+pub(crate) async fn article_vendeur_dto(
+    depot: &prestataires::PgPrestataires,
+    article: prestataires::Article,
+) -> Result<ArticleVendeurDto, ErreurPresta> {
+    let photo_url = match &article.photo_cle {
+        Some(cle) => Some(
+            depot
+                .objets()
+                .presigner_get(cle, PRESIGNEE_TTL)
+                .await
+                .map_err(ErreurPrestataires::from)?
+                .url,
+        ),
+        None => None,
+    };
+    let rupture_admin = article.rupture_admin();
+    Ok(ArticleVendeurDto {
+        id: article.id,
+        nom: article.nom,
+        prix_unites: article.prix_unites,
+        devise: article.devise,
+        prix_barre_unites: article.prix_barre_unites,
+        photo_url,
+        categorie_interne: article.categorie_interne,
+        disponible: article.disponible,
+        rupture_admin,
+        source_derniere_bascule: article.source_derniere_bascule.map(Into::into),
+        retire: article.retire_le.is_some(),
+    })
+}
+
+/// Création d'un article (disponible par défaut — FR-020).
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreerArticleDto {
+    /// Nom.
+    #[schema(min_length = 1, max_length = 120)]
+    pub nom: String,
+    /// Prix courant, entier en unités mineures — la devise est POSÉE PAR LE
+    /// SERVEUR depuis la zone (constitution III).
+    #[schema(minimum = 0)]
+    pub prix_unites: i64,
+    /// Prix barré optionnel (strictement supérieur — FR-023).
+    pub prix_barre_unites: Option<i64>,
+    /// Étiquette libre de regroupement.
+    pub categorie_interne: Option<String>,
+}
+
+/// Modification partielle — champ ABSENT = inchangé, `null` EXPLICITE = effacé
+/// (c'est ainsi qu'on retire une promotion : `prix_barre_unites: null`).
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ModifierArticleDto {
+    /// Nouveau nom.
+    #[schema(min_length = 1, max_length = 120)]
+    pub nom: Option<String>,
+    /// Nouveau prix courant.
+    #[schema(minimum = 0)]
+    pub prix_unites: Option<i64>,
+    /// Nouveau prix barré — `null` retire la promotion EXPLICITEMENT (jamais
+    /// en silence : un prix barré devenu ≤ prix fait échouer l'opération).
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<i64>, nullable)]
+    pub prix_barre_unites: Option<Option<i64>>,
+    /// Nouvelle étiquette — `null` l'efface.
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>, nullable)]
+    pub categorie_interne: Option<Option<String>>,
+}
+
+/// Champ absent → `None` ; `null` explicite → `Some(None)` ; valeur →
+/// `Some(Some(v))`. (Patron serde classique du « double Option ».)
+fn double_option<'de, T, D>(de: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    serde::Deserialize::deserialize(de).map(Some)
+}
+
 /// Fiche + catalogue, lecture seule, SANS authentification — la plaque est un
 /// canal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).
 #[utoipa::path(

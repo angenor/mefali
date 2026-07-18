@@ -13,6 +13,7 @@ Method | HTTP request | Description
 [**ajouterPhoto**](AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [**consulterDossierCoursier**](AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
 [**consulterPrestataireAdmin**](AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
+[**creerArticleAdmin**](AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
 [**creerPrestataire**](AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [**deciderRole**](AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
 [**definirSite**](AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
@@ -20,8 +21,12 @@ Method | HTTP request | Description
 [**detacherCompte**](AdminApi.md#detachercompte) | **DELETE** /admin/prestataires/{id}/rattachements/{compte_id} | Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
 [**listerDossiersCoursier**](AdminApi.md#listerdossierscoursier) | **GET** /admin/comptes/dossiers-coursier | Liste des dossiers coursier pour la revue admin (FR-017).
 [**listerPrestataires**](AdminApi.md#listerprestataires) | **GET** /admin/prestataires | Liste les prestataires (filtres statut / ville / catégorie).
+[**modifierArticleAdmin**](AdminApi.md#modifierarticleadmin) | **PUT** /admin/prestataires/{id}/articles/{article_id} | Modifie un article (source admin).
 [**modifierPrestataire**](AdminApi.md#modifierprestataire) | **PUT** /admin/prestataires/{id} | Modifie la fiche (nom, contact, délai) — administrable à tout statut.
+[**photoArticleAdmin**](AdminApi.md#photoarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/photo | Photo d&#39;article (source admin).
 [**rattacherCompte**](AdminApi.md#rattachercompte) | **POST** /admin/prestataires/{id}/rattachements | Rattache un compte vérifié — attribue le rôle vendeur si absent, IDEMPOTENT (FR-007, research R11).
+[**remettreArticleAdmin**](AdminApi.md#remettrearticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue (source admin — FR-055).
+[**retirerArticleAdmin**](AdminApi.md#retirerarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/retrait | Retire un article du catalogue (source admin — FR-055).
 [**supprimerPhoto**](AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
 
 
@@ -187,6 +192,49 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **creerArticleAdmin**
+> ArticleVendeur creerArticleAdmin(id, creerArticleDto)
+
+Crée un article pour le compte du prestataire (source admin).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final CreerArticleDto creerArticleDto = ; // CreerArticleDto | 
+
+try {
+    final response = api.creerArticleAdmin(id, creerArticleDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->creerArticleAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **creerArticleDto** | [**CreerArticleDto**](CreerArticleDto.md)|  | 
+
+### Return type
+
+[**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -495,6 +543,51 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **modifierArticleAdmin**
+> ArticleVendeur modifierArticleAdmin(id, articleId, modifierArticleDto)
+
+Modifie un article (source admin).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final String articleId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Article.
+final ModifierArticleDto modifierArticleDto = ; // ModifierArticleDto | 
+
+try {
+    final response = api.modifierArticleAdmin(id, articleId, modifierArticleDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->modifierArticleAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **articleId** | **String**| Article. | 
+ **modifierArticleDto** | [**ModifierArticleDto**](ModifierArticleDto.md)|  | 
+
+### Return type
+
+[**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **modifierPrestataire**
 > PrestataireAdmin modifierPrestataire(id, modifierPrestataireDto)
 
@@ -538,6 +631,51 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **photoArticleAdmin**
+> ArticleVendeur photoArticleAdmin(id, articleId, fichier)
+
+Photo d'article (source admin).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final String articleId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Article.
+final MultipartFile fichier = BINARY_DATA_HERE; // MultipartFile | La photo.
+
+try {
+    final response = api.photoArticleAdmin(id, articleId, fichier);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->photoArticleAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **articleId** | **String**| Article. | 
+ **fichier** | **MultipartFile**| La photo. | 
+
+### Return type
+
+[**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **rattacherCompte**
 > PrestataireAdminDetail rattacherCompte(id, rattacherCompteDto)
 
@@ -577,6 +715,92 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **remettreArticleAdmin**
+> ArticleVendeur remettreArticleAdmin(id, articleId)
+
+Remet un article retiré au catalogue (source admin — FR-055).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final String articleId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Article.
+
+try {
+    final response = api.remettreArticleAdmin(id, articleId);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->remettreArticleAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **articleId** | **String**| Article. | 
+
+### Return type
+
+[**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **retirerArticleAdmin**
+> ArticleVendeur retirerArticleAdmin(id, articleId)
+
+Retire un article du catalogue (source admin — FR-055).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final String articleId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Article.
+
+try {
+    final response = api.retirerArticleAdmin(id, articleId);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->retirerArticleAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **articleId** | **String**| Article. | 
+
+### Return type
+
+[**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

@@ -638,6 +638,446 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/articles": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Crée un article pour le compte du prestataire (source admin).",
+        "operationId": "creer_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreerArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Article créé (source admin). Émet `article.cree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré ≤ prix, montant négatif, nom vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Modifie un article (source admin).",
+        "operationId": "modifier_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Modifié. Émet `article.modifie`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré qui deviendrait ≤ prix : échec explicite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/photo": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Photo d'article (source admin).",
+        "operationId": "photo_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepotPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Photo remplacée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type refusé ou fichier trop volumineux.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/remise": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Remet un article retiré au catalogue (source admin — FR-055).",
+        "operationId": "remettre_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remis au catalogue. Émet `article.remis_au_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/retrait": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Retire un article du catalogue (source admin — FR-055).",
+        "operationId": "retirer_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retiré (réversible). Émet `article.retire_du_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/charte": {
       "post": {
         "tags": [
@@ -2256,6 +2696,495 @@
           }
         ]
       }
+    },
+    "/vendeur/prestataires/{id}/articles": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).",
+        "operationId": "mes_articles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalogue de pilotage — les retirés en tête de leur groupe, remise possible sans ressaisie (FR-055).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ArticleVendeur"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle vendeur absent, non rattaché, ou prestataire non agréé (trois codes distincts — R11).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Ajoute un article au catalogue (V2 — « + Ajouter un article »).",
+        "operationId": "creer_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreerArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Article créé, disponible par défaut (FR-020). Émet `article.cree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage (trois codes distincts).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré ≤ prix (FR-023), montant négatif, nom vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}": {
+      "put": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Modifie nom / prix / prix barré / étiquette (fiche article V2).",
+        "operationId": "modifier_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Modifié — `prix_barre_unites: null` retire la promotion EXPLICITEMENT. Un montant déjà FIGÉ ne bouge jamais (SC-005). Émet `article.modifie`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré du catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré qui deviendrait ≤ prix : l'opération ÉCHOUE, la promotion n'est pas retirée en silence (FR-023).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/photo": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Dépose/remplace la photo de l'article (multipart, ≤ 5 Mo).",
+        "operationId": "photo_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepotPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Photo remplacée (clé neuve, l'ancienne purgée après commit).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type refusé ou fichier trop volumineux.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/remise": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Remet un article retiré au catalogue, sans ressaisie (FR-055).",
+        "operationId": "remettre_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remis : il revient avec son historique et sa disponibilité telle qu'elle était. Émet `article.remis_au_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/retrait": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Retire l'article du catalogue — RÉVERSIBLE (FR-055).",
+        "operationId": "retirer_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retiré : plus servi, plus commandable, plus signalable — la ligne subsiste. Émet `article.retire_du_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2435,6 +3364,84 @@
             "type": "integer",
             "format": "int64",
             "description": "Prix courant — ENTIER en unités mineures (constitution III)."
+          }
+        }
+      },
+      "ArticleVendeur": {
+        "type": "object",
+        "description": "Article du catalogue de PILOTAGE (écran V2) : ruptures, retirés et verrou\nadmin visibles — contrairement à la consultation publique.",
+        "required": [
+          "id",
+          "nom",
+          "prix_unites",
+          "devise",
+          "disponible",
+          "rupture_admin",
+          "retire"
+        ],
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Étiquette libre de regroupement."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Code ISO 4217 (posé par le serveur — R13)."
+          },
+          "disponible": {
+            "type": "boolean",
+            "description": "Faux = rupture."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom."
+          },
+          "photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de la photo (TTL 10 min)."
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix barré (strictement supérieur — FR-023)."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix courant, entier en unités mineures."
+          },
+          "retire": {
+            "type": "boolean",
+            "description": "Retiré du catalogue — remise possible sans ressaisie (FR-055)."
+          },
+          "rupture_admin": {
+            "type": "boolean",
+            "description": "Rupture posée par l'Admin — la bascule vendeur sera refusée (FR-041)."
+          },
+          "source_derniere_bascule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SourceBascule",
+                "description": "Source de la dernière bascule (FR-037)."
+              }
+            ]
           }
         }
       },
@@ -2646,6 +3653,43 @@
           "forcage": {
             "$ref": "#/components/schemas/ForcageDto",
             "description": "Nouveau mode de forçage à appliquer."
+          }
+        }
+      },
+      "CreerArticleDto": {
+        "type": "object",
+        "description": "Création d'un article (disponible par défaut — FR-020).",
+        "required": [
+          "nom",
+          "prix_unites"
+        ],
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Étiquette libre de regroupement."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom.",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix barré optionnel (strictement supérieur — FR-023)."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix courant, entier en unités mineures — la devise est POSÉE PAR LE\nSERVEUR depuis la zone (constitution III).",
+            "minimum": 0
           }
         }
       },
@@ -3190,6 +4234,45 @@
             ],
             "description": "Nouveau repère écrit — absent = inchangé, `null` = effacé.\n\nLe double `Option` porte cette nuance : sans lui, « ne touche pas » et\n« efface » seraient le même corps JSON.",
             "maxLength": 500
+          }
+        }
+      },
+      "ModifierArticleDto": {
+        "type": "object",
+        "description": "Modification partielle — champ ABSENT = inchangé, `null` EXPLICITE = effacé\n(c'est ainsi qu'on retire une promotion : `prix_barre_unites: null`).",
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouvelle étiquette — `null` l'efface."
+          },
+          "nom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau nom.",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Nouveau prix barré — `null` retire la promotion EXPLICITEMENT (jamais\nen silence : un prix barré devenu ≤ prix fait échouer l'opération)."
+          },
+          "prix_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Nouveau prix courant.",
+            "minimum": 0
           }
         }
       },
@@ -3763,6 +4846,15 @@
             "minItems": 1
           }
         }
+      },
+      "SourceBascule": {
+        "type": "string",
+        "description": "Source d'une bascule de disponibilité (FR-037).",
+        "enum": [
+          "vendeur",
+          "coursier",
+          "admin"
+        ]
       },
       "StatutBoutique": {
         "type": "string",

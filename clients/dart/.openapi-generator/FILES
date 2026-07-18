@@ -8,6 +8,7 @@ doc/Adresse.md
 doc/AffichageRupture.md
 doc/AppareilDto.md
 doc/ArticlePublic.md
+doc/ArticleVendeur.md
 doc/AuthApi.md
 doc/CategorieDto.md
 doc/CharteAdminDto.md
@@ -15,6 +16,7 @@ doc/CompteMoi.md
 doc/ConfigZone.md
 doc/ConsentementRequis.md
 doc/CorpsForcage.md
+doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionRole.md
 doc/DemandeOtp.md
@@ -35,6 +37,7 @@ doc/HorairesSemaineDto.md
 doc/Inscription.md
 doc/JetonsDto.md
 doc/ModifierAdresse.md
+doc/ModifierArticleDto.md
 doc/ModifierPrestataireDto.md
 doc/MoiApi.md
 doc/PhotoAdminDto.md
@@ -53,6 +56,7 @@ doc/SessionOuverte.md
 doc/SiteAdminDto.md
 doc/SiteAdminVueDto.md
 doc/SocleApi.md
+doc/SourceBascule.md
 doc/StatutBoutique.md
 doc/StatutPrestataire.md
 doc/UrlPresignee.md
@@ -82,12 +86,14 @@ lib/src/model/adresse.dart
 lib/src/model/affichage_rupture.dart
 lib/src/model/appareil_dto.dart
 lib/src/model/article_public.dart
+lib/src/model/article_vendeur.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/charte_admin_dto.dart
 lib/src/model/compte_moi.dart
 lib/src/model/config_zone.dart
 lib/src/model/consentement_requis.dart
 lib/src/model/corps_forcage.dart
+lib/src/model/creer_article_dto.dart
 lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
 lib/src/model/decision_role.dart
@@ -109,6 +115,7 @@ lib/src/model/horaires_semaine_dto.dart
 lib/src/model/inscription.dart
 lib/src/model/jetons_dto.dart
 lib/src/model/modifier_adresse.dart
+lib/src/model/modifier_article_dto.dart
 lib/src/model/modifier_prestataire_dto.dart
 lib/src/model/photo_admin_dto.dart
 lib/src/model/plage_dto.dart
@@ -124,6 +131,7 @@ lib/src/model/session_appareil.dart
 lib/src/model/session_ouverte.dart
 lib/src/model/site_admin_dto.dart
 lib/src/model/site_admin_vue_dto.dart
+lib/src/model/source_bascule.dart
 lib/src/model/statut_boutique.dart
 lib/src/model/statut_prestataire.dart
 lib/src/model/url_presignee.dart
@@ -131,6 +139,7 @@ lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/prestataire_pilotable_test.dart
-test/rattacher_compte_dto_test.dart
-test/vendeur_api_test.dart
+test/article_vendeur_test.dart
+test/creer_article_dto_test.dart
+test/modifier_article_dto_test.dart
+test/source_bascule_test.dart

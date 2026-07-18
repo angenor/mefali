@@ -446,6 +446,19 @@ pub struct PhotoForm {
     fichier: ChampFichier,
 }
 
+impl PhotoForm {
+    /// Octets + type MIME déclaré (chaîne vide si absent — refusé au domaine).
+    pub(crate) fn contenu(self) -> (Vec<u8>, String) {
+        let mime = self
+            .fichier
+            .content_type
+            .as_ref()
+            .map(|m| m.to_string())
+            .unwrap_or_default();
+        (self.fichier.data.to_vec(), mime)
+    }
+}
+
 /// Ajoute une photo de fiche.
 #[utoipa::path(
     post,
@@ -811,4 +824,245 @@ pub async fn definir_site(
         .await?;
     tx.commit().await.map_err(sql)?;
     Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
+}
+
+// ── Catalogue côté ADMIN (US2 — saisie pendant la visite d'agrément) ───────
+// Mêmes méthodes de domaine que /vendeur, source = admin (research R12) —
+// c'est ainsi que le catalogue de Tantie Affoué, sans app, est tenu.
+
+/// Crée un article pour le compte du prestataire (source admin).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/articles",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire.")),
+    request_body = crate::prestataires_http::CreerArticleDto,
+    responses(
+        (status = 201, description = "Article créé (source admin). Émet `article.cree`.",
+         body = crate::prestataires_http::ArticleVendeurDto),
+        (status = 422, description = "Prix barré ≤ prix, montant négatif, nom vide.",
+         body = ErreurApiDto),
+        (status = 404, description = "Prestataire inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/articles")]
+pub async fn creer_article_admin(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<crate::prestataires_http::CreerArticleDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+    let corps = corps.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let article = depot
+        .creer_article(
+            &mut tx,
+            prestataire,
+            &prestataires::NouvelArticle {
+                nom: corps.nom,
+                prix_unites: corps.prix_unites,
+                prix_barre_unites: corps.prix_barre_unites,
+                categorie_interne: corps.categorie_interne,
+            },
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Created()
+        .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
+}
+
+/// Modifie un article (source admin).
+#[utoipa::path(
+    put,
+    path = "/admin/prestataires/{id}/articles/{article_id}",
+    tag = "admin",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire."),
+        ("article_id" = Uuid, Path, description = "Article."),
+    ),
+    request_body = crate::prestataires_http::ModifierArticleDto,
+    responses(
+        (status = 200, description = "Modifié. Émet `article.modifie`.",
+         body = crate::prestataires_http::ArticleVendeurDto),
+        (status = 422, description = "Prix barré qui deviendrait ≤ prix : échec explicite.",
+         body = ErreurApiDto),
+        (status = 404, description = "Article inconnu ou retiré.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[put("/admin/prestataires/{id}/articles/{article_id}")]
+pub async fn modifier_article_admin(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    corps: web::Json<crate::prestataires_http::ModifierArticleDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let (prestataire, article) = chemin.into_inner();
+    let corps = corps.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let article = depot
+        .modifier_article(
+            &mut tx,
+            prestataire,
+            article,
+            &prestataires::ModificationArticle {
+                nom: corps.nom,
+                prix_unites: corps.prix_unites,
+                prix_barre_unites: corps.prix_barre_unites,
+                categorie_interne: corps.categorie_interne,
+            },
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok()
+        .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
+}
+
+/// Photo d'article (source admin).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/articles/{article_id}/photo",
+    tag = "admin",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire."),
+        ("article_id" = Uuid, Path, description = "Article."),
+    ),
+    request_body(content = DepotPhotoDto, content_type = "multipart/form-data"),
+    responses(
+        (status = 200, description = "Photo remplacée.",
+         body = crate::prestataires_http::ArticleVendeurDto),
+        (status = 422, description = "Type refusé ou fichier trop volumineux.", body = ErreurApiDto),
+        (status = 404, description = "Article inconnu ou retiré.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/articles/{article_id}/photo")]
+pub async fn photo_article_admin(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    MultipartForm(form): MultipartForm<PhotoForm>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let (prestataire, article) = chemin.into_inner();
+    let (octets, mime) = form.contenu();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let (article, orpheline) = depot
+        .photo_article(
+            &mut tx,
+            prestataire,
+            article,
+            octets,
+            &mime,
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    if let Some(cle) = orpheline {
+        if let Err(e) = depot.objets().supprimer(&cle).await {
+            tracing::warn!(cle = %cle, erreur = %e, "photo d'article remplacée non purgée");
+        }
+    }
+    Ok(HttpResponse::Ok()
+        .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
+}
+
+/// Retire un article du catalogue (source admin — FR-055).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/articles/{article_id}/retrait",
+    tag = "admin",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire."),
+        ("article_id" = Uuid, Path, description = "Article."),
+    ),
+    responses(
+        (status = 200, description = "Retiré (réversible). Émet `article.retire_du_catalogue`.",
+         body = crate::prestataires_http::ArticleVendeurDto),
+        (status = 404, description = "Article inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/articles/{article_id}/retrait")]
+pub async fn retirer_article_admin(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let (prestataire, article) = chemin.into_inner();
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let article = depot
+        .retirer_article(
+            &mut tx,
+            prestataire,
+            article,
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok()
+        .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
+}
+
+/// Remet un article retiré au catalogue (source admin — FR-055).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/articles/{article_id}/remise",
+    tag = "admin",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire."),
+        ("article_id" = Uuid, Path, description = "Article."),
+    ),
+    responses(
+        (status = 200, description = "Remis au catalogue. Émet `article.remis_au_catalogue`.",
+         body = crate::prestataires_http::ArticleVendeurDto),
+        (status = 404, description = "Article inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/articles/{article_id}/remise")]
+pub async fn remettre_article_admin(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let (prestataire, article) = chemin.into_inner();
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let article = depot
+        .remettre_article(
+            &mut tx,
+            prestataire,
+            article,
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok()
+        .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
 }
