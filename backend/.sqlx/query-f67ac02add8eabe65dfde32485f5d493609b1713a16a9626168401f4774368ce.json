@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.prestataire\n             SET statut = 'suspendu', statut_decide_par = $2, statut_decide_le = now(),\n                 statut_motif = $3, modifie_le = now()\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f67ac02add8eabe65dfde32485f5d493609b1713a16a9626168401f4774368ce"
+}

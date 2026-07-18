@@ -578,6 +578,326 @@ impl PgPrestataires {
     }
 }
 
+// ── Cycle de vie (FR-004, FR-009, FR-010 — data-model §4.1) ────────────────
+
+/// Actions du cycle de vie — décisions ADMIN, jamais automatiques.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionPrestataire {
+    /// prospect → agree (fiche + charte + site complets — FR-005).
+    Agreer,
+    /// agree → suspendu (motif REQUIS — FR-010).
+    Suspendre,
+    /// suspendu → agree (plaque INCHANGÉE — SC-003).
+    Retablir,
+}
+
+/// Table de transitions EXHAUSTIVE du cycle de vie (FR-004) — pure, testée
+/// case par case. `None` = transition refusée.
+pub fn transition(
+    avant: StatutPrestataire,
+    action: ActionPrestataire,
+) -> Option<StatutPrestataire> {
+    match (avant, action) {
+        (StatutPrestataire::Prospect, ActionPrestataire::Agreer) => Some(StatutPrestataire::Agree),
+        (StatutPrestataire::Agree, ActionPrestataire::Suspendre) => {
+            Some(StatutPrestataire::Suspendu)
+        }
+        (StatutPrestataire::Suspendu, ActionPrestataire::Retablir) => {
+            Some(StatutPrestataire::Agree)
+        }
+        _ => None,
+    }
+}
+
+impl PgPrestataires {
+    /// Agrée un prospect (VND-01). Refus MOTIVÉ si la fiche est incomplète
+    /// (FR-005) ; au PREMIER agrément, l'identité de plaque est générée
+    /// (FR-013) ; le compteur d'activation de la catégorie est recalculé dans
+    /// la MÊME transaction (FR-009, research R7). Émet `prestataire.agree`.
+    pub async fn agreer(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+        acteur: Uuid,
+    ) -> Result<Prestataire, ErreurPrestataires> {
+        let p = self.verrouiller(tx, prestataire).await?;
+        exiger_transition(p.statut, ActionPrestataire::Agreer, StatutPrestataire::Agree)?;
+
+        // Complétude (FR-005) : fiche (≥ 1 photo), charte signée, site doté
+        // d'au moins une plage d'horaires. Manques STABLES, tous remontés.
+        let mut manques: Vec<&'static str> = Vec::new();
+        let a_photo = sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM prestataires.photo_prestataire
+                             WHERE prestataire_id = $1) AS "existe!""#,
+            prestataire,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+        if !a_photo {
+            manques.push("photo");
+        }
+        let a_charte = sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM prestataires.charte_signee
+                             WHERE prestataire_id = $1) AS "existe!""#,
+            prestataire,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+        if !a_charte {
+            manques.push("charte_signee");
+        }
+        match self.site_optionnel_dans_tx(tx, prestataire).await? {
+            None => manques.push("site"),
+            Some(site) => {
+                let plages = sqlx::query_scalar!(
+                    r#"SELECT count(*) AS "n!" FROM prestataires.horaire_site WHERE site_id = $1"#,
+                    site.id,
+                )
+                .fetch_one(&mut **tx)
+                .await?;
+                if plages == 0 {
+                    manques.push("horaires");
+                }
+            }
+        }
+        if !manques.is_empty() {
+            return Err(ErreurPrestataires::AgrementIncomplet { manques });
+        }
+
+        // Identité de plaque : posée au PREMIER agrément, stable ensuite.
+        let plaque_creee = p.jeton_plaque.is_none();
+        let (jeton, code) = if plaque_creee {
+            (
+                Some(crate::plaque::generer_jeton(&self.secret_plaque, prestataire)),
+                Some(crate::plaque::generer_code_secours()),
+            )
+        } else {
+            (None, None)
+        };
+        sqlx::query!(
+            "UPDATE prestataires.prestataire
+             SET statut = 'agree', statut_decide_par = $2, statut_decide_le = now(),
+                 statut_motif = NULL,
+                 jeton_plaque = COALESCE($3, jeton_plaque),
+                 code_secours = COALESCE($4, code_secours),
+                 modifie_le = now()
+             WHERE id = $1",
+            prestataire,
+            acteur,
+            jeton,
+            code,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        self.recalculer_activation_apres(tx, p.ville_id, p.categorie_id, &p.categorie_slug)
+            .await?;
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "prestataire.agree",
+                entite_type: "prestataire",
+                entite_id: prestataire,
+                payload: json!({
+                    "zone": p.ville_id,
+                    "categorie": p.categorie_slug,
+                    "plaque_creee": plaque_creee,
+                    "acteur": acteur,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+        self.prestataire_dans_tx(tx, prestataire).await
+    }
+
+    /// Suspend un agréé (motif REQUIS — FR-010). La fiche cesse d'être servie,
+    /// la commandabilité et la validité du jeton tombent PAR DÉRIVATION —
+    /// aucune action distincte (FR-015, SC-002). Le recalcul est déclenché,
+    /// SANS effet attendu : le seuil ne joue qu'à la hausse (FR-009).
+    pub async fn suspendre(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+        motif: &str,
+        acteur: Uuid,
+    ) -> Result<Prestataire, ErreurPrestataires> {
+        if motif.trim().is_empty() {
+            return Err(ErreurPrestataires::MotifRequis);
+        }
+        let p = self.verrouiller(tx, prestataire).await?;
+        exiger_transition(
+            p.statut,
+            ActionPrestataire::Suspendre,
+            StatutPrestataire::Suspendu,
+        )?;
+
+        sqlx::query!(
+            "UPDATE prestataires.prestataire
+             SET statut = 'suspendu', statut_decide_par = $2, statut_decide_le = now(),
+                 statut_motif = $3, modifie_le = now()
+             WHERE id = $1",
+            prestataire,
+            acteur,
+            motif.trim(),
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        self.recalculer_activation_apres(tx, p.ville_id, p.categorie_id, &p.categorie_slug)
+            .await?;
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "prestataire.suspendu",
+                entite_type: "prestataire",
+                entite_id: prestataire,
+                payload: json!({
+                    "zone": p.ville_id,
+                    "categorie": p.categorie_slug,
+                    "motif": motif.trim(),
+                    "acteur": acteur,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+        self.prestataire_dans_tx(tx, prestataire).await
+    }
+
+    /// Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours
+    /// (SC-003), recalcul d'activation (FR-009). Émet `prestataire.retabli`.
+    pub async fn retablir(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+        acteur: Uuid,
+    ) -> Result<Prestataire, ErreurPrestataires> {
+        let p = self.verrouiller(tx, prestataire).await?;
+        exiger_transition(
+            p.statut,
+            ActionPrestataire::Retablir,
+            StatutPrestataire::Agree,
+        )?;
+
+        sqlx::query!(
+            "UPDATE prestataires.prestataire
+             SET statut = 'agree', statut_decide_par = $2, statut_decide_le = now(),
+                 statut_motif = NULL, modifie_le = now()
+             WHERE id = $1",
+            prestataire,
+            acteur,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        self.recalculer_activation_apres(tx, p.ville_id, p.categorie_id, &p.categorie_slug)
+            .await?;
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "prestataire.retabli",
+                entite_type: "prestataire",
+                entite_id: prestataire,
+                payload: json!({
+                    "zone": p.ville_id,
+                    "categorie": p.categorie_slug,
+                    "acteur": acteur,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+        self.prestataire_dans_tx(tx, prestataire).await
+    }
+
+    /// Recompte les agréés du couple catégorie/ville et appelle le recalcul
+    /// d'activation ZON-03 dans la MÊME transaction (research R7). Le crate
+    /// `zones` ne connaît pas les vendeurs : le comptage est ici.
+    pub(crate) async fn recalculer_activation_apres(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        ville: Uuid,
+        categorie: Uuid,
+        categorie_slug: &str,
+    ) -> Result<(), ErreurPrestataires> {
+        let agrees = sqlx::query_scalar!(
+            r#"SELECT count(*) AS "n!" FROM prestataires.prestataire
+               WHERE ville_id = $1 AND categorie_id = $2
+                 AND statut = 'agree'::prestataires.statut_prestataire"#,
+            ville,
+            categorie,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+        self.zones
+            .recalculer_activation(tx, ville, categorie_slug, agrees)
+            .await?;
+        Ok(())
+    }
+
+    /// Verrouille la ligne (décisions concurrentes sérialisées) puis la relit.
+    async fn verrouiller(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+    ) -> Result<Prestataire, ErreurPrestataires> {
+        sqlx::query!(
+            "SELECT id FROM prestataires.prestataire WHERE id = $1 FOR UPDATE",
+            prestataire,
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or(ErreurPrestataires::PrestataireInconnu(prestataire))?;
+        self.prestataire_dans_tx(tx, prestataire).await
+    }
+}
+
+/// Applique la table de transitions, en erreur 409 sinon.
+fn exiger_transition(
+    avant: StatutPrestataire,
+    action: ActionPrestataire,
+    apres: StatutPrestataire,
+) -> Result<(), ErreurPrestataires> {
+    match transition(avant, action) {
+        Some(cible) => {
+            debug_assert_eq!(cible, apres);
+            Ok(())
+        }
+        None => Err(ErreurPrestataires::TransitionInvalide { avant, apres }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Table de transitions conforme à data-model §4.1 — EXHAUSTIVE (3 × 3).
+    #[test]
+    fn table_de_transitions_conforme_au_data_model() {
+        use ActionPrestataire::*;
+        use StatutPrestataire::*;
+        let cas = [
+            (Prospect, Agreer, Some(Agree)),
+            (Prospect, Suspendre, None),
+            (Prospect, Retablir, None),
+            (Agree, Agreer, None),
+            (Agree, Suspendre, Some(Suspendu)),
+            (Agree, Retablir, None),
+            (Suspendu, Agreer, None),
+            (Suspendu, Suspendre, None),
+            (Suspendu, Retablir, Some(Agree)),
+        ];
+        for (avant, action, attendu) in cas {
+            assert_eq!(
+                transition(avant, action),
+                attendu,
+                "{avant} × {action:?}"
+            );
+        }
+    }
+}
+
 /// Validation commune des champs de fiche (création et modification).
 fn valider_champs(
     nom: &str,

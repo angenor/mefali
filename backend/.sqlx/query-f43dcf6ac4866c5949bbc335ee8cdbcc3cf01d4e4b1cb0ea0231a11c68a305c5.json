@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM prestataires.prestataire\n               WHERE ville_id = $1 AND categorie_id = $2\n                 AND statut = 'agree'::prestataires.statut_prestataire",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "f43dcf6ac4866c5949bbc335ee8cdbcc3cf01d4e4b1cb0ea0231a11c68a305c5"
+}
