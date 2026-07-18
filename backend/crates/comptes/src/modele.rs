@@ -474,7 +474,6 @@ pub struct ErreurEphemere(pub String);
 #[error("SMS : {0}")]
 pub struct ErreurSms(pub String);
 
-/// Échec d'accès au stockage objet (Garage/S3 — research R7).
-#[derive(Debug, thiserror::Error)]
-#[error("stockage objet : {0}")]
-pub struct ErreurObjets(pub String);
+/// Échec d'accès au stockage objet — REPRIS par `socle` au cycle 005
+/// (specs/005 research R1) ; ré-exporté ici, l'API publique n'a pas bougé.
+pub use socle::ErreurObjets;
