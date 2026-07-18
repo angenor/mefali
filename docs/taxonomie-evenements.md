@@ -58,6 +58,24 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `adresse.modifiee` | `adresse` | `PgComptes::modifier_adresse` (cycle CPT) | **Produit** — renommage ou nouveau repère |
 | `adresse.supprimee` | `adresse` | `PgComptes::supprimer_adresse` (cycle CPT) | **Produit** — suppression (soft delete) |
 | `adresse.repere_vocal_purge` | `adresse` | `PgComptes::purger_reperes_vocaux` (cycle CPT) | **Produit** — repère vocal purgé après la rétention de zone |
+| `prestataire.cree` | `prestataire` | `PgPrestataires::creer_prestataire` (cycle VND) | **Produit** — création de la fiche (état prospect) |
+| `prestataire.modifie` | `prestataire` | `PgPrestataires::modifier_prestataire` (cycle VND) | **Produit** — modification de la fiche (noms de champs seulement) |
+| `prestataire.agree` | `prestataire` | `PgPrestataires::agreer` (cycle VND) | **Produit** — agrément (plaque créée au premier passage) |
+| `prestataire.suspendu` | `prestataire` | `PgPrestataires::suspendre` (cycle VND) | **Produit** — suspension (motif requis) ; coupe fiche, commandabilité, plaque |
+| `prestataire.retabli` | `prestataire` | `PgPrestataires::retablir` (cycle VND) | **Produit** — rétablissement (plaque inchangée) |
+| `prestataire.corrige` | `prestataire` | `PgPrestataires::corriger` (cycle VND) | **Produit** — correction catégorie/ville (double recalcul d'activation) |
+| `charte.deposee` | `charte_signee` | `PgPrestataires::deposer_charte` (cycle VND) | **Produit** — dépôt du scan de charte signée (version + date) |
+| `rattachement.cree` | `rattachement` | `PgPrestataires::rattacher_compte` (cycle VND) | **Produit** — rattachement compte ↔ prestataire (rôle vendeur si absent) |
+| `rattachement.supprime` | `rattachement` | `PgPrestataires::detacher_compte` (cycle VND) | **Produit** — détachement (le rôle du compte ne bouge pas) |
+| `site.statut_boutique_change` | `site` | `PgPrestataires::changer_statut_boutique` (cycle VND) | **Produit** — changement DÉCIDÉ de statut de boutique (jamais les échéances) |
+| `site.horaires_modifies` | `site` | `PgPrestataires::modifier_horaires` (cycle VND) | **Produit** — remplacement des horaires hebdomadaires |
+| `article.cree` | `article` | `PgPrestataires::creer_article` (cycle VND) | **Produit** — article ajouté au catalogue (disponible par défaut) |
+| `article.modifie` | `article` | `PgPrestataires::modifier_article` (cycle VND) | **Produit** — modification (prix, prix barré, nom, photo, catégorie interne) |
+| `article.retire_du_catalogue` | `article` | `PgPrestataires::retirer_article` (cycle VND) | **Produit** — retrait RÉVERSIBLE (la ligne subsiste) |
+| `article.remis_au_catalogue` | `article` | `PgPrestataires::remettre_article` (cycle VND) | **Produit** — remise au catalogue sans ressaisie |
+| `article.mis_en_rupture` | `article` | `PgPrestataires::basculer_disponibilite` / masquage automatique (cycle VND) | **Produit** — bascule en rupture, trois sources ; consommé par VND-09 |
+| `article.remis_en_vente` | `article` | `PgPrestataires::basculer_disponibilite` (cycle VND) | **Produit** — retour en stock ; consommé par VND-09 (T4) |
+| `signalement_rupture.recu` | `signalement_rupture` | `PgPrestataires::signaler_rupture` (cycle VND) | **Produit** — signalement coursier ACCEPTÉ (les refus n'émettent rien) |
 
 ### Événements du cycle ZON (002 — zones & configuration héritée)
 
@@ -119,6 +137,75 @@ table d'audit parallèle (patron du cycle 002).
 - la rotation du refresh — ce n'est pas une transition d'état (data-model §4) ;
   seule la révocation qu'une réutilisation déclenche en émet une ;
 - les seeds — chargement initial, pas une transition (patron du cycle 002).
+
+### Événements du cycle VND (005 — prestataires agréés et catalogue vendeur)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
+(constitution VI ; specs/005 data-model.md §6). Le registre est posé AVANT
+l'implémentation (FR-051).
+
+**Identification des entités.** `rattachement_compte` a une clé primaire
+composite `(prestataire_id, compte_id)` : ses événements portent `entite_id` =
+`compte_id`, le prestataire vivant dans le payload (patron `attribution_role`
+du cycle 003).
+
+**Minimisation (ARTCI, FR-052).** AUCUN payload ne porte de donnée nominative
+ni de position GPS : ni nom de prestataire, ni contact téléphonique, ni
+coordonnées de site. `acteur` est un UUID de compte ; `motif` est le texte de
+décision admin (précédent des événements `role.*`) ; les modifications de fiche
+sont décrites par des NOMS de champs, jamais leurs valeurs.
+
+| Type | `entite_type` | `entite_id` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|---|
+| `prestataire.cree` | `prestataire` | `prestataire.id` | `zone`, `categorie` (slug), `acteur` |
+| `prestataire.modifie` | `prestataire` | `prestataire.id` | `champs` (noms seulement : `nom`, `contact`, `delai_preparation`, `photos`), `acteur` |
+| `prestataire.agree` | `prestataire` | `prestataire.id` | `zone`, `categorie`, `plaque_creee` (booléen — `true` au premier agrément), `acteur` |
+| `prestataire.suspendu` | `prestataire` | `prestataire.id` | `zone`, `categorie`, `motif` (REQUIS), `acteur` |
+| `prestataire.retabli` | `prestataire` | `prestataire.id` | `zone`, `categorie`, `acteur` |
+| `prestataire.corrige` | `prestataire` | `prestataire.id` | `avant` (`{categorie, zone}`), `apres` (`{categorie, zone}`), `acteur` |
+| `charte.deposee` | `charte_signee` | `charte_signee.id` | `prestataire`, `version_charte`, `acteur` |
+| `rattachement.cree` | `rattachement` | `compte_id` | `prestataire`, `compte`, `role_attribue` (booléen — `false` si le compte portait déjà le rôle vendeur), `acteur` |
+| `rattachement.supprime` | `rattachement` | `compte_id` | `prestataire`, `compte`, `acteur` |
+| `site.statut_boutique_change` | `site` | `site.id` | `prestataire`, `avant`, `apres` (statuts), `pause_fin` (si mise en pause / prolongation), `source` (`vendeur` \| `admin`), `acteur` |
+| `site.horaires_modifies` | `site` | `site.id` | `prestataire`, `avant`, `apres` (plages par jour), `source`, `acteur` |
+| `article.cree` | `article` | `article.id` | `prestataire`, `prix` (unités mineures), `devise`, `prix_barre` (facultatif), `source`, `acteur` |
+| `article.modifie` | `article` | `article.id` | `prestataire`, `champs` (noms), `prix`, `prix_barre` (si modifiés), `source`, `acteur` |
+| `article.retire_du_catalogue` | `article` | `article.id` | `prestataire`, `source`, `acteur` |
+| `article.remis_au_catalogue` | `article` | `article.id` | `prestataire`, `source`, `acteur` |
+| `article.mis_en_rupture` | `article` | `article.id` | `prestataire`, `site`, `source` (`vendeur` \| `coursier` \| `admin`), `automatique` (booléen — `true` si masquage par seuil de signalements), `acteur` (`null` si automatique) |
+| `article.remis_en_vente` | `article` | `article.id` | `prestataire`, `site`, `source` (`vendeur` \| `admin`), `acteur` |
+| `signalement_rupture.recu` | `signalement_rupture` | `signalement_rupture.id` | `prestataire`, `article`, `site`, `coursier`, `deja_en_rupture` (booléen) |
+
+**Ce qui n'émet PAS d'événement outbox** (specs/005 research R3, R10) :
+
+- les ÉCHÉANCES — pause arrivée à terme, « fermé pour la journée » au jour
+  suivant : l'état effectif est dérivé à la lecture, aucune transaction ne
+  s'ouvre ; l'événement de mise en pause porte `pause_fin`, ce qui suffit à
+  reconstituer la durée de fermeture ;
+- les signalements coursier REFUSÉS (précondition de commande active non
+  satisfaite) — « comptés nulle part » (FR-038) ;
+- les rejeux idempotents (même `Idempotency-Key`) — ni double ligne, ni double
+  événement ;
+- le verrouillage d'un prix (`figer_prix`) — les événements de commande du
+  cycle CMD couvriront ce parcours ;
+- les seeds — chargement initial, pas une transition (patron des cycles 002/003).
+
+## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
+
+Événements PRODUIT émis par les apps (cadrage §10.9), distincts du journal
+outbox. L'ingestion (`/events`, MET-02) n'existe pas encore : ce cycle DÉCLARE
+les événements du parcours vendeur V1/V2 (Definition of Done §0.4 point 4,
+FR-053) ; leur émission arrivera avec le cycle MET. Propriétés standard :
+`zone`, `categorie`, `role`, `version_app`, `plateforme`.
+
+| Événement produit | Parcours | Propriétés spécifiques |
+|---|---|---|
+| `vendeur_boutique_bascule` | V1 — interrupteur ouvrir/fermer | `action` (`ouvrir` \| `fermer`) |
+| `vendeur_pause_demarree` | V1 — mise en pause | `duree_minutes` (30 \| 60 \| 120) |
+| `vendeur_pause_prolongee` | V1 — prolongation / fermeture journée | `action` (`prolonger` \| `fermer_journee`) |
+| `vendeur_article_bascule_dispo` | V2 — bascule En stock / Rupture | `vers` (`rupture` \| `en_vente`) |
+| `vendeur_article_cree` | V2 — ajout d'article | `avec_photo`, `avec_prix_barre` (booléens) |
+| `vendeur_prix_modifie` | V2 — fiche article | `avec_prix_barre` (booléen) |
 
 *(Les autres événements produit — `commande.*`, `livraison.*`, `paiement.*`… —
 sont ajoutés à ce registre par les cycles qui les émettent, avec leurs parcours.)*
