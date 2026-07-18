@@ -1,0 +1,703 @@
+# Contrat de conception — cycle 005 prestataires (VND-01..04)
+#
+# SOURCE DE VÉRITÉ FINALE : openapi.json GÉNÉRÉ par utoipa depuis les handlers
+# Actix (constitution, principe I). Ce fichier est la CIBLE de conception que les
+# annotations #[utoipa::path] doivent réaliser ; en cas d'écart, on corrige le
+# code, puis openapi.json régénéré fait foi et les clients Dart/TS en dérivent
+# (tags → getPrestatairesApi() / getVendeurApi() / getCoursierApi(), et fusion
+# dans AdminApi existant).
+#
+# Sécurité : bearerAuth = JWT du cycle 003 (Auth extractor). Les gardes :
+#   [public]   — aucune authentification, rate-limit par IP (exception VIII
+#                documentée, research R9)
+#   [session]  — session valide requise (Auth), AUCUN rôle particulier
+#                (résolution de plaque — analyse C1)
+#   [vendeur]  — exiger_role(Vendeur) ∧ rattachement(compte, prestataire)
+#                ∧ prestataire agréé (FR-008, FR-011 — research R11)
+#   [admin]    — exiger_role(Admin), décisions journalisées (FR-012)
+#   [coursier] — exiger_role(Coursier) ∧ port CommandesActives (FR-038)
+openapi: 3.1.0
+info:
+  title: Mefali — module prestataires (conception cycle 005)
+  version: 0.5.0
+paths:
+  # ───────────────────────── Consultation publique (FR-027..029) ─────────────
+  /prestataires/{id}:
+    get:
+      tags: [prestataires]            # [public]
+      summary: Fiche + catalogue, sous-ensemble applicatif, lecture seule
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: >-
+            Prestataire agréé (boutique ouverte OU fermée — fermée = catalogue en
+            lecture seule + horaires + reouverture_estimee, FR-029). Articles
+            retirés absents ; articles en rupture servis disponible=false si
+            affichage_rupture=grise, ABSENTS si masque (FR-042, R8).
+          content: { application/json: { schema: { $ref: "#/components/schemas/FichePublique" } } }
+        "404":
+          description: >-
+            Réponse NEUTRE identique pour id inconnu, prospect et suspendu —
+            code prestataire_indisponible, sans photo ni motif (FR-017, SC-013).
+          content: { application/json: { schema: { $ref: "#/components/schemas/ErreurApi" } } }
+        "429": { description: Rate-limit IP }
+  /prestataires/plaque/{jeton}:
+    get:
+      tags: [prestataires]            # [session] — toute session valide (analyse C1)
+      summary: Résolution d'un jeton de plaque (FR-016) — la révocation observable
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: jeton, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Jeton connu — validité DÉRIVÉE de l'état d'agrément (FR-015)
+          content: { application/json: { schema: { $ref: "#/components/schemas/ResolutionPlaque" } } }
+        "401": { description: Session requise }
+        "404": { description: Jeton inconnu ou signature invalide }
+
+  # ───────────────────────── Surface vendeur — Mefali Pro (V1/V2) ────────────
+  /vendeur/prestataires:
+    get:
+      tags: [vendeur]
+      summary: Prestataires pilotables par le compte (MVP — l'app prend le premier)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PrestatairePilotable" } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+  /vendeur/prestataires/{id}/boutique:
+    get:
+      tags: [vendeur]
+      summary: "Écran V1 : statut déclaré + état effectif + horaires + rappel (FR-044)"
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/BoutiqueVendeur" } } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+  /vendeur/prestataires/{id}/boutique/action:
+    post:
+      tags: [vendeur]
+      summary: Geste V1 — ouvrir/fermer/pause/prolonger/fermer la journée (FR-033)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/ActionBoutique" } } }
+      responses:
+        "200":
+          description: État résultant ; événement site.statut_boutique_change émis (FR-036)
+          content: { application/json: { schema: { $ref: "#/components/schemas/BoutiqueVendeur" } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+        "422": { description: "Durée absente pour une pause, action incohérente" }
+  /vendeur/prestataires/{id}/horaires:
+    put:
+      tags: [vendeur]
+      summary: Remplacer les horaires hebdomadaires du site (FR-034)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/HorairesSemaine" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/BoutiqueVendeur" } } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+        "422": { description: Plages invalides (debut >= fin, jour hors 0..6) }
+  /vendeur/prestataires/{id}/articles:
+    get:
+      tags: [vendeur]
+      summary: "Catalogue complet V2 (ruptures + retirés + verrou admin visibles)"
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ArticleVendeur" } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+    post:
+      tags: [vendeur]
+      summary: Créer un article (disponible par défaut — FR-020)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreerArticle" } } }
+      responses:
+        "201": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+        "422": { description: prix_barre <= prix (FR-023), montant non entier }
+  /vendeur/prestataires/{id}/articles/{article_id}:
+    put:
+      tags: [vendeur]
+      summary: Modifier nom / prix / prix barré / catégorie interne (FR-045)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/ModifierArticle" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+        "422": { description: prix_barre <= prix — l'opération ÉCHOUE, la promo n'est pas retirée en silence }
+  /vendeur/prestataires/{id}/articles/{article_id}/photo:
+    post:
+      tags: [vendeur]
+      summary: Déposer/remplacer la photo (multipart ; clé S3 neuve, orpheline purgée après commit)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      requestBody:
+        content: { multipart/form-data: { schema: { $ref: "#/components/schemas/DepotPhoto" } } }
+      responses:
+        "200": { description: Photo remplacée }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+        "415": { description: MIME refusé }
+  /vendeur/prestataires/{id}/articles/{article_id}/disponibilite:
+    post:
+      tags: [vendeur]
+      summary: Basculer En stock / Rupture en UN geste (source=vendeur — FR-037)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/BasculeDisponibilite" } } }
+      responses:
+        "200":
+          description: >-
+            Événement article.mis_en_rupture / article.remis_en_vente émis
+            (FR-043). Les signalements coursier restent comptés (FR-041).
+          content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+        "409": { description: Rupture posée par l'Admin — seule une remise ADMIN est acceptée (FR-041) }
+  /vendeur/prestataires/{id}/articles/{article_id}/retrait:
+    post:
+      tags: [vendeur]
+      summary: Retirer du catalogue — RÉVERSIBLE, la ligne subsiste (FR-055)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+  /vendeur/prestataires/{id}/articles/{article_id}/remise:
+    post:
+      tags: [vendeur]
+      summary: Remettre au catalogue sans ressaisie (FR-055)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+        "403": { $ref: "#/components/responses/RefusVendeur" }
+
+  # ───────────────────────── Signalement coursier (FR-037..040) ──────────────
+  /coursier/signalements-rupture:
+    post:
+      tags: [coursier]
+      summary: Signaler un article introuvable sur place (file hors-ligne, rejeu idempotent)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: UUID généré CÔTÉ CLIENT — devient l'id du signalement (FR-039)
+          schema: { type: string, format: uuid }
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/SignalerRupture" } } }
+      responses:
+        "200":
+          description: Accepté (ou rejeu — même réponse, rien recompté)
+          content: { application/json: { schema: { $ref: "#/components/schemas/SignalementRecu" } } }
+        "403":
+          description: >-
+            REFUSÉ et compté nulle part — pas de commande active avec arrêt chez
+            ce prestataire, ou article hors commande (FR-038, port CommandesActives).
+        "404": { description: Article inconnu ou retiré du catalogue }
+
+  # ───────────────────────── Administration (FR-012, écrans au cycle ADM) ────
+  /admin/prestataires:
+    post:
+      tags: [admin]
+      summary: Créer un prestataire (prospect) — ville de type ville uniquement (FR-002)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreerPrestataire" } } }
+      responses:
+        "201": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdmin" } } } }
+        "422": { description: Zone qui n'est pas une ville }
+    get:
+      tags: [admin]
+      summary: Lister (filtres statut / ville / catégorie)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: statut, in: query, schema: { $ref: "#/components/schemas/StatutPrestataire" } }
+        - { name: ville, in: query, schema: { type: string, format: uuid } }
+        - { name: categorie, in: query, schema: { type: string } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PrestataireAdmin" } }
+  /admin/prestataires/{id}:
+    get:
+      tags: [admin]
+      summary: Fiche COMPLÈTE (contact, site + GPS, charte présignée, plaque, rattachements)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdminDetail" } } } }
+    put:
+      tags: [admin]
+      summary: Modifier la fiche (nom, contact, délai de préparation)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/ModifierPrestataire" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdmin" } } } }
+  /admin/prestataires/{id}/photos:
+    post:
+      tags: [admin]
+      summary: Ajouter une photo de fiche (multipart)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { multipart/form-data: { schema: { $ref: "#/components/schemas/DepotPhoto" } } }
+      responses:
+        "201": { description: Photo ajoutée }
+  /admin/prestataires/{id}/photos/{photo_id}:
+    delete:
+      tags: [admin]
+      summary: Supprimer une photo (objet S3 purgé après commit — FR-026)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { name: photo_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Supprimée }
+  /admin/prestataires/{id}/charte:
+    post:
+      tags: [admin]
+      summary: Déposer la charte signée scannée (version + date de signature — FR-003)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { multipart/form-data: { schema: { $ref: "#/components/schemas/DeposerCharte" } } }
+      responses:
+        "201": { description: Charte déposée — événement charte.deposee }
+  /admin/prestataires/{id}/site:
+    put:
+      tags: [admin]
+      summary: Créer/mettre à jour LE site unique (position GPS, horaires, statut initial — FR-019)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/SiteAdmin" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdminDetail" } } } }
+  /admin/prestataires/{id}/boutique/action:
+    post:
+      tags: [admin]
+      summary: Piloter le statut de boutique côté admin (source=admin — FR-012)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/ActionBoutique" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/BoutiqueVendeur" } } } }
+  /admin/prestataires/{id}/agrement:
+    post:
+      tags: [admin]
+      summary: Agréer — refuse si fiche/charte/site incomplets (FR-005) ; plaque + recalcul + événement
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdminDetail" } } } }
+        "409": { description: Transition interdite (déjà agréé / suspendu — FR-004) }
+        "422":
+          description: Motif EXPLICITE du refus (charte manquante, site absent, horaires vides…)
+          content: { application/json: { schema: { $ref: "#/components/schemas/ErreurApi" } } }
+  /admin/prestataires/{id}/suspension:
+    post:
+      tags: [admin]
+      summary: Suspendre — coupe fiche, commandabilité, plaque, actions vendeur, dans la seconde (US4)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motif]
+              properties: { motif: { type: string, minLength: 1 } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdminDetail" } } } }
+        "409": { description: Transition interdite (pas agréé) }
+        "422": { description: Motif manquant (FR-010) }
+  /admin/prestataires/{id}/retablissement:
+    post:
+      tags: [admin]
+      summary: Rétablir — même jeton, même code de secours (SC-003) ; recalcul activation
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdminDetail" } } } }
+        "409": { description: Transition interdite (pas suspendu) }
+  /admin/prestataires/{id}/correction:
+    post:
+      tags: [admin]
+      summary: Corriger catégorie et/ou ville — recalcule ANCIEN et NOUVEAU couples, même transaction (FR-056)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                categorie_slug: { type: string }
+                ville_id: { type: string, format: uuid }
+              minProperties: 1
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/PrestataireAdminDetail" } } } }
+        "422": { description: Zone qui n'est pas une ville, catégorie inconnue }
+  /admin/prestataires/{id}/rattachements:
+    post:
+      tags: [admin]
+      summary: Rattacher un compte vérifié — attribue le rôle vendeur, IDEMPOTENT (FR-007, R11)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [compte_id]
+              properties: { compte_id: { type: string, format: uuid } }
+      responses:
+        "200": { description: Rattaché (ou déjà rattaché — même réponse) }
+        "404": { description: Compte inconnu }
+        "409": { description: Prestataire non agréé — le rattachement exige l'état agree (FR-007, analyse A1) }
+  /admin/prestataires/{id}/rattachements/{compte_id}:
+    delete:
+      tags: [admin]
+      summary: Détacher — ne touche JAMAIS au rôle vendeur du compte (FR-008)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { name: compte_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Détaché }
+  # Catalogue côté admin — mêmes méthodes de domaine que /vendeur, source=admin (R12).
+  /admin/prestataires/{id}/articles:
+    post:
+      tags: [admin]
+      summary: Créer un article (saisie pendant la visite d'agrément — US2)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/PrestataireId" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreerArticle" } } }
+      responses:
+        "201": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+        "422": { description: prix_barre <= prix }
+  /admin/prestataires/{id}/articles/{article_id}:
+    put:
+      tags: [admin]
+      summary: Modifier un article
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/ModifierArticle" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+  /admin/prestataires/{id}/articles/{article_id}/photo:
+    post:
+      tags: [admin]
+      summary: Photo d'article (multipart)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      requestBody:
+        content: { multipart/form-data: { schema: { $ref: "#/components/schemas/DepotPhoto" } } }
+      responses:
+        "200": { description: Photo remplacée }
+  /admin/prestataires/{id}/articles/{article_id}/disponibilite:
+    post:
+      tags: [admin]
+      summary: Basculer la disponibilité (source=admin — seule à pouvoir lever une rupture admin, FR-041)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/BasculeDisponibilite" } } }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+  /admin/prestataires/{id}/articles/{article_id}/retrait:
+    post:
+      tags: [admin]
+      summary: Retirer du catalogue (FR-055)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+  /admin/prestataires/{id}/articles/{article_id}/remise:
+    post:
+      tags: [admin]
+      summary: Remettre au catalogue (FR-055)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/PrestataireId" }
+        - { $ref: "#/components/parameters/ArticleId" }
+      responses:
+        "200": { content: { application/json: { schema: { $ref: "#/components/schemas/ArticleVendeur" } } } }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    PrestataireId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ArticleId:
+      name: article_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    RefusVendeur:
+      description: >-
+        401 sans jeton ; 403 avec trois codes distincts — role_vendeur_requis,
+        prestataire_non_rattache, prestataire_non_agree (FR-008/FR-011). Aucune
+        cascade sur le rôle : le refus dérive de l'état du prestataire.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErreurApi" } } }
+  schemas:
+    ErreurApi:            # existant (cycle 003) — { code, message_cle } ; message_cle = clé i18n fr
+      type: object
+      required: [code, message_cle]
+      properties:
+        code: { type: string }
+        message_cle: { type: string }
+    StatutPrestataire: { type: string, enum: [prospect, agree, suspendu] }
+    StatutBoutique: { type: string, enum: [ouvert, ferme, ferme_journee, en_pause] }
+    SourceBascule: { type: string, enum: [vendeur, coursier, admin] }
+    Montant:              # principe III — entier unités mineures + ISO 4217, JAMAIS de float
+      type: object
+      required: [unites, devise]
+      properties:
+        unites: { type: integer, format: int64, minimum: 0 }
+        devise: { type: string, minLength: 3, maxLength: 3 }
+    PlageHoraire:
+      type: object
+      required: [debut, fin]
+      properties:
+        debut: { type: string, example: "08:00" }
+        fin: { type: string, example: "19:00" }
+    HorairesSemaine:      # index 0 = lundi ; tableau vide = jour de fermeture (FR-031)
+      type: object
+      required: [jours]
+      properties:
+        jours:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { type: array, items: { $ref: "#/components/schemas/PlageHoraire" } }
+    EtatEffectifBoutique: # dérivé pur (FR-032) — jamais stocké
+      type: object
+      required: [ouvert]
+      properties:
+        ouvert: { type: boolean }
+        reouverture_estimee: { type: string, format: date-time }
+    ArticlePublic:        # sous-ensemble FR-027 — jamais de données d'exploitation
+      type: object
+      required: [id, nom, prix, disponible]
+      properties:
+        id: { type: string, format: uuid }
+        nom: { type: string }
+        prix: { $ref: "#/components/schemas/Montant" }
+        prix_barre: { $ref: "#/components/schemas/Montant" }   # présent ⇒ promotion (FR-023)
+        photo_url: { type: string }                            # présignée TTL 10 min
+        categorie_interne: { type: string }
+        disponible: { type: boolean }
+    FichePublique:
+      type: object
+      required: [id, nom, categorie, boutique, horaires, commandable, affichage_rupture, articles]
+      properties:
+        id: { type: string, format: uuid }
+        nom: { type: string }
+        categorie: { type: string }                            # slug de catégorie de service
+        photos: { type: array, items: { type: string } }       # URLs présignées
+        delai_preparation_min: { type: integer }
+        boutique: { $ref: "#/components/schemas/EtatEffectifBoutique" }
+        horaires: { $ref: "#/components/schemas/HorairesSemaine" }
+        commandable: { type: boolean }                         # FR-028 — SEULE définition
+        affichage_rupture: { type: string, enum: [grise, masque] }   # FR-050, R8
+        articles: { type: array, items: { $ref: "#/components/schemas/ArticlePublic" } }
+    ResolutionPlaque:
+      type: object
+      required: [prestataire_id, valide]
+      properties:
+        prestataire_id: { type: string, format: uuid }
+        valide: { type: boolean }                              # ⟸ statut = agree (FR-015)
+    PrestatairePilotable:
+      type: object
+      required: [id, nom, statut, boutique]
+      properties:
+        id: { type: string, format: uuid }
+        nom: { type: string }
+        statut: { $ref: "#/components/schemas/StatutPrestataire" }
+        boutique: { $ref: "#/components/schemas/EtatEffectifBoutique" }
+    BoutiqueVendeur:      # écran V1
+      type: object
+      required: [statut, etat_effectif, horaires, horaires_du_jour, rappel_ouverture]
+      properties:
+        statut: { $ref: "#/components/schemas/StatutBoutique" }
+        pause_fin: { type: string, format: date-time }
+        etat_effectif: { $ref: "#/components/schemas/EtatEffectifBoutique" }
+        horaires: { $ref: "#/components/schemas/HorairesSemaine" }
+        horaires_du_jour: { type: array, items: { $ref: "#/components/schemas/PlageHoraire" } }
+        rappel_ouverture: { type: boolean }                    # FR-035, research R4
+    ActionBoutique:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [ouvrir, fermer, mettre_en_pause, prolonger_pause, fermer_pour_la_journee] }
+        duree_minutes: { type: integer, minimum: 1, maximum: 720 }  # requis pour pause/prolongation
+    ArticleVendeur:       # écran V2 — catalogue complet du pilote
+      type: object
+      required: [id, nom, prix, disponible, retire, rupture_admin]
+      properties:
+        id: { type: string, format: uuid }
+        nom: { type: string }
+        prix: { $ref: "#/components/schemas/Montant" }
+        prix_barre: { $ref: "#/components/schemas/Montant" }
+        photo_url: { type: string }
+        categorie_interne: { type: string }
+        disponible: { type: boolean }
+        source_derniere_bascule: { $ref: "#/components/schemas/SourceBascule" }
+        rupture_admin: { type: boolean }                       # verrou FR-041 (affiché, bascule refusée)
+        retire: { type: boolean }                              # section « Articles retirés » (FR-055)
+    CreerArticle:
+      type: object
+      required: [nom, prix_unites]
+      properties:
+        nom: { type: string, minLength: 1 }
+        prix_unites: { type: integer, format: int64, minimum: 0 }   # devise POSÉE PAR LE SERVEUR (R13)
+        prix_barre_unites: { type: integer, format: int64 }
+        categorie_interne: { type: string }
+    ModifierArticle:
+      type: object
+      properties:
+        nom: { type: string, minLength: 1 }
+        prix_unites: { type: integer, format: int64, minimum: 0 }
+        prix_barre_unites: { type: integer, format: int64, nullable: true }  # null = retirer la promo
+        categorie_interne: { type: string, nullable: true }
+    BasculeDisponibilite:
+      type: object
+      required: [disponible]
+      properties:
+        disponible: { type: boolean }
+    SignalerRupture:
+      type: object
+      required: [article_id, horodatage_local]
+      properties:
+        article_id: { type: string, format: uuid }
+        horodatage_local: { type: string, format: date-time }  # horloge appareil (FR-039)
+    SignalementRecu:
+      type: object
+      required: [recu, masquage_automatique]
+      properties:
+        recu: { type: boolean }
+        masquage_automatique: { type: boolean }                # vrai si CE signalement a déclenché le masquage
+    CreerPrestataire:
+      type: object
+      required: [nom, categorie_slug, ville_id, contact_telephone, delai_preparation_min]
+      properties:
+        nom: { type: string, minLength: 1 }
+        categorie_slug: { type: string }
+        ville_id: { type: string, format: uuid }
+        contact_telephone: { type: string }
+        delai_preparation_min: { type: integer, minimum: 0 }
+    ModifierPrestataire:
+      type: object
+      properties:
+        nom: { type: string, minLength: 1 }
+        contact_telephone: { type: string }
+        delai_preparation_min: { type: integer, minimum: 0 }
+    SiteAdmin:
+      type: object
+      required: [position_lat, position_lng, horaires]
+      properties:
+        position_lat: { type: number, format: double }         # GPS relevé sur place — admin SEULEMENT
+        position_lng: { type: number, format: double }
+        horaires: { $ref: "#/components/schemas/HorairesSemaine" }
+        statut_initial: { $ref: "#/components/schemas/StatutBoutique" }
+    DepotPhoto:
+      type: object
+      required: [fichier]
+      properties:
+        fichier: { type: string, format: binary }              # jpeg/png/webp
+    DeposerCharte:
+      type: object
+      required: [fichier, version_charte, signee_le]
+      properties:
+        fichier: { type: string, format: binary }              # jpeg/png/webp/pdf
+        version_charte: { type: string }
+        signee_le: { type: string, format: date }
+    PrestataireAdmin:
+      type: object
+      required: [id, nom, categorie, ville_id, statut]
+      properties:
+        id: { type: string, format: uuid }
+        nom: { type: string }
+        categorie: { type: string }
+        ville_id: { type: string, format: uuid }
+        statut: { $ref: "#/components/schemas/StatutPrestataire" }
+        contact_telephone: { type: string }
+        delai_preparation_min: { type: integer }
+        commandable: { type: boolean }
+    PrestataireAdminDetail:
+      allOf:
+        - { $ref: "#/components/schemas/PrestataireAdmin" }
+        - type: object
+          properties:
+            statut_decide_par: { type: string, format: uuid }
+            statut_decide_le: { type: string, format: date-time }
+            statut_motif: { type: string }
+            jeton_plaque: { type: string }
+            code_secours: { type: string }                     # admin — AUCUNE recherche par code (FR-014)
+            photos: { type: array, items: { type: string } }
+            chartes:
+              type: array
+              items:
+                type: object
+                properties:
+                  version_charte: { type: string }
+                  signee_le: { type: string, format: date }
+                  url: { type: string }                        # présignée admin
+            site:
+              allOf:
+                - { $ref: "#/components/schemas/SiteAdmin" }
+                - type: object
+                  properties:
+                    statut_boutique: { $ref: "#/components/schemas/StatutBoutique" }
+                    pause_fin: { type: string, format: date-time }
+            rattachements:
+              type: array
+              items:
+                type: object
+                properties:
+                  compte_id: { type: string, format: uuid }
+                  rattache_le: { type: string, format: date-time }
