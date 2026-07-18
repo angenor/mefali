@@ -19,5 +19,9 @@
 //!   impossible à contourner (constitution VI).
 
 pub mod modele;
+pub mod ports;
 
 pub use modele::{ErreurPrestataires, SourceBascule, StatutBoutique, StatutPrestataire};
+pub use ports::{
+    AucuneCommandeActive, CommandesActives, CommandesActivesFixes, ErreurCommandesActives,
+};

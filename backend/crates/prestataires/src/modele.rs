@@ -261,6 +261,9 @@ pub enum ErreurPrestataires {
         /// Ce qui cloche.
         raison: String,
     },
+    /// Contrôle de commande active indisponible (port `CommandesActives`).
+    #[error("contrôle de commande active : {0}")]
+    CommandesActives(#[from] crate::ports::ErreurCommandesActives),
     /// Configuration de zone irrésolvable (devise, seuils, fuseau).
     #[error("configuration de zone : {0}")]
     Zones(#[from] zones::ErreurZones),
