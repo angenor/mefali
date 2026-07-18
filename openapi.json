@@ -1078,6 +1078,94 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/boutique/action": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Geste de boutique pour le compte du prestataire (source admin).",
+        "operationId": "action_boutique_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpsActionBoutique"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "État résultant. Émet `site.statut_boutique_change` (source admin).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire ou site inconnus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Durée absente ou prolongation sans pause.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/charte": {
       "post": {
         "tags": [
@@ -3185,6 +3273,220 @@
           }
         ]
       }
+    },
+    "/vendeur/prestataires/{id}/boutique": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Statut, échéance, horaires du jour et rappel de l'écran V1.",
+        "operationId": "ma_boutique",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statut DÉCLARÉ + état EFFECTIF dérivé (une pause échue est déjà absorbée — R3) + rappel non bloquant (FR-035).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage (trois codes distincts).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/boutique/action": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.",
+        "operationId": "action_boutique",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpsActionBoutique"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "État résultant. Émet `site.statut_boutique_change` (source vendeur) — l'échéance de pause, elle, n'émettra RIEN (FR-036).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Durée absente pour une pause/prolongation, ou prolongation sans pause en cours.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/horaires": {
+      "put": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.",
+        "operationId": "modifier_horaires",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorairesSemaineDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouveaux horaires appliqués à l'état effectif — une pause en cours continue de courir (edge case spec). Émet `site.horaires_modifies`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Plages invalides (début ≥ fin, chevauchement, jour hors 0..6).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3202,6 +3504,17 @@
             "example": "comptes.otp.envoye_si_valide"
           }
         }
+      },
+      "ActionBoutiqueDto": {
+        "type": "string",
+        "description": "Geste de boutique (FR-033) — toujours une DÉCISION.",
+        "enum": [
+          "ouvrir",
+          "fermer",
+          "mettre_en_pause",
+          "prolonger_pause",
+          "fermer_pour_la_journee"
+        ]
       },
       "ActionRoleDto": {
         "type": "string",
@@ -3445,6 +3758,50 @@
           }
         }
       },
+      "BoutiqueVendeur": {
+        "type": "object",
+        "description": "Données de l'écran V1 (FR-044).",
+        "required": [
+          "statut",
+          "etat_effectif",
+          "horaires",
+          "horaires_du_jour",
+          "rappel_ouverture"
+        ],
+        "properties": {
+          "etat_effectif": {
+            "$ref": "#/components/schemas/EtatEffectifBoutique",
+            "description": "État EFFECTIF dérivé."
+          },
+          "horaires": {
+            "$ref": "#/components/schemas/HorairesSemaineDto",
+            "description": "Horaires hebdomadaires."
+          },
+          "horaires_du_jour": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlageDto"
+            },
+            "description": "Plages du jour courant (fuseau de la zone)."
+          },
+          "pause_fin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Échéance de la pause en cours."
+          },
+          "rappel_ouverture": {
+            "type": "boolean",
+            "description": "FR-035 — rappel non bloquant à afficher (fermé manuel dans les\nhoraires) ; « rester fermé » = fermer pour la journée, qui l'éteint."
+          },
+          "statut": {
+            "$ref": "#/components/schemas/StatutBoutique",
+            "description": "Statut DÉCLARÉ (l'effectif peut différer — FR-032)."
+          }
+        }
+      },
       "CategorieDto": {
         "type": "object",
         "description": "Catégorie active (contrat).",
@@ -3640,6 +3997,29 @@
           "resultat": {
             "$ref": "#/components/schemas/DiscriminantConsentement",
             "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
+      "CorpsActionBoutique": {
+        "type": "object",
+        "description": "Corps du geste de boutique.",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ActionBoutiqueDto",
+            "description": "Le geste."
+          },
+          "duree_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Durée en minutes — REQUISE pour `mettre_en_pause` et\n`prolonger_pause` (30/60/120 et +30 côté app, constantes MVP).",
+            "maximum": 720,
+            "minimum": 1
           }
         }
       },

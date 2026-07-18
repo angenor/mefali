@@ -1072,3 +1072,49 @@ pub async fn remettre_article_admin(
     Ok(HttpResponse::Ok()
         .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
 }
+
+// ── Boutique côté ADMIN (FR-012, FR-034 — Tantie Affoué, sans app) ─────────
+
+/// Geste de boutique pour le compte du prestataire (source admin).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/boutique/action",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire.")),
+    request_body = crate::prestataires_http::CorpsActionBoutique,
+    responses(
+        (status = 200, description = "État résultant. Émet `site.statut_boutique_change` \
+         (source admin).", body = crate::prestataires_http::BoutiqueVendeurDto),
+        (status = 422, description = "Durée absente ou prolongation sans pause.", body = ErreurApiDto),
+        (status = 404, description = "Prestataire ou site inconnus.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/boutique/action")]
+pub async fn action_boutique_admin(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<crate::prestataires_http::CorpsActionBoutique>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+    let action = corps.vers_domaine()?;
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .changer_statut_boutique(
+            &mut tx,
+            prestataire,
+            action,
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    let boutique = depot.boutique_vendeur(prestataire).await?;
+    Ok(HttpResponse::Ok()
+        .json(crate::prestataires_http::BoutiqueVendeurDto::from(boutique)))
+}

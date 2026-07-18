@@ -8,17 +8,20 @@ part of 'serializers.dart';
 
 Serializers _$serializers = (Serializers().toBuilder()
       ..add(Accepte.serializer)
+      ..add(ActionBoutiqueDto.serializer)
       ..add(ActionRoleDto.serializer)
       ..add(Adresse.serializer)
       ..add(AffichageRupture.serializer)
       ..add(AppareilDto.serializer)
       ..add(ArticlePublic.serializer)
       ..add(ArticleVendeur.serializer)
+      ..add(BoutiqueVendeur.serializer)
       ..add(CategorieDto.serializer)
       ..add(CharteAdminDto.serializer)
       ..add(CompteMoi.serializer)
       ..add(ConfigZone.serializer)
       ..add(ConsentementRequis.serializer)
+      ..add(CorpsActionBoutique.serializer)
       ..add(CorpsForcage.serializer)
       ..add(CreerArticleDto.serializer)
       ..add(CreerPrestataireDto.serializer)
@@ -100,6 +103,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
           () => ListBuilder<EtatRoleDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PlageDto)]),
+          () => ListBuilder<PlageDto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(VehiculeDeclare)]),
           () => ListBuilder<VehiculeDeclare>())

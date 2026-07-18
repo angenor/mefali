@@ -15,17 +15,20 @@ import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
 import 'package:mefali_api_client/src/model/accepte.dart';
+import 'package:mefali_api_client/src/model/action_boutique_dto.dart';
 import 'package:mefali_api_client/src/model/action_role_dto.dart';
 import 'package:mefali_api_client/src/model/adresse.dart';
 import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/article_vendeur.dart';
+import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/consentement_requis.dart';
+import 'package:mefali_api_client/src/model/corps_action_boutique.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
@@ -75,17 +78,20 @@ part 'serializers.g.dart';
 
 @SerializersFor([
   Accepte,
+  ActionBoutiqueDto,
   ActionRoleDto,
   Adresse,
   AffichageRupture,
   AppareilDto,
   ArticlePublic,
   ArticleVendeur,
+  BoutiqueVendeur,
   CategorieDto,
   CharteAdminDto,
   CompteMoi,
   ConfigZone,
   ConsentementRequis,
+  CorpsActionBoutique,
   CorpsForcage,
   CreerArticleDto,
   CreerPrestataireDto,

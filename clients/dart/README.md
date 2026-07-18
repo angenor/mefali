@@ -48,13 +48,14 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 
 final api = MefaliApiClient().getAdminApi();
-final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire (prospect).
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final CorpsActionBoutique corpsActionBoutique = ; // CorpsActionBoutique | 
 
 try {
-    final response = await api.agreerPrestataire(id);
+    final response = await api.actionBoutiqueAdmin(id, corpsActionBoutique);
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling AdminApi->agreerPrestataire: $e\n");
+    print("Exception when calling AdminApi->actionBoutiqueAdmin: $e\n");
 }
 
 ```
@@ -65,6 +66,7 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AdminApi*](doc/AdminApi.md) | [**actionBoutiqueAdmin**](doc/AdminApi.md#actionboutiqueadmin) | **POST** /admin/prestataires/{id}/boutique/action | Geste de boutique pour le compte du prestataire (source admin).
 [*AdminApi*](doc/AdminApi.md) | [**agreerPrestataire**](doc/AdminApi.md#agreerprestataire) | **POST** /admin/prestataires/{id}/agrement | Agrée un prospect : la fiche devient servie et commandable, l&#39;identité de plaque est créée au premier passage, l&#39;activation de catégorie recalculée.
 [*AdminApi*](doc/AdminApi.md) | [**ajouterPhoto**](doc/AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
@@ -103,10 +105,13 @@ Class | Method | HTTP request | Description
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
+[*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
+[*VendeurApi*](doc/VendeurApi.md) | [**maBoutique**](doc/VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
 [*VendeurApi*](doc/VendeurApi.md) | [**mesArticles**](doc/VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
 [*VendeurApi*](doc/VendeurApi.md) | [**mesPrestataires**](doc/VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
 [*VendeurApi*](doc/VendeurApi.md) | [**modifierArticle**](doc/VendeurApi.md#modifierarticle) | **PUT** /vendeur/prestataires/{id}/articles/{article_id} | Modifie nom / prix / prix barré / étiquette (fiche article V2).
+[*VendeurApi*](doc/VendeurApi.md) | [**modifierHoraires**](doc/VendeurApi.md#modifierhoraires) | **PUT** /vendeur/prestataires/{id}/horaires | Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
 [*VendeurApi*](doc/VendeurApi.md) | [**photoArticle**](doc/VendeurApi.md#photoarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/photo | Dépose/remplace la photo de l&#39;article (multipart, ≤ 5 Mo).
 [*VendeurApi*](doc/VendeurApi.md) | [**remettreArticle**](doc/VendeurApi.md#remettrearticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue, sans ressaisie (FR-055).
 [*VendeurApi*](doc/VendeurApi.md) | [**retirerArticle**](doc/VendeurApi.md#retirerarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/retrait | Retire l&#39;article du catalogue — RÉVERSIBLE (FR-055).
@@ -117,17 +122,20 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [Accepte](doc/Accepte.md)
+ - [ActionBoutiqueDto](doc/ActionBoutiqueDto.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
  - [Adresse](doc/Adresse.md)
  - [AffichageRupture](doc/AffichageRupture.md)
  - [AppareilDto](doc/AppareilDto.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
+ - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [ConsentementRequis](doc/ConsentementRequis.md)
+ - [CorpsActionBoutique](doc/CorpsActionBoutique.md)
  - [CorpsForcage](doc/CorpsForcage.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)

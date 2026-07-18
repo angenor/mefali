@@ -453,6 +453,93 @@ impl From<FichePublique> for FichePubliqueDto {
     }
 }
 
+// ── DTO de la boutique (V1 — vendeur ET admin) ─────────────────────────────
+
+/// Données de l'écran V1 (FR-044).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = BoutiqueVendeur)]
+pub struct BoutiqueVendeurDto {
+    /// Statut DÉCLARÉ (l'effectif peut différer — FR-032).
+    pub statut: StatutBoutiqueDto,
+    /// Échéance de la pause en cours.
+    pub pause_fin: Option<DateTime<Utc>>,
+    /// État EFFECTIF dérivé.
+    pub etat_effectif: EffectifBoutiqueDto,
+    /// Horaires hebdomadaires.
+    pub horaires: HorairesSemaineDto,
+    /// Plages du jour courant (fuseau de la zone).
+    pub horaires_du_jour: Vec<PlageDto>,
+    /// FR-035 — rappel non bloquant à afficher (fermé manuel dans les
+    /// horaires) ; « rester fermé » = fermer pour la journée, qui l'éteint.
+    pub rappel_ouverture: bool,
+}
+
+impl From<prestataires::BoutiqueVendeur> for BoutiqueVendeurDto {
+    fn from(b: prestataires::BoutiqueVendeur) -> Self {
+        Self {
+            statut: b.statut.into(),
+            pause_fin: b.pause_fin,
+            etat_effectif: b.effectif.into(),
+            horaires: HorairesSemaineDto::from(&b.horaires),
+            horaires_du_jour: b
+                .horaires_du_jour
+                .iter()
+                .map(|p| PlageDto {
+                    debut: heure_vers_texte(p.debut),
+                    fin: heure_vers_texte(p.fin),
+                })
+                .collect(),
+            rappel_ouverture: b.rappel_ouverture,
+        }
+    }
+}
+
+/// Geste de boutique (FR-033) — toujours une DÉCISION.
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionBoutiqueDto {
+    /// Interrupteur → ouvert.
+    Ouvrir,
+    /// Interrupteur → fermé.
+    Fermer,
+    /// Pause temporisée (durée requise).
+    MettreEnPause,
+    /// Prolonge la pause en cours (durée requise).
+    ProlongerPause,
+    /// Fermé jusqu'au prochain jour d'ouverture.
+    FermerPourLaJournee,
+}
+
+/// Corps du geste de boutique.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CorpsActionBoutique {
+    /// Le geste.
+    pub action: ActionBoutiqueDto,
+    /// Durée en minutes — REQUISE pour `mettre_en_pause` et
+    /// `prolonger_pause` (30/60/120 et +30 côté app, constantes MVP).
+    #[schema(minimum = 1, maximum = 720)]
+    pub duree_minutes: Option<i64>,
+}
+
+impl CorpsActionBoutique {
+    /// Traduit le corps en action de domaine (422 si la durée manque).
+    pub(crate) fn vers_domaine(&self) -> Result<prestataires::ActionBoutique, ErreurPresta> {
+        use prestataires::ActionBoutique as A;
+        let duree = || self.duree_minutes.ok_or(ErreurPresta::CorpsInvalide);
+        Ok(match self.action {
+            ActionBoutiqueDto::Ouvrir => A::Ouvrir,
+            ActionBoutiqueDto::Fermer => A::Fermer,
+            ActionBoutiqueDto::MettreEnPause => A::MettreEnPause {
+                duree_minutes: duree()?,
+            },
+            ActionBoutiqueDto::ProlongerPause => A::ProlongerPause {
+                duree_minutes: duree()?,
+            },
+            ActionBoutiqueDto::FermerPourLaJournee => A::FermerPourLaJournee,
+        })
+    }
+}
+
 // ── DTO du catalogue de pilotage (V2 — vendeur ET admin) ───────────────────
 
 /// Source d'une bascule de disponibilité (FR-037).

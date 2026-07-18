@@ -20,8 +20,9 @@ use prestataires::{ModificationArticle, NouvelArticle, PgPrestataires, SourceBas
 use crate::admin_prestataires_http::{DepotPhotoDto, PhotoForm};
 use crate::auth_http::{Auth, ErreurApiDto};
 use crate::prestataires_http::{
-    article_vendeur_dto, sql, ArticleVendeurDto, CreerArticleDto, EffectifBoutiqueDto,
-    ErreurPresta, ModifierArticleDto, StatutPrestataireDto,
+    article_vendeur_dto, sql, ArticleVendeurDto, BoutiqueVendeurDto, CorpsActionBoutique,
+    CreerArticleDto, EffectifBoutiqueDto, ErreurPresta, HorairesSemaineDto, ModifierArticleDto,
+    StatutPrestataireDto,
 };
 
 /// Garde commune des endpoints `/vendeur/prestataires/{id}/…`.
@@ -355,4 +356,109 @@ pub async fn remettre_article(
         .await?;
     tx.commit().await.map_err(sql)?;
     Ok(HttpResponse::Ok().json(article_vendeur_dto(&depot, article).await?))
+}
+
+// ── Boutique (écran V1 — FR-044, FR-030..036) ──────────────────────────────
+
+/// Statut, échéance, horaires du jour et rappel de l'écran V1.
+#[utoipa::path(
+    get,
+    path = "/vendeur/prestataires/{id}/boutique",
+    tag = "vendeur",
+    params(("id" = Uuid, Path, description = "Prestataire piloté.")),
+    responses(
+        (status = 200, description = "Statut DÉCLARÉ + état EFFECTIF dérivé (une pause échue \
+         est déjà absorbée — R3) + rappel non bloquant (FR-035).",
+         body = BoutiqueVendeurDto),
+        (status = 403, description = "Refus de pilotage (trois codes distincts).", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/vendeur/prestataires/{id}/boutique")]
+pub async fn ma_boutique(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    let prestataire = chemin.into_inner();
+    exiger_pilotage(&auth, &depot, prestataire).await?;
+    let boutique = depot.boutique_vendeur(prestataire).await?;
+    Ok(HttpResponse::Ok().json(BoutiqueVendeurDto::from(boutique)))
+}
+
+/// Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
+#[utoipa::path(
+    post,
+    path = "/vendeur/prestataires/{id}/boutique/action",
+    tag = "vendeur",
+    params(("id" = Uuid, Path, description = "Prestataire piloté.")),
+    request_body = CorpsActionBoutique,
+    responses(
+        (status = 200, description = "État résultant. Émet `site.statut_boutique_change` \
+         (source vendeur) — l'échéance de pause, elle, n'émettra RIEN (FR-036).",
+         body = BoutiqueVendeurDto),
+        (status = 422, description = "Durée absente pour une pause/prolongation, ou \
+         prolongation sans pause en cours.", body = ErreurApiDto),
+        (status = 403, description = "Refus de pilotage.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/vendeur/prestataires/{id}/boutique/action")]
+pub async fn action_boutique(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<CorpsActionBoutique>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    let prestataire = chemin.into_inner();
+    exiger_pilotage(&auth, &depot, prestataire).await?;
+    let action = corps.vers_domaine()?;
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .changer_statut_boutique(&mut tx, prestataire, action, SourceBascule::Vendeur, auth.compte_id)
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    let boutique = depot.boutique_vendeur(prestataire).await?;
+    Ok(HttpResponse::Ok().json(BoutiqueVendeurDto::from(boutique)))
+}
+
+/// Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
+#[utoipa::path(
+    put,
+    path = "/vendeur/prestataires/{id}/horaires",
+    tag = "vendeur",
+    params(("id" = Uuid, Path, description = "Prestataire piloté.")),
+    request_body = HorairesSemaineDto,
+    responses(
+        (status = 200, description = "Nouveaux horaires appliqués à l'état effectif — une \
+         pause en cours continue de courir (edge case spec). Émet `site.horaires_modifies`.",
+         body = BoutiqueVendeurDto),
+        (status = 422, description = "Plages invalides (début ≥ fin, chevauchement, jour \
+         hors 0..6).", body = ErreurApiDto),
+        (status = 403, description = "Refus de pilotage.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[put("/vendeur/prestataires/{id}/horaires")]
+pub async fn modifier_horaires(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<HorairesSemaineDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    let prestataire = chemin.into_inner();
+    exiger_pilotage(&auth, &depot, prestataire).await?;
+    let horaires = corps.vers_domaine()?;
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .modifier_horaires(&mut tx, prestataire, &horaires, SourceBascule::Vendeur, auth.compte_id)
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    let boutique = depot.boutique_vendeur(prestataire).await?;
+    Ok(HttpResponse::Ok().json(BoutiqueVendeurDto::from(boutique)))
 }

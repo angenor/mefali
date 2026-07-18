@@ -196,6 +196,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/boutique/action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Geste de boutique pour le compte du prestataire (source admin). */
+        post: operations["action_boutique_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/charte": {
         parameters: {
             query?: never;
@@ -720,6 +737,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vendeur/prestataires/{id}/boutique": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut, échéance, horaires du jour et rappel de l'écran V1. */
+        get: operations["ma_boutique"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/boutique/action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée. */
+        post: operations["action_boutique"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/horaires": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT. */
+        put: operations["modifier_horaires"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -732,6 +800,11 @@ export interface components {
              */
             message_cle: string;
         };
+        /**
+         * @description Geste de boutique (FR-033) — toujours une DÉCISION.
+         * @enum {string}
+         */
+        ActionBoutiqueDto: "ouvrir" | "fermer" | "mettre_en_pause" | "prolonger_pause" | "fermer_pour_la_journee";
         /**
          * @description Action d'administration sur un rôle (contrat).
          * @enum {string}
@@ -862,6 +935,27 @@ export interface components {
             rupture_admin: boolean;
             source_derniere_bascule?: null | components["schemas"]["SourceBascule"];
         };
+        /** @description Données de l'écran V1 (FR-044). */
+        BoutiqueVendeur: {
+            /** @description État EFFECTIF dérivé. */
+            etat_effectif: components["schemas"]["EtatEffectifBoutique"];
+            /** @description Horaires hebdomadaires. */
+            horaires: components["schemas"]["HorairesSemaineDto"];
+            /** @description Plages du jour courant (fuseau de la zone). */
+            horaires_du_jour: components["schemas"]["PlageDto"][];
+            /**
+             * Format: date-time
+             * @description Échéance de la pause en cours.
+             */
+            pause_fin?: string | null;
+            /**
+             * @description FR-035 — rappel non bloquant à afficher (fermé manuel dans les
+             *     horaires) ; « rester fermé » = fermer pour la journée, qui l'éteint.
+             */
+            rappel_ouverture: boolean;
+            /** @description Statut DÉCLARÉ (l'effectif peut différer — FR-032). */
+            statut: components["schemas"]["StatutBoutique"];
+        };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
             /** @description Mixable au panier (CMD-01). */
@@ -961,6 +1055,17 @@ export interface components {
             jeton_inscription: string;
             /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
             resultat: components["schemas"]["DiscriminantConsentement"];
+        };
+        /** @description Corps du geste de boutique. */
+        CorpsActionBoutique: {
+            /** @description Le geste. */
+            action: components["schemas"]["ActionBoutiqueDto"];
+            /**
+             * Format: int64
+             * @description Durée en minutes — REQUISE pour `mettre_en_pause` et
+             *     `prolonger_pause` (30/60/120 et +30 côté app, constantes MVP).
+             */
+            duree_minutes?: number | null;
         };
         /** @description Corps de la requête de forçage. */
         CorpsForcage: {
@@ -2372,6 +2477,69 @@ export interface operations {
             };
             /** @description Article inconnu. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    action_boutique_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpsActionBoutique"];
+            };
+        };
+        responses: {
+            /** @description État résultant. Émet `site.statut_boutique_change` (source admin). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoutiqueVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire ou site inconnus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Durée absente ou prolongation sans pause. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3936,6 +4104,155 @@ export interface operations {
             };
             /** @description Article inconnu. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ma_boutique: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statut DÉCLARÉ + état EFFECTIF dérivé (une pause échue est déjà absorbée — R3) + rappel non bloquant (FR-035). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoutiqueVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage (trois codes distincts). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    action_boutique: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpsActionBoutique"];
+            };
+        };
+        responses: {
+            /** @description État résultant. Émet `site.statut_boutique_change` (source vendeur) — l'échéance de pause, elle, n'émettra RIEN (FR-036). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoutiqueVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Durée absente pour une pause/prolongation, ou prolongation sans pause en cours. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    modifier_horaires: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HorairesSemaineDto"];
+            };
+        };
+        responses: {
+            /** @description Nouveaux horaires appliqués à l'état effectif — une pause en cours continue de courir (edge case spec). Émet `site.horaires_modifies`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoutiqueVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Plages invalides (début ≥ fin, chevauchement, jour hors 0..6). */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

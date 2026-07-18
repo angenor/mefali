@@ -76,6 +76,10 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_prestataires_http::photo_article_admin)
         .service(admin_prestataires_http::retirer_article_admin)
         .service(admin_prestataires_http::remettre_article_admin)
+        .service(vendeur_http::ma_boutique)
+        .service(vendeur_http::action_boutique)
+        .service(vendeur_http::modifier_horaires)
+        .service(admin_prestataires_http::action_boutique_admin)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
         .split_for_parts();
@@ -345,6 +349,10 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_prestataires_http::photo_article_admin)
         .service(admin_prestataires_http::retirer_article_admin)
         .service(admin_prestataires_http::remettre_article_admin)
+        .service(vendeur_http::ma_boutique)
+        .service(vendeur_http::action_boutique)
+        .service(vendeur_http::modifier_horaires)
+        .service(admin_prestataires_http::action_boutique_admin)
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .split_for_parts();

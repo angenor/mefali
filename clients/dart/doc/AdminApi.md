@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**actionBoutiqueAdmin**](AdminApi.md#actionboutiqueadmin) | **POST** /admin/prestataires/{id}/boutique/action | Geste de boutique pour le compte du prestataire (source admin).
 [**agreerPrestataire**](AdminApi.md#agreerprestataire) | **POST** /admin/prestataires/{id}/agrement | Agrée un prospect : la fiche devient servie et commandable, l&#39;identité de plaque est créée au premier passage, l&#39;activation de catégorie recalculée.
 [**ajouterPhoto**](AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [**consulterDossierCoursier**](AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
@@ -29,6 +30,49 @@ Method | HTTP request | Description
 [**retirerArticleAdmin**](AdminApi.md#retirerarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/retrait | Retire un article du catalogue (source admin — FR-055).
 [**supprimerPhoto**](AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
 
+
+# **actionBoutiqueAdmin**
+> BoutiqueVendeur actionBoutiqueAdmin(id, corpsActionBoutique)
+
+Geste de boutique pour le compte du prestataire (source admin).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final CorpsActionBoutique corpsActionBoutique = ; // CorpsActionBoutique | 
+
+try {
+    final response = api.actionBoutiqueAdmin(id, corpsActionBoutique);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->actionBoutiqueAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **corpsActionBoutique** | [**CorpsActionBoutique**](CorpsActionBoutique.md)|  | 
+
+### Return type
+
+[**BoutiqueVendeur**](BoutiqueVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **agreerPrestataire**
 > PrestataireAdminDetail agreerPrestataire(id)
