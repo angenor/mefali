@@ -115,12 +115,25 @@ impl PgComptes {
     /// Une re-soumission écrit une clé NEUVE et n'écrase donc jamais la pièce
     /// précédente : celle-ci est rendue en [`IssueSoumission::Soumis::piece_orpheline`],
     /// à charge de l'appelant de la supprimer après commit.
+    ///
+    /// Deux appels réellement SIMULTANÉS du même compte (le rejeu R14) sont
+    /// sérialisés par un verrou consultatif pris en tête de fonction
+    /// ([`verrouiller_soumission_compte`]) : sans lui, ils déposeraient deux
+    /// pièces (une orpheline) et émettraient les deux événements en double.
     pub async fn soumettre_dossier_coursier(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
         compte: Uuid,
         soumission: &SoumissionDossier,
     ) -> Result<IssueSoumission, ErreurComptes> {
+        // Sérialisation par compte AVANT toute lecture de statut : deux
+        // soumissions concurrentes du même compte s'exécutent l'une après
+        // l'autre, jamais entrelacées. La seconde bloque ici jusqu'au commit de
+        // la première, re-lit alors `en_attente`, et retombe sur la branche
+        // `DejaEnAttente` ci-dessous — aucun dépôt, aucun événement. Le pourquoi
+        // du verrou est détaillé sur `verrouiller_soumission_compte`.
+        verrouiller_soumission_compte(tx, compte).await?;
+
         let zone = self.zone_du_compte(tx, compte).await?;
         let avant = statut_role(tx, compte, Role::Coursier).await?;
 
@@ -506,4 +519,59 @@ impl PgComptes {
             })
             .collect())
     }
+}
+
+/// « Classe » du verrou consultatif de soumission de dossier — première clé de
+/// la forme à deux clés de `pg_advisory_xact_lock`.
+///
+/// La forme à DEUX clés `int4` possède son propre espace de verrous, disjoint
+/// de la forme monoclé (`bigint`) : aucune collision possible avec un futur
+/// verrou consultatif monoclé. Cette classe NOMME le domaine « soumission de
+/// dossier coursier » — étiquette arbitraire mais fixe (aujourd'hui l'unique
+/// verrou consultatif du code, CPT-04).
+const CLASSE_VERROU_DOSSIER: i32 = 4_004;
+
+/// Prend un verrou consultatif par compte, tenu jusqu'à la fin de la
+/// transaction — la barrière qui sérialise les soumissions CONCURRENTES du
+/// même compte (rejeu R14).
+///
+/// ## Pourquoi un verrou
+///
+/// [`PgComptes::soumettre_dossier_coursier`] lit le statut du rôle PUIS dépose
+/// la pièce, émet les deux événements et fait son UPSERT. Deux appels réellement
+/// simultanés du même compte peuvent tous deux lire `statut ≠ en_attente` avant
+/// que l'un n'ait commit : ils déposent alors chacun une pièce (l'une devient
+/// orpheline) et émettent `role.demande` + `dossier_coursier.soumis` EN DOUBLE.
+/// La déduplication au niveau ligne (`ON CONFLICT`) arrive trop tard — après le
+/// dépôt objet et l'écriture outbox. R14 a délibérément renoncé à une table de
+/// clés d'idempotence : on sérialise donc par la BASE.
+///
+/// Le verrou vaut pour toute la transaction (`_xact_`) : la seconde soumission
+/// BLOQUE ici jusqu'au commit de la première, re-lit alors `statut = en_attente`,
+/// et ressort en [`IssueSoumission::DejaEnAttente`] (retour anticipé — aucun
+/// dépôt, aucun événement).
+///
+/// ## Pourquoi CONSULTATIF plutôt que `FOR UPDATE`
+///
+/// Un `pg_advisory_xact_lock` ne verrouille aucune LIGNE réelle : il ne
+/// s'ordonne donc avec aucun verrou de ligne et ne peut pas interbloquer avec
+/// une décision admin concurrente (`role.rs`), qui verrouille, elle, la ligne
+/// `attribution_role`. Un `FOR UPDATE` sur `comptes.compte` sérialiserait aussi,
+/// mais introduirait cet ordre de verrous — écarté ici.
+///
+/// La clé est dérivée du `compte_id` par `hashtext` : une collision de hachage
+/// sérialiserait au pire deux comptes DISTINCTS — un goulot rare, jamais une
+/// corruption.
+async fn verrouiller_soumission_compte(
+    tx: &mut sqlx::PgTransaction<'_>,
+    compte: Uuid,
+) -> Result<(), ErreurComptes> {
+    sqlx::query!(
+        "SELECT pg_advisory_xact_lock($1, hashtext($2))",
+        CLASSE_VERROU_DOSSIER,
+        compte.to_string(),
+    )
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
 }

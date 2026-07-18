@@ -334,6 +334,55 @@ async fn rejeu_pendant_en_attente_est_idempotent(pool: PgPool) {
     assert_eq!(bac.evenements("role.demande").await.len(), 1);
 }
 
+/// R14 sous VRAIE concurrence — deux `POST /moi/dossier-coursier` réellement
+/// simultanés du même compte (chacun dans SA transaction) ne produisent qu'UNE
+/// soumission : le verrou consultatif par compte les sérialise, la perdante
+/// re-lit `en_attente` et retombe sur `DejaEnAttente`.
+///
+/// L'issue est DÉTERMINISTE (une seule gagne) même si l'ordonnancement, lui, ne
+/// l'est pas. Honnêteté du garde-fou : SANS le verrou, ce test peut passer par
+/// CHANCE (les deux appels ne se chevauchent pas toujours) ; AVEC le verrou il
+/// passe TOUJOURS — c'est ce qui en fait une régression détectable.
+#[sqlx::test(migrations = "../../migrations")]
+async fn deux_soumissions_concurrentes_une_seule_gagne(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let yao = bac.inscrire(SAISIE_LOCALE).await;
+
+    // Les deux soumissions partent EN MÊME TEMPS (le pool de test tient
+    // plusieurs connexions) : c'est la course R14, pas un rejeu séquentiel.
+    let (moto, velo) = (soumission(&["moto"]), soumission(&["velo"]));
+    let (a, b) = tokio::join!(
+        soumettre(&bac, yao, &moto),
+        soumettre(&bac, yao, &velo),
+    );
+
+    // Exactement une `Soumis`, exactement une `DejaEnAttente` — peu importe
+    // laquelle des deux a gagné la course.
+    let (soumis, deja) =
+        [a.unwrap(), b.unwrap()]
+            .iter()
+            .fold((0, 0), |(s, d), issue| match issue {
+                IssueSoumission::Soumis { .. } => (s + 1, d),
+                IssueSoumission::DejaEnAttente(_) => (s, d + 1),
+            });
+    assert_eq!(soumis, 1, "une seule soumission gagne la course");
+    assert_eq!(deja, 1, "l'autre retombe sur le rejeu idempotent");
+
+    // UN seul de chaque événement : le double `role.demande` /
+    // `dossier_coursier.soumis` était précisément le défaut à fermer.
+    assert_eq!(bac.evenements("role.demande").await.len(), 1);
+    assert_eq!(bac.evenements("dossier_coursier.soumis").await.len(), 1);
+
+    // ZÉRO pièce orpheline : la perdante ressort AVANT le dépôt, un seul octet
+    // a donc été déposé.
+    assert_eq!(
+        bac.objets.nombre(),
+        1,
+        "la soumission perdante n'a déposé aucune pièce orpheline"
+    );
+}
+
 /// R14 — le 409 reste réservé aux transitions VRAIMENT invalides.
 #[sqlx::test(migrations = "../../migrations")]
 async fn soumission_refusee_sur_dossier_valide_ou_suspendu(pool: PgPool) {
