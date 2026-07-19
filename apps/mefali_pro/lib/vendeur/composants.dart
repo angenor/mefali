@@ -118,3 +118,105 @@ class _Moitie extends StatelessWidget {
     );
   }
 }
+
+/// Bascule « En stock / Rupture » de la maquette V2 (84×44 VISUEL, vert ou
+/// rouge plein, libellé sous le pouce — `docs/design/png/V2-catalogue-stock.png`
+/// vue 1a). La zone de TAP fait ≥ 48 dp (tap-min de tokens.md, analyse X1).
+///
+/// `verrouillee` : rupture posée par l'Admin — la bascule vendeur est refusée
+/// (FR-041), le tap explique au lieu d'agir.
+class BasculeStock extends StatelessWidget {
+  /// Crée la bascule.
+  const BasculeStock({
+    super.key,
+    required this.disponible,
+    required this.onBascule,
+    this.verrouillee = false,
+    this.onVerrouillee,
+  });
+
+  /// Vrai = en stock (vert), faux = rupture (rouge).
+  final bool disponible;
+
+  /// Bascule demandée (UN geste — FR-045, SC-007).
+  final VoidCallback onBascule;
+
+  /// Rupture admin : bascule vendeur interdite (FR-041).
+  final bool verrouillee;
+
+  /// Appelé au tap quand la bascule est verrouillée (explication).
+  final VoidCallback? onVerrouillee;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final couleur = disponible ? MefaliTokens.success : MefaliTokens.danger;
+
+    return Semantics(
+      button: true,
+      label: disponible ? l10n.proArticleEnStock : l10n.proArticleRupture,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(MefaliTokens.radiusChip),
+        onTap: verrouillee ? onVerrouillee : onBascule,
+        // Zone de tap ≥ 48 dp autour du visuel 84×44 (tokens tap-min).
+        child: SizedBox(
+          width: 92,
+          height: MefaliTokens.tapMin + 8,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 84,
+              height: 44,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: couleur,
+                borderRadius: BorderRadius.circular(MefaliTokens.radiusChip),
+              ),
+              child: Row(
+                mainAxisAlignment: disponible
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.spaceBetween,
+                textDirection:
+                    disponible ? TextDirection.rtl : TextDirection.ltr,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: MefaliTokens.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      verrouillee
+                          ? Symbols.lock
+                          : disponible
+                              ? Symbols.check
+                              : Symbols.close,
+                      size: 20,
+                      color: couleur,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      disponible
+                          ? l10n.proArticleEnStock
+                          : l10n.proArticleRupture,
+                      textAlign: TextAlign.center,
+                      textDirection: TextDirection.ltr,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: MefaliTokens.weightSemiBold,
+                        color: MefaliTokens.surface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

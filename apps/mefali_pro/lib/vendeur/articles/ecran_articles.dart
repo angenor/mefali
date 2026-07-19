@@ -6,6 +6,7 @@ import 'package:mefali_core/mefali_core.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../roles/composants.dart';
+import '../composants.dart';
 import '../pilotage.dart';
 import 'fiche_article.dart';
 import 'mes_articles.dart';
@@ -269,11 +270,16 @@ class _LigneArticle extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: MefaliTokens.space2),
-        // La BASCULE en un geste (84×44) arrive avec la story 5 (T039) —
-        // d'ici là, l'état est annoncé par une puce.
-        PuceStatut(
-          texte: enRupture ? l10n.proArticleRupture : l10n.proArticleEnStock,
-          ton: enRupture ? TonPuce.danger : TonPuce.succes,
+        // Bascule En stock / Rupture en UN geste (FR-045, maquette V2 1a).
+        BasculeStock(
+          disponible: article.disponible,
+          verrouillee: article.ruptureAdmin,
+          onBascule: () => ref
+              .read(mesArticlesProvider(prestataireId).notifier)
+              .basculerDisponibilite(article.id, !article.disponible),
+          onVerrouillee: () => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.proArticleRuptureAdmin)),
+          ),
         ),
       ],
     );

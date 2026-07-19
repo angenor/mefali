@@ -75,6 +75,18 @@ class MesArticles extends _$MesArticles {
     await recharger();
   }
 
+  /// Bascule En stock / Rupture en UN geste (FR-037, SC-007). Une rupture
+  /// posée par l'Admin est refusée en 409 (FR-041) — l'erreur remonte.
+  Future<void> basculerDisponibilite(String articleId, bool disponible) async {
+    await ref.read(clientSessionProvider).getVendeurApi().basculerDisponibilite(
+          id: prestataireId,
+          articleId: articleId,
+          basculeDisponibiliteDto:
+              BasculeDisponibiliteDto((b) => b..disponible = disponible),
+        );
+    await recharger();
+  }
+
   /// Retire du catalogue — RÉVERSIBLE, la ligne subsiste (FR-055).
   Future<void> retirer(String articleId) async {
     await ref

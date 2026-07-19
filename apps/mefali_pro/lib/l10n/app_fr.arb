@@ -311,6 +311,18 @@
   "@proArticleErreurEnregistrement": {
     "description": "Échec réseau ou refus serveur de la fiche article"
   },
+  "proArticleDisponibleVente": "Disponible à la vente",
+  "@proArticleDisponibleVente": {
+    "description": "Carte de disponibilité de la fiche article (V2 1b)"
+  },
+  "proArticleDisponibleAide": "Basculez en cas de rupture.",
+  "@proArticleDisponibleAide": {
+    "description": "Aide de la carte de disponibilité"
+  },
+  "proArticleRuptureAdmin": "Rupture posée par Mefali — seule l'équipe peut la lever.",
+  "@proArticleRuptureAdmin": {
+    "description": "Verrou FR-041 : rupture admin non levable par le vendeur"
+  },
   "proInterfaceVendeurAide": "Votre boutique et vos commandes s'afficheront ici.",
   "@proInterfaceVendeurAide": {
     "description": "Aide de l'interface vendeur tant que le module vendeur (VND) n'est pas construit"

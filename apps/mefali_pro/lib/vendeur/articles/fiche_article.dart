@@ -37,6 +37,7 @@ class _FicheArticleState extends ConsumerState<FicheArticle> {
   late int _prix;
   late bool _promoActive;
   late int _prixBarre;
+  late bool _disponible;
   bool _enCours = false;
 
   @override
@@ -47,6 +48,26 @@ class _FicheArticleState extends ConsumerState<FicheArticle> {
     _prix = article?.prixUnites ?? 1000;
     _promoActive = article?.prixBarreUnites != null;
     _prixBarre = article?.prixBarreUnites ?? _prix + pasDePrix;
+    _disponible = article?.disponible ?? true;
+  }
+
+  /// Bascule immédiate de la disponibilité (FR-045) — revert si le serveur
+  /// refuse (rupture admin, réseau).
+  Future<void> _basculer(bool valeur) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _disponible = valeur);
+    try {
+      await ref
+          .read(mesArticlesProvider(widget.prestataireId).notifier)
+          .basculerDisponibilite(widget.article!.id, valeur);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _disponible = !valeur);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.proArticleErreurEnregistrement)),
+        );
+      }
+    }
   }
 
   @override
@@ -203,6 +224,39 @@ class _FicheArticleState extends ConsumerState<FicheArticle> {
                 ],
               ),
             ),
+            if (article != null && !article.retire) ...[
+              const SizedBox(height: MefaliTokens.space3),
+              // Carte « Disponible à la vente » (maquette V2 1b) — bascule
+              // immédiate, indépendante du brouillon.
+              CarteMefali(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.proArticleDisponibleVente,
+                            style: textTheme.titleMedium,
+                          ),
+                          Text(
+                            article.ruptureAdmin
+                                ? l10n.proArticleRuptureAdmin
+                                : l10n.proArticleDisponibleAide,
+                            style: textTheme.labelSmall
+                                ?.copyWith(color: MefaliTokens.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: _disponible,
+                      onChanged: article.ruptureAdmin ? null : _basculer,
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: MefaliTokens.space4),
             BoutonPrincipal(
               libelle: l10n.proArticleEnregistrer,
