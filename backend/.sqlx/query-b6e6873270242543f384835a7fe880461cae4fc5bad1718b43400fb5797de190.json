@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.disponibilite_article d\n             SET disponible = $3, source = $4::text::prestataires.source_bascule,\n                 bascule_par = $5, bascule_le = now()\n             FROM prestataires.site s\n             WHERE d.article_id = $2 AND d.site_id = s.id AND s.prestataire_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b6e6873270242543f384835a7fe880461cae4fc5bad1718b43400fb5797de190"
+}

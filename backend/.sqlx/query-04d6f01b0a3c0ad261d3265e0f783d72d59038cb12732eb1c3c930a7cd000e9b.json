@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.disponibilite_article\n                 SET disponible = false, source = 'coursier', bascule_par = NULL,\n                     bascule_le = now()\n                 WHERE article_id = $1 AND site_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "04d6f01b0a3c0ad261d3265e0f783d72d59038cb12732eb1c3c930a7cd000e9b"
+}
