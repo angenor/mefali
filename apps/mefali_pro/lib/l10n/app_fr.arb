@@ -116,6 +116,117 @@
   "@proOngletArticles": {
     "description": "Onglet V2 : catalogue et stock"
   },
+  "proBoutiqueOuvert": "OUVERT",
+  "@proBoutiqueOuvert": {
+    "description": "Interrupteur / puce d'état (V1)"
+  },
+  "proBoutiqueFerme": "FERMÉ",
+  "@proBoutiqueFerme": {
+    "description": "Interrupteur / puce d'état (V1)"
+  },
+  "proBoutiqueEnPause": "EN PAUSE",
+  "@proBoutiqueEnPause": {
+    "description": "Puce d'état pendant une pause (V1 1b)"
+  },
+  "proBoutiqueAideOuverte": "Votre boutique reçoit les commandes",
+  "@proBoutiqueAideOuverte": {
+    "description": "Aide sous l'interrupteur, état ouvert (V1 1a)"
+  },
+  "proBoutiqueAideFermee": "Les clients ne peuvent pas commander",
+  "@proBoutiqueAideFermee": {
+    "description": "Aide sous l'interrupteur / la carte de pause"
+  },
+  "proBoutiquePauseTitre": "Faire une pause",
+  "@proBoutiquePauseTitre": {
+    "description": "Carte de pause (V1 1a)"
+  },
+  "proBoutiquePauseAide": "La boutique réouvre toute seule.",
+  "@proBoutiquePauseAide": {
+    "description": "Sous-titre de la carte de pause (FR-033)"
+  },
+  "proBoutiqueDuree": "{duree}",
+  "@proBoutiqueDuree": {
+    "description": "Bouton de durée de pause (30 min / 1 h / 2 h)",
+    "placeholders": {
+      "duree": {"type": "String"}
+    }
+  },
+  "proBoutiquePauseEnCours": "Boutique en pause",
+  "@proBoutiquePauseEnCours": {
+    "description": "Titre de la carte de pause en cours (V1 1b)"
+  },
+  "proBoutiqueReouvertureDans": "Réouverture automatique dans",
+  "@proBoutiqueReouvertureDans": {
+    "description": "Libellé du compte à rebours (V1 1b)"
+  },
+  "proBoutiqueMinutes": "{minutes} min",
+  "@proBoutiqueMinutes": {
+    "description": "Compte à rebours en minutes",
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "proBoutiqueAHeure": "· à {heure}",
+  "@proBoutiqueAHeure": {
+    "description": "Heure de réouverture annoncée",
+    "placeholders": {
+      "heure": {"type": "String"}
+    }
+  },
+  "proBoutiqueProlonger": "+ 30 min",
+  "@proBoutiqueProlonger": {
+    "description": "Prolongation de la pause (V1 1b)"
+  },
+  "proBoutiqueFermerJournee": "Fermer pour aujourd'hui",
+  "@proBoutiqueFermerJournee": {
+    "description": "Bascule vers fermé pour la journée (FR-030)"
+  },
+  "proBoutiqueReouvrir": "Réouvrir maintenant",
+  "@proBoutiqueReouvrir": {
+    "description": "Bouton principal pendant une pause (V1 1b)"
+  },
+  "proBoutiqueRappel": "Il est {heure}. D'habitude, votre boutique est ouverte à cette heure.",
+  "@proBoutiqueRappel": {
+    "description": "Rappel non bloquant (FR-035, V1 1c)",
+    "placeholders": {
+      "heure": {"type": "String"}
+    }
+  },
+  "proBoutiqueOuvrirMaintenant": "Ouvrir maintenant",
+  "@proBoutiqueOuvrirMaintenant": {
+    "description": "Action du rappel (V1 1c)"
+  },
+  "proBoutiqueResterFerme": "Je reste fermé aujourd'hui",
+  "@proBoutiqueResterFerme": {
+    "description": "Sortie du rappel — fermé pour la journée (R4)"
+  },
+  "proBoutiqueHorairesTitre": "Vos horaires habituels",
+  "@proBoutiqueHorairesTitre": {
+    "description": "Carte des horaires (V1)"
+  },
+  "proBoutiqueAujourdhui": "{plages} aujourd'hui",
+  "@proBoutiqueAujourdhui": {
+    "description": "Plages du jour courant",
+    "placeholders": {
+      "plages": {"type": "String"}
+    }
+  },
+  "proBoutiqueFermeAujourdhui": "Fermé aujourd'hui",
+  "@proBoutiqueFermeAujourdhui": {
+    "description": "Jour sans plage (FR-031)"
+  },
+  "proBoutiqueChangerHoraires": "Changer les horaires",
+  "@proBoutiqueChangerHoraires": {
+    "description": "Accès à la modification des horaires (FR-034)"
+  },
+  "proBoutiqueErreur": "Impossible de charger la boutique.",
+  "@proBoutiqueErreur": {
+    "description": "Erreur réseau de l'écran V1"
+  },
+  "proJours": "Lun|Mar|Mer|Jeu|Ven|Sam|Dim",
+  "@proJours": {
+    "description": "Jours abrégés, séparés par | (feuille d'horaires)"
+  },
   "proArticlesRecherche": "Chercher un article…",
   "@proArticlesRecherche": {
     "description": "Placeholder de la recherche du catalogue (V2)"

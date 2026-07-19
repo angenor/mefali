@@ -59,7 +59,7 @@ final class MesArticlesProvider
   }
 }
 
-String _$mesArticlesHash() => r'5c7dd14e29ce088ec2e689d27b9148839d37ed3a';
+String _$mesArticlesHash() => r'd1c1dc894f7d5f63d454e4630fcdcb11d5cd3663';
 
 /// Le catalogue du prestataire piloté (écran V2 — FR-045). Famille par
 /// prestataire, `@riverpod` nu (autoDispose) : liste d'écran, patron

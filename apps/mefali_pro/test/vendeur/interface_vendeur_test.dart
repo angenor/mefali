@@ -36,9 +36,13 @@ void main() {
   group('InterfaceVendeur — coquille V1/V2 (FR-044..046)', () {
     testWidgets('deux onglets seulement — PAS de « Commandes » (hors périmètre)',
         (tester) async {
-      final container = conteneurMefali();
+      final container = conteneurMefali(
+        jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+        transport: TransportFake((_) => reponseJson([])),
+      );
       addTearDown(container.dispose);
       await tester.pumpWidget(_monter(container, _etat(const [_vendeurSeul])));
+      await tester.pumpAndSettle();
 
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.text('Boutique'), findsOneWidget);
@@ -54,9 +58,13 @@ void main() {
 
     testWidgets('le pied de page du cycle 003 reste accessible (FR-046)',
         (tester) async {
-      final container = conteneurMefali();
+      final container = conteneurMefali(
+        jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+        transport: TransportFake((_) => reponseJson([])),
+      );
       addTearDown(container.dispose);
       await tester.pumpWidget(_monter(container, _etat(const [_vendeurSeul])));
+      await tester.pumpAndSettle();
 
       expect(
         find.text('Se déconnecter'),
@@ -67,20 +75,28 @@ void main() {
 
     testWidgets('bi-rôle : la bascule du cycle 003 est rendue en tête',
         (tester) async {
-      final container = conteneurMefali();
+      final container = conteneurMefali(
+        jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+        transport: TransportFake((_) => reponseJson([])),
+      );
       addTearDown(container.dispose);
       await tester.pumpWidget(
         _monter(container, _etat(const [_coursierValide, _vendeurSeul])),
       );
+      await tester.pumpAndSettle();
 
       expect(find.byType(SegmentedButton<RolePro>), findsOneWidget);
     });
 
     testWidgets('la sélection d\'onglet est locale et bascule le contenu',
         (tester) async {
-      final container = conteneurMefali();
+      final container = conteneurMefali(
+        jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+        transport: TransportFake((_) => reponseJson([])),
+      );
       addTearDown(container.dispose);
       await tester.pumpWidget(_monter(container, _etat(const [_vendeurSeul])));
+      await tester.pumpAndSettle();
 
       // Onglet Boutique par défaut : le pied y est.
       expect(find.text('Se déconnecter'), findsOneWidget);

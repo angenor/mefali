@@ -7,6 +7,7 @@ import '../roles/etat_roles_data.dart';
 import '../roles/interface_pro.dart';
 import '../roles/pied_pro.dart';
 import 'articles/ecran_articles.dart';
+import 'boutique/ecran_boutique.dart';
 
 /// Coquille de l'espace VENDEUR (cycle 005) : deux onglets — Boutique (V1) et
 /// Articles (V2) — sous le sélecteur de rôles.
@@ -77,42 +78,19 @@ class _InterfaceVendeurState extends State<InterfaceVendeur> {
   }
 }
 
-/// Onglet Boutique — l'écran V1 (statut de boutique) le remplace dans ce même
-/// cycle ; le pied de page du cycle 003 reste accessible ici (FR-046).
+/// Onglet Boutique : l'écran V1 + le pied de page du cycle 003, accessible
+/// QUEL QUE SOIT l'état de chargement (FR-046).
 class _OngletBoutique extends StatelessWidget {
   const _OngletBoutique();
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Symbols.storefront,
-                  size: 48,
-                  color: MefaliTokens.textMuted,
-                ),
-                const SizedBox(height: MefaliTokens.space3),
-                Text(
-                  l10n.proInterfaceVendeurAide,
-                  style: textTheme.bodyLarge
-                      ?.copyWith(color: MefaliTokens.textMuted),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: MefaliTokens.space3),
-        const PiedPro(),
+        Expanded(child: EcranBoutique()),
+        SizedBox(height: MefaliTokens.space3),
+        PiedPro(),
       ],
     );
   }

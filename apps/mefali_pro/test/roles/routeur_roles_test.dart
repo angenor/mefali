@@ -233,11 +233,18 @@ void main() {
         findsOneWidget,
         reason: 'FR-013 — la bascule change bien d\'interface',
       );
+      // Depuis le cycle 005, l'espace vendeur CHARGE SES DONNÉES au montage
+      // (GET /vendeur/prestataires) — c'est un chargement d'écran, pas une
+      // reconnexion. L'invariant SC-006 reste : la BASCULE ne touche ni
+      // l'authentification ni les rôles.
+      final appelsBascule = transport.recues.skip(appelsApresChargement);
       expect(
-        transport.recues.length,
-        appelsApresChargement,
-        reason: 'SC-006 — basculer ne parle PAS au réseau : rien à attendre, '
-            'donc bien en dessous des 5 s même hors couverture',
+        appelsBascule.every(
+          (r) => !r.path.contains('/auth/') && !r.path.contains('/moi'),
+        ),
+        isTrue,
+        reason: 'SC-006 — basculer ne rejoue ni l\'auth ni la lecture des '
+            'rôles : rien à attendre, bien en dessous des 5 s',
       );
       expect(
         container.read(sessionProvider).acces,
