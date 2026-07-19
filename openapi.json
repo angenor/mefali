@@ -1254,6 +1254,94 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/correction": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et\nhistorique intacts ; les DEUX compteurs sont recalculés dans la même\ntransaction (FR-056).",
+        "operationId": "corriger_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrigerDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Corrigé — recalcul de l'ANCIEN couple catégorie/ville puis du NOUVEAU (l'ancienne catégorie reste active : le seuil ne joue qu'à la hausse). Émet `prestataire.corrige`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Zone qui n'est pas une ville, catégorie inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/photos": {
       "post": {
         "tags": [
@@ -1572,6 +1660,84 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/retablissement": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la\nplaque physique n'a jamais bougé (SC-003).",
+        "operationId": "retablir_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire suspendu.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rétabli — commandable dès lors que sa catégorie est active et sa boutique ouverte ; compteur recalculé. Émet `prestataire.retabli`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition interdite (pas suspendu — FR-004).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/site": {
       "put": {
         "tags": [
@@ -1644,6 +1810,104 @@
           },
           "422": {
             "description": "Horaires invalides ou statut initial illégal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/suspension": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Suspend un prestataire agréé : dans la seconde, fiche retirée, plus\ncommandable, plaque invalide, actions vendeur refusées — TOUT PAR\nDÉRIVATION, sans action distincte (SC-002).",
+        "operationId": "suspendre_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire agréé.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendreDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Suspendu — le rôle vendeur des comptes rattachés n'a PAS bougé (aucune cascade, FR-008). Émet `prestataire.suspendu`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition interdite (pas agréé — FR-004).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif manquant (FR-010).",
             "content": {
               "application/json": {
                 "schema": {
@@ -4036,6 +4300,27 @@
           }
         }
       },
+      "CorrigerDto": {
+        "type": "object",
+        "description": "Corps de la correction (FR-056) — au moins un champ.",
+        "properties": {
+          "categorie_slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouvelle catégorie de service (slug)."
+          },
+          "ville_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Nouvelle ville de rattachement (type `ville` exigé)."
+          }
+        }
+      },
       "CreerArticleDto": {
         "type": "object",
         "description": "Création d'un article (disponible par défaut — FR-020).",
@@ -5261,6 +5546,21 @@
           "agree",
           "suspendu"
         ]
+      },
+      "SuspendreDto": {
+        "type": "object",
+        "description": "Corps de la suspension (motif REQUIS — FR-010).",
+        "required": [
+          "motif"
+        ],
+        "properties": {
+          "motif": {
+            "type": "string",
+            "description": "Motif de la décision, journalisé.",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        }
       },
       "UrlPresignee": {
         "type": "object",

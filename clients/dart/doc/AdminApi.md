@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**ajouterPhoto**](AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [**consulterDossierCoursier**](AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
 [**consulterPrestataireAdmin**](AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
+[**corrigerPrestataire**](AdminApi.md#corrigerprestataire) | **POST** /admin/prestataires/{id}/correction | Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et historique intacts ; les DEUX compteurs sont recalculés dans la même transaction (FR-056).
 [**creerArticleAdmin**](AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
 [**creerPrestataire**](AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [**deciderRole**](AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
@@ -27,8 +28,10 @@ Method | HTTP request | Description
 [**photoArticleAdmin**](AdminApi.md#photoarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/photo | Photo d&#39;article (source admin).
 [**rattacherCompte**](AdminApi.md#rattachercompte) | **POST** /admin/prestataires/{id}/rattachements | Rattache un compte vérifié — attribue le rôle vendeur si absent, IDEMPOTENT (FR-007, research R11).
 [**remettreArticleAdmin**](AdminApi.md#remettrearticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue (source admin — FR-055).
+[**retablirPrestataire**](AdminApi.md#retablirprestataire) | **POST** /admin/prestataires/{id}/retablissement | Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la plaque physique n&#39;a jamais bougé (SC-003).
 [**retirerArticleAdmin**](AdminApi.md#retirerarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/retrait | Retire un article du catalogue (source admin — FR-055).
 [**supprimerPhoto**](AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
+[**suspendrePrestataire**](AdminApi.md#suspendreprestataire) | **POST** /admin/prestataires/{id}/suspension | Suspend un prestataire agréé : dans la seconde, fiche retirée, plus commandable, plaque invalide, actions vendeur refusées — TOUT PAR DÉRIVATION, sans action distincte (SC-002).
 
 
 # **actionBoutiqueAdmin**
@@ -236,6 +239,49 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **corrigerPrestataire**
+> PrestataireAdminDetail corrigerPrestataire(id, corrigerDto)
+
+Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et historique intacts ; les DEUX compteurs sont recalculés dans la même transaction (FR-056).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final CorrigerDto corrigerDto = ; // CorrigerDto | 
+
+try {
+    final response = api.corrigerPrestataire(id, corrigerDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->corrigerPrestataire: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **corrigerDto** | [**CorrigerDto**](CorrigerDto.md)|  | 
+
+### Return type
+
+[**PrestataireAdminDetail**](PrestataireAdminDetail.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -806,6 +852,47 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **retablirPrestataire**
+> PrestataireAdminDetail retablirPrestataire(id)
+
+Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la plaque physique n'a jamais bougé (SC-003).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire suspendu.
+
+try {
+    final response = api.retablirPrestataire(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->retablirPrestataire: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire suspendu. | 
+
+### Return type
+
+[**PrestataireAdminDetail**](PrestataireAdminDetail.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **retirerArticleAdmin**
 > ArticleVendeur retirerArticleAdmin(id, articleId)
 
@@ -887,6 +974,49 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suspendrePrestataire**
+> PrestataireAdminDetail suspendrePrestataire(id, suspendreDto)
+
+Suspend un prestataire agréé : dans la seconde, fiche retirée, plus commandable, plaque invalide, actions vendeur refusées — TOUT PAR DÉRIVATION, sans action distincte (SC-002).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire agréé.
+final SuspendreDto suspendreDto = ; // SuspendreDto | 
+
+try {
+    final response = api.suspendrePrestataire(id, suspendreDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->suspendrePrestataire: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire agréé. | 
+ **suspendreDto** | [**SuspendreDto**](SuspendreDto.md)|  | 
+
+### Return type
+
+[**PrestataireAdminDetail**](PrestataireAdminDetail.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

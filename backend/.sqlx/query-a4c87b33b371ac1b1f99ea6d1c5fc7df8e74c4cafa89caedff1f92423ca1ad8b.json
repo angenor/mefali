@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.prestataire\n             SET categorie_id = $2, ville_id = $3, modifie_le = now()\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a4c87b33b371ac1b1f99ea6d1c5fc7df8e74c4cafa89caedff1f92423ca1ad8b"
+}

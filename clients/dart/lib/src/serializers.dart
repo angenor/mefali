@@ -30,6 +30,7 @@ import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/consentement_requis.dart';
 import 'package:mefali_api_client/src/model/corps_action_boutique.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
+import 'package:mefali_api_client/src/model/corriger_dto.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
@@ -70,6 +71,7 @@ import 'package:mefali_api_client/src/model/site_admin_vue_dto.dart';
 import 'package:mefali_api_client/src/model/source_bascule.dart';
 import 'package:mefali_api_client/src/model/statut_boutique.dart';
 import 'package:mefali_api_client/src/model/statut_prestataire.dart';
+import 'package:mefali_api_client/src/model/suspendre_dto.dart';
 import 'package:mefali_api_client/src/model/url_presignee.dart';
 import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
@@ -93,6 +95,7 @@ part 'serializers.g.dart';
   ConsentementRequis,
   CorpsActionBoutique,
   CorpsForcage,
+  CorrigerDto,
   CreerArticleDto,
   CreerPrestataireDto,
   DecisionRole,
@@ -133,6 +136,7 @@ part 'serializers.g.dart';
   SourceBascule,
   StatutBoutique,
   StatutPrestataire,
+  SuspendreDto,
   UrlPresignee,
   VehiculeDeclare,
   VerificationOtp,

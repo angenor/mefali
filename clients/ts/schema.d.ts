@@ -230,6 +230,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/correction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et
+         *     historique intacts ; les DEUX compteurs sont recalculés dans la même
+         *     transaction (FR-056).
+         */
+        post: operations["corriger_prestataire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/photos": {
         parameters: {
             query?: never;
@@ -301,6 +322,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/retablissement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la
+         *     plaque physique n'a jamais bougé (SC-003).
+         */
+        post: operations["retablir_prestataire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/site": {
         parameters: {
             query?: never;
@@ -312,6 +353,27 @@ export interface paths {
         /** Crée ou met à jour LE site (position GPS, horaires, statut initial). */
         put: operations["definir_site"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/suspension": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend un prestataire agréé : dans la seconde, fiche retirée, plus
+         *     commandable, plaque invalide, actions vendeur refusées — TOUT PAR
+         *     DÉRIVATION, sans action distincte (SC-002).
+         */
+        post: operations["suspendre_prestataire"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1072,6 +1134,16 @@ export interface components {
             /** @description Nouveau mode de forçage à appliquer. */
             forcage: components["schemas"]["ForcageDto"];
         };
+        /** @description Corps de la correction (FR-056) — au moins un champ. */
+        CorrigerDto: {
+            /** @description Nouvelle catégorie de service (slug). */
+            categorie_slug?: string | null;
+            /**
+             * Format: uuid
+             * @description Nouvelle ville de rattachement (type `ville` exigé).
+             */
+            ville_id?: string | null;
+        };
         /** @description Création d'un article (disponible par défaut — FR-020). */
         CreerArticleDto: {
             /** @description Étiquette libre de regroupement. */
@@ -1702,6 +1774,11 @@ export interface components {
          * @enum {string}
          */
         StatutPrestataire: "prospect" | "agree" | "suspendu";
+        /** @description Corps de la suspension (motif REQUIS — FR-010). */
+        SuspendreDto: {
+            /** @description Motif de la décision, journalisé. */
+            motif: string;
+        };
         /** @description URL présignée de lecture (contrat). */
         UrlPresignee: {
             /**
@@ -2612,6 +2689,69 @@ export interface operations {
             };
         };
     };
+    corriger_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrigerDto"];
+            };
+        };
+        responses: {
+            /** @description Corrigé — recalcul de l'ANCIEN couple catégorie/ville puis du NOUVEAU (l'ancienne catégorie reste active : le seuil ne joue qu'à la hausse). Émet `prestataire.corrige`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Zone qui n'est pas une ville, catégorie inconnue. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     ajouter_photo: {
         parameters: {
             query?: never;
@@ -2838,6 +2978,65 @@ export interface operations {
             };
         };
     };
+    retablir_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire suspendu. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rétabli — commandable dès lors que sa catégorie est active et sa boutique ouverte ; compteur recalculé. Émet `prestataire.retabli`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition interdite (pas suspendu — FR-004). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     definir_site: {
         parameters: {
             query?: never;
@@ -2891,6 +3090,78 @@ export interface operations {
                 };
             };
             /** @description Horaires invalides ou statut initial illégal. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    suspendre_prestataire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire agréé. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendreDto"];
+            };
+        };
+        responses: {
+            /** @description Suspendu — le rôle vendeur des comptes rattachés n'a PAS bougé (aucune cascade, FR-008). Émet `prestataire.suspendu`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestataireAdminDetail"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition interdite (pas agréé — FR-004). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif manquant (FR-010). */
             422: {
                 headers: {
                     [name: string]: unknown;

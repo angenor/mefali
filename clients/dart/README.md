@@ -71,6 +71,7 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**ajouterPhoto**](doc/AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
 [*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
 [*AdminApi*](doc/AdminApi.md) | [**consulterPrestataireAdmin**](doc/AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
+[*AdminApi*](doc/AdminApi.md) | [**corrigerPrestataire**](doc/AdminApi.md#corrigerprestataire) | **POST** /admin/prestataires/{id}/correction | Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et historique intacts ; les DEUX compteurs sont recalculés dans la même transaction (FR-056).
 [*AdminApi*](doc/AdminApi.md) | [**creerArticleAdmin**](doc/AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
 [*AdminApi*](doc/AdminApi.md) | [**creerPrestataire**](doc/AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
@@ -84,8 +85,10 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**photoArticleAdmin**](doc/AdminApi.md#photoarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/photo | Photo d&#39;article (source admin).
 [*AdminApi*](doc/AdminApi.md) | [**rattacherCompte**](doc/AdminApi.md#rattachercompte) | **POST** /admin/prestataires/{id}/rattachements | Rattache un compte vérifié — attribue le rôle vendeur si absent, IDEMPOTENT (FR-007, research R11).
 [*AdminApi*](doc/AdminApi.md) | [**remettreArticleAdmin**](doc/AdminApi.md#remettrearticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue (source admin — FR-055).
+[*AdminApi*](doc/AdminApi.md) | [**retablirPrestataire**](doc/AdminApi.md#retablirprestataire) | **POST** /admin/prestataires/{id}/retablissement | Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la plaque physique n&#39;a jamais bougé (SC-003).
 [*AdminApi*](doc/AdminApi.md) | [**retirerArticleAdmin**](doc/AdminApi.md#retirerarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/retrait | Retire un article du catalogue (source admin — FR-055).
 [*AdminApi*](doc/AdminApi.md) | [**supprimerPhoto**](doc/AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
+[*AdminApi*](doc/AdminApi.md) | [**suspendrePrestataire**](doc/AdminApi.md#suspendreprestataire) | **POST** /admin/prestataires/{id}/suspension | Suspend un prestataire agréé : dans la seconde, fiche retirée, plus commandable, plaque invalide, actions vendeur refusées — TOUT PAR DÉRIVATION, sans action distincte (SC-002).
 [*AuthApi*](doc/AuthApi.md) | [**deconnexion**](doc/AuthApi.md#deconnexion) | **POST** /auth/deconnexion | Révoque la session courante (déconnexion locale).
 [*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
@@ -137,6 +140,7 @@ Class | Method | HTTP request | Description
  - [ConsentementRequis](doc/ConsentementRequis.md)
  - [CorpsActionBoutique](doc/CorpsActionBoutique.md)
  - [CorpsForcage](doc/CorpsForcage.md)
+ - [CorrigerDto](doc/CorrigerDto.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
@@ -177,6 +181,7 @@ Class | Method | HTTP request | Description
  - [SourceBascule](doc/SourceBascule.md)
  - [StatutBoutique](doc/StatutBoutique.md)
  - [StatutPrestataire](doc/StatutPrestataire.md)
+ - [SuspendreDto](doc/SuspendreDto.md)
  - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)
  - [VerificationOtp](doc/VerificationOtp.md)

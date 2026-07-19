@@ -19,6 +19,7 @@ doc/ConfigZone.md
 doc/ConsentementRequis.md
 doc/CorpsActionBoutique.md
 doc/CorpsForcage.md
+doc/CorrigerDto.md
 doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionRole.md
@@ -62,6 +63,7 @@ doc/SocleApi.md
 doc/SourceBascule.md
 doc/StatutBoutique.md
 doc/StatutPrestataire.md
+doc/SuspendreDto.md
 doc/UrlPresignee.md
 doc/VehiculeDeclare.md
 doc/VendeurApi.md
@@ -99,6 +101,7 @@ lib/src/model/config_zone.dart
 lib/src/model/consentement_requis.dart
 lib/src/model/corps_action_boutique.dart
 lib/src/model/corps_forcage.dart
+lib/src/model/corriger_dto.dart
 lib/src/model/creer_article_dto.dart
 lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
@@ -140,11 +143,11 @@ lib/src/model/site_admin_vue_dto.dart
 lib/src/model/source_bascule.dart
 lib/src/model/statut_boutique.dart
 lib/src/model/statut_prestataire.dart
+lib/src/model/suspendre_dto.dart
 lib/src/model/url_presignee.dart
 lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/action_boutique_dto_test.dart
-test/boutique_vendeur_test.dart
-test/corps_action_boutique_test.dart
+test/corriger_dto_test.dart
+test/suspendre_dto_test.dart

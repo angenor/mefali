@@ -811,6 +811,72 @@ impl PgPrestataires {
         self.prestataire_dans_tx(tx, prestataire).await
     }
 
+    /// Corrige la catégorie de service et/ou la ville d'un prestataire
+    /// (FR-056) — une faute de saisie relevée sur le terrain se corrige SANS
+    /// suspendre ni ré-agréer : ni la plaque ni l'historique ne bougent.
+    /// Recalcule l'ANCIEN couple catégorie/ville PUIS le NOUVEAU dans la MÊME
+    /// transaction, et émet `prestataire.corrige`.
+    pub async fn corriger(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+        nouvelle_categorie_slug: Option<&str>,
+        nouvelle_ville: Option<Uuid>,
+        acteur: Uuid,
+    ) -> Result<Prestataire, ErreurPrestataires> {
+        let p = self.verrouiller(tx, prestataire).await?;
+
+        let (categorie_id, categorie_slug) = match nouvelle_categorie_slug {
+            Some(slug) => (self.categorie_par_slug(tx, slug).await?, slug.to_owned()),
+            None => (p.categorie_id, p.categorie_slug.clone()),
+        };
+        let ville_id = match nouvelle_ville {
+            Some(ville) => {
+                self.verifier_ville(tx, ville).await?; // type `ville` exigé (FR-002)
+                ville
+            }
+            None => p.ville_id,
+        };
+        if categorie_id == p.categorie_id && ville_id == p.ville_id {
+            return Ok(p); // rien à corriger — aucune écriture, aucun événement
+        }
+
+        sqlx::query!(
+            "UPDATE prestataires.prestataire
+             SET categorie_id = $2, ville_id = $3, modifie_le = now()
+             WHERE id = $1",
+            prestataire,
+            categorie_id,
+            ville_id,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        // ANCIEN couple d'abord (la règle de seuil ne joue qu'à la hausse :
+        // l'ancienne catégorie RESTE active — edge case spec), NOUVEAU ensuite.
+        self.recalculer_activation_apres(tx, p.ville_id, p.categorie_id, &p.categorie_slug)
+            .await?;
+        self.recalculer_activation_apres(tx, ville_id, categorie_id, &categorie_slug)
+            .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "prestataire.corrige",
+                entite_type: "prestataire",
+                entite_id: prestataire,
+                payload: json!({
+                    "avant": { "categorie": p.categorie_slug, "zone": p.ville_id },
+                    "apres": { "categorie": categorie_slug, "zone": ville_id },
+                    "acteur": acteur,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+        self.prestataire_dans_tx(tx, prestataire).await
+    }
+
     /// Recompte les agréés du couple catégorie/ville et appelle le recalcul
     /// d'activation ZON-03 dans la MÊME transaction (research R7). Le crate
     /// `zones` ne connaît pas les vendeurs : le comptage est ici.

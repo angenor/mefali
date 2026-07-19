@@ -1118,3 +1118,140 @@ pub async fn action_boutique_admin(
     Ok(HttpResponse::Ok()
         .json(crate::prestataires_http::BoutiqueVendeurDto::from(boutique)))
 }
+
+// ── Suspension, rétablissement, correction (US4 — VND-01) ──────────────────
+
+/// Corps de la suspension (motif REQUIS — FR-010).
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SuspendreDto {
+    /// Motif de la décision, journalisé.
+    #[schema(min_length = 1, max_length = 500)]
+    pub motif: String,
+}
+
+/// Suspend un prestataire agréé : dans la seconde, fiche retirée, plus
+/// commandable, plaque invalide, actions vendeur refusées — TOUT PAR
+/// DÉRIVATION, sans action distincte (SC-002).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/suspension",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire agréé.")),
+    request_body = SuspendreDto,
+    responses(
+        (status = 200, description = "Suspendu — le rôle vendeur des comptes rattachés n'a PAS \
+         bougé (aucune cascade, FR-008). Émet `prestataire.suspendu`.",
+         body = PrestataireAdminDetailDto),
+        (status = 409, description = "Transition interdite (pas agréé — FR-004).", body = ErreurApiDto),
+        (status = 422, description = "Motif manquant (FR-010).", body = ErreurApiDto),
+        (status = 404, description = "Prestataire inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/suspension")]
+pub async fn suspendre_prestataire(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<SuspendreDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .suspendre(&mut tx, prestataire, &corps.motif, auth.compte_id)
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
+}
+
+/// Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la
+/// plaque physique n'a jamais bougé (SC-003).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/retablissement",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire suspendu.")),
+    responses(
+        (status = 200, description = "Rétabli — commandable dès lors que sa catégorie est \
+         active et sa boutique ouverte ; compteur recalculé. Émet `prestataire.retabli`.",
+         body = PrestataireAdminDetailDto),
+        (status = 409, description = "Transition interdite (pas suspendu — FR-004).",
+         body = ErreurApiDto),
+        (status = 404, description = "Prestataire inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/retablissement")]
+pub async fn retablir_prestataire(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot.retablir(&mut tx, prestataire, auth.compte_id).await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
+}
+
+/// Corps de la correction (FR-056) — au moins un champ.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CorrigerDto {
+    /// Nouvelle catégorie de service (slug).
+    pub categorie_slug: Option<String>,
+    /// Nouvelle ville de rattachement (type `ville` exigé).
+    pub ville_id: Option<Uuid>,
+}
+
+/// Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et
+/// historique intacts ; les DEUX compteurs sont recalculés dans la même
+/// transaction (FR-056).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/correction",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire.")),
+    request_body = CorrigerDto,
+    responses(
+        (status = 200, description = "Corrigé — recalcul de l'ANCIEN couple catégorie/ville \
+         puis du NOUVEAU (l'ancienne catégorie reste active : le seuil ne joue qu'à la \
+         hausse). Émet `prestataire.corrige`.", body = PrestataireAdminDetailDto),
+        (status = 422, description = "Zone qui n'est pas une ville, catégorie inconnue.",
+         body = ErreurApiDto),
+        (status = 404, description = "Prestataire inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/correction")]
+pub async fn corriger_prestataire(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<CorrigerDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .corriger(
+            &mut tx,
+            prestataire,
+            corps.categorie_slug.as_deref(),
+            corps.ville_id,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
+}
