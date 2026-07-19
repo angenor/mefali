@@ -14,6 +14,7 @@ pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
 pub mod prestataires_http;
+pub mod signalements_http;
 pub mod vendeur_http;
 pub mod zones_http;
 
@@ -83,6 +84,9 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_prestataires_http::suspendre_prestataire)
         .service(admin_prestataires_http::retablir_prestataire)
         .service(admin_prestataires_http::corriger_prestataire)
+        .service(vendeur_http::basculer_disponibilite)
+        .service(admin_prestataires_http::basculer_disponibilite_admin)
+        .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
         .split_for_parts();
@@ -359,6 +363,9 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_prestataires_http::suspendre_prestataire)
         .service(admin_prestataires_http::retablir_prestataire)
         .service(admin_prestataires_http::corriger_prestataire)
+        .service(vendeur_http::basculer_disponibilite)
+        .service(admin_prestataires_http::basculer_disponibilite_admin)
+        .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .split_for_parts();

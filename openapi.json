@@ -824,6 +824,94 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/articles/{article_id}/disponibilite": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bascule la disponibilité (source admin — la SEULE à lever une rupture\nadmin, FR-041).",
+        "operationId": "basculer_disponibilite_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasculeDisponibiliteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Basculé (source admin). Un article mis en rupture par l'Admin n'est remis en vente QUE par l'Admin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/articles/{article_id}/photo": {
       "post": {
         "tags": [
@@ -2252,6 +2340,94 @@
         }
       }
     },
+    "/coursier/signalements-rupture": {
+      "post": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "Signale un article introuvable — REFUSÉ (et compté nulle part) sans\ncommande active comportant un arrêt chez ce prestataire (FR-038).",
+        "operationId": "signaler_rupture",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID généré CÔTÉ CLIENT — devient l'identifiant du signalement, rejeu réseau idempotent (FR-039).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalerRuptureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Accepté (ou rejeu — même réponse). Deux coursiers DISTINCTS dans la fenêtre masquent l'article automatiquement (FR-040) ; les signalements reçus restent comptés après une remise en vente (FR-041).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalementRecuDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Aucune commande active éligible (port CommandesActives) — refusé, compté NULLE PART.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré du catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "En-tête d'idempotence absent ou corps invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -3284,6 +3460,104 @@
         ]
       }
     },
+    "/vendeur/prestataires/{id}/articles/{article_id}/disponibilite": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Bascule la disponibilité en UN geste (source vendeur — FR-037).",
+        "operationId": "basculer_disponibilite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasculeDisponibiliteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Basculé — source et auteur tracés, événement `article.mis_en_rupture`/`article.remis_en_vente` émis (FR-043). Les signalements coursier déjà reçus RESTENT comptés : un signalement éligible suivant re-masque immédiatement (FR-041).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rupture posée par l'Admin — seule une remise ADMIN est acceptée (FR-041).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/vendeur/prestataires/{id}/articles/{article_id}/photo": {
       "post": {
         "tags": [
@@ -4019,6 +4293,19 @@
                 "description": "Source de la dernière bascule (FR-037)."
               }
             ]
+          }
+        }
+      },
+      "BasculeDisponibiliteDto": {
+        "type": "object",
+        "description": "Corps de la bascule.",
+        "required": [
+          "disponible"
+        ],
+        "properties": {
+          "disponible": {
+            "type": "boolean",
+            "description": "`false` = rupture, `true` = retour en vente."
           }
         }
       },
@@ -5405,6 +5692,44 @@
           "resultat": {
             "$ref": "#/components/schemas/DiscriminantSession",
             "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
+      "SignalementRecuDto": {
+        "type": "object",
+        "description": "Issue du signalement.",
+        "required": [
+          "recu",
+          "masquage_automatique"
+        ],
+        "properties": {
+          "masquage_automatique": {
+            "type": "boolean",
+            "description": "CE signalement a déclenché le masquage automatique (FR-040)."
+          },
+          "recu": {
+            "type": "boolean",
+            "description": "Reçu (vrai aussi pour un rejeu — même réponse, rien recompté)."
+          }
+        }
+      },
+      "SignalerRuptureDto": {
+        "type": "object",
+        "description": "Corps du signalement.",
+        "required": [
+          "article_id",
+          "horodatage_local"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Article introuvable sur place."
+          },
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage LOCAL de l'appareil (file hors-ligne — FR-039)."
           }
         }
       },

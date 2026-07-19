@@ -69,6 +69,7 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**actionBoutiqueAdmin**](doc/AdminApi.md#actionboutiqueadmin) | **POST** /admin/prestataires/{id}/boutique/action | Geste de boutique pour le compte du prestataire (source admin).
 [*AdminApi*](doc/AdminApi.md) | [**agreerPrestataire**](doc/AdminApi.md#agreerprestataire) | **POST** /admin/prestataires/{id}/agrement | Agrée un prospect : la fiche devient servie et commandable, l&#39;identité de plaque est créée au premier passage, l&#39;activation de catégorie recalculée.
 [*AdminApi*](doc/AdminApi.md) | [**ajouterPhoto**](doc/AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
+[*AdminApi*](doc/AdminApi.md) | [**basculerDisponibiliteAdmin**](doc/AdminApi.md#basculerdisponibiliteadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité (source admin — la SEULE à lever une rupture admin, FR-041).
 [*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
 [*AdminApi*](doc/AdminApi.md) | [**consulterPrestataireAdmin**](doc/AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
 [*AdminApi*](doc/AdminApi.md) | [**corrigerPrestataire**](doc/AdminApi.md#corrigerprestataire) | **POST** /admin/prestataires/{id}/correction | Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et historique intacts ; les DEUX compteurs sont recalculés dans la même transaction (FR-056).
@@ -94,6 +95,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
 [*MoiApi*](doc/MoiApi.md) | [**mesAdresses**](doc/MoiApi.md#mesadresses) | **GET** /moi/adresses | Adresses enregistrées du compte courant (FR-021).
@@ -109,6 +111,7 @@ Class | Method | HTTP request | Description
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
+[*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
 [*VendeurApi*](doc/VendeurApi.md) | [**maBoutique**](doc/VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
 [*VendeurApi*](doc/VendeurApi.md) | [**mesArticles**](doc/VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
@@ -132,6 +135,7 @@ Class | Method | HTTP request | Description
  - [AppareilDto](doc/AppareilDto.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
+ - [BasculeDisponibiliteDto](doc/BasculeDisponibiliteDto.md)
  - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
@@ -176,6 +180,8 @@ Class | Method | HTTP request | Description
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SignalementRecuDto](doc/SignalementRecuDto.md)
+ - [SignalerRuptureDto](doc/SignalerRuptureDto.md)
  - [SiteAdminDto](doc/SiteAdminDto.md)
  - [SiteAdminVueDto](doc/SiteAdminVueDto.md)
  - [SourceBascule](doc/SourceBascule.md)

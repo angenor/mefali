@@ -11,6 +11,7 @@ doc/AppareilDto.md
 doc/ArticlePublic.md
 doc/ArticleVendeur.md
 doc/AuthApi.md
+doc/BasculeDisponibiliteDto.md
 doc/BoutiqueVendeur.md
 doc/CategorieDto.md
 doc/CharteAdminDto.md
@@ -20,6 +21,7 @@ doc/ConsentementRequis.md
 doc/CorpsActionBoutique.md
 doc/CorpsForcage.md
 doc/CorrigerDto.md
+doc/CoursierApi.md
 doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionRole.md
@@ -57,6 +59,8 @@ doc/ResolutionPlaque.md
 doc/ResultatVerification.md
 doc/SessionAppareil.md
 doc/SessionOuverte.md
+doc/SignalementRecuDto.md
+doc/SignalerRuptureDto.md
 doc/SiteAdminDto.md
 doc/SiteAdminVueDto.md
 doc/SocleApi.md
@@ -73,6 +77,7 @@ lib/mefali_api_client.dart
 lib/src/api.dart
 lib/src/api/admin_api.dart
 lib/src/api/auth_api.dart
+lib/src/api/coursier_api.dart
 lib/src/api/moi_api.dart
 lib/src/api/prestataires_api.dart
 lib/src/api/socle_api.dart
@@ -93,6 +98,7 @@ lib/src/model/affichage_rupture.dart
 lib/src/model/appareil_dto.dart
 lib/src/model/article_public.dart
 lib/src/model/article_vendeur.dart
+lib/src/model/bascule_disponibilite_dto.dart
 lib/src/model/boutique_vendeur.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/charte_admin_dto.dart
@@ -138,6 +144,8 @@ lib/src/model/resolution_plaque.dart
 lib/src/model/resultat_verification.dart
 lib/src/model/session_appareil.dart
 lib/src/model/session_ouverte.dart
+lib/src/model/signalement_recu_dto.dart
+lib/src/model/signaler_rupture_dto.dart
 lib/src/model/site_admin_dto.dart
 lib/src/model/site_admin_vue_dto.dart
 lib/src/model/source_bascule.dart
@@ -149,5 +157,7 @@ lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/corriger_dto_test.dart
-test/suspendre_dto_test.dart
+test/bascule_disponibilite_dto_test.dart
+test/coursier_api_test.dart
+test/signalement_recu_dto_test.dart
+test/signaler_rupture_dto_test.dart

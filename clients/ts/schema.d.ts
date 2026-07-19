@@ -145,6 +145,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/articles/{article_id}/disponibilite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bascule la disponibilité (source admin — la SEULE à lever une rupture
+         *     admin, FR-041).
+         */
+        post: operations["basculer_disponibilite_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/articles/{article_id}/photo": {
         parameters: {
             query?: never;
@@ -513,6 +533,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/coursier/signalements-rupture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signale un article introuvable — REFUSÉ (et compté nulle part) sans
+         *     commande active comportant un arrêt chez ce prestataire (FR-038).
+         */
+        post: operations["signaler_rupture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -742,6 +782,23 @@ export interface paths {
         /** Modifie nom / prix / prix barré / étiquette (fiche article V2). */
         put: operations["modifier_article"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/articles/{article_id}/disponibilite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bascule la disponibilité en UN geste (source vendeur — FR-037). */
+        post: operations["basculer_disponibilite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -996,6 +1053,11 @@ export interface components {
             /** @description Rupture posée par l'Admin — la bascule vendeur sera refusée (FR-041). */
             rupture_admin: boolean;
             source_derniere_bascule?: null | components["schemas"]["SourceBascule"];
+        };
+        /** @description Corps de la bascule. */
+        BasculeDisponibiliteDto: {
+            /** @description `false` = rupture, `true` = retour en vente. */
+            disponible: boolean;
         };
         /** @description Données de l'écran V1 (FR-044). */
         BoutiqueVendeur: {
@@ -1696,6 +1758,26 @@ export interface components {
             /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
             resultat: components["schemas"]["DiscriminantSession"];
         };
+        /** @description Issue du signalement. */
+        SignalementRecuDto: {
+            /** @description CE signalement a déclenché le masquage automatique (FR-040). */
+            masquage_automatique: boolean;
+            /** @description Reçu (vrai aussi pour un rejeu — même réponse, rien recompté). */
+            recu: boolean;
+        };
+        /** @description Corps du signalement. */
+        SignalerRuptureDto: {
+            /**
+             * Format: uuid
+             * @description Article introuvable sur place.
+             */
+            article_id: string;
+            /**
+             * Format: date-time
+             * @description Horodatage LOCAL de l'appareil (file hors-ligne — FR-039).
+             */
+            horodatage_local: string;
+        };
         /**
          * @description Corps de `PUT /admin/prestataires/{id}/site` — upsert du site UNIQUE
          *     (FR-019 : aucune sélection de site n'existe nulle part).
@@ -2385,6 +2467,62 @@ export interface operations {
             };
             /** @description Prix barré qui deviendrait ≤ prix : échec explicite. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    basculer_disponibilite_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BasculeDisponibiliteDto"];
+            };
+        };
+        responses: {
+            /** @description Basculé (source admin). Un article mis en rupture par l'Admin n'est remis en vente QUE par l'Admin. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3457,6 +3595,69 @@ export interface operations {
             };
         };
     };
+    signaler_rupture: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID généré CÔTÉ CLIENT — devient l'identifiant du signalement, rejeu réseau idempotent (FR-039). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalerRuptureDto"];
+            };
+        };
+        responses: {
+            /** @description Accepté (ou rejeu — même réponse). Deux coursiers DISTINCTS dans la fenêtre masquent l'article automatiquement (FR-040) ; les signalements reçus restent comptés après une remise en vente (FR-041). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalementRecuDto"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucune commande active éligible (port CommandesActives) — refusé, compté NULLE PART. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré du catalogue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description En-tête d'idempotence absent ou corps invalide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -4206,6 +4407,71 @@ export interface operations {
             };
             /** @description Prix barré qui deviendrait ≤ prix : l'opération ÉCHOUE, la promotion n'est pas retirée en silence (FR-023). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    basculer_disponibilite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+                /** @description Article. */
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BasculeDisponibiliteDto"];
+            };
+        };
+        responses: {
+            /** @description Basculé — source et auteur tracés, événement `article.mis_en_rupture`/`article.remis_en_vente` émis (FR-043). Les signalements coursier déjà reçus RESTENT comptés : un signalement éligible suivant re-masque immédiatement (FR-041). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleVendeur"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Article inconnu ou retiré. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rupture posée par l'Admin — seule une remise ADMIN est acceptée (FR-041). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

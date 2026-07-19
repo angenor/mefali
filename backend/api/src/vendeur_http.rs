@@ -462,3 +462,59 @@ pub async fn modifier_horaires(
     let boutique = depot.boutique_vendeur(prestataire).await?;
     Ok(HttpResponse::Ok().json(BoutiqueVendeurDto::from(boutique)))
 }
+
+// ── Disponibilité (VND-04 — bascule En stock / Rupture, écran V2) ──────────
+
+/// Corps de la bascule.
+#[derive(Debug, serde::Deserialize, utoipa::ToSchema)]
+pub struct BasculeDisponibiliteDto {
+    /// `false` = rupture, `true` = retour en vente.
+    pub disponible: bool,
+}
+
+/// Bascule la disponibilité en UN geste (source vendeur — FR-037).
+#[utoipa::path(
+    post,
+    path = "/vendeur/prestataires/{id}/articles/{article_id}/disponibilite",
+    tag = "vendeur",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire piloté."),
+        ("article_id" = Uuid, Path, description = "Article."),
+    ),
+    request_body = BasculeDisponibiliteDto,
+    responses(
+        (status = 200, description = "Basculé — source et auteur tracés, événement \
+         `article.mis_en_rupture`/`article.remis_en_vente` émis (FR-043). Les signalements \
+         coursier déjà reçus RESTENT comptés : un signalement éligible suivant re-masque \
+         immédiatement (FR-041).", body = ArticleVendeurDto),
+        (status = 409, description = "Rupture posée par l'Admin — seule une remise ADMIN est \
+         acceptée (FR-041).", body = ErreurApiDto),
+        (status = 404, description = "Article inconnu ou retiré.", body = ErreurApiDto),
+        (status = 403, description = "Refus de pilotage.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/vendeur/prestataires/{id}/articles/{article_id}/disponibilite")]
+pub async fn basculer_disponibilite(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    corps: web::Json<BasculeDisponibiliteDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    let (prestataire, article) = chemin.into_inner();
+    exiger_pilotage(&auth, &depot, prestataire).await?;
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let article = depot
+        .basculer_disponibilite(
+            &mut tx,
+            prestataire,
+            article,
+            corps.disponible,
+            SourceBascule::Vendeur,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok().json(article_vendeur_dto(&depot, article).await?))
+}

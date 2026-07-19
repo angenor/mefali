@@ -22,6 +22,7 @@ import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/article_vendeur.dart';
+import 'package:mefali_api_client/src/model/bascule_disponibilite_dto.dart';
 import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
@@ -66,6 +67,8 @@ import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
+import 'package:mefali_api_client/src/model/signaler_rupture_dto.dart';
 import 'package:mefali_api_client/src/model/site_admin_dto.dart';
 import 'package:mefali_api_client/src/model/site_admin_vue_dto.dart';
 import 'package:mefali_api_client/src/model/source_bascule.dart';
@@ -87,6 +90,7 @@ part 'serializers.g.dart';
   AppareilDto,
   ArticlePublic,
   ArticleVendeur,
+  BasculeDisponibiliteDto,
   BoutiqueVendeur,
   CategorieDto,
   CharteAdminDto,
@@ -131,6 +135,8 @@ part 'serializers.g.dart';
   ResultatVerification,
   SessionAppareil,
   SessionOuverte,
+  SignalementRecuDto,
+  SignalerRuptureDto,
   SiteAdminDto,
   SiteAdminVueDto,
   SourceBascule,

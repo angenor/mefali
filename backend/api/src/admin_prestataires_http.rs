@@ -1255,3 +1255,49 @@ pub async fn corriger_prestataire(
     tx.commit().await.map_err(sql)?;
     Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
 }
+
+/// Bascule la disponibilité (source admin — la SEULE à lever une rupture
+/// admin, FR-041).
+#[utoipa::path(
+    post,
+    path = "/admin/prestataires/{id}/articles/{article_id}/disponibilite",
+    tag = "admin",
+    params(
+        ("id" = Uuid, Path, description = "Prestataire."),
+        ("article_id" = Uuid, Path, description = "Article."),
+    ),
+    request_body = crate::vendeur_http::BasculeDisponibiliteDto,
+    responses(
+        (status = 200, description = "Basculé (source admin). Un article mis en rupture par \
+         l'Admin n'est remis en vente QUE par l'Admin.",
+         body = crate::prestataires_http::ArticleVendeurDto),
+        (status = 404, description = "Article inconnu ou retiré.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/prestataires/{id}/articles/{article_id}/disponibilite")]
+pub async fn basculer_disponibilite_admin(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    corps: web::Json<crate::vendeur_http::BasculeDisponibiliteDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let (prestataire, article) = chemin.into_inner();
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    let article = depot
+        .basculer_disponibilite(
+            &mut tx,
+            prestataire,
+            article,
+            corps.disponible,
+            prestataires::SourceBascule::Admin,
+            auth.compte_id,
+        )
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(HttpResponse::Ok()
+        .json(crate::prestataires_http::article_vendeur_dto(&depot, article).await?))
+}

@@ -11,6 +11,7 @@ import 'package:mefali_api_client/src/auth/bearer_auth.dart';
 import 'package:mefali_api_client/src/auth/oauth.dart';
 import 'package:mefali_api_client/src/api/admin_api.dart';
 import 'package:mefali_api_client/src/api/auth_api.dart';
+import 'package:mefali_api_client/src/api/coursier_api.dart';
 import 'package:mefali_api_client/src/api/moi_api.dart';
 import 'package:mefali_api_client/src/api/prestataires_api.dart';
 import 'package:mefali_api_client/src/api/socle_api.dart';
@@ -121,6 +122,12 @@ class MefaliApiClient {
   /// by doing that all interceptors will not be executed
   AuthApi getAuthApi() {
     return AuthApi(dio, serializers);
+  }
+
+  /// Get CoursierApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CoursierApi getCoursierApi() {
+    return CoursierApi(dio, serializers);
   }
 
   /// Get MoiApi instance, base route and serializer can be overridden by a given but be careful,

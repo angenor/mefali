@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**actionBoutiqueAdmin**](AdminApi.md#actionboutiqueadmin) | **POST** /admin/prestataires/{id}/boutique/action | Geste de boutique pour le compte du prestataire (source admin).
 [**agreerPrestataire**](AdminApi.md#agreerprestataire) | **POST** /admin/prestataires/{id}/agrement | Agrée un prospect : la fiche devient servie et commandable, l&#39;identité de plaque est créée au premier passage, l&#39;activation de catégorie recalculée.
 [**ajouterPhoto**](AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
+[**basculerDisponibiliteAdmin**](AdminApi.md#basculerdisponibiliteadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité (source admin — la SEULE à lever une rupture admin, FR-041).
 [**consulterDossierCoursier**](AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
 [**consulterPrestataireAdmin**](AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
 [**corrigerPrestataire**](AdminApi.md#corrigerprestataire) | **POST** /admin/prestataires/{id}/correction | Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et historique intacts ; les DEUX compteurs sont recalculés dans la même transaction (FR-056).
@@ -157,6 +158,51 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: multipart/form-data
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **basculerDisponibiliteAdmin**
+> ArticleVendeur basculerDisponibiliteAdmin(id, articleId, basculeDisponibiliteDto)
+
+Bascule la disponibilité (source admin — la SEULE à lever une rupture admin, FR-041).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final String articleId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Article.
+final BasculeDisponibiliteDto basculeDisponibiliteDto = ; // BasculeDisponibiliteDto | 
+
+try {
+    final response = api.basculerDisponibiliteAdmin(id, articleId, basculeDisponibiliteDto);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->basculerDisponibiliteAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **articleId** | **String**| Article. | 
+ **basculeDisponibiliteDto** | [**BasculeDisponibiliteDto**](BasculeDisponibiliteDto.md)|  | 
+
+### Return type
+
+[**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
