@@ -48,13 +48,14 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 
 
 final api = MefaliApiClient().getAdminApi();
-final String compteId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Coursier concerné.
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final CorpsActionBoutique corpsActionBoutique = ; // CorpsActionBoutique | 
 
 try {
-    final response = await api.consulterDossierCoursier(compteId);
+    final response = await api.actionBoutiqueAdmin(id, corpsActionBoutique);
     print(response);
 } on DioException catch (e) {
-    print("Exception when calling AdminApi->consulterDossierCoursier: $e\n");
+    print("Exception when calling AdminApi->actionBoutiqueAdmin: $e\n");
 }
 
 ```
@@ -65,14 +66,36 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AdminApi*](doc/AdminApi.md) | [**actionBoutiqueAdmin**](doc/AdminApi.md#actionboutiqueadmin) | **POST** /admin/prestataires/{id}/boutique/action | Geste de boutique pour le compte du prestataire (source admin).
+[*AdminApi*](doc/AdminApi.md) | [**agreerPrestataire**](doc/AdminApi.md#agreerprestataire) | **POST** /admin/prestataires/{id}/agrement | Agrée un prospect : la fiche devient servie et commandable, l&#39;identité de plaque est créée au premier passage, l&#39;activation de catégorie recalculée.
+[*AdminApi*](doc/AdminApi.md) | [**ajouterPhoto**](doc/AdminApi.md#ajouterphoto) | **POST** /admin/prestataires/{id}/photos | Ajoute une photo de fiche.
+[*AdminApi*](doc/AdminApi.md) | [**basculerDisponibiliteAdmin**](doc/AdminApi.md#basculerdisponibiliteadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité (source admin — la SEULE à lever une rupture admin, FR-041).
 [*AdminApi*](doc/AdminApi.md) | [**consulterDossierCoursier**](doc/AdminApi.md#consulterdossiercoursier) | **GET** /admin/comptes/{compte_id}/dossier-coursier | Dossier complet d&#39;un coursier, pièce lisible comprise (FR-017 scénario 2).
+[*AdminApi*](doc/AdminApi.md) | [**consulterPrestataireAdmin**](doc/AdminApi.md#consulterprestataireadmin) | **GET** /admin/prestataires/{id} | Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).
+[*AdminApi*](doc/AdminApi.md) | [**corrigerPrestataire**](doc/AdminApi.md#corrigerprestataire) | **POST** /admin/prestataires/{id}/correction | Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et historique intacts ; les DEUX compteurs sont recalculés dans la même transaction (FR-056).
+[*AdminApi*](doc/AdminApi.md) | [**creerArticleAdmin**](doc/AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
+[*AdminApi*](doc/AdminApi.md) | [**creerPrestataire**](doc/AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
+[*AdminApi*](doc/AdminApi.md) | [**definirSite**](doc/AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
+[*AdminApi*](doc/AdminApi.md) | [**deposerCharte**](doc/AdminApi.md#deposercharte) | **POST** /admin/prestataires/{id}/charte | Dépose la charte signée scannée — condition NÉCESSAIRE de l&#39;agrément.
+[*AdminApi*](doc/AdminApi.md) | [**detacherCompte**](doc/AdminApi.md#detachercompte) | **DELETE** /admin/prestataires/{id}/rattachements/{compte_id} | Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
 [*AdminApi*](doc/AdminApi.md) | [**listerDossiersCoursier**](doc/AdminApi.md#listerdossierscoursier) | **GET** /admin/comptes/dossiers-coursier | Liste des dossiers coursier pour la revue admin (FR-017).
+[*AdminApi*](doc/AdminApi.md) | [**listerPrestataires**](doc/AdminApi.md#listerprestataires) | **GET** /admin/prestataires | Liste les prestataires (filtres statut / ville / catégorie).
+[*AdminApi*](doc/AdminApi.md) | [**modifierArticleAdmin**](doc/AdminApi.md#modifierarticleadmin) | **PUT** /admin/prestataires/{id}/articles/{article_id} | Modifie un article (source admin).
+[*AdminApi*](doc/AdminApi.md) | [**modifierPrestataire**](doc/AdminApi.md#modifierprestataire) | **PUT** /admin/prestataires/{id} | Modifie la fiche (nom, contact, délai) — administrable à tout statut.
+[*AdminApi*](doc/AdminApi.md) | [**photoArticleAdmin**](doc/AdminApi.md#photoarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/photo | Photo d&#39;article (source admin).
+[*AdminApi*](doc/AdminApi.md) | [**rattacherCompte**](doc/AdminApi.md#rattachercompte) | **POST** /admin/prestataires/{id}/rattachements | Rattache un compte vérifié — attribue le rôle vendeur si absent, IDEMPOTENT (FR-007, research R11).
+[*AdminApi*](doc/AdminApi.md) | [**remettreArticleAdmin**](doc/AdminApi.md#remettrearticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue (source admin — FR-055).
+[*AdminApi*](doc/AdminApi.md) | [**retablirPrestataire**](doc/AdminApi.md#retablirprestataire) | **POST** /admin/prestataires/{id}/retablissement | Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la plaque physique n&#39;a jamais bougé (SC-003).
+[*AdminApi*](doc/AdminApi.md) | [**retirerArticleAdmin**](doc/AdminApi.md#retirerarticleadmin) | **POST** /admin/prestataires/{id}/articles/{article_id}/retrait | Retire un article du catalogue (source admin — FR-055).
+[*AdminApi*](doc/AdminApi.md) | [**supprimerPhoto**](doc/AdminApi.md#supprimerphoto) | **DELETE** /admin/prestataires/{id}/photos/{photo_id} | Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).
+[*AdminApi*](doc/AdminApi.md) | [**suspendrePrestataire**](doc/AdminApi.md#suspendreprestataire) | **POST** /admin/prestataires/{id}/suspension | Suspend un prestataire agréé : dans la seconde, fiche retirée, plus commandable, plaque invalide, actions vendeur refusées — TOUT PAR DÉRIVATION, sans action distincte (SC-002).
 [*AuthApi*](doc/AuthApi.md) | [**deconnexion**](doc/AuthApi.md#deconnexion) | **POST** /auth/deconnexion | Révoque la session courante (déconnexion locale).
 [*AuthApi*](doc/AuthApi.md) | [**demander**](doc/AuthApi.md#demander) | **POST** /auth/otp/demander | Demande l&#39;envoi d&#39;un code OTP. Réponse TOUJOURS neutre (SC-003).
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
 [*MoiApi*](doc/MoiApi.md) | [**mesAdresses**](doc/MoiApi.md#mesadresses) | **GET** /moi/adresses | Adresses enregistrées du compte courant (FR-021).
@@ -84,7 +107,20 @@ Class | Method | HTTP request | Description
 [*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
 [*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
+[*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
+[*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
+[*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
+[*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
+[*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
+[*VendeurApi*](doc/VendeurApi.md) | [**maBoutique**](doc/VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
+[*VendeurApi*](doc/VendeurApi.md) | [**mesArticles**](doc/VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
+[*VendeurApi*](doc/VendeurApi.md) | [**mesPrestataires**](doc/VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
+[*VendeurApi*](doc/VendeurApi.md) | [**modifierArticle**](doc/VendeurApi.md#modifierarticle) | **PUT** /vendeur/prestataires/{id}/articles/{article_id} | Modifie nom / prix / prix barré / étiquette (fiche article V2).
+[*VendeurApi*](doc/VendeurApi.md) | [**modifierHoraires**](doc/VendeurApi.md#modifierhoraires) | **PUT** /vendeur/prestataires/{id}/horaires | Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
+[*VendeurApi*](doc/VendeurApi.md) | [**photoArticle**](doc/VendeurApi.md#photoarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/photo | Dépose/remplace la photo de l&#39;article (multipart, ≤ 5 Mo).
+[*VendeurApi*](doc/VendeurApi.md) | [**remettreArticle**](doc/VendeurApi.md#remettrearticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue, sans ressaisie (FR-055).
+[*VendeurApi*](doc/VendeurApi.md) | [**retirerArticle**](doc/VendeurApi.md#retirerarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/retrait | Retire l&#39;article du catalogue — RÉVERSIBLE (FR-055).
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
 [*ZonesApi*](doc/ZonesApi.md) | [**forcerCategorie**](doc/ZonesApi.md#forcercategorie) | **PUT** /admin/zones/{zone_id}/categories/{categorie_slug}/forcage | Force l&#39;état d&#39;une catégorie dans une ville (ZON-02). Journalisé via outbox (categorie.forcage_change + categorie.activation_changee si bascule) dans la même transaction.
 
@@ -92,14 +128,25 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [Accepte](doc/Accepte.md)
+ - [ActionBoutiqueDto](doc/ActionBoutiqueDto.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
  - [Adresse](doc/Adresse.md)
+ - [AffichageRupture](doc/AffichageRupture.md)
  - [AppareilDto](doc/AppareilDto.md)
+ - [ArticlePublic](doc/ArticlePublic.md)
+ - [ArticleVendeur](doc/ArticleVendeur.md)
+ - [BasculeDisponibiliteDto](doc/BasculeDisponibiliteDto.md)
+ - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
  - [CategorieDto](doc/CategorieDto.md)
+ - [CharteAdminDto](doc/CharteAdminDto.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [ConsentementRequis](doc/ConsentementRequis.md)
+ - [CorpsActionBoutique](doc/CorpsActionBoutique.md)
  - [CorpsForcage](doc/CorpsForcage.md)
+ - [CorrigerDto](doc/CorrigerDto.md)
+ - [CreerArticleDto](doc/CreerArticleDto.md)
+ - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
@@ -110,16 +157,37 @@ Class | Method | HTTP request | Description
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
  - [ErreurApi](doc/ErreurApi.md)
  - [EtatCategorie](doc/EtatCategorie.md)
+ - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
+ - [FichePublique](doc/FichePublique.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [HealthResponse](doc/HealthResponse.md)
+ - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
  - [JetonsDto](doc/JetonsDto.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
+ - [ModifierArticleDto](doc/ModifierArticleDto.md)
+ - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
+ - [PhotoAdminDto](doc/PhotoAdminDto.md)
+ - [PlageDto](doc/PlageDto.md)
  - [PlateformeDto](doc/PlateformeDto.md)
+ - [PrestataireAdmin](doc/PrestataireAdmin.md)
+ - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
+ - [PrestatairePilotable](doc/PrestatairePilotable.md)
+ - [RattachementDto](doc/RattachementDto.md)
+ - [RattacherCompteDto](doc/RattacherCompteDto.md)
+ - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SignalementRecuDto](doc/SignalementRecuDto.md)
+ - [SignalerRuptureDto](doc/SignalerRuptureDto.md)
+ - [SiteAdminDto](doc/SiteAdminDto.md)
+ - [SiteAdminVueDto](doc/SiteAdminVueDto.md)
+ - [SourceBascule](doc/SourceBascule.md)
+ - [StatutBoutique](doc/StatutBoutique.md)
+ - [StatutPrestataire](doc/StatutPrestataire.md)
+ - [SuspendreDto](doc/SuspendreDto.md)
  - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)
  - [VerificationOtp](doc/VerificationOtp.md)

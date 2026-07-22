@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.prix_fige\n                 (id, article_id, prix_unites, devise, prix_barre_unites)\n             VALUES ($1, $2, $3, $4, $5)\n             RETURNING fige_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "fige_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "fige_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "df66920c0df0e628002360d4a99a0b157339d5420e2ea92bdcb16d2f90e3d48e"
+}

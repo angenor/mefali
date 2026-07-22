@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM prestataires.photo_prestataire\n             WHERE id = $1 AND prestataire_id = $2\n             RETURNING cle_objet",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.photo_prestataire",
+            "name": "cle_objet"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "af5371be1e0e7d4466d5aa291f6fef439fe00c8af5de209f71bb34c87f36fd83"
+}

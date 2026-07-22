@@ -945,7 +945,8 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(comptes, 2, "l'admin du seed + le nouveau — aucun doublon");
+        // 3 : l'admin (seed 20) + Kofi (seed 30, cycle 005) + le nouveau.
+        assert_eq!(comptes, 3, "les comptes du seed + le nouveau — aucun doublon");
     }
 
     /// SC-003 — `/auth/otp/demander` : numéro INSCRIT et numéro INCONNU
@@ -1089,7 +1090,8 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(comptes, 1, "seul l'admin du seed — aucun compte créé");
+        // 2 : admin (seed 20) + Kofi (seed 30) — AUCUN compte créé en plus.
+        assert_eq!(comptes, 2, "seuls les comptes du seed — aucun compte créé");
     }
 
     /// R3 — jeton d'inscription rejoué ou inventé → 401.

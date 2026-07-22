@@ -19,7 +19,7 @@ use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::Client;
 use chrono::Utc;
 
-use comptes::{DepotObjets, ErreurObjets, UrlPresignee};
+use socle::{DepotObjets, ErreurObjets, UrlPresignee};
 
 /// Fournisseur d'identifiants : les clés viennent du `.env` du VPS
 /// (constitution VIII) — jamais de chaîne de credentials AWS implicite, qui

@@ -21,7 +21,8 @@ zéro doublon (data-model.md §3).
 | `00_demo_marker.sql` | Marqueur du jeu de démo | socle |
 | `10_zones_tiassale.sql` | CI > Tiassalé, 8 transports, 6 catégories, devise/drapeaux/seuils, 6 activations (UUID fixes) | ZON |
 | `20_comptes.sql` | Premier admin (UUID fixe, `client`+`admin` valides) + paramètres de zone du module : indicatif par défaut, rétention du repère vocal, durée max de note vocale, version ARTCI | CPT |
-| `30_vendeurs.sql`, `35_articles.sql` | Vendeurs agréés + catalogues | VND *(à venir)* |
+| `30_prestataires.sql` | 3 prestataires de Tiassalé (Tantie Affoué agréée sans compte, Kofi agréé + compte rattaché, un prospect complet) : sites, horaires, chartes, plaques et activations figées (UUID/jetons/horodatages fixes) | VND |
+| `35_articles.sql` | Catalogues + disponibilités par site (attiéké, garba, bissap, promo Kofi, un article en rupture) | VND |
 | `40_tarification.sql` | Grilles de tarif | TRF *(à venir)* |
 
 Chaque cycle **ajoute ses fichiers** ici ; le runner ne change pas.

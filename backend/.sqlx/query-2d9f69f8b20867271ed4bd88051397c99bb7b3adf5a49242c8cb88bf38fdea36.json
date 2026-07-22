@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.prestataire\n             SET statut = 'agree', statut_decide_par = $2, statut_decide_le = now(),\n                 statut_motif = NULL,\n                 jeton_plaque = COALESCE($3, jeton_plaque),\n                 code_secours = COALESCE($4, code_secours),\n                 modifie_le = now()\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2d9f69f8b20867271ed4bd88051397c99bb7b3adf5a49242c8cb88bf38fdea36"
+}

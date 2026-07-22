@@ -15,14 +15,25 @@ import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
 import 'package:mefali_api_client/src/model/accepte.dart';
+import 'package:mefali_api_client/src/model/action_boutique_dto.dart';
 import 'package:mefali_api_client/src/model/action_role_dto.dart';
 import 'package:mefali_api_client/src/model/adresse.dart';
+import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
+import 'package:mefali_api_client/src/model/article_public.dart';
+import 'package:mefali_api_client/src/model/article_vendeur.dart';
+import 'package:mefali_api_client/src/model/bascule_disponibilite_dto.dart';
+import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
+import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/consentement_requis.dart';
+import 'package:mefali_api_client/src/model/corps_action_boutique.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
+import 'package:mefali_api_client/src/model/corriger_dto.dart';
+import 'package:mefali_api_client/src/model/creer_article_dto.dart';
+import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
@@ -33,16 +44,37 @@ import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
+import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
+import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
+import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
+import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
+import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/photo_admin_dto.dart';
+import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
+import 'package:mefali_api_client/src/model/prestataire_admin.dart';
+import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
+import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
+import 'package:mefali_api_client/src/model/rattachement_dto.dart';
+import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
+import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
+import 'package:mefali_api_client/src/model/signaler_rupture_dto.dart';
+import 'package:mefali_api_client/src/model/site_admin_dto.dart';
+import 'package:mefali_api_client/src/model/site_admin_vue_dto.dart';
+import 'package:mefali_api_client/src/model/source_bascule.dart';
+import 'package:mefali_api_client/src/model/statut_boutique.dart';
+import 'package:mefali_api_client/src/model/statut_prestataire.dart';
+import 'package:mefali_api_client/src/model/suspendre_dto.dart';
 import 'package:mefali_api_client/src/model/url_presignee.dart';
 import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
@@ -51,14 +83,25 @@ part 'serializers.g.dart';
 
 @SerializersFor([
   Accepte,
+  ActionBoutiqueDto,
   ActionRoleDto,
   Adresse,
+  AffichageRupture,
   AppareilDto,
+  ArticlePublic,
+  ArticleVendeur,
+  BasculeDisponibiliteDto,
+  BoutiqueVendeur,
   CategorieDto,
+  CharteAdminDto,
   CompteMoi,
   ConfigZone,
   ConsentementRequis,
+  CorpsActionBoutique,
   CorpsForcage,
+  CorrigerDto,
+  CreerArticleDto,
+  CreerPrestataireDto,
   DecisionRole,
   DemandeOtp,
   DemandeRafraichissement,
@@ -69,16 +112,37 @@ part 'serializers.g.dart';
   DossierCoursierAdmin,
   ErreurApi,
   EtatCategorie,
+  EtatEffectifBoutique,
   EtatRoleDto,
+  FichePublique,
   ForcageDto,
   HealthResponse,
+  HorairesSemaineDto,
   Inscription,
   JetonsDto,
   ModifierAdresse,
+  ModifierArticleDto,
+  ModifierPrestataireDto,
+  PhotoAdminDto,
+  PlageDto,
   PlateformeDto,
+  PrestataireAdmin,
+  PrestataireAdminDetail,
+  PrestatairePilotable,
+  RattachementDto,
+  RattacherCompteDto,
+  ResolutionPlaque,
   ResultatVerification,
   SessionAppareil,
   SessionOuverte,
+  SignalementRecuDto,
+  SignalerRuptureDto,
+  SiteAdminDto,
+  SiteAdminVueDto,
+  SourceBascule,
+  StatutBoutique,
+  StatutPrestataire,
+  SuspendreDto,
   UrlPresignee,
   VehiculeDeclare,
   VerificationOtp,
@@ -89,12 +153,24 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<Adresse>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PrestataireAdmin)]),
+        () => ListBuilder<PrestataireAdmin>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(ArticleVendeur)]),
+        () => ListBuilder<ArticleVendeur>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(SessionAppareil)]),
         () => ListBuilder<SessionAppareil>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(String)]),
         () => ListBuilder<String>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PrestatairePilotable)]),
+        () => ListBuilder<PrestatairePilotable>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(DossierCoursierAdmin)]),

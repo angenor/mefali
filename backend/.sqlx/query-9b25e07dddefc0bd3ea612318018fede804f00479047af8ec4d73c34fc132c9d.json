@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.charte_signee\n                 (id, prestataire_id, cle_objet, version_charte, signee_le)\n             VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9b25e07dddefc0bd3ea612318018fede804f00479047af8ec4d73c34fc132c9d"
+}

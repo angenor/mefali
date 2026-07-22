@@ -4,6 +4,7 @@
 //! `/health`, Swagger UI en dev (absente en production, constitution VIII),
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
+pub mod admin_prestataires_http;
 pub mod adresses_http;
 pub mod auth_http;
 pub mod comptes_http;
@@ -12,6 +13,9 @@ pub mod dev_http;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
+pub mod prestataires_http;
+pub mod signalements_http;
+pub mod vendeur_http;
 pub mod zones_http;
 
 use std::sync::Arc;
@@ -50,6 +54,41 @@ pub fn api_openapi() -> OpenApi {
         .service(adresses_http::supprimer_adresse)
         .service(adresses_http::ecouter_repere_vocal)
         .service(adresses_http::remplacer_repere_vocal)
+        .service(admin_prestataires_http::creer_prestataire)
+        .service(admin_prestataires_http::lister_prestataires)
+        .service(admin_prestataires_http::consulter_prestataire_admin)
+        .service(admin_prestataires_http::modifier_prestataire)
+        .service(admin_prestataires_http::ajouter_photo)
+        .service(admin_prestataires_http::supprimer_photo)
+        .service(admin_prestataires_http::deposer_charte)
+        .service(admin_prestataires_http::definir_site)
+        .service(admin_prestataires_http::agreer_prestataire)
+        .service(admin_prestataires_http::rattacher_compte)
+        .service(admin_prestataires_http::detacher_compte)
+        .service(vendeur_http::mes_prestataires)
+        .service(vendeur_http::mes_articles)
+        .service(vendeur_http::creer_article)
+        .service(vendeur_http::modifier_article)
+        .service(vendeur_http::photo_article)
+        .service(vendeur_http::retirer_article)
+        .service(vendeur_http::remettre_article)
+        .service(admin_prestataires_http::creer_article_admin)
+        .service(admin_prestataires_http::modifier_article_admin)
+        .service(admin_prestataires_http::photo_article_admin)
+        .service(admin_prestataires_http::retirer_article_admin)
+        .service(admin_prestataires_http::remettre_article_admin)
+        .service(vendeur_http::ma_boutique)
+        .service(vendeur_http::action_boutique)
+        .service(vendeur_http::modifier_horaires)
+        .service(admin_prestataires_http::action_boutique_admin)
+        .service(admin_prestataires_http::suspendre_prestataire)
+        .service(admin_prestataires_http::retablir_prestataire)
+        .service(admin_prestataires_http::corriger_prestataire)
+        .service(vendeur_http::basculer_disponibilite)
+        .service(admin_prestataires_http::basculer_disponibilite_admin)
+        .service(signalements_http::signaler_rupture)
+        .service(prestataires_http::consulter_prestataire)
+        .service(prestataires_http::resoudre_plaque)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -177,6 +216,7 @@ pub async fn run() -> std::io::Result<()> {
     // silencieusement, une configuration PRÉSENTE mais invalide (JWT_SECRET
     // trop court) échoue au démarrage — `socle::Config::from_env` la refuse.
     let mut comptes_opt: Option<PgComptes> = None;
+    let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -192,13 +232,15 @@ pub async fn run() -> std::io::Result<()> {
 
                 let ephemere = infra_redis::RedisEphemere::nouveau(&config.redis_url)
                     .map_err(|e| std::io::Error::other(format!("Redis : {e}")))?;
-                let objets = infra_s3::S3Objets::nouveau(
+                // Port PARTAGÉ entre comptes (pièces, repères vocaux) et
+                // prestataires (photos, chartes) — un seul client S3.
+                let objets: Arc<dyn socle::DepotObjets> = Arc::new(infra_s3::S3Objets::nouveau(
                     &config.s3_endpoint,
                     &config.s3_access_key,
                     &config.s3_secret_key,
                     &config.s3_bucket,
                     REGION_S3,
-                );
+                ));
                 // Le type CONCRET est retenu à côté du port : `EnvoiSms` ne sait
                 // qu'envoyer, et `/dev/otp` doit RELIRE le journal. `Arc` partagé
                 // — les deux poignées désignent le même journal, sinon la surface
@@ -220,11 +262,24 @@ pub async fn run() -> std::io::Result<()> {
                     pool.clone(),
                     Arc::new(ephemere),
                     sms,
-                    Arc::new(objets),
+                    objets.clone(),
                     Arc::from(config.jwt_secret.as_bytes()),
                 );
                 tokio::spawn(job_purge_reperes(depot.clone()));
                 eprintln!("job de purge des repères vocaux démarré (quotidien)");
+                // PgPrestataires — composition racine du domaine prestataires
+                // (cycle 005) : réutilise le dépôt comptes (rôle vendeur au
+                // rattachement, R11), le MÊME port objets, et le bouchon
+                // CommandesActives — aucune commande active n'existe avant le
+                // cycle CMD, donc aucun signalement coursier n'est recevable
+                // (R5, exact et voulu).
+                prestataires_opt = Some(prestataires::PgPrestataires::new(
+                    pool.clone(),
+                    depot.clone(),
+                    objets,
+                    Arc::new(prestataires::AucuneCommandeActive),
+                    Arc::from(config.plaque_secret.as_bytes()),
+                ));
                 comptes_opt = Some(depot);
                 Some(pool)
             }
@@ -278,6 +333,41 @@ pub async fn run() -> std::io::Result<()> {
             .service(adresses_http::supprimer_adresse)
             .service(adresses_http::ecouter_repere_vocal)
             .service(adresses_http::remplacer_repere_vocal)
+            .service(admin_prestataires_http::creer_prestataire)
+        .service(admin_prestataires_http::lister_prestataires)
+        .service(admin_prestataires_http::consulter_prestataire_admin)
+        .service(admin_prestataires_http::modifier_prestataire)
+        .service(admin_prestataires_http::ajouter_photo)
+        .service(admin_prestataires_http::supprimer_photo)
+        .service(admin_prestataires_http::deposer_charte)
+        .service(admin_prestataires_http::definir_site)
+        .service(admin_prestataires_http::agreer_prestataire)
+        .service(admin_prestataires_http::rattacher_compte)
+        .service(admin_prestataires_http::detacher_compte)
+        .service(vendeur_http::mes_prestataires)
+        .service(vendeur_http::mes_articles)
+        .service(vendeur_http::creer_article)
+        .service(vendeur_http::modifier_article)
+        .service(vendeur_http::photo_article)
+        .service(vendeur_http::retirer_article)
+        .service(vendeur_http::remettre_article)
+        .service(admin_prestataires_http::creer_article_admin)
+        .service(admin_prestataires_http::modifier_article_admin)
+        .service(admin_prestataires_http::photo_article_admin)
+        .service(admin_prestataires_http::retirer_article_admin)
+        .service(admin_prestataires_http::remettre_article_admin)
+        .service(vendeur_http::ma_boutique)
+        .service(vendeur_http::action_boutique)
+        .service(vendeur_http::modifier_horaires)
+        .service(admin_prestataires_http::action_boutique_admin)
+        .service(admin_prestataires_http::suspendre_prestataire)
+        .service(admin_prestataires_http::retablir_prestataire)
+        .service(admin_prestataires_http::corriger_prestataire)
+        .service(vendeur_http::basculer_disponibilite)
+        .service(admin_prestataires_http::basculer_disponibilite_admin)
+        .service(signalements_http::signaler_rupture)
+        .service(prestataires_http::consulter_prestataire)
+            .service(prestataires_http::resoudre_plaque)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -292,6 +382,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(pool));
         }
         if let Some(depot) = comptes_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = prestataires_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
@@ -538,8 +631,11 @@ mod tests {
         assert_eq!(apres_un.2, 6, "6 catégories");
         assert_eq!(apres_un.3, 6, "6 activations Tiassalé");
         // 8 (pays, cycle 002) + 4 (pays, cycle 003 : indicatif, rétention du
-        // repère vocal, durée max de note vocale, version ARTCI) + 10 (ville).
-        assert_eq!(apres_un.4, 22, "12 (pays) + 10 (ville) paramètres");
+        // repère vocal, durée max de note vocale, version ARTCI) + 8 (pays,
+        // cycle 005 : fuseau, conservation charte, 6 affichages de rupture)
+        // + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 : seuil et
+        // fenêtre du masquage automatique).
+        assert_eq!(apres_un.4, 32, "20 (pays) + 12 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),
@@ -550,6 +646,131 @@ mod tests {
             Some(serde_json::json!(8)),
             "seuil restauration 8"
         );
+    }
+
+    /// T016 (cycle 005) — double seed prestataires → état strictement
+    /// identique (SC-012), AUCUN événement, agréés du seed prêts à être
+    /// commandables (l'ouverture effective suit l'horloge — horaires
+    /// 8 h — 19 h Abidjan, c'est voulu).
+    #[sqlx::test(migrations = "../migrations")]
+    async fn seed_prestataires_idempotent(pool: sqlx::PgPool) {
+        const TANTIE: &str = "01900000-0000-7000-8000-000000000501";
+        const JETON_TANTIE: &str =
+            "019000000000700080000000000005015eed5eed5eed5eed0123456789abcdef0123456789abcdef";
+
+        async fn compter(pool: &sqlx::PgPool, sql: &'static str) -> i64 {
+            sqlx::query_scalar(sql).fetch_one(pool).await.unwrap()
+        }
+        async fn etat(pool: &sqlx::PgPool) -> (i64, i64, i64, i64, i64, i64, i64) {
+            (
+                compter(pool, "SELECT count(*) FROM prestataires.prestataire").await,
+                compter(pool, "SELECT count(*) FROM prestataires.vendeur").await,
+                compter(pool, "SELECT count(*) FROM prestataires.site").await,
+                compter(pool, "SELECT count(*) FROM prestataires.horaire_site").await,
+                compter(pool, "SELECT count(*) FROM prestataires.charte_signee").await,
+                compter(
+                    pool,
+                    "SELECT count(*) FROM prestataires.rattachement_compte",
+                )
+                .await,
+                compter(
+                    pool,
+                    "SELECT count(*) FROM outbox.evenement WHERE entite_type IN \
+                     ('prestataire','site','charte_signee','rattachement','article',\
+                     'signalement_rupture')",
+                )
+                .await,
+            )
+        }
+
+        charger_seeds(&pool).await.unwrap();
+        let apres_un = etat(&pool).await;
+        charger_seeds(&pool).await.unwrap();
+        let apres_deux = etat(&pool).await;
+
+        assert_eq!(
+            apres_un, apres_deux,
+            "double seed → état strictement identique"
+        );
+        assert_eq!(apres_un.0, 3, "Tantie Affoué, Kofi, prospect pharmacie");
+        assert_eq!(apres_un.1, 3, "3 extensions vendeur");
+        assert_eq!(apres_un.2, 3, "un site par prestataire (FR-019)");
+        assert_eq!(apres_un.3, 18, "6 plages (lun–sam) × 3 sites");
+        assert_eq!(apres_un.4, 3, "une charte par prestataire");
+        assert_eq!(apres_un.5, 1, "seul le compte de Kofi est rattaché");
+        assert_eq!(apres_un.6, 0, "les seeds n'émettent RIEN (FR-054)");
+
+        // Commandabilité : agréé + catégorie POSÉE active (sans recalcul).
+        let objets: std::sync::Arc<dyn socle::DepotObjets> =
+            std::sync::Arc::new(socle::MemoireObjets::new());
+        let depot = prestataires::PgPrestataires::new(
+            pool.clone(),
+            PgComptes::new(
+                pool.clone(),
+                std::sync::Arc::new(comptes::MemoireEphemere::new()),
+                std::sync::Arc::new(SmsTraces::new()),
+                objets.clone(),
+                std::sync::Arc::from(&b"secret-de-test-de-32-octets-mini"[..]),
+            ),
+            objets.clone(),
+            std::sync::Arc::new(prestataires::AucuneCommandeActive),
+            std::sync::Arc::from(&b"secret-plaque-de-test-32-octets!"[..]),
+        );
+        let tantie: uuid::Uuid = TANTIE.parse().unwrap();
+        let c = depot.commandabilite(tantie).await.unwrap();
+        assert!(c.agree, "Tantie Affoué est agréée");
+        assert!(c.categorie_active, "restauration posée active (FR-054)");
+        let resolution = depot
+            .resolution_plaque(JETON_TANTIE)
+            .await
+            .unwrap()
+            .expect("jeton du seed résolu");
+        assert!(resolution.valide);
+        assert_eq!(resolution.prestataire_id, tantie);
+
+        // Catalogues (seed 35) : 3 + 3 articles, promo de Kofi, savon en
+        // rupture (grisé — servi indisponible).
+        assert_eq!(
+            compter(&pool, "SELECT count(*) FROM prestataires.article").await,
+            6
+        );
+        assert_eq!(
+            compter(
+                &pool,
+                "SELECT count(*) FROM prestataires.disponibilite_article WHERE NOT disponible",
+            )
+            .await,
+            1
+        );
+        let kofi: uuid::Uuid = "01900000-0000-7000-8000-000000000502".parse().unwrap();
+        // Les clés du seed sont des POINTEURS (les objets ne sont pas dans
+        // Garage) ; le double mémoire, plus strict que S3, refuse de présigner
+        // une clé absente — on dépose donc l'octet correspondant.
+        objets
+            .deposer(
+                &format!("prestataires/fiches/{kofi}/seed-1"),
+                vec![0xFF],
+                "image/jpeg",
+            )
+            .await
+            .unwrap();
+        let fiche = depot
+            .fiche_publique_de(kofi)
+            .await
+            .unwrap()
+            .expect("fiche de Kofi servie");
+        let alloco = fiche
+            .articles
+            .iter()
+            .find(|a| a.nom == "Alloco")
+            .expect("promo au catalogue");
+        assert_eq!((alloco.prix_unites, alloco.prix_barre_unites), (800, Some(1000)));
+        let savon = fiche
+            .articles
+            .iter()
+            .find(|a| a.nom == "Savon de Marseille")
+            .expect("rupture servie GRISÉE (mode seed)");
+        assert!(!savon.disponible);
     }
 
     /// T009 — double seed du module comptes → état strictement identique
@@ -589,8 +810,10 @@ mod tests {
             apres_un, apres_deux,
             "double seed → état strictement identique (horodatages figés compris)"
         );
-        assert_eq!(apres_un.0, 1, "le seul compte est le premier admin");
-        assert_eq!(apres_un.1, 2, "ses rôles : client + admin");
+        // 2 comptes : le premier admin (seed 20) + Kofi (seed 30, cycle 005).
+        assert_eq!(apres_un.0, 2, "premier admin + Kofi (vendeur seedé)");
+        // 4 rôles : client + admin (admin), client + vendeur (Kofi).
+        assert_eq!(apres_un.1, 4, "client+admin (401) et client+vendeur (402)");
 
         // FR-012 — c'est le seed, et lui seul, qui amorce la chaîne des admins.
         // Colonne QUALIFIÉE : tri par l'énum (client, coursier, vendeur, admin)

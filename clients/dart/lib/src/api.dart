@@ -11,8 +11,11 @@ import 'package:mefali_api_client/src/auth/bearer_auth.dart';
 import 'package:mefali_api_client/src/auth/oauth.dart';
 import 'package:mefali_api_client/src/api/admin_api.dart';
 import 'package:mefali_api_client/src/api/auth_api.dart';
+import 'package:mefali_api_client/src/api/coursier_api.dart';
 import 'package:mefali_api_client/src/api/moi_api.dart';
+import 'package:mefali_api_client/src/api/prestataires_api.dart';
 import 'package:mefali_api_client/src/api/socle_api.dart';
+import 'package:mefali_api_client/src/api/vendeur_api.dart';
 import 'package:mefali_api_client/src/api/zones_api.dart';
 
 class MefaliApiClient {
@@ -121,16 +124,34 @@ class MefaliApiClient {
     return AuthApi(dio, serializers);
   }
 
+  /// Get CoursierApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CoursierApi getCoursierApi() {
+    return CoursierApi(dio, serializers);
+  }
+
   /// Get MoiApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   MoiApi getMoiApi() {
     return MoiApi(dio, serializers);
   }
 
+  /// Get PrestatairesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  PrestatairesApi getPrestatairesApi() {
+    return PrestatairesApi(dio, serializers);
+  }
+
   /// Get SocleApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   SocleApi getSocleApi() {
     return SocleApi(dio, serializers);
+  }
+
+  /// Get VendeurApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  VendeurApi getVendeurApi() {
+    return VendeurApi(dio, serializers);
   }
 
   /// Get ZonesApi instance, base route and serializer can be overridden by a given but be careful,

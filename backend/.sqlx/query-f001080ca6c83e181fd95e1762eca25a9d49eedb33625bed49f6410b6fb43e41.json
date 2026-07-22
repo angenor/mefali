@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.vendeur (prestataire_id) VALUES ($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f001080ca6c83e181fd95e1762eca25a9d49eedb33625bed49f6410b6fb43e41"
+}

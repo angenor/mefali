@@ -12,6 +12,13 @@ Historique :
   consentement ARTCI), sessions par appareil, attributions de rôle (l'unique
   machine à états), dossier coursier, véhicules déclarés, adresses avec repère
   vocal (cycle 003, T002 ; specs/003-comptes-otp-roles/data-model.md §1–2).
+- `0004_prestataires.sql` — schéma `prestataires` : prestataire (fiche, cycle
+  de vie, identité de plaque), photos, chartes signées, sites + horaires
+  (multi-sites en provision VND-06), rattachements compte ↔ prestataire,
+  extension vendeur + articles (CHECK prix barré > prix), disponibilité par
+  site, signalements de rupture (idempotence par UUID client), prix figés,
+  plans en provision VND-07 (cycle 005, T004 ;
+  specs/005-prestataires-catalogue-vendeur/data-model.md §2–3).
 
 ⚠ Les migrations sont EMBARQUÉES dans le binaire (`sqlx::migrate!` dans
 `api::run`) : après l'ajout d'un fichier ici, reconstruire

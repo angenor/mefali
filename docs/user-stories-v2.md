@@ -465,6 +465,8 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 | Distance max de scan QR | 100 m | QRC-02 |
 | Essais code (vendeur / livraison) | 3 / 3 | QRC-04, CRS-04 |
 | Masquage auto après signalements rupture | 2 en 7 jours | VND-04 |
+| Affichage d'un article en rupture (par catégorie) | grisé | VND-04 |
+| Conservation de la charte après fin de relation | 5 ans | VND-01 |
 | Écart de prix max substitution | ±20 % | CMD-06 |
 | Validation client substitution | 60 s | CMD-06 |
 | Fallback SMS si push non accusé | 60 s | NTF-02 |

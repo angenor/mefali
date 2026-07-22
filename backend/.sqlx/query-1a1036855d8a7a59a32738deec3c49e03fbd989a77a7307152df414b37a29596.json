@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.article SET retire_le = now(), modifie_le = now()\n             WHERE id = $2 AND vendeur_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a1036855d8a7a59a32738deec3c49e03fbd989a77a7307152df414b37a29596"
+}

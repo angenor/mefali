@@ -253,6 +253,1765 @@
         ]
       }
     },
+    "/admin/prestataires": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Liste les prestataires (filtres statut / ville / catégorie).",
+        "operationId": "lister_prestataires",
+        "parameters": [
+          {
+            "name": "statut",
+            "in": "query",
+            "description": "prospect | agree | suspendu.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ville",
+            "in": "query",
+            "description": "Ville de rattachement.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "categorie",
+            "in": "query",
+            "description": "Slug de catégorie.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prestataires, plus anciens d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestataireAdmin"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Crée un prestataire (prospect) — ville de type `ville` uniquement.",
+        "operationId": "creer_prestataire",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreerPrestataireDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Fiche créée à l'état prospect, extension vendeur et plan « gratuit » posés. Émet `prestataire.cree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdmin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Zone qui n'est pas une ville, catégorie inconnue, champ vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Fiche complète (contact, GPS, plaque, chartes présignées, rattachements).",
+        "operationId": "consulter_prestataire_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vue admin complète — la SEULE surface qui serve le contact et les coordonnées du site (SC-013).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Modifie la fiche (nom, contact, délai) — administrable à tout statut.",
+        "operationId": "modifier_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierPrestataireDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Fiche mise à jour. Émet `prestataire.modifie` (noms de champs seulement — FR-052).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdmin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Champ invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/agrement": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Agrée un prospect : la fiche devient servie et commandable, l'identité de\nplaque est créée au premier passage, l'activation de catégorie recalculée.",
+        "operationId": "agreer_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire (prospect).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agréé — jeton de plaque + code de secours posés au PREMIER agrément (FR-013), compteur de la catégorie recalculé dans la même transaction (SC-010). Émet `prestataire.agree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition interdite (déjà agréé, suspendu — FR-004).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Agrément incomplet — le corps porte `manques` (identifiants stables : `photo`, `charte_signee`, `site`, `horaires` — FR-005).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Crée un article pour le compte du prestataire (source admin).",
+        "operationId": "creer_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreerArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Article créé (source admin). Émet `article.cree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré ≤ prix, montant négatif, nom vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Modifie un article (source admin).",
+        "operationId": "modifier_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Modifié. Émet `article.modifie`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré qui deviendrait ≤ prix : échec explicite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/disponibilite": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bascule la disponibilité (source admin — la SEULE à lever une rupture\nadmin, FR-041).",
+        "operationId": "basculer_disponibilite_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasculeDisponibiliteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Basculé (source admin). Un article mis en rupture par l'Admin n'est remis en vente QUE par l'Admin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré, ou prestataire encore SANS site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe (cas courant en visite terrain — le catalogue est saisi avant le GPS).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/photo": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Photo d'article (source admin).",
+        "operationId": "photo_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepotPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Photo remplacée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type refusé ou fichier trop volumineux.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/remise": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Remet un article retiré au catalogue (source admin — FR-055).",
+        "operationId": "remettre_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remis au catalogue. Émet `article.remis_au_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/articles/{article_id}/retrait": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Retire un article du catalogue (source admin — FR-055).",
+        "operationId": "retirer_article_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retiré (réversible). Émet `article.retire_du_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/boutique/action": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Geste de boutique pour le compte du prestataire (source admin).",
+        "operationId": "action_boutique_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpsActionBoutique"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "État résultant. Émet `site.statut_boutique_change` (source admin).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire ou site inconnus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Durée absente ou prolongation sans pause.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/charte": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Dépose la charte signée scannée — condition NÉCESSAIRE de l'agrément.",
+        "operationId": "deposer_charte",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DeposerCharte"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Charte déposée (0..n par prestataire — une re-signature n'écrase jamais). Émet `charte.deposee`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharteAdminDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type refusé, fichier trop volumineux, version vide ou date illisible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/correction": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Corrige catégorie et/ou ville — SANS suspendre ni ré-agréer, plaque et\nhistorique intacts ; les DEUX compteurs sont recalculés dans la même\ntransaction (FR-056).",
+        "operationId": "corriger_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrigerDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Corrigé — recalcul de l'ANCIEN couple catégorie/ville puis du NOUVEAU (l'ancienne catégorie reste active : le seuil ne joue qu'à la hausse). Émet `prestataire.corrige`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Zone qui n'est pas une ville, catégorie inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/photos": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Ajoute une photo de fiche.",
+        "operationId": "ajouter_photo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepotPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Photo déposée (clé S3 neuve), en dernière position.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoAdminDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type refusé ou fichier trop volumineux.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/photos/{photo_id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Supprime une photo de fiche (objet S3 purgé APRÈS commit — FR-026).",
+        "operationId": "supprimer_photo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "photo_id",
+            "in": "path",
+            "description": "Photo à supprimer.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Supprimée — l'objet S3 est purgé après le commit."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Photo ou prestataire inconnus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/rattachements": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Rattache un compte vérifié — attribue le rôle vendeur si absent,\nIDEMPOTENT (FR-007, research R11).",
+        "operationId": "rattacher_compte",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire AGRÉÉ.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RattacherCompteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rattaché (ou déjà rattaché — même réponse, rien rejoué). Le rôle vendeur est attribué si le compte n'en portait aucun : l'agrément vaut validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire ou compte inconnus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Prestataire non agréé — le rattachement exige l'état agree (FR-007, analyse A1).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/rattachements/{compte_id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).",
+        "operationId": "detacher_compte",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "compte_id",
+            "in": "path",
+            "description": "Compte à détacher.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Détaché. Émet `rattachement.supprime` — le rôle du compte est INTACT (aucune cascade)."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rattachement inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/retablissement": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Rétablit un suspendu : tout revient — MÊME jeton, MÊME code de secours, la\nplaque physique n'a jamais bougé (SC-003).",
+        "operationId": "retablir_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire suspendu.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rétabli — commandable dès lors que sa catégorie est active et sa boutique ouverte ; compteur recalculé. Émet `prestataire.retabli`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition interdite (pas suspendu — FR-004).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/site": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Crée ou met à jour LE site (position GPS, horaires, statut initial).",
+        "operationId": "definir_site",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteAdminDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Site en place. Un changement d'horaires émet `site.horaires_modifies` (source admin — FR-036).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Horaires invalides ou statut initial illégal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/prestataires/{id}/suspension": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Suspend un prestataire agréé : dans la seconde, fiche retirée, plus\ncommandable, plaque invalide, actions vendeur refusées — TOUT PAR\nDÉRIVATION, sans action distincte (SC-002).",
+        "operationId": "suspendre_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire agréé.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendreDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Suspendu — le rôle vendeur des comptes rattachés n'a PAS bougé (aucune cascade, FR-008). Émet `prestataire.suspendu`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestataireAdminDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition interdite (pas agréé — FR-004).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif manquant (FR-010).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
       "put": {
         "tags": [
@@ -579,6 +2338,94 @@
             "description": "Rate-limit dépassé."
           }
         }
+      }
+    },
+    "/coursier/signalements-rupture": {
+      "post": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "Signale un article introuvable — REFUSÉ (et compté nulle part) sans\ncommande active comportant un arrêt chez ce prestataire (FR-038).",
+        "operationId": "signaler_rupture",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUID généré CÔTÉ CLIENT — devient l'identifiant du signalement, rejeu réseau idempotent (FR-039).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalerRuptureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Accepté (ou rejeu — même réponse). Deux coursiers DISTINCTS dans la fenêtre masquent l'article automatiquement (FR-040) ; les signalements reçus restent comptés après une remise en vente (FR-041).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalementRecuDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Aucune commande active éligible (port CommandesActives) — refusé, compté NULLE PART.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré du catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "En-tête d'idempotence absent ou corps invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/health": {
@@ -1225,6 +3072,959 @@
           }
         ]
       }
+    },
+    "/prestataires/plaque/{jeton}": {
+      "get": {
+        "tags": [
+          "prestataires"
+        ],
+        "summary": "Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier\n(analyse C1 : seule la consultation de la fiche échappe au principe VIII).",
+        "operationId": "resoudre_plaque",
+        "parameters": [
+          {
+            "name": "jeton",
+            "in": "path",
+            "description": "Jeton signé porté par la plaque.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jeton connu — la révocation est OBSERVABLE : un prestataire suspendu rend `valide=false`, sans autre donnée (FR-016/017).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionPlaque"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Jeton inconnu ou forgé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/prestataires/{id}": {
+      "get": {
+        "tags": [
+          "prestataires"
+        ],
+        "summary": "Fiche + catalogue, lecture seule, SANS authentification — la plaque est un\ncanal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).",
+        "operationId": "consulter_prestataire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire consulté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prestataire AGRÉÉ — boutique ouverte ou fermée (fermée : catalogue en lecture seule + horaires + réouverture estimée, FR-029). Articles retirés absents ; en rupture : servis `disponible=false` si le mode est `grise`, ABSENTS si `masque` (FR-042).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FichePublique"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Réponse NEUTRE — id inconnu, prospect et suspendu sont indistinguables, sans photo ni motif (FR-017, SC-013).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate-limit par IP."
+          }
+        }
+      }
+    },
+    "/vendeur/prestataires": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Prestataires que ce compte pilote (rattachements du cycle VND).",
+        "operationId": "mes_prestataires",
+        "responses": {
+          "200": {
+            "description": "Prestataires rattachés, plus ancien rattachement d'abord — l'app pilote le premier au MVP (aucune sélection de site n'existe, FR-019).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestatairePilotable"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle vendeur requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).",
+        "operationId": "mes_articles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalogue de pilotage — les retirés en tête de leur groupe, remise possible sans ressaisie (FR-055).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ArticleVendeur"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle vendeur absent, non rattaché, ou prestataire non agréé (trois codes distincts — R11).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Ajoute un article au catalogue (V2 — « + Ajouter un article »).",
+        "operationId": "creer_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreerArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Article créé, disponible par défaut (FR-020). Émet `article.cree`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage (trois codes distincts).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré ≤ prix (FR-023), montant négatif, nom vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}": {
+      "put": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Modifie nom / prix / prix barré / étiquette (fiche article V2).",
+        "operationId": "modifier_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifierArticleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Modifié — `prix_barre_unites: null` retire la promotion EXPLICITEMENT. Un montant déjà FIGÉ ne bouge jamais (SC-005). Émet `article.modifie`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré du catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prix barré qui deviendrait ≤ prix : l'opération ÉCHOUE, la promotion n'est pas retirée en silence (FR-023).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/disponibilite": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Bascule la disponibilité en UN geste (source vendeur — FR-037).",
+        "operationId": "basculer_disponibilite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasculeDisponibiliteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Basculé — source et auteur tracés, événement `article.mis_en_rupture`/`article.remis_en_vente` émis (FR-043). Les signalements coursier déjà reçus RESTENT comptés : un signalement éligible suivant re-masque immédiatement (FR-041).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré, ou prestataire encore SANS site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rupture posée par l'Admin — seule une remise ADMIN est acceptée (FR-041).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/photo": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Dépose/remplace la photo de l'article (multipart, ≤ 5 Mo).",
+        "operationId": "photo_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepotPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Photo remplacée (clé neuve, l'ancienne purgée après commit).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu ou retiré.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type refusé ou fichier trop volumineux.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/remise": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Remet un article retiré au catalogue, sans ressaisie (FR-055).",
+        "operationId": "remettre_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remis : il revient avec son historique et sa disponibilité telle qu'elle était. Émet `article.remis_au_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/articles/{article_id}/retrait": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Retire l'article du catalogue — RÉVERSIBLE (FR-055).",
+        "operationId": "retirer_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "Article.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retiré : plus servi, plus commandable, plus signalable — la ligne subsiste. Émet `article.retire_du_catalogue`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/boutique": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Statut, échéance, horaires du jour et rappel de l'écran V1.",
+        "operationId": "ma_boutique",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statut DÉCLARÉ + état EFFECTIF dérivé (une pause échue est déjà absorbée — R3) + rappel non bloquant (FR-035).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage (trois codes distincts).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/boutique/action": {
+      "post": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.",
+        "operationId": "action_boutique",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpsActionBoutique"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "État résultant. Émet `site.statut_boutique_change` (source vendeur) — l'échéance de pause, elle, n'émettra RIEN (FR-036).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Durée absente pour une pause/prolongation, ou prolongation sans pause en cours.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/vendeur/prestataires/{id}/horaires": {
+      "put": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.",
+        "operationId": "modifier_horaires",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorairesSemaineDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Nouveaux horaires appliqués à l'état effectif — une pause en cours continue de courir (edge case spec). Émet `site.horaires_modifies`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoutiqueVendeur"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Plages invalides (début ≥ fin, chevauchement, jour hors 0..6).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1242,6 +4042,17 @@
             "example": "comptes.otp.envoye_si_valide"
           }
         }
+      },
+      "ActionBoutiqueDto": {
+        "type": "string",
+        "description": "Geste de boutique (FR-033) — toujours une DÉCISION.",
+        "enum": [
+          "ouvrir",
+          "fermer",
+          "mettre_en_pause",
+          "prolonger_pause",
+          "fermer_pour_la_journee"
+        ]
       },
       "ActionRoleDto": {
         "type": "string",
@@ -1323,6 +4134,14 @@
           }
         }
       },
+      "AffichageRupture": {
+        "type": "string",
+        "description": "Mode de rendu des articles en rupture (paramètre de catégorie — FR-050).",
+        "enum": [
+          "grise",
+          "masque"
+        ]
+      },
       "AppareilDto": {
         "type": "object",
         "description": "Appareil déclaré par l'app à l'ouverture de session.",
@@ -1339,6 +4158,198 @@
           "plateforme": {
             "$ref": "#/components/schemas/PlateformeDto",
             "description": "Plateforme."
+          }
+        }
+      },
+      "ArticlePublic": {
+        "type": "object",
+        "description": "Article du catalogue public.",
+        "required": [
+          "id",
+          "nom",
+          "prix_unites",
+          "devise",
+          "disponible"
+        ],
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Étiquette libre de regroupement."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Code ISO 4217 de la zone."
+          },
+          "disponible": {
+            "type": "boolean",
+            "description": "Faux = rupture (servi seulement si le mode de la catégorie est `grise`)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom."
+          },
+          "photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de la photo (TTL 10 min)."
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix barré (présent ⇒ promotion, strictement supérieur — FR-023)."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix courant — ENTIER en unités mineures (constitution III)."
+          }
+        }
+      },
+      "ArticleVendeur": {
+        "type": "object",
+        "description": "Article du catalogue de PILOTAGE (écran V2) : ruptures, retirés et verrou\nadmin visibles — contrairement à la consultation publique.",
+        "required": [
+          "id",
+          "nom",
+          "prix_unites",
+          "devise",
+          "disponible",
+          "rupture_admin",
+          "retire"
+        ],
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Étiquette libre de regroupement."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Code ISO 4217 (posé par le serveur — R13)."
+          },
+          "disponible": {
+            "type": "boolean",
+            "description": "Faux = rupture."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom."
+          },
+          "photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de la photo (TTL 10 min)."
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix barré (strictement supérieur — FR-023)."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix courant, entier en unités mineures."
+          },
+          "retire": {
+            "type": "boolean",
+            "description": "Retiré du catalogue — remise possible sans ressaisie (FR-055)."
+          },
+          "rupture_admin": {
+            "type": "boolean",
+            "description": "Rupture posée par l'Admin — la bascule vendeur sera refusée (FR-041)."
+          },
+          "source_derniere_bascule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SourceBascule",
+                "description": "Source de la dernière bascule (FR-037)."
+              }
+            ]
+          }
+        }
+      },
+      "BasculeDisponibiliteDto": {
+        "type": "object",
+        "description": "Corps de la bascule.",
+        "required": [
+          "disponible"
+        ],
+        "properties": {
+          "disponible": {
+            "type": "boolean",
+            "description": "`false` = rupture, `true` = retour en vente."
+          }
+        }
+      },
+      "BoutiqueVendeur": {
+        "type": "object",
+        "description": "Données de l'écran V1 (FR-044).",
+        "required": [
+          "statut",
+          "etat_effectif",
+          "horaires",
+          "horaires_du_jour",
+          "rappel_ouverture"
+        ],
+        "properties": {
+          "etat_effectif": {
+            "$ref": "#/components/schemas/EtatEffectifBoutique",
+            "description": "État EFFECTIF dérivé."
+          },
+          "horaires": {
+            "$ref": "#/components/schemas/HorairesSemaineDto",
+            "description": "Horaires hebdomadaires."
+          },
+          "horaires_du_jour": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlageDto"
+            },
+            "description": "Plages du jour courant (fuseau de la zone)."
+          },
+          "pause_fin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Échéance de la pause en cours."
+          },
+          "rappel_ouverture": {
+            "type": "boolean",
+            "description": "FR-035 — rappel non bloquant à afficher (fermé manuel dans les\nhoraires) ; « rester fermé » = fermer pour la journée, qui l'éteint."
+          },
+          "statut": {
+            "$ref": "#/components/schemas/StatutBoutique",
+            "description": "Statut DÉCLARÉ (l'effectif peut différer — FR-032)."
           }
         }
       },
@@ -1362,6 +4373,42 @@
           "slug": {
             "type": "string",
             "description": "Slug de la catégorie."
+          }
+        }
+      },
+      "CharteAdminDto": {
+        "type": "object",
+        "description": "Charte signée, présignée pour l'admin (pièce contractuelle — FR-003).",
+        "required": [
+          "id",
+          "version_charte",
+          "signee_le",
+          "deposee_le",
+          "url"
+        ],
+        "properties": {
+          "deposee_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dépôt du scan."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "signee_le": {
+            "type": "string",
+            "format": "date",
+            "description": "Date de signature manuscrite."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL présignée de lecture (TTL 10 min)."
+          },
+          "version_charte": {
+            "type": "string",
+            "description": "Version de charte en vigueur à la signature."
           }
         }
       },
@@ -1504,6 +4551,29 @@
           }
         }
       },
+      "CorpsActionBoutique": {
+        "type": "object",
+        "description": "Corps du geste de boutique.",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ActionBoutiqueDto",
+            "description": "Le geste."
+          },
+          "duree_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Durée en minutes — REQUISE pour `mettre_en_pause` et\n`prolonger_pause` (30/60/120 et +30 côté app, constantes MVP).",
+            "maximum": 720,
+            "minimum": 1
+          }
+        }
+      },
       "CorpsForcage": {
         "type": "object",
         "description": "Corps de la requête de forçage.",
@@ -1514,6 +4584,102 @@
           "forcage": {
             "$ref": "#/components/schemas/ForcageDto",
             "description": "Nouveau mode de forçage à appliquer."
+          }
+        }
+      },
+      "CorrigerDto": {
+        "type": "object",
+        "description": "Corps de la correction (FR-056) — au moins un champ.",
+        "properties": {
+          "categorie_slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouvelle catégorie de service (slug)."
+          },
+          "ville_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Nouvelle ville de rattachement (type `ville` exigé)."
+          }
+        }
+      },
+      "CreerArticleDto": {
+        "type": "object",
+        "description": "Création d'un article (disponible par défaut — FR-020).",
+        "required": [
+          "nom",
+          "prix_unites"
+        ],
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Étiquette libre de regroupement."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom.",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix barré optionnel (strictement supérieur — FR-023)."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix courant, entier en unités mineures — la devise est POSÉE PAR LE\nSERVEUR depuis la zone (constitution III).",
+            "minimum": 0
+          }
+        }
+      },
+      "CreerPrestataireDto": {
+        "type": "object",
+        "description": "Création d'une fiche (statut initial : prospect).",
+        "required": [
+          "nom",
+          "categorie_slug",
+          "ville_id",
+          "contact_telephone",
+          "delai_preparation_min"
+        ],
+        "properties": {
+          "categorie_slug": {
+            "type": "string",
+            "description": "Slug de la catégorie de service (référentiel ZON)."
+          },
+          "contact_telephone": {
+            "type": "string",
+            "description": "Contact téléphonique (servi à l'admin seulement)."
+          },
+          "delai_preparation_min": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Délai de préparation moyen déclaré (minutes).",
+            "minimum": 0
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom public.",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "ville_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ville de rattachement — type `ville` exigé (FR-002)."
           }
         }
       },
@@ -1567,6 +4733,45 @@
           "rafraichissement": {
             "type": "string",
             "description": "Jeton de renouvellement opaque courant."
+          }
+        }
+      },
+      "DeposerCharte": {
+        "type": "object",
+        "description": "Scan de charte signée + métadonnées de signature.",
+        "required": [
+          "fichier",
+          "version_charte",
+          "signee_le"
+        ],
+        "properties": {
+          "fichier": {
+            "type": "string",
+            "format": "binary",
+            "description": "Le scan — ≤ 10 Mo, jpeg/png/webp/pdf."
+          },
+          "signee_le": {
+            "type": "string",
+            "format": "date",
+            "description": "Date de signature (AAAA-MM-JJ)."
+          },
+          "version_charte": {
+            "type": "string",
+            "description": "Version de charte en vigueur à la signature."
+          }
+        }
+      },
+      "DepotPhoto": {
+        "type": "object",
+        "description": "Photo envoyée en multipart (≤ 5 Mo, jpeg/png/webp).",
+        "required": [
+          "fichier"
+        ],
+        "properties": {
+          "fichier": {
+            "type": "string",
+            "format": "binary",
+            "description": "La photo."
           }
         }
       },
@@ -1757,6 +4962,27 @@
           }
         }
       },
+      "EtatEffectifBoutique": {
+        "type": "object",
+        "description": "État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032).",
+        "required": [
+          "ouvert"
+        ],
+        "properties": {
+          "ouvert": {
+            "type": "boolean",
+            "description": "La boutique reçoit-elle des commandes en cet instant ?"
+          },
+          "reouverture_estimee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Prochaine réouverture estimée quand fermée (FR-029)."
+          }
+        }
+      },
       "EtatRoleDto": {
         "type": "object",
         "description": "État d'un rôle (contrat).",
@@ -1790,6 +5016,72 @@
           }
         }
       },
+      "FichePublique": {
+        "type": "object",
+        "description": "Fiche publique : le sous-ensemble EXACT de FR-027 — ni contact\ntéléphonique, ni coordonnées de site, ni donnée d'exploitation (SC-013).",
+        "required": [
+          "id",
+          "nom",
+          "categorie",
+          "photos",
+          "delai_preparation_min",
+          "boutique",
+          "horaires",
+          "commandable",
+          "affichage_rupture",
+          "articles"
+        ],
+        "properties": {
+          "affichage_rupture": {
+            "$ref": "#/components/schemas/AffichageRupture",
+            "description": "Mode de rendu des ruptures, résolu pour la catégorie."
+          },
+          "articles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticlePublic"
+            },
+            "description": "Catalogue servi (retirés absents ; ruptures selon le mode)."
+          },
+          "boutique": {
+            "$ref": "#/components/schemas/EtatEffectifBoutique",
+            "description": "État effectif de la boutique."
+          },
+          "categorie": {
+            "type": "string",
+            "description": "Slug de la catégorie de service."
+          },
+          "commandable": {
+            "type": "boolean",
+            "description": "FR-028 — la SEULE définition de « commandable »."
+          },
+          "delai_preparation_min": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Délai de préparation moyen déclaré (minutes)."
+          },
+          "horaires": {
+            "$ref": "#/components/schemas/HorairesSemaineDto",
+            "description": "Horaires hebdomadaires."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant du prestataire."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom public."
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "URLs présignées des photos de fiche."
+          }
+        }
+      },
       "ForcageDto": {
         "type": "string",
         "description": "Mode de forçage (contrat) — mappé sur [`zones::Forcage`].",
@@ -1815,6 +5107,27 @@
           "version": {
             "type": "string",
             "description": "Version du binaire (`CARGO_PKG_VERSION`)."
+          }
+        }
+      },
+      "HorairesSemaineDto": {
+        "type": "object",
+        "description": "Horaires hebdomadaires : 7 tableaux de plages, index 0 = lundi ; un jour\nsans plage est un jour de fermeture.",
+        "required": [
+          "jours"
+        ],
+        "properties": {
+          "jours": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/PlageDto"
+              }
+            },
+            "description": "Plages par jour (lundi → dimanche).",
+            "maxItems": 7,
+            "minItems": 7
           }
         }
       },
@@ -1876,6 +5189,83 @@
           }
         }
       },
+      "ModifierArticleDto": {
+        "type": "object",
+        "description": "Modification partielle — champ ABSENT = inchangé, `null` EXPLICITE = effacé\n(c'est ainsi qu'on retire une promotion : `prix_barre_unites: null`).",
+        "properties": {
+          "categorie_interne": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouvelle étiquette — `null` l'efface."
+          },
+          "nom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau nom.",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "prix_barre_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Nouveau prix barré — `null` retire la promotion EXPLICITEMENT (jamais\nen silence : un prix barré devenu ≤ prix fait échouer l'opération)."
+          },
+          "prix_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Nouveau prix courant.",
+            "minimum": 0
+          },
+          "retirer_prix_barre": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Retire la promotion — équivalent de `prix_barre_unites: null` pour les\nclients générés qui ne savent pas sérialiser un `null` EXPLICITE\n(built_value omet les champs nuls)."
+          }
+        }
+      },
+      "ModifierPrestataireDto": {
+        "type": "object",
+        "description": "Modification partielle de la fiche.",
+        "properties": {
+          "contact_telephone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau contact."
+          },
+          "delai_preparation_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Nouveau délai (minutes).",
+            "minimum": 0
+          },
+          "nom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nouveau nom.",
+            "maxLength": 120,
+            "minLength": 1
+          }
+        }
+      },
       "NouvelleAdresse": {
         "type": "object",
         "description": "Adresse à enregistrer après une livraison réussie (FR-019).",
@@ -1934,6 +5324,51 @@
           }
         }
       },
+      "PhotoAdminDto": {
+        "type": "object",
+        "description": "Photo de fiche, présignée pour l'admin.",
+        "required": [
+          "id",
+          "url",
+          "position"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant (pour la suppression)."
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Ordre d'affichage."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL présignée (TTL 10 min)."
+          }
+        }
+      },
+      "PlageDto": {
+        "type": "object",
+        "description": "Une plage d'ouverture, heures locales `HH:MM` (FR-031).",
+        "required": [
+          "debut",
+          "fin"
+        ],
+        "properties": {
+          "debut": {
+            "type": "string",
+            "description": "Début (inclus), ex. `08:00`.",
+            "example": "08:00"
+          },
+          "fin": {
+            "type": "string",
+            "description": "Fin (exclue), ex. `19:00`.",
+            "example": "19:00"
+          }
+        }
+      },
       "PlateformeDto": {
         "type": "string",
         "description": "Plateforme de l'appareil (contrat).",
@@ -1941,6 +5376,208 @@
           "android",
           "ios"
         ]
+      },
+      "PrestataireAdmin": {
+        "type": "object",
+        "description": "Résumé admin d'un prestataire.",
+        "required": [
+          "id",
+          "nom",
+          "categorie",
+          "ville_id",
+          "statut",
+          "contact_telephone",
+          "delai_preparation_min",
+          "commandable"
+        ],
+        "properties": {
+          "categorie": {
+            "type": "string",
+            "description": "Slug de la catégorie de service."
+          },
+          "commandable": {
+            "type": "boolean",
+            "description": "FR-028, dérivé à la lecture."
+          },
+          "contact_telephone": {
+            "type": "string",
+            "description": "Contact téléphonique — surface ADMIN uniquement."
+          },
+          "delai_preparation_min": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Délai de préparation (minutes)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom public."
+          },
+          "statut": {
+            "$ref": "#/components/schemas/StatutPrestataire",
+            "description": "Cycle de vie."
+          },
+          "ville_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ville de rattachement."
+          }
+        }
+      },
+      "PrestataireAdminDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PrestataireAdmin",
+            "description": "Résumé."
+          },
+          {
+            "type": "object",
+            "required": [
+              "photos",
+              "chartes",
+              "rattachements"
+            ],
+            "properties": {
+              "chartes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CharteAdminDto"
+                },
+                "description": "Chartes déposées, la plus récente d'abord."
+              },
+              "code_secours": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Code de secours — AUCUNE recherche par ce code n'existe (FR-014)."
+              },
+              "jeton_plaque": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Jeton de plaque (posé au premier agrément, stable — FR-013)."
+              },
+              "photos": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PhotoAdminDto"
+                },
+                "description": "Photos présignées."
+              },
+              "rattachements": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RattachementDto"
+                },
+                "description": "Comptes rattachés."
+              },
+              "site": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SiteAdminVueDto",
+                    "description": "LE site unique, s'il est créé."
+                  }
+                ]
+              },
+              "statut_decide_le": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "Horodatage de la dernière décision."
+              },
+              "statut_decide_par": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "description": "Auteur de la dernière décision de cycle de vie."
+              },
+              "statut_motif": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Motif de la dernière décision (suspension)."
+              }
+            }
+          }
+        ],
+        "description": "Fiche COMPLÈTE, vue admin."
+      },
+      "PrestatairePilotable": {
+        "type": "object",
+        "description": "Prestataire pilotable par le compte (résumé — l'app prend le premier).",
+        "required": [
+          "id",
+          "nom",
+          "statut",
+          "boutique"
+        ],
+        "properties": {
+          "boutique": {
+            "$ref": "#/components/schemas/EtatEffectifBoutique",
+            "description": "État effectif de la boutique."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom public."
+          },
+          "statut": {
+            "$ref": "#/components/schemas/StatutPrestataire",
+            "description": "Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact."
+          }
+        }
+      },
+      "RattachementDto": {
+        "type": "object",
+        "description": "Rattachement compte ↔ prestataire.",
+        "required": [
+          "compte_id",
+          "rattache_le"
+        ],
+        "properties": {
+          "compte_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Compte rattaché."
+          },
+          "rattache_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Depuis quand."
+          }
+        }
+      },
+      "RattacherCompteDto": {
+        "type": "object",
+        "description": "Corps du rattachement.",
+        "required": [
+          "compte_id"
+        ],
+        "properties": {
+          "compte_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Compte vérifié à rattacher."
+          }
+        }
       },
       "RemplacementRepereVocal": {
         "type": "object",
@@ -1959,6 +5596,25 @@
             "type": "string",
             "format": "binary",
             "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          }
+        }
+      },
+      "ResolutionPlaque": {
+        "type": "object",
+        "description": "Résolution d'un jeton de plaque (contrat).",
+        "required": [
+          "prestataire_id",
+          "valide"
+        ],
+        "properties": {
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Prestataire que la plaque désigne."
+          },
+          "valide": {
+            "type": "boolean",
+            "description": "Validité courante — DÉRIVÉE de l'état d'agrément (FR-015)."
           }
         }
       },
@@ -2039,6 +5695,118 @@
           }
         }
       },
+      "SignalementRecuDto": {
+        "type": "object",
+        "description": "Issue du signalement.",
+        "required": [
+          "recu",
+          "masquage_automatique"
+        ],
+        "properties": {
+          "masquage_automatique": {
+            "type": "boolean",
+            "description": "CE signalement a déclenché le masquage automatique (FR-040)."
+          },
+          "recu": {
+            "type": "boolean",
+            "description": "Reçu (vrai aussi pour un rejeu — même réponse, rien recompté)."
+          }
+        }
+      },
+      "SignalerRuptureDto": {
+        "type": "object",
+        "description": "Corps du signalement.",
+        "required": [
+          "article_id",
+          "horodatage_local"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Article introuvable sur place."
+          },
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage LOCAL de l'appareil (file hors-ligne — FR-039)."
+          }
+        }
+      },
+      "SiteAdminDto": {
+        "type": "object",
+        "description": "Corps de `PUT /admin/prestataires/{id}/site` — upsert du site UNIQUE\n(FR-019 : aucune sélection de site n'existe nulle part).",
+        "required": [
+          "position_lat",
+          "position_lng",
+          "horaires"
+        ],
+        "properties": {
+          "horaires": {
+            "$ref": "#/components/schemas/HorairesSemaineDto",
+            "description": "Horaires hebdomadaires (remplacement complet)."
+          },
+          "position_lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude relevée sur place."
+          },
+          "position_lng": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
+          },
+          "statut_initial": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StatutBoutique",
+                "description": "Statut initial — à la CRÉATION seulement (`ouvert` par défaut ;\n`en_pause`/`ferme_journee` refusés)."
+              }
+            ]
+          }
+        }
+      },
+      "SiteAdminVueDto": {
+        "type": "object",
+        "description": "LE site unique, vue admin (GPS compris — jamais servi en public).",
+        "required": [
+          "position_lat",
+          "position_lng",
+          "statut_boutique",
+          "horaires"
+        ],
+        "properties": {
+          "horaires": {
+            "$ref": "#/components/schemas/HorairesSemaineDto",
+            "description": "Horaires hebdomadaires."
+          },
+          "pause_fin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Échéance de pause, le cas échéant."
+          },
+          "position_lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude relevée sur place."
+          },
+          "position_lng": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
+          },
+          "statut_boutique": {
+            "$ref": "#/components/schemas/StatutBoutique",
+            "description": "Statut DÉCLARÉ de la boutique."
+          }
+        }
+      },
       "SoumissionDossier": {
         "type": "object",
         "description": "Dossier soumis par le coursier : pièce d'identité, référent local et\nvéhicules déclarés (FR-015).",
@@ -2073,6 +5841,49 @@
               "moto"
             ],
             "minItems": 1
+          }
+        }
+      },
+      "SourceBascule": {
+        "type": "string",
+        "description": "Source d'une bascule de disponibilité (FR-037).",
+        "enum": [
+          "vendeur",
+          "coursier",
+          "admin"
+        ]
+      },
+      "StatutBoutique": {
+        "type": "string",
+        "description": "Statut de boutique DÉCLARÉ (FR-030).",
+        "enum": [
+          "ouvert",
+          "ferme",
+          "ferme_journee",
+          "en_pause"
+        ]
+      },
+      "StatutPrestataire": {
+        "type": "string",
+        "description": "Statut du cycle de vie (FR-004).",
+        "enum": [
+          "prospect",
+          "agree",
+          "suspendu"
+        ]
+      },
+      "SuspendreDto": {
+        "type": "object",
+        "description": "Corps de la suspension (motif REQUIS — FR-010).",
+        "required": [
+          "motif"
+        ],
+        "properties": {
+          "motif": {
+            "type": "string",
+            "description": "Motif de la décision, journalisé.",
+            "maxLength": 500,
+            "minLength": 1
           }
         }
       },

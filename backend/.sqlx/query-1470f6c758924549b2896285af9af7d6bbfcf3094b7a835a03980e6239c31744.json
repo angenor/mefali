@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.signalement_rupture\n                 (id, article_id, site_id, coursier_compte_id, horodatage_local)\n             VALUES ($1, $2, $3, $4, $5)\n             ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1470f6c758924549b2896285af9af7d6bbfcf3094b7a835a03980e6239c31744"
+}
