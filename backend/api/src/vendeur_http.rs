@@ -489,7 +489,9 @@ pub struct BasculeDisponibiliteDto {
          immédiatement (FR-041).", body = ArticleVendeurDto),
         (status = 409, description = "Rupture posée par l'Admin — seule une remise ADMIN est \
          acceptée (FR-041).", body = ErreurApiDto),
-        (status = 404, description = "Article inconnu ou retiré.", body = ErreurApiDto),
+        (status = 404, description = "Article inconnu ou retiré, ou prestataire encore SANS \
+         site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe.",
+         body = ErreurApiDto),
         (status = 403, description = "Refus de pilotage.", body = ErreurApiDto),
         (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
     ),

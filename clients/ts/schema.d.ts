@@ -2521,7 +2521,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErreurApi"];
                 };
             };
-            /** @description Article inconnu ou retiré. */
+            /** @description Article inconnu ou retiré, ou prestataire encore SANS site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe (cas courant en visite terrain — le catalogue est saisi avant le GPS). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4461,7 +4461,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErreurApi"];
                 };
             };
-            /** @description Article inconnu ou retiré. */
+            /** @description Article inconnu ou retiré, ou prestataire encore SANS site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe. */
             404: {
                 headers: {
                     [name: string]: unknown;

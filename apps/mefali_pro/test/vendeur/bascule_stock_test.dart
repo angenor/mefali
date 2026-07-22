@@ -24,7 +24,10 @@ Map<String, Object?> _article(String id, String nom,
       'retire': false,
     };
 
-(ProviderContainer, TransportFake) _conteneur(List<Map<String, Object?>> articles) {
+(ProviderContainer, TransportFake) _conteneur(
+  List<Map<String, Object?>> articles, {
+  int basculeStatut = 200,
+}) {
   final transport = TransportFake((requete) {
     if (requete.path.endsWith('/vendeur/prestataires')) {
       return reponseJson([
@@ -37,6 +40,12 @@ Map<String, Object?> _article(String id, String nom,
       ]);
     }
     if (requete.method == 'POST' && requete.path.endsWith('/disponibilite')) {
+      if (basculeStatut != 200) {
+        return reponseJson(
+          {'code': 'prestataire_non_agree'},
+          statut: basculeStatut,
+        );
+      }
       return reponseJson(_article('a1', 'Garba'));
     }
     if (requete.path.endsWith('/articles')) {
@@ -99,6 +108,31 @@ void main() {
         transport.recues.any((r) => r.path.endsWith('/disponibilite')),
         isFalse,
         reason: 'FR-041 — la bascule vendeur n\'est même pas tentée',
+      );
+    });
+
+    testWidgets('refus serveur (403 après suspension) : message, pas de silence',
+        (tester) async {
+      final (container, transport) = _conteneur(
+        [_article('a1', 'Garba', disponible: true)],
+        basculeStatut: 403,
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_monter(container));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('En stock'));
+      await tester.pumpAndSettle();
+
+      expect(
+        transport.recues.any((r) => r.path.endsWith('/disponibilite')),
+        isTrue,
+        reason: 'la bascule est bien tentée...',
+      );
+      expect(
+        find.text('Bascule refusée — cette boutique n\'est plus agréée.'),
+        findsOneWidget,
+        reason: '...et son échec est montré, jamais avalé en silence',
       );
     });
   });

@@ -173,7 +173,7 @@ sont décrites par des NOMS de champs, jamais leurs valeurs.
 | `article.retire_du_catalogue` | `article` | `article.id` | `prestataire`, `source`, `acteur` |
 | `article.remis_au_catalogue` | `article` | `article.id` | `prestataire`, `source`, `acteur` |
 | `article.mis_en_rupture` | `article` | `article.id` | `prestataire`, `site`, `source` (`vendeur` \| `coursier` \| `admin`), `automatique` (booléen — `true` si masquage par seuil de signalements), `acteur` (`null` si automatique) |
-| `article.remis_en_vente` | `article` | `article.id` | `prestataire`, `site`, `source` (`vendeur` \| `admin`), `acteur` |
+| `article.remis_en_vente` | `article` | `article.id` | `prestataire`, `site`, `source` (`vendeur` \| `admin`), `automatique` (booléen — toujours `false` : une remise n'est jamais automatique dans le MVP ; champ partagé avec `article.mis_en_rupture` via le même émetteur), `acteur` |
 | `signalement_rupture.recu` | `signalement_rupture` | `signalement_rupture.id` | `prestataire`, `article`, `site`, `coursier`, `deja_en_rupture` (booléen) |
 
 **Ce qui n'émet PAS d'événement outbox** (specs/005 research R3, R10) :

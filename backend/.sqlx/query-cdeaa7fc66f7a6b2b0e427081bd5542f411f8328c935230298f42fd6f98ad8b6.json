@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prestataires.disponibilite_article (article_id, site_id)\n                     SELECT a.id, $1 FROM prestataires.article a\n                     WHERE a.vendeur_id = $2\n                     ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cdeaa7fc66f7a6b2b0e427081bd5542f411f8328c935230298f42fd6f98ad8b6"
+}

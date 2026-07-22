@@ -112,7 +112,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Garba'), findsOneWidget);
       expect(find.text('Attiéké poisson'), findsNothing);
-      expect(find.text('1 articles · 1 en rupture'), findsOneWidget);
+      expect(find.text('1 article · 1 en rupture'), findsOneWidget,
+          reason: 'pluriel ICU : « article » au singulier quand nombre == 1');
     });
   });
 

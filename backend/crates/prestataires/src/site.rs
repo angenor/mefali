@@ -103,6 +103,21 @@ impl PgPrestataires {
                 )
                 .execute(&mut **tx)
                 .await?;
+                // Le site peut naître APRÈS des articles (l'Admin saisit le
+                // catalogue pendant la visite terrain, avant de poser le GPS) :
+                // `creer_article` n'a alors garni aucune disponibilité. On les
+                // rattrape ici, disponibles par défaut (FR-020), sans quoi ces
+                // articles resteraient non basculables.
+                sqlx::query!(
+                    "INSERT INTO prestataires.disponibilite_article (article_id, site_id)
+                     SELECT a.id, $1 FROM prestataires.article a
+                     WHERE a.vendeur_id = $2
+                     ON CONFLICT DO NOTHING",
+                    id,
+                    prestataire,
+                )
+                .execute(&mut **tx)
+                .await?;
                 id
             }
         };

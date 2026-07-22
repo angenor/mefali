@@ -58,7 +58,7 @@ impl PgPrestataires {
             return Ok(courant);
         }
 
-        sqlx::query!(
+        let touchees = sqlx::query!(
             "UPDATE prestataires.disponibilite_article d
              SET disponible = $3, source = $4::text::prestataires.source_bascule,
                  bascule_par = $5, bascule_le = now()
@@ -71,7 +71,17 @@ impl PgPrestataires {
             acteur,
         )
         .execute(&mut **tx)
-        .await?;
+        .await?
+        .rows_affected();
+
+        // Aucune ligne de disponibilité : le prestataire n'a pas encore de site
+        // (`definir_site` en garnit une par article). L'état lu vaut `true` par
+        // COALESCE, donc le court-circuit ci-dessus ne protège PAS ce cas — sans
+        // ce refus, l'appel répondrait 200 sans rien écrire et émettrait un
+        // événement mensonger à chaque rejeu, faussant les indicateurs (SC-009).
+        if touchees == 0 {
+            return Err(ErreurPrestataires::SiteInconnu(prestataire));
+        }
 
         self.emettre_bascule(tx, prestataire, article, disponible, source, Some(acteur), false)
             .await?;

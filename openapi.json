@@ -895,7 +895,7 @@
             }
           },
           "404": {
-            "description": "Article inconnu ou retiré.",
+            "description": "Article inconnu ou retiré, ou prestataire encore SANS site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe (cas courant en visite terrain — le catalogue est saisi avant le GPS).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3531,7 +3531,7 @@
             }
           },
           "404": {
-            "description": "Article inconnu ou retiré.",
+            "description": "Article inconnu ou retiré, ou prestataire encore SANS site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe.",
             "content": {
               "application/json": {
                 "schema": {

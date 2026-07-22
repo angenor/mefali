@@ -274,9 +274,21 @@ class _LigneArticle extends ConsumerWidget {
         BasculeStock(
           disponible: article.disponible,
           verrouillee: article.ruptureAdmin,
-          onBascule: () => ref
-              .read(mesArticlesProvider(prestataireId).notifier)
-              .basculerDisponibilite(article.id, !article.disponible),
+          // Le refus SERVEUR (403 après suspension, 409 verrou admin posé
+          // entre-temps) doit se voir : sans ce catch, l'appel échouait en
+          // silence et la ligne gardait son ancien état sans rien dire.
+          onBascule: () async {
+            try {
+              await ref
+                  .read(mesArticlesProvider(prestataireId).notifier)
+                  .basculerDisponibilite(article.id, !article.disponible);
+            } catch (_) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.proArticleBasculeRefusee)),
+              );
+            }
+          },
           onVerrouillee: () => ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l10n.proArticleRuptureAdmin)),
           ),

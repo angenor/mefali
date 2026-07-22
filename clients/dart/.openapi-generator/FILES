@@ -157,7 +157,3 @@ lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
-test/bascule_disponibilite_dto_test.dart
-test/coursier_api_test.dart
-test/signalement_recu_dto_test.dart
-test/signaler_rupture_dto_test.dart

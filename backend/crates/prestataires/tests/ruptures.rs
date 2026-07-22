@@ -269,3 +269,71 @@ async fn article_retire_ni_basculable_ni_signalable(pool: PgPool) {
         0
     );
 }
+
+/// Article créé AVANT le site (l'Admin saisit le catalogue pendant la visite
+/// terrain) : la bascule ne peut pas aboutir puisqu'aucune ligne de
+/// disponibilité n'existe encore. Elle doit être REFUSÉE et n'émettre AUCUN
+/// événement — sans quoi l'appel répondrait 200 sans rien écrire et chaque
+/// rejeu gonflerait l'outbox d'une transition qui n'a pas eu lieu (SC-009 :
+/// les indicateurs du module se calculent à partir de ces événements).
+/// Une fois le site posé, l'article est rattrapé et redevient basculable.
+#[sqlx::test(migrations = "../../migrations")]
+async fn bascule_refusee_tant_que_le_site_manque(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let vendeur = bac.creer_fiche("Étal sans site", "restauration").await;
+    let mut tx = bac.pool.begin().await.unwrap();
+    let article = bac
+        .depot
+        .creer_article(
+            &mut tx,
+            vendeur,
+            &NouvelArticle {
+                nom: "Attiéké".to_owned(),
+                prix_unites: 1500,
+                prix_barre_unites: None,
+                categorie_interne: None,
+            },
+            SourceBascule::Admin,
+            bac.admin,
+        )
+        .await
+        .unwrap()
+        .id;
+    tx.commit().await.unwrap();
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM prestataires.disponibilite_article").await,
+        0,
+        "sans site, aucune ligne de disponibilité n'est garnie"
+    );
+
+    // Deux tentatives : la seconde prouve qu'un rejeu n'accumule rien non plus.
+    for _ in 0..2 {
+        let mut tx = bac.pool.begin().await.unwrap();
+        assert!(matches!(
+            bac.depot
+                .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Admin, bac.admin)
+                .await
+                .unwrap_err(),
+            ErreurPrestataires::SiteInconnu(_)
+        ));
+        drop(tx);
+    }
+    assert_eq!(
+        bac.evenements("article.mis_en_rupture").await.len(),
+        0,
+        "aucun événement ne doit être émis quand aucune ligne n'a bougé"
+    );
+
+    // Le site apparaît : les articles déjà saisis reçoivent leur disponibilité.
+    bac.completer_fiche(vendeur).await;
+    assert!(disponible(&bac, vendeur, article).await);
+
+    let mut tx = bac.pool.begin().await.unwrap();
+    bac.depot
+        .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Admin, bac.admin)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert!(!disponible(&bac, vendeur, article).await);
+    assert_eq!(bac.evenements("article.mis_en_rupture").await.len(), 1);
+}

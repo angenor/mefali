@@ -386,9 +386,14 @@ class _CarteHoraires extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final textTheme = Theme.of(context).textTheme;
     final plages = boutique.horairesDuJour;
+    // `proBoutiqueAujourdhui` SUFFIXE déjà « aujourd'hui » à ce qu'on lui passe :
+    // un jour sans plage prend donc sa propre clé, sinon on rendrait
+    // « Fermé aujourd'hui aujourd'hui ».
     final duJour = plages.isEmpty
         ? l10n.proBoutiqueFermeAujourdhui
-        : plages.map((p) => '${p.debut} — ${p.fin}').join(' · ');
+        : l10n.proBoutiqueAujourdhui(
+            plages.map((p) => '${p.debut} — ${p.fin}').join(' · '),
+          );
 
     return CarteMefali(
       child: Column(
@@ -403,7 +408,7 @@ class _CarteHoraires extends StatelessWidget {
           ),
           const SizedBox(height: MefaliTokens.space2),
           Text(
-            l10n.proBoutiqueAujourdhui(duJour),
+            duJour,
             style: textTheme.bodyLarge
                 ?.copyWith(fontWeight: MefaliTokens.weightSemiBold),
           ),

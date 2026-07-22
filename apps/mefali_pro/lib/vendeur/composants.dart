@@ -196,18 +196,26 @@ class BasculeStock extends StatelessWidget {
                       color: couleur,
                     ),
                   ),
+                  // 40 dp restent au libellé une fois la pastille et le
+                  // rembourrage déduits des 84 dp de la maquette : « En stock »
+                  // y est plus large que la place disponible et se faisait
+                  // ROGNER sur appareil. On réduit le texte au lieu d'élargir
+                  // le composant — la géométrie 84×44 vient du design.
                   Expanded(
-                    child: Text(
-                      disponible
-                          ? l10n.proArticleEnStock
-                          : l10n.proArticleRupture,
-                      textAlign: TextAlign.center,
-                      textDirection: TextDirection.ltr,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: MefaliTokens.weightSemiBold,
-                        color: MefaliTokens.surface,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        disponible
+                            ? l10n.proArticleEnStock
+                            : l10n.proArticleRupture,
+                        textAlign: TextAlign.center,
+                        textDirection: TextDirection.ltr,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: MefaliTokens.weightSemiBold,
+                          color: MefaliTokens.surface,
+                        ),
                       ),
                     ),
                   ),

@@ -28,15 +28,17 @@ Map<String, Object?> _boutique({
   bool effectifOuvert = true,
   String? pauseFin,
   bool rappel = false,
+  List<Map<String, String>>? horairesDuJour,
 }) =>
     {
       'statut': statut,
       'pause_fin': pauseFin,
       'etat_effectif': {'ouvert': effectifOuvert, 'reouverture_estimee': null},
       'horaires': {'jours': _semaine()},
-      'horaires_du_jour': [
-        {'debut': '08:00', 'fin': '19:00'},
-      ],
+      'horaires_du_jour': horairesDuJour ??
+          [
+            {'debut': '08:00', 'fin': '19:00'},
+          ],
       'rappel_ouverture': rappel,
     };
 
@@ -151,6 +153,38 @@ void main() {
       final corps =
           Map<String, Object?>.from(_dernierPost(transport).data as Map);
       expect(corps['action'], 'fermer_pour_la_journee');
+    });
+
+    testWidgets(
+        'carte horaires : un jour SANS plage affiche « Fermé aujourd\'hui » '
+        'une seule fois (pas de « aujourd\'hui aujourd\'hui »)', (tester) async {
+      final (container, _) = _conteneur(_boutique(
+        statut: 'ferme',
+        effectifOuvert: false,
+        horairesDuJour: const [],
+      ));
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_monter(container));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fermé aujourd\'hui'), findsOneWidget);
+      expect(
+        find.textContaining('aujourd\'hui aujourd\'hui'),
+        findsNothing,
+        reason: 'le suffixe « aujourd\'hui » ne doit pas être doublé',
+      );
+    });
+
+    testWidgets('carte horaires : un jour AVEC plages suffixe « aujourd\'hui »',
+        (tester) async {
+      final (container, _) = _conteneur(_boutique(horairesDuJour: const [
+        {'debut': '08:00', 'fin': '19:00'},
+      ]));
+      addTearDown(container.dispose);
+      await tester.pumpWidget(_monter(container));
+      await tester.pumpAndSettle();
+
+      expect(find.text('08:00 — 19:00 aujourd\'hui'), findsOneWidget);
     });
   });
 }

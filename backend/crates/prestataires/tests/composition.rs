@@ -6,7 +6,6 @@ mod bac;
 
 use bac::Bac;
 use sqlx::PgPool;
-use zones::ConfigurationZones;
 
 #[sqlx::test(migrations = "../../migrations")]
 async fn composition_et_plan_de_reference(pool: PgPool) {

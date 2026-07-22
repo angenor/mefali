@@ -231,9 +231,9 @@
   "@proArticlesRecherche": {
     "description": "Placeholder de la recherche du catalogue (V2)"
   },
-  "proArticlesCompte": "{nombre} articles · {ruptures} en rupture",
+  "proArticlesCompte": "{nombre, plural, =1{1 article} other{{nombre} articles}} · {ruptures} en rupture",
   "@proArticlesCompte": {
-    "description": "Compteur du catalogue (V2)",
+    "description": "Compteur du catalogue (V2). « article » s'accorde ; « en rupture » est invariable.",
     "placeholders": {
       "nombre": {"type": "int"},
       "ruptures": {"type": "int"}
@@ -270,6 +270,10 @@
   "proArticlesErreur": "Impossible de charger le catalogue.",
   "@proArticlesErreur": {
     "description": "Erreur réseau du catalogue (V2)"
+  },
+  "proArticleBasculeRefusee": "Bascule refusée — cette boutique n'est plus agréée.",
+  "@proArticleBasculeRefusee": {
+    "description": "Refus serveur d'une bascule de disponibilité (403 prestataire_non_agree après suspension, FR-011) — sans ce message la bascule échouait EN SILENCE"
   },
   "proArticleAjouter": "Ajouter un article",
   "@proArticleAjouter": {
@@ -322,10 +326,6 @@
   "proArticleRuptureAdmin": "Rupture posée par Mefali — seule l'équipe peut la lever.",
   "@proArticleRuptureAdmin": {
     "description": "Verrou FR-041 : rupture admin non levable par le vendeur"
-  },
-  "proInterfaceVendeurAide": "Votre boutique et vos commandes s'afficheront ici.",
-  "@proInterfaceVendeurAide": {
-    "description": "Aide de l'interface vendeur tant que le module vendeur (VND) n'est pas construit"
   },
   "proBasculeSemantique": "Choisir l'interface affichée",
   "@proBasculeSemantique": {

@@ -1271,7 +1271,10 @@ pub async fn corriger_prestataire(
         (status = 200, description = "Basculé (source admin). Un article mis en rupture par \
          l'Admin n'est remis en vente QUE par l'Admin.",
          body = crate::prestataires_http::ArticleVendeurDto),
-        (status = 404, description = "Article inconnu ou retiré.", body = ErreurApiDto),
+        (status = 404, description = "Article inconnu ou retiré, ou prestataire encore SANS \
+         site : la disponibilité se porte PAR SITE, rien n'est basculable avant qu'il existe \
+         (cas courant en visite terrain — le catalogue est saisi avant le GPS).",
+         body = ErreurApiDto),
         (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
         (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
     ),
