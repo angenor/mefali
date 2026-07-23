@@ -6,12 +6,25 @@
 //! (constitution II). Chaque vertical fournit sa table de détails et son
 //! implémentation de [`ServiceWorkflow`].
 //!
-//! **Ce cycle définit le trait, sans aucune implémentation** (constitution IX).
-//! Signature provisoire, stabilisée au cycle CMD — contrat
-//! `specs/001-socle-monorepo/contracts/service-workflow.md`.
+//! Le trait `ServiceWorkflow` reste défini sans implémentation (stabilisé au
+//! cycle CMD). Le cycle QRC 006 ajoute le **socle logistique minimal** —
+//! `commande`/`livraison`/`segment`/`arrêt`, la transition
+//! `marquer_arret_collecte` et le port `ArretsDeCollecte` — sans aucune logique
+//! CMD (création, cash, substitution, dispatch).
 
 use async_trait::async_trait;
 use uuid::Uuid;
+
+pub mod depot;
+pub mod modele;
+pub mod ports;
+
+pub use depot::PgCommandes;
+pub use modele::{
+    ArretACollecter, ErreurCommandes, EtatLivraison, ModeCollecte, ProgressionCollecte,
+    StatutArret,
+};
+pub use ports::{ArretsDeCollecte, ArretsFixes};
 
 /// États de très haut niveau du tronc commande — les SEULS que le crate
 /// `commandes` connaît (cadrage §11.11). Aucun champ logistique.

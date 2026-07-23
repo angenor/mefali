@@ -6,7 +6,20 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine PUR (constitution II) : socle logistique minimal (commande, livraison,
+# segment, arrêt). Aucune I/O directe — l'outbox passe par `socle::ecrire_evenement`
+# dans la transaction fournie. Le crate `qr` consomme le port `ArretsDeCollecte`
+# et la transition `marquer_arret_collecte`.
 [dependencies]
-async-trait.workspace = true
+socle.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 uuid.workspace = true
+chrono.workspace = true
 thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
