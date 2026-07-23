@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
+import '../coursier/interface_coursier.dart';
 import '../l10n/app_localizations.dart';
 import '../vendeur/interface_vendeur.dart';
 import 'etat_roles.dart';
@@ -26,9 +27,6 @@ class InterfacePro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final textTheme = Theme.of(context).textTheme;
-    final valides = etat.rolesValides;
     final actif = etat.actif;
 
     // Défensif : ce widget n'est construit qu'avec au moins un rôle validé.
@@ -39,51 +37,14 @@ class InterfacePro extends StatelessWidget {
       return InterfaceVendeur(etat: etat);
     }
 
-    final (titre, aide) = (
-      l10n.proInterfaceCoursierTitre,
-      l10n.proInterfaceCoursierAide,
-    );
+    // L'espace coursier du cycle QRC 006 (tranche « scanner & collecter » de K3)
+    // remplace le placeholder pour le rôle coursier (FR-046, porte inchangée).
+    if (actif == RolePro.coursier) {
+      return InterfaceCoursier(etat: etat);
+    }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(titre)),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(MefaliTokens.screenMargin),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (valides.length > 1) ...[
-                BasculeRoles(valides: valides, actif: actif),
-                const SizedBox(height: MefaliTokens.space4),
-              ],
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        pictoRole(actif),
-                        size: 48,
-                        color: MefaliTokens.textMuted,
-                      ),
-                      const SizedBox(height: MefaliTokens.space3),
-                      Text(
-                        aide,
-                        style: textTheme.bodyLarge
-                            ?.copyWith(color: MefaliTokens.textMuted),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: MefaliTokens.space3),
-              const PiedPro(),
-            ],
-          ),
-        ),
-      ),
-    );
+    // Défensif : `actif` ∈ {vendeur, coursier}, tous deux traités ci-dessus.
+    return const SizedBox.shrink();
   }
 }
 
