@@ -32,6 +32,7 @@ pub mod site;
 pub use catalogue::{Article, ModificationArticle, NouvelArticle, PrixFige};
 pub use depot::{PgPrestataires, Prestataires, Vendeurs};
 pub use disponibilite::SignalementRecu;
+pub use plaque::ContextePlaque;
 pub use prestataire::{
     transition, ActionPrestataire, CharteSignee, ModificationPrestataire, NouveauPrestataire,
     PhotoPrestataire, Prestataire, CHARTE_MIMES, CHARTE_TAILLE_MAX, PHOTO_MIMES, PHOTO_TAILLE_MAX,

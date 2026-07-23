@@ -208,6 +208,81 @@ impl PgCommandes {
         })
     }
 
+    /// Tous les arrêts `à_collecter` de la course active du coursier (livraison
+    /// `en_collecte` assignée), ordonnés. Vide si aucune course assignée
+    /// (R10 — exact en prod avant DSP). Sert le pré-provisionnement (QRC-02).
+    pub async fn arrets_course_active(
+        &self,
+        coursier: Uuid,
+    ) -> Result<Vec<ArretACollecter>, ErreurCommandes> {
+        let lignes = sqlx::query!(
+            r#"SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,
+                      l.commande_id, a.prestataire_id, a.site_lat, a.site_lon,
+                      a.montant_avance, a.devise
+               FROM commandes.arret a
+               JOIN commandes.segment s ON s.id = a.segment_id
+               JOIN commandes.livraison l ON l.id = s.livraison_id
+               WHERE l.coursier_id = $1
+                 AND l.etat = 'en_collecte'
+                 AND a.statut = 'a_collecter'
+               ORDER BY s.ordre, a.ordre"#,
+            coursier,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(lignes
+            .into_iter()
+            .map(|l| ArretACollecter {
+                arret_id: l.arret_id,
+                livraison_id: l.livraison_id,
+                segment_id: l.segment_id,
+                commande_id: l.commande_id,
+                prestataire_id: l.prestataire_id,
+                site_lat: l.site_lat,
+                site_lon: l.site_lon,
+                montant_avance: l.montant_avance,
+                devise: l.devise,
+            })
+            .collect())
+    }
+
+    /// Arrêt d'une course active du coursier par son id, QUEL QUE SOIT son
+    /// statut (pour la vérification puis la garde d'état de `marquer_arret_collecte`).
+    /// `None` si l'arrêt n'appartient pas à une course `en_collecte` du coursier
+    /// (précondition FR-012 → `arret_hors_course`).
+    pub async fn arret_de_coursier(
+        &self,
+        coursier: Uuid,
+        arret_id: Uuid,
+    ) -> Result<Option<ArretACollecter>, ErreurCommandes> {
+        let ligne = sqlx::query!(
+            r#"SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,
+                      l.commande_id, a.prestataire_id, a.site_lat, a.site_lon,
+                      a.montant_avance, a.devise
+               FROM commandes.arret a
+               JOIN commandes.segment s ON s.id = a.segment_id
+               JOIN commandes.livraison l ON l.id = s.livraison_id
+               WHERE a.id = $1 AND l.coursier_id = $2 AND l.etat = 'en_collecte'"#,
+            arret_id,
+            coursier,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(ligne.map(|l| ArretACollecter {
+            arret_id: l.arret_id,
+            livraison_id: l.livraison_id,
+            segment_id: l.segment_id,
+            commande_id: l.commande_id,
+            prestataire_id: l.prestataire_id,
+            site_lat: l.site_lat,
+            site_lon: l.site_lon,
+            montant_avance: l.montant_avance,
+            devise: l.devise,
+        }))
+    }
+
     /// Progression courante d'une livraison (chemin idempotent — aucune écriture).
     async fn progression(
         &self,

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret\n               SET statut = 'collecte',\n                   collecte_le = $2,\n                   mode_collecte = $3::commandes.mode_collecte,\n                   photo_cle = $4,\n                   distance_scan_m = $5,\n                   collecte_uuid_client = $6\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "commandes.mode_collecte",
+            "kind": {
+              "Enum": [
+                "scan_qr",
+                "code_secours"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e266fbd3e21c0f75f37754fd4cde9b5883ef87c06e657a72d50e98a4fd66e8ae"
+}

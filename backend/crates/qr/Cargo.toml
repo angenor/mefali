@@ -8,10 +8,27 @@ publish = false
 
 # Domaine PUR (constitution II) : aucune I/O directe — Garage passe par le port
 # `socle::DepotObjets`, la course active par `commandes::ArretsDeCollecte`, le
-# compteur d'essais par un port Redis. Le câblage complet des crates de domaine
-# (commandes, prestataires, zones, socle, sqlx, sha2…) est posé au T011.
+# compteur d'essais par un port `CompteurEssais` (Redis en prod). Les impls
+# réelles vivent dans la couche `api` (racine de composition).
 [dependencies]
-# Plaque QR imprimable (T018, research.md R2) — dépendances pures, aucune I/O.
+socle.workspace = true
+# Socle logistique : transition marquer_arret_collecte + port ArretsDeCollecte.
+commandes.workspace = true
+# Résolution du jeton (révocation dérivée) + lecture jeton/nom/code de secours.
+prestataires.workspace = true
+# Paramètres hérités : distance de scan, seuil photo, rétention (ConfigurationZones).
+zones.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+# Empreintes hors-ligne (sha256 du jeton et du code salé) — pré-provisionnement R6.
+sha2.workspace = true
+# Plaque QR imprimable (T018, research R2) — dépendances pures, aucune I/O.
 qrcode.workspace = true
 printpdf.workspace = true
 

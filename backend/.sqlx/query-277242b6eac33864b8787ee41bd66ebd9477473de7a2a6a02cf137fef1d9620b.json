@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT resultat FROM qr.action_traitee WHERE uuid_client = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resultat",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "qr.action_traitee",
+            "name": "resultat"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "277242b6eac33864b8787ee41bd66ebd9477473de7a2a6a02cf137fef1d9620b"
+}

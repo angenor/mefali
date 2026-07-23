@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.livraison\n                   SET etat = 'en_livraison', etat_le = $2\n                   WHERE id = $1 AND etat = 'en_collecte'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6aa796492d2d2d075a54e96d83843cf6cbf9ac259b0e974995049a1ca48541bb"
+}

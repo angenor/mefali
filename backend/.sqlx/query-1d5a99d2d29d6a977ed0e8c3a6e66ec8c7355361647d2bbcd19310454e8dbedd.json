@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.nom, p.jeton_plaque, p.code_secours, p.ville_id,\n                      COALESCE(p.politique_photo_collecte, c.politique_photo::text)\n                          AS \"politique_base!\"\n               FROM prestataires.prestataire p\n               JOIN zones.categorie c ON c.id = p.categorie_id\n               WHERE p.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "nom",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "nom"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "jeton_plaque",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "jeton_plaque"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "code_secours",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "code_secours"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "ville_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "ville_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "politique_base!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "1d5a99d2d29d6a977ed0e8c3a6e66ec8c7355361647d2bbcd19310454e8dbedd"
+}

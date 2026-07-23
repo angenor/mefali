@@ -1,5 +1,21 @@
-//! Crate `qr` — Codes QR (agrément prestataire, retrait de commande).
+//! Crate `qr` — traçabilité QR : plaque imprimable et scans de collecte.
 //!
-//! Vide ce cycle (001-socle-monorepo) : seul le crate `socle` porte de la
-//! logique. Les entités et parcours de ce domaine arrivent dans son cycle
-//! dédié (constitution IX — « prêt ≠ construit »).
+//! Cycle QRC 006. Le crate compose le **PDF de plaque** (QRC-01) et orchestre
+//! le **scan de collecte** (QRC-02/03/04) : vérification (résolution du jeton,
+//! proximité grand-cercle, politique photo, code dégradé + incident), puis
+//! bascule de l'arrêt en COLLECTÉ via `commandes::marquer_arret_collecte`.
+//! Tout fonctionne hors-ligne (pré-provisionnement d'empreintes, réconciliation
+//! serveur au rejeu). Domaine PUR (constitution II) : Garage et Redis n'entrent
+//! que par des ports (`socle::DepotObjets`, `CompteurEssais`).
+
+pub mod depot;
+pub mod modele;
+pub mod plaque;
+pub mod ports;
+pub mod verification;
+
+pub use depot::PgQr;
+pub use modele::{
+    ArretPreProvisionne, DemandeCollecte, ErreurQr, ResultatCollecte,
+};
+pub use ports::{CompteurEssais, CompteurMemoire, ErreurCompteur};
