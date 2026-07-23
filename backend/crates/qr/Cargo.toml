@@ -6,4 +6,14 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine PUR (constitution II) : aucune I/O directe — Garage passe par le port
+# `socle::DepotObjets`, la course active par `commandes::ArretsDeCollecte`, le
+# compteur d'essais par un port Redis. Le câblage complet des crates de domaine
+# (commandes, prestataires, zones, socle, sqlx, sha2…) est posé au T011.
 [dependencies]
+# Plaque QR imprimable (T018, research.md R2) — dépendances pures, aucune I/O.
+qrcode.workspace = true
+printpdf.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

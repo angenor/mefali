@@ -105,6 +105,14 @@ hmac = "0.13.0"
 # CSPRNG : code OTP 6 chiffres, refresh opaque 256 bits, jeton d'inscription (R2/R3).
 rand = "0.10.2"
 
+# --- Plaque QR imprimable (cycle QRC 006, research.md R2) — versions figées le
+# 2026-07-23 (constitution X). Deux dépendances PURES (aucune I/O) du crate `qr` :
+# `qrcode` produit la matrice de modules, `printpdf` compose le PDF d'impression
+# (QR dessiné en rectangles vectoriels + nom + code de secours). Le jeton existe
+# déjà (cycle 005) : ni hmac ni rand ne sont requis pour la plaque.
+qrcode = { version = "0.14.1", default-features = false }
+printpdf = "0.12.4"
+
 [profile.release]
 strip = true
 lto = "thin"
