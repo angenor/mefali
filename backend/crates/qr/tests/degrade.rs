@@ -23,35 +23,31 @@ async fn bon_code_dans_le_rayon_collecte(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "../../migrations")]
-async fn mauvais_code_incident_une_fois_puis_epuise(pool: sqlx::PgPool) {
+async fn trois_essais_reels_puis_epuise_incident_une_fois(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
     let (tantie, _j, _code) = bac.prestataire_agree("Tantie", "restauration").await;
     let arrets = bac.simuler_course(&[(tantie, 2000)]).await;
 
-    // 1er faux code → code_incorrect + incident créé.
-    let e1 = bac
-        .qr
-        .collecter(bac.coursier, demande_code(arrets[0], "0000", SITE_LAT, SITE_LON))
-        .await
-        .unwrap_err();
-    assert_eq!(e1.message_cle(), Some("code_incorrect"));
+    // « 3 essais max » (FR-020) : les tentatives 1, 2 ET 3 comparent le code
+    // (3× code_incorrect) ; l'incident est créé UNE seule fois au 1er passage.
+    for faux in ["0000", "0001", "0002"] {
+        let e = bac
+            .qr
+            .collecter(bac.coursier, demande_code(arrets[0], faux, SITE_LAT, SITE_LON))
+            .await
+            .unwrap_err();
+        assert_eq!(e.message_cle(), Some("code_incorrect"), "essai « {faux} »");
+    }
     assert_eq!(bac.compter("SELECT count(*) FROM qr.incident_plaque").await, 1);
+    assert_eq!(bac.evenements("plaque.remplacement_requis").await.len(), 1);
 
-    // 2e faux code → encore code_incorrect, PAS de nouvel incident.
-    let e2 = bac
+    // Au-DELÀ du 3ᵉ essai → épuisé (backstop), toujours un seul incident.
+    let e4 = bac
         .qr
-        .collecter(bac.coursier, demande_code(arrets[0], "0001", SITE_LAT, SITE_LON))
+        .collecter(bac.coursier, demande_code(arrets[0], "0003", SITE_LAT, SITE_LON))
         .await
         .unwrap_err();
-    assert_eq!(e2.message_cle(), Some("code_incorrect"));
-
-    // 3e essai → épuisé (Redis/compteur), toujours un seul incident.
-    let e3 = bac
-        .qr
-        .collecter(bac.coursier, demande_code(arrets[0], "0002", SITE_LAT, SITE_LON))
-        .await
-        .unwrap_err();
-    assert_eq!(e3.message_cle(), Some("code_epuise"));
+    assert_eq!(e4.message_cle(), Some("code_epuise"));
     assert_eq!(bac.compter("SELECT count(*) FROM qr.incident_plaque").await, 1);
     assert_eq!(bac.evenements("plaque.remplacement_requis").await.len(), 1);
 }

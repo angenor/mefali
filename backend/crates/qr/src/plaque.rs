@@ -10,10 +10,13 @@ use printpdf::{
     Point, Pt, Rect, Rgb, TextItem,
 };
 use qrcode::{Color as ModuleQr, QrCode};
+use uuid::Uuid;
 
-/// Base de l'URL encodée dans le QR (domaine produit `mefali.com`, harmonisé
-/// docs 2026-07-22). Le scan lit cette URL et en extrait le jeton.
-const BASE_URL_PLAQUE: &str = "https://mefali.com/p/";
+/// Domaine produit encodé dans le QR (`mefali.com`, harmonisé docs 2026-07-22).
+/// L'URL complète respecte FR-009 : `{domaine}/v/{prestataire_id}?t={jeton}` —
+/// le prestataire est dans le CHEMIN, le jeton dans le paramètre `t` (le scan
+/// et le futur cycle WEB en dépendent).
+const DOMAINE_PLAQUE: &str = "https://mefali.com";
 
 /// Titre imprimé (texte rendu SERVEUR — clé i18n `plaque.titre`). Seul texte
 /// utilisateur rendu côté serveur : artefact d'impression, sans locale client à
@@ -28,9 +31,14 @@ const PAGE_H_MM: f32 = 148.0;
 const QR_COTE_MM: f32 = 60.0;
 const QR_BAS_MM: f32 = 60.0; // bord inférieur du carré QR
 
-/// Compose le PDF de plaque : titre + QR (jeton) + nom + code de secours.
+/// Compose le PDF de plaque : titre + QR (URL FR-009) + nom + code de secours.
 /// Retourne les octets du PDF (commence par `%PDF`).
-pub fn composer_plaque_pdf(nom: &str, jeton: &str, code_secours: &str) -> Vec<u8> {
+pub fn composer_plaque_pdf(
+    prestataire_id: Uuid,
+    nom: &str,
+    jeton: &str,
+    code_secours: &str,
+) -> Vec<u8> {
     let mut ops = Vec::new();
 
     // Tout en noir (impression).
@@ -42,7 +50,8 @@ pub fn composer_plaque_pdf(nom: &str, jeton: &str, code_secours: &str) -> Vec<u8
     pousser_texte_centre(&mut ops, TITRE_PLAQUE, 16.0, 130.0);
 
     // ── QR dessiné en modules vectoriels ───────────────────────────────────
-    let url = format!("{BASE_URL_PLAQUE}{jeton}");
+    // FR-009 : `{domaine}/v/{prestataire_id}?t={jeton}`.
+    let url = format!("{DOMAINE_PLAQUE}/v/{prestataire_id}?t={jeton}");
     let code = QrCode::new(url.as_bytes()).expect("jeton court — encodage QR toujours possible");
     let modules = code.width(); // matrice carrée `modules × modules`
     let pas_mm = QR_COTE_MM / modules as f32;
@@ -121,7 +130,7 @@ mod tests {
 
     #[test]
     fn produit_un_pdf_valide() {
-        let pdf = composer_plaque_pdf("Tantie Affoué", &"a".repeat(80), "0421");
+        let pdf = composer_plaque_pdf(Uuid::now_v7(), "Tantie Affoué", &"a".repeat(80), "0421");
         assert!(pdf.starts_with(b"%PDF"), "en-tête PDF présent");
         assert!(pdf.len() > 500, "le PDF porte du contenu (QR + textes)");
     }
@@ -130,8 +139,9 @@ mod tests {
     fn regeneration_meme_entete() {
         // Le jeton est stable (SC-001) : deux compositions du même contenu
         // produisent au moins le même en-tête PDF.
-        let a = composer_plaque_pdf("Kofi", &"b".repeat(80), "1234");
-        let b = composer_plaque_pdf("Kofi", &"b".repeat(80), "1234");
+        let id = Uuid::now_v7();
+        let a = composer_plaque_pdf(id, "Kofi", &"b".repeat(80), "1234");
+        let b = composer_plaque_pdf(id, "Kofi", &"b".repeat(80), "1234");
         assert!(a.starts_with(b"%PDF") && b.starts_with(b"%PDF"));
     }
 }

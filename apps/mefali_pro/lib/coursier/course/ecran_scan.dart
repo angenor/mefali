@@ -31,6 +31,12 @@ class _EcranScanState extends ConsumerState<EcranScan> {
   bool _enCours = false;
   int _essais = 0;
   static const _maxEssais = 3;
+  // Anti-tempête : MobileScanner réémet le même QR plusieurs fois par seconde.
+  // On ignore toute détection dans les [_refroidissement] suivant un traitement
+  // (y compris après un refus métier) — sinon un refus déclencherait une rafale
+  // de POST identiques.
+  DateTime? _dernierTraite;
+  static const _refroidissement = Duration(seconds: 3);
 
   @override
   void dispose() {
@@ -39,10 +45,13 @@ class _EcranScanState extends ConsumerState<EcranScan> {
     super.dispose();
   }
 
-  /// Extrait le jeton d'une valeur scannée (URL `.../p/{jeton}` ou jeton brut).
+  /// Extrait le jeton d'une valeur scannée. FR-009 : l'URL est
+  /// `{domaine}/v/{prestataire_id}?t={jeton}` — le jeton est le paramètre `t`.
+  /// Repli sur la valeur brute si ce n'est pas une URL (jeton nu).
   String _jetonDe(String valeur) {
     final uri = Uri.tryParse(valeur);
-    if (uri != null && uri.pathSegments.isNotEmpty) return uri.pathSegments.last;
+    final t = uri?.queryParameters['t'];
+    if (t != null && t.isNotEmpty) return t;
     return valeur;
   }
 
@@ -60,8 +69,14 @@ class _EcranScanState extends ConsumerState<EcranScan> {
 
   Future<void> _surScan(BarcodeCapture capture) async {
     if (_enCours || _modeDegrade) return;
+    final maintenant = DateTime.now();
+    final dernier = _dernierTraite;
+    if (dernier != null && maintenant.difference(dernier) < _refroidissement) {
+      return; // rafale de réémissions du même QR : on ignore.
+    }
     final valeur = capture.barcodes.firstOrNull?.rawValue;
     if (valeur == null) return;
+    _dernierTraite = maintenant;
     await _collecter(mode: ModeScan.scanQr, jeton: _jetonDe(valeur));
   }
 

@@ -79,7 +79,12 @@ impl PgQr {
         // Régénération : l'objet existait-il déjà ? (le double mémoire échoue à
         // présigner une clé absente ; en prod S3 la génération reste correcte.)
         let regeneration = self.objets.presigner_get(&cle, PRESIGNEE_TTL).await.is_ok();
-        let pdf = plaque::composer_plaque_pdf(&ctx.nom, &ctx.jeton_plaque, &ctx.code_secours);
+        let pdf = plaque::composer_plaque_pdf(
+            prestataire_id,
+            &ctx.nom,
+            &ctx.jeton_plaque,
+            &ctx.code_secours,
+        );
         self.objets.deposer(&cle, pdf, "application/pdf").await?;
         let url = self.objets.presigner_get(&cle, PRESIGNEE_TTL).await?;
 
@@ -201,8 +206,11 @@ impl PgQr {
                     .incrementer_essai(arret.arret_id)
                     .await
                     .map_err(|e| ErreurQr::Compteur(e.0))?;
-                // 3 essais : au 3ᵉ, épuisé (refus définitif).
-                if essais >= 3 {
+                // 3 essais réels (FR-020, « 3 essais max ») : les tentatives 1,
+                // 2 et 3 comparent le code ; au-DELÀ du 3ᵉ (backstop en ligne et
+                // au rejeu), épuisé. L'app borne localement à 3 saisies
+                // (`_maxEssais = 3`) — ce seuil doit rester aligné.
+                if essais > 3 {
                     return self.rejeter_definitif(&arret, &demande, "code_epuise", coursier).await;
                 }
                 let code = demande
@@ -330,13 +338,26 @@ impl PgQr {
                 .unwrap_or(365);
             let echeance = c.collecte_le + chrono::Duration::days(jours);
             if Utc::now() >= echeance {
-                // Supprime l'objet PUIS déréférence en base : un échec de
-                // suppression laisse la clé (retentée au prochain passage).
-                self.objets.supprimer(&c.photo_cle).await?;
-                sqlx::query!("UPDATE commandes.arret SET photo_cle = NULL WHERE id = $1", c.id)
-                    .execute(&self.pool)
-                    .await?;
-                purgees += 1;
+                // Best-effort : un échec de suppression sur UN objet est
+                // journalisé et n'interrompt PAS la purge des autres (la clé
+                // reste, retentée au prochain passage). Ne déréférence en base
+                // que si la suppression a réussi.
+                match self.objets.supprimer(&c.photo_cle).await {
+                    Ok(()) => {
+                        sqlx::query!(
+                            "UPDATE commandes.arret SET photo_cle = NULL WHERE id = $1",
+                            c.id,
+                        )
+                        .execute(&self.pool)
+                        .await?;
+                        purgees += 1;
+                    }
+                    Err(e) => tracing::warn!(
+                        cle = %c.photo_cle,
+                        erreur = %e,
+                        "purge d'une photo de récupération échouée — retentée au prochain passage",
+                    ),
+                }
             }
         }
         Ok(purgees)
@@ -502,8 +523,13 @@ impl PgQr {
         arret_id: Uuid,
         resultat: &str,
     ) -> Result<(), ErreurQr> {
+        // ON CONFLICT DO NOTHING : deux rejeux CONCURRENTS du même uuid_client
+        // (l'un enregistrant l'issue avant que l'autre ne lise le registre) ne
+        // doivent pas lever une violation de clé primaire (500) — l'idempotence
+        // tient malgré la course (V).
         sqlx::query!(
-            "INSERT INTO qr.action_traitee (uuid_client, arret_id, resultat) VALUES ($1, $2, $3)",
+            "INSERT INTO qr.action_traitee (uuid_client, arret_id, resultat)
+             VALUES ($1, $2, $3) ON CONFLICT (uuid_client) DO NOTHING",
             uuid_client,
             arret_id,
             resultat,
