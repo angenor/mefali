@@ -44,6 +44,11 @@ pub trait DepotObjets: Send + Sync {
     /// Émet une URL de lecture présignée valable `ttl`.
     async fn presigner_get(&self, cle: &str, ttl: Duration) -> Result<UrlPresignee, ErreurObjets>;
 
+    /// Vrai si un objet EXISTE sous `cle`, sans lire ses octets ni présigner
+    /// (S3 : `HEAD`). À préférer à `presigner_get(...).is_ok()` pour tester la
+    /// présence : sur S3, présigner réussit même pour une clé absente.
+    async fn existe(&self, cle: &str) -> Result<bool, ErreurObjets>;
+
     /// Supprime un objet. Idempotent : supprimer une clé absente réussit —
     /// la purge rejoue sans état, et le rattrapage d'un échec S3 ne doit pas
     /// se transformer en erreur au passage suivant.
@@ -101,6 +106,10 @@ impl DepotObjets for MemoireObjets {
     async fn supprimer(&self, cle: &str) -> Result<(), ErreurObjets> {
         self.objets.lock().expect("objets").remove(cle);
         Ok(())
+    }
+
+    async fn existe(&self, cle: &str) -> Result<bool, ErreurObjets> {
+        Ok(self.objets.lock().expect("objets").contains_key(cle))
     }
 }
 

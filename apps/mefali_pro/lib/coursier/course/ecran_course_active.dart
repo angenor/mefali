@@ -11,8 +11,13 @@ import 'etat_course.dart';
 /// bouton de scan. Réf. `docs/design/png/K3-course-active.png`. Widgets M3
 /// thémés `mefali_core` (constitution XI), constructeurs `.adaptive`.
 class EcranCourseActive extends ConsumerWidget {
-  /// Crée l'écran de course active.
-  const EcranCourseActive({super.key});
+  /// Crée l'écran de course active. [entete] (optionnel) est rendu en tête du
+  /// corps, DANS l'unique Scaffold — la bascule de rôle du coursier bi-rôle y
+  /// passe sans imbriquer un second Scaffold (FR-046).
+  const EcranCourseActive({super.key, this.entete});
+
+  /// Widget d'entête optionnel (ex. bascule de rôle).
+  final Widget? entete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,10 +27,26 @@ class EcranCourseActive extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.courseTitre)),
       body: SafeArea(
-        child: asyncEtat.when(
-          loading: () => const _ChargementCourse(),
-          error: (_, _) => Center(child: Text(l10n.courseAucune)),
-          data: (etat) => _CorpsCourse(etat: etat),
+        child: Column(
+          children: [
+            if (entete != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  MefaliTokens.screenMargin,
+                  MefaliTokens.space3,
+                  MefaliTokens.screenMargin,
+                  0,
+                ),
+                child: entete,
+              ),
+            Expanded(
+              child: asyncEtat.when(
+                loading: () => const _ChargementCourse(),
+                error: (_, _) => Center(child: Text(l10n.courseAucune)),
+                data: (etat) => _CorpsCourse(etat: etat),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -115,7 +136,6 @@ class _CarteArret extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final textTheme = Theme.of(context).textTheme;
     return Card(
       shape: RoundedRectangleBorder(
@@ -132,14 +152,11 @@ class _CarteArret extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    formaterMontant(arret.montantAvance, arret.devise),
-                    style: textTheme.titleMedium,
-                  ),
+                  Text(arret.nom, style: textTheme.titleMedium),
                   const SizedBox(height: MefaliTokens.space1),
                   Text(
-                    arret.photoExigee ? l10n.scanTitre : l10n.courseTitre,
-                    style: textTheme.bodySmall?.copyWith(color: MefaliTokens.textMuted),
+                    formaterMontant(arret.montantAvance, arret.devise),
+                    style: textTheme.bodyMedium?.copyWith(color: MefaliTokens.textMuted),
                   ),
                 ],
               ),

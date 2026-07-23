@@ -23,6 +23,8 @@ export 'src/config/config_distante.dart';
 export 'src/config/service_config.dart';
 export 'src/config/source_config.dart';
 export 'src/dev/atelier_repere_vocal.dart';
+export 'package:drift/drift.dart' show Value;
+
 export 'src/coursier/bandeaux.dart';
 export 'src/format/montant.dart';
 export 'src/offline/action_en_attente.dart';

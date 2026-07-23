@@ -58,6 +58,9 @@ class ArretsPreprovisionnes extends Table {
   /// Prestataire visé.
   TextColumn get prestataireId => text()();
 
+  /// Nom du prestataire (affiché sur la carte K3).
+  TextColumn get nom => text().withDefault(const Constant(''))();
+
   /// base16(sha256(jeton)) — match hors-ligne du QR scanné.
   TextColumn get empreinteJeton => text()();
 
@@ -79,6 +82,9 @@ class ArretsPreprovisionnes extends Table {
   /// Photo exigée (politique résolue).
   BoolColumn get photoExigee => boolean()();
 
+  /// Rayon max de scan (m) — validation de proximité HORS-LIGNE (R6).
+  IntColumn get distanceMaxM => integer().withDefault(const Constant(100))();
+
   /// Coche optimiste locale avant réconciliation serveur
   /// (`a_collecter` | `collecte`).
   TextColumn get statutLocal =>
@@ -99,7 +105,20 @@ class BaseOffline extends _$BaseOffline {
   BaseOffline.memoire() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          // v2 (cycle QRC) : nom du prestataire + rayon de scan au cache de
+          // course (affichage K3 + validation de proximité hors-ligne, R6).
+          if (from < 2) {
+            await m.addColumn(arretsPreprovisionnes, arretsPreprovisionnes.nom);
+            await m.addColumn(
+                arretsPreprovisionnes, arretsPreprovisionnes.distanceMaxM);
+          }
+        },
+      );
 
   /// Ouvre (ou crée) le fichier de base dans le répertoire application.
   static BaseOffline ouvrir() {

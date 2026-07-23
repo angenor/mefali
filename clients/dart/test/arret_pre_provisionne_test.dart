@@ -19,6 +19,12 @@ void main() {
       // TODO
     });
 
+    // Rayon max de scan (m) — validation de proximité hors-ligne.
+    // int distanceMaxM
+    test('to test the property `distanceMaxM`', () async {
+      // TODO
+    });
+
     // base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
     // String empreinteCode
     test('to test the property `empreinteCode`', () async {
@@ -34,6 +40,12 @@ void main() {
     // Montant avancé (unités mineures).
     // int montantAvance
     test('to test the property `montantAvance`', () async {
+      // TODO
+    });
+
+    // Nom du prestataire (affiché sur la carte K3).
+    // String nom
+    test('to test the property `nom`', () async {
       // TODO
     });
 

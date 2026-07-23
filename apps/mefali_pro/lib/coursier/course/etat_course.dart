@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
@@ -26,6 +28,7 @@ class ArretCourse {
   const ArretCourse({
     required this.arretId,
     required this.prestataireId,
+    required this.nom,
     required this.empreinteJeton,
     required this.empreinteCode,
     required this.siteLat,
@@ -33,6 +36,7 @@ class ArretCourse {
     required this.montantAvance,
     required this.devise,
     required this.photoExigee,
+    required this.distanceMaxM,
     required this.collecte,
   });
 
@@ -41,6 +45,9 @@ class ArretCourse {
 
   /// Prestataire visé.
   final String prestataireId;
+
+  /// Nom du prestataire (affiché sur la carte K3).
+  final String nom;
 
   /// Empreinte du jeton (match hors-ligne).
   final String empreinteJeton;
@@ -62,6 +69,9 @@ class ArretCourse {
 
   /// Photo exigée.
   final bool photoExigee;
+
+  /// Rayon max de scan (m) — validation de proximité hors-ligne (R6).
+  final int distanceMaxM;
 
   /// Coché (serveur ou optimiste local).
   final bool collecte;
@@ -140,6 +150,7 @@ class EtatCourseActive extends _$EtatCourseActive {
           ArretsPreprovisionnesCompanion.insert(
             arretId: a.arretId,
             prestataireId: a.prestataireId,
+            nom: Value(a.nom),
             empreinteJeton: a.empreinteJeton,
             empreinteCode: a.empreinteCode,
             siteLat: a.siteLat,
@@ -147,6 +158,7 @@ class EtatCourseActive extends _$EtatCourseActive {
             montantAvance: a.montantAvance,
             devise: a.devise,
             photoExigee: a.photoExigee,
+            distanceMaxM: Value(a.distanceMaxM),
           ),
       ]);
       for (final id in enAttente) {
@@ -192,6 +204,59 @@ class EtatCourseActive extends _$EtatCourseActive {
     return segments.length > 3 ? segments[3] : '';
   }
 
+  /// Arrêt courant depuis l'état chargé, ou `null`.
+  ArretCourse? _arretCache(String arretId) {
+    for (final a in state.value?.arrets ?? const <ArretCourse>[]) {
+      if (a.arretId == arretId) return a;
+    }
+    return null;
+  }
+
+  /// Validation HORS-LIGNE (R6) contre les empreintes pré-provisionnées : même
+  /// ordre que le serveur (proximité, puis correspondance). Renvoie une clé
+  /// d'erreur i18n, ou `null` si la collecte peut être enfilée.
+  String? _validerOffline(
+    ArretCourse arret,
+    ModeScan mode,
+    String? jeton,
+    String? code,
+    double lat,
+    double lon,
+  ) {
+    // Proximité grand-cercle vs rayon caché.
+    if (_distanceM(lat, lon, arret.siteLat, arret.siteLon) > arret.distanceMaxM) {
+      return 'hors_zone';
+    }
+    if (mode == ModeScan.scanQr) {
+      // base16(sha256(jeton)) == empreinte pré-provisionnée ?
+      if (jeton == null || _hex(sha256.convert(utf8.encode(jeton)).bytes) != arret.empreinteJeton) {
+        return 'plaque_invalide';
+      }
+    } else {
+      // base16(sha256(prestataire_id ‖ code)) — sel = 16 octets de l'UUID.
+      if (code == null) return 'code_incorrect';
+      final sel = UuidValue.fromString(arret.prestataireId).toBytes();
+      final empreinte = _hex(sha256.convert([...sel, ...utf8.encode(code)]).bytes);
+      if (empreinte != arret.empreinteCode) return 'code_incorrect';
+    }
+    return null;
+  }
+
+  /// Distance grand-cercle (haversine) en mètres — miroir de `verification.rs`.
+  double _distanceM(double lat1, double lon1, double lat2, double lon2) {
+    const rayonTerreM = 6371000.0;
+    final p1 = lat1 * math.pi / 180, p2 = lat2 * math.pi / 180;
+    final dPhi = (lat2 - lat1) * math.pi / 180;
+    final dLambda = (lon2 - lon1) * math.pi / 180;
+    final a = math.pow(math.sin(dPhi / 2), 2) +
+        math.cos(p1) * math.cos(p2) * math.pow(math.sin(dLambda / 2), 2);
+    return 2 * rayonTerreM * math.asin(math.sqrt(a.toDouble()));
+  }
+
+  /// Hexadécimal base16 minuscule (format des empreintes serveur).
+  String _hex(List<int> octets) =>
+      octets.map((o) => o.toRadixString(16).padLeft(2, '0')).join();
+
   /// Reconstitue l'état depuis le cache drift (coches optimistes comprises).
   Future<EtatCourse> _depuisCache(FileActions file, {bool horsLigne = false}) async {
     final lignes = await file.arretsCache();
@@ -202,6 +267,7 @@ class EtatCourseActive extends _$EtatCourseActive {
           ArretCourse(
             arretId: l.arretId,
             prestataireId: l.prestataireId,
+            nom: l.nom,
             empreinteJeton: l.empreinteJeton,
             empreinteCode: l.empreinteCode,
             siteLat: l.siteLat,
@@ -209,6 +275,7 @@ class EtatCourseActive extends _$EtatCourseActive {
             montantAvance: l.montantAvance,
             devise: l.devise,
             photoExigee: l.photoExigee,
+            distanceMaxM: l.distanceMaxM,
             collecte: l.statutLocal == 'collecte',
           ),
       ],
@@ -253,7 +320,15 @@ class EtatCourseActive extends _$EtatCourseActive {
     } on DioException catch (e) {
       final reponse = e.response;
       if (reponse == null) {
-        // Pas de réponse = réseau coupé : coche optimiste + file idempotente.
+        // Réseau coupé : on VALIDE d'abord hors-ligne (empreinte + proximité,
+        // R6) contre le cache pré-provisionné — on n'enfile pas une action
+        // vouée à l'échec, et le coursier a un retour immédiat.
+        final arret = _arretCache(arretId);
+        if (arret != null) {
+          final refus = _validerOffline(arret, mode, jeton, code, positionLat, positionLon);
+          if (refus != null) return refus;
+        }
+        // Validée localement : coche optimiste + file idempotente.
         await file.enfiler(
           uuidClient: uuidClient,
           endpoint: '/courses/arrets/$arretId/collecte',

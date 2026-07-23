@@ -76,9 +76,9 @@ impl PgQr {
             .await?
             .ok_or(ErreurQr::PlaqueAbsente)?;
         let cle = format!("qr/plaques/{prestataire_id}.pdf");
-        // Régénération : l'objet existait-il déjà ? (le double mémoire échoue à
-        // présigner une clé absente ; en prod S3 la génération reste correcte.)
-        let regeneration = self.objets.presigner_get(&cle, PRESIGNEE_TTL).await.is_ok();
+        // Régénération : l'objet existait-il déjà ? `existe` (HEAD) est fiable en
+        // prod S3, contrairement à `presigner_get` (calcul local, toujours OK).
+        let regeneration = self.objets.existe(&cle).await?;
         let pdf = plaque::composer_plaque_pdf(
             prestataire_id,
             &ctx.nom,
@@ -130,11 +130,16 @@ impl PgQr {
                 .parametre_int(ctx.ville_id, "qr.photo_seuil_montant")
                 .await?
                 .unwrap_or(i64::MAX);
+            let distance_max_m = self
+                .parametre_int(ctx.ville_id, "qr.distance_scan_max_m")
+                .await?
+                .unwrap_or(100);
             let photo_exigee =
                 verification::photo_exigee(&ctx.politique_photo_base, a.montant_avance, seuil);
             sortie.push(ArretPreProvisionne {
                 arret_id: a.arret_id,
                 prestataire_id: a.prestataire_id,
+                nom: ctx.nom,
                 empreinte_jeton: verification::empreinte_jeton(&ctx.jeton_plaque),
                 empreinte_code: verification::empreinte_code(a.prestataire_id, &ctx.code_secours),
                 site_lat: a.site_lat,
@@ -142,6 +147,7 @@ impl PgQr {
                 montant_avance: a.montant_avance,
                 devise: a.devise,
                 photo_exigee,
+                distance_max_m,
             });
         }
         Ok(sortie)
@@ -176,7 +182,26 @@ impl PgQr {
             .await?
             .ok_or(ErreurQr::PlaqueInvalide)?;
 
-        // 4. Vérification selon le mode.
+        // 4. Proximité (porte de présence anti-fraude, R3) — VÉRIFIÉE AVANT la
+        //    vérification de mode : un refus `hors_zone` ne doit ni consommer un
+        //    essai de code dégradé ni résoudre le jeton (le coursier n'est pas
+        //    sur place).
+        let max_m = self
+            .parametre_int(ctx.ville_id, "qr.distance_scan_max_m")
+            .await?
+            .unwrap_or(100);
+        let distance = verification::distance_grand_cercle_m(
+            demande.position_lat,
+            demande.position_lon,
+            arret.site_lat,
+            arret.site_lon,
+        );
+        if distance > max_m as f64 {
+            return self.rejeter_definitif(&arret, &demande, "hors_zone", coursier).await;
+        }
+        let distance_m = distance.round() as i32;
+
+        // 5. Vérification selon le mode.
         match demande.mode {
             ModeCollecte::ScanQr => {
                 let jeton = demande
@@ -231,22 +256,6 @@ impl PgQr {
                 }
             }
         }
-
-        // 5. Proximité (porte de présence anti-fraude, R3).
-        let max_m = self
-            .parametre_int(ctx.ville_id, "qr.distance_scan_max_m")
-            .await?
-            .unwrap_or(100);
-        let distance = verification::distance_grand_cercle_m(
-            demande.position_lat,
-            demande.position_lon,
-            arret.site_lat,
-            arret.site_lon,
-        );
-        if distance > max_m as f64 {
-            return self.rejeter_definitif(&arret, &demande, "hors_zone", coursier).await;
-        }
-        let distance_m = distance.round() as i32;
 
         // 6. Politique photo résolue (R4).
         let seuil = self

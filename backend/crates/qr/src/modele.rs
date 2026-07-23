@@ -54,6 +54,8 @@ pub struct ArretPreProvisionne {
     pub arret_id: Uuid,
     /// Prestataire visé.
     pub prestataire_id: Uuid,
+    /// Nom du prestataire (public — affiché sur la carte K3).
+    pub nom: String,
     /// base16(sha256(jeton)) — match hors-ligne du QR scanné.
     pub empreinte_jeton: String,
     /// base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
@@ -68,6 +70,8 @@ pub struct ArretPreProvisionne {
     pub devise: String,
     /// Politique photo résolue (R4).
     pub photo_exigee: bool,
+    /// Rayon max de scan (m) de la zone — validation de proximité HORS-LIGNE (R6).
+    pub distance_max_m: i64,
 }
 
 /// Erreurs du domaine QR. Chaque variante métier porte une clé i18n fr

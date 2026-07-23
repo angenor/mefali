@@ -43,12 +43,15 @@ dependencies:
   # Lecture du QR de la plaque (ML Kit / AVFoundation) — ouvre la caméra en
   # propre (déclaration CAMERA au manifest, contrairement à image_picker).
   mobile_scanner: ^7.1.4
-  # Position fine pour la porte de présence anti-fraude (< 100 m).
+  # Position fine pour la porte de présence anti-fraude (< 100 m). Gère aussi
+  # sa propre demande de permission runtime (comme mobile_scanner pour la
+  # caméra) — pas de permission_handler nécessaire.
   geolocator: ^14.0.2
-  # Demandes runtime unifiées caméra + localisation.
-  permission_handler: ^12.0.1
   # Détection du retour réseau → drainage automatique de la file offline (V).
   connectivity_plus: ^6.1.5
+  # sha256 pour la validation d'empreinte HORS-LIGNE (R6) — match du jeton/code
+  # scanné contre l'empreinte pré-provisionnée, sans réseau.
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

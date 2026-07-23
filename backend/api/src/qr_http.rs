@@ -112,6 +112,8 @@ pub struct ArretPreProvisionneDto {
     pub arret_id: Uuid,
     /// Prestataire visé.
     pub prestataire_id: Uuid,
+    /// Nom du prestataire (affiché sur la carte K3).
+    pub nom: String,
     /// base16(sha256(jeton)) — match hors-ligne du QR scanné.
     pub empreinte_jeton: String,
     /// base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
@@ -126,6 +128,8 @@ pub struct ArretPreProvisionneDto {
     pub devise: String,
     /// Photo exigée (politique résolue).
     pub photo_exigee: bool,
+    /// Rayon max de scan (m) — validation de proximité hors-ligne.
+    pub distance_max_m: i64,
 }
 
 impl From<ArretPreProvisionne> for ArretPreProvisionneDto {
@@ -133,6 +137,7 @@ impl From<ArretPreProvisionne> for ArretPreProvisionneDto {
         Self {
             arret_id: a.arret_id,
             prestataire_id: a.prestataire_id,
+            nom: a.nom,
             empreinte_jeton: a.empreinte_jeton,
             empreinte_code: a.empreinte_code,
             site_lat: a.site_lat,
@@ -140,6 +145,7 @@ impl From<ArretPreProvisionne> for ArretPreProvisionneDto {
             montant_avance: a.montant_avance,
             devise: a.devise,
             photo_exigee: a.photo_exigee,
+            distance_max_m: a.distance_max_m,
         }
     }
 }

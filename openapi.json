@@ -4380,13 +4380,15 @@
         "required": [
           "arret_id",
           "prestataire_id",
+          "nom",
           "empreinte_jeton",
           "empreinte_code",
           "site_lat",
           "site_lon",
           "montant_avance",
           "devise",
-          "photo_exigee"
+          "photo_exigee",
+          "distance_max_m"
         ],
         "properties": {
           "arret_id": {
@@ -4397,6 +4399,11 @@
           "devise": {
             "type": "string",
             "description": "Devise ISO 4217."
+          },
+          "distance_max_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rayon max de scan (m) — validation de proximité hors-ligne."
           },
           "empreinte_code": {
             "type": "string",
@@ -4410,6 +4417,10 @@
             "type": "integer",
             "format": "int64",
             "description": "Montant avancé (unités mineures)."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom du prestataire (affiché sur la carte K3)."
           },
           "photo_exigee": {
             "type": "boolean",

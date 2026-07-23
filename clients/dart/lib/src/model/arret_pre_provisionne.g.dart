@@ -12,11 +12,15 @@ class _$ArretPreProvisionne extends ArretPreProvisionne {
   @override
   final String devise;
   @override
+  final int distanceMaxM;
+  @override
   final String empreinteCode;
   @override
   final String empreinteJeton;
   @override
   final int montantAvance;
+  @override
+  final String nom;
   @override
   final bool photoExigee;
   @override
@@ -33,9 +37,11 @@ class _$ArretPreProvisionne extends ArretPreProvisionne {
   _$ArretPreProvisionne._(
       {required this.arretId,
       required this.devise,
+      required this.distanceMaxM,
       required this.empreinteCode,
       required this.empreinteJeton,
       required this.montantAvance,
+      required this.nom,
       required this.photoExigee,
       required this.prestataireId,
       required this.siteLat,
@@ -56,9 +62,11 @@ class _$ArretPreProvisionne extends ArretPreProvisionne {
     return other is ArretPreProvisionne &&
         arretId == other.arretId &&
         devise == other.devise &&
+        distanceMaxM == other.distanceMaxM &&
         empreinteCode == other.empreinteCode &&
         empreinteJeton == other.empreinteJeton &&
         montantAvance == other.montantAvance &&
+        nom == other.nom &&
         photoExigee == other.photoExigee &&
         prestataireId == other.prestataireId &&
         siteLat == other.siteLat &&
@@ -70,9 +78,11 @@ class _$ArretPreProvisionne extends ArretPreProvisionne {
     var _$hash = 0;
     _$hash = $jc(_$hash, arretId.hashCode);
     _$hash = $jc(_$hash, devise.hashCode);
+    _$hash = $jc(_$hash, distanceMaxM.hashCode);
     _$hash = $jc(_$hash, empreinteCode.hashCode);
     _$hash = $jc(_$hash, empreinteJeton.hashCode);
     _$hash = $jc(_$hash, montantAvance.hashCode);
+    _$hash = $jc(_$hash, nom.hashCode);
     _$hash = $jc(_$hash, photoExigee.hashCode);
     _$hash = $jc(_$hash, prestataireId.hashCode);
     _$hash = $jc(_$hash, siteLat.hashCode);
@@ -86,9 +96,11 @@ class _$ArretPreProvisionne extends ArretPreProvisionne {
     return (newBuiltValueToStringHelper(r'ArretPreProvisionne')
           ..add('arretId', arretId)
           ..add('devise', devise)
+          ..add('distanceMaxM', distanceMaxM)
           ..add('empreinteCode', empreinteCode)
           ..add('empreinteJeton', empreinteJeton)
           ..add('montantAvance', montantAvance)
+          ..add('nom', nom)
           ..add('photoExigee', photoExigee)
           ..add('prestataireId', prestataireId)
           ..add('siteLat', siteLat)
@@ -109,6 +121,10 @@ class ArretPreProvisionneBuilder
   String? get devise => _$this._devise;
   set devise(String? devise) => _$this._devise = devise;
 
+  int? _distanceMaxM;
+  int? get distanceMaxM => _$this._distanceMaxM;
+  set distanceMaxM(int? distanceMaxM) => _$this._distanceMaxM = distanceMaxM;
+
   String? _empreinteCode;
   String? get empreinteCode => _$this._empreinteCode;
   set empreinteCode(String? empreinteCode) =>
@@ -123,6 +139,10 @@ class ArretPreProvisionneBuilder
   int? get montantAvance => _$this._montantAvance;
   set montantAvance(int? montantAvance) =>
       _$this._montantAvance = montantAvance;
+
+  String? _nom;
+  String? get nom => _$this._nom;
+  set nom(String? nom) => _$this._nom = nom;
 
   bool? _photoExigee;
   bool? get photoExigee => _$this._photoExigee;
@@ -150,9 +170,11 @@ class ArretPreProvisionneBuilder
     if ($v != null) {
       _arretId = $v.arretId;
       _devise = $v.devise;
+      _distanceMaxM = $v.distanceMaxM;
       _empreinteCode = $v.empreinteCode;
       _empreinteJeton = $v.empreinteJeton;
       _montantAvance = $v.montantAvance;
+      _nom = $v.nom;
       _photoExigee = $v.photoExigee;
       _prestataireId = $v.prestataireId;
       _siteLat = $v.siteLat;
@@ -182,12 +204,16 @@ class ArretPreProvisionneBuilder
               arretId, r'ArretPreProvisionne', 'arretId'),
           devise: BuiltValueNullFieldError.checkNotNull(
               devise, r'ArretPreProvisionne', 'devise'),
+          distanceMaxM: BuiltValueNullFieldError.checkNotNull(
+              distanceMaxM, r'ArretPreProvisionne', 'distanceMaxM'),
           empreinteCode: BuiltValueNullFieldError.checkNotNull(
               empreinteCode, r'ArretPreProvisionne', 'empreinteCode'),
           empreinteJeton: BuiltValueNullFieldError.checkNotNull(
               empreinteJeton, r'ArretPreProvisionne', 'empreinteJeton'),
           montantAvance: BuiltValueNullFieldError.checkNotNull(
               montantAvance, r'ArretPreProvisionne', 'montantAvance'),
+          nom: BuiltValueNullFieldError.checkNotNull(
+              nom, r'ArretPreProvisionne', 'nom'),
           photoExigee: BuiltValueNullFieldError.checkNotNull(
               photoExigee, r'ArretPreProvisionne', 'photoExigee'),
           prestataireId: BuiltValueNullFieldError.checkNotNull(

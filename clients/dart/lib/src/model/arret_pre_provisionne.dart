@@ -13,9 +13,11 @@ part 'arret_pre_provisionne.g.dart';
 /// Properties:
 /// * [arretId] - Arrêt à collecter.
 /// * [devise] - Devise ISO 4217.
+/// * [distanceMaxM] - Rayon max de scan (m) — validation de proximité hors-ligne.
 /// * [empreinteCode] - base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
 /// * [empreinteJeton] - base16(sha256(jeton)) — match hors-ligne du QR scanné.
 /// * [montantAvance] - Montant avancé (unités mineures).
+/// * [nom] - Nom du prestataire (affiché sur la carte K3).
 /// * [photoExigee] - Photo exigée (politique résolue).
 /// * [prestataireId] - Prestataire visé.
 /// * [siteLat] - Position attendue du site.
@@ -30,6 +32,10 @@ abstract class ArretPreProvisionne implements Built<ArretPreProvisionne, ArretPr
   @BuiltValueField(wireName: r'devise')
   String get devise;
 
+  /// Rayon max de scan (m) — validation de proximité hors-ligne.
+  @BuiltValueField(wireName: r'distance_max_m')
+  int get distanceMaxM;
+
   /// base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
   @BuiltValueField(wireName: r'empreinte_code')
   String get empreinteCode;
@@ -41,6 +47,10 @@ abstract class ArretPreProvisionne implements Built<ArretPreProvisionne, ArretPr
   /// Montant avancé (unités mineures).
   @BuiltValueField(wireName: r'montant_avance')
   int get montantAvance;
+
+  /// Nom du prestataire (affiché sur la carte K3).
+  @BuiltValueField(wireName: r'nom')
+  String get nom;
 
   /// Photo exigée (politique résolue).
   @BuiltValueField(wireName: r'photo_exigee')
@@ -91,6 +101,11 @@ class _$ArretPreProvisionneSerializer implements PrimitiveSerializer<ArretPrePro
       object.devise,
       specifiedType: const FullType(String),
     );
+    yield r'distance_max_m';
+    yield serializers.serialize(
+      object.distanceMaxM,
+      specifiedType: const FullType(int),
+    );
     yield r'empreinte_code';
     yield serializers.serialize(
       object.empreinteCode,
@@ -105,6 +120,11 @@ class _$ArretPreProvisionneSerializer implements PrimitiveSerializer<ArretPrePro
     yield serializers.serialize(
       object.montantAvance,
       specifiedType: const FullType(int),
+    );
+    yield r'nom';
+    yield serializers.serialize(
+      object.nom,
+      specifiedType: const FullType(String),
     );
     yield r'photo_exigee';
     yield serializers.serialize(
@@ -163,6 +183,13 @@ class _$ArretPreProvisionneSerializer implements PrimitiveSerializer<ArretPrePro
           ) as String;
           result.devise = valueDes;
           break;
+        case r'distance_max_m':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.distanceMaxM = valueDes;
+          break;
         case r'empreinte_code':
           final valueDes = serializers.deserialize(
             value,
@@ -183,6 +210,13 @@ class _$ArretPreProvisionneSerializer implements PrimitiveSerializer<ArretPrePro
             specifiedType: const FullType(int),
           ) as int;
           result.montantAvance = valueDes;
+          break;
+        case r'nom':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.nom = valueDes;
           break;
         case r'photo_exigee':
           final valueDes = serializers.deserialize(

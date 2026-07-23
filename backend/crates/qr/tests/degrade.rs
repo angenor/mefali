@@ -58,7 +58,9 @@ async fn bon_code_hors_rayon_refuse(pool: sqlx::PgPool) {
     let (tantie, _j, code) = bac.prestataire_agree("Tantie", "restauration").await;
     let arrets = bac.simuler_course(&[(tantie, 2000)]).await;
 
-    // Bon code mais ~300 m → hors_zone (FR-022).
+    // Bon code mais ~300 m → hors_zone (FR-022). La proximité est vérifiée
+    // AVANT le mode : aucun essai consommé, aucun incident créé (le coursier
+    // n'est pas sur place).
     let e = bac
         .qr
         .collecter(bac.coursier, demande_code(arrets[0], &code, SITE_LAT + 0.0027, SITE_LON))
@@ -66,4 +68,9 @@ async fn bon_code_hors_rayon_refuse(pool: sqlx::PgPool) {
         .unwrap_err();
     assert_eq!(e.message_cle(), Some("hors_zone"));
     assert_eq!(bac.statut_arret(arrets[0]).await, "a_collecter");
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM qr.incident_plaque").await,
+        0,
+        "hors zone → aucun incident (pas sur place)"
+    );
 }

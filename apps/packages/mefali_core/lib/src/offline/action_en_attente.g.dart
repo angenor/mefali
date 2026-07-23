@@ -586,6 +586,16 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _nomMeta = const VerificationMeta('nom');
+  @override
+  late final GeneratedColumn<String> nom = GeneratedColumn<String>(
+    'nom',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _empreinteJetonMeta = const VerificationMeta(
     'empreinteJeton',
   );
@@ -664,6 +674,18 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
       'CHECK ("photo_exigee" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _distanceMaxMMeta = const VerificationMeta(
+    'distanceMaxM',
+  );
+  @override
+  late final GeneratedColumn<int> distanceMaxM = GeneratedColumn<int>(
+    'distance_max_m',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(100),
+  );
   static const VerificationMeta _statutLocalMeta = const VerificationMeta(
     'statutLocal',
   );
@@ -680,6 +702,7 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
   List<GeneratedColumn> get $columns => [
     arretId,
     prestataireId,
+    nom,
     empreinteJeton,
     empreinteCode,
     siteLat,
@@ -687,6 +710,7 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
     montantAvance,
     devise,
     photoExigee,
+    distanceMaxM,
     statutLocal,
   ];
   @override
@@ -719,6 +743,12 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
       );
     } else if (isInserting) {
       context.missing(_prestataireIdMeta);
+    }
+    if (data.containsKey('nom')) {
+      context.handle(
+        _nomMeta,
+        nom.isAcceptableOrUnknown(data['nom']!, _nomMeta),
+      );
     }
     if (data.containsKey('empreinte_jeton')) {
       context.handle(
@@ -788,6 +818,15 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
     } else if (isInserting) {
       context.missing(_photoExigeeMeta);
     }
+    if (data.containsKey('distance_max_m')) {
+      context.handle(
+        _distanceMaxMMeta,
+        distanceMaxM.isAcceptableOrUnknown(
+          data['distance_max_m']!,
+          _distanceMaxMMeta,
+        ),
+      );
+    }
     if (data.containsKey('statut_local')) {
       context.handle(
         _statutLocalMeta,
@@ -813,6 +852,10 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
       prestataireId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}prestataire_id'],
+      )!,
+      nom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nom'],
       )!,
       empreinteJeton: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -842,6 +885,10 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
         DriftSqlType.bool,
         data['${effectivePrefix}photo_exigee'],
       )!,
+      distanceMaxM: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}distance_max_m'],
+      )!,
       statutLocal: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}statut_local'],
@@ -862,6 +909,9 @@ class ArretPreprovisionne extends DataClass
 
   /// Prestataire visé.
   final String prestataireId;
+
+  /// Nom du prestataire (affiché sur la carte K3).
+  final String nom;
 
   /// base16(sha256(jeton)) — match hors-ligne du QR scanné.
   final String empreinteJeton;
@@ -884,12 +934,16 @@ class ArretPreprovisionne extends DataClass
   /// Photo exigée (politique résolue).
   final bool photoExigee;
 
+  /// Rayon max de scan (m) — validation de proximité HORS-LIGNE (R6).
+  final int distanceMaxM;
+
   /// Coche optimiste locale avant réconciliation serveur
   /// (`a_collecter` | `collecte`).
   final String statutLocal;
   const ArretPreprovisionne({
     required this.arretId,
     required this.prestataireId,
+    required this.nom,
     required this.empreinteJeton,
     required this.empreinteCode,
     required this.siteLat,
@@ -897,6 +951,7 @@ class ArretPreprovisionne extends DataClass
     required this.montantAvance,
     required this.devise,
     required this.photoExigee,
+    required this.distanceMaxM,
     required this.statutLocal,
   });
   @override
@@ -904,6 +959,7 @@ class ArretPreprovisionne extends DataClass
     final map = <String, Expression>{};
     map['arret_id'] = Variable<String>(arretId);
     map['prestataire_id'] = Variable<String>(prestataireId);
+    map['nom'] = Variable<String>(nom);
     map['empreinte_jeton'] = Variable<String>(empreinteJeton);
     map['empreinte_code'] = Variable<String>(empreinteCode);
     map['site_lat'] = Variable<double>(siteLat);
@@ -911,6 +967,7 @@ class ArretPreprovisionne extends DataClass
     map['montant_avance'] = Variable<int>(montantAvance);
     map['devise'] = Variable<String>(devise);
     map['photo_exigee'] = Variable<bool>(photoExigee);
+    map['distance_max_m'] = Variable<int>(distanceMaxM);
     map['statut_local'] = Variable<String>(statutLocal);
     return map;
   }
@@ -919,6 +976,7 @@ class ArretPreprovisionne extends DataClass
     return ArretsPreprovisionnesCompanion(
       arretId: Value(arretId),
       prestataireId: Value(prestataireId),
+      nom: Value(nom),
       empreinteJeton: Value(empreinteJeton),
       empreinteCode: Value(empreinteCode),
       siteLat: Value(siteLat),
@@ -926,6 +984,7 @@ class ArretPreprovisionne extends DataClass
       montantAvance: Value(montantAvance),
       devise: Value(devise),
       photoExigee: Value(photoExigee),
+      distanceMaxM: Value(distanceMaxM),
       statutLocal: Value(statutLocal),
     );
   }
@@ -938,6 +997,7 @@ class ArretPreprovisionne extends DataClass
     return ArretPreprovisionne(
       arretId: serializer.fromJson<String>(json['arretId']),
       prestataireId: serializer.fromJson<String>(json['prestataireId']),
+      nom: serializer.fromJson<String>(json['nom']),
       empreinteJeton: serializer.fromJson<String>(json['empreinteJeton']),
       empreinteCode: serializer.fromJson<String>(json['empreinteCode']),
       siteLat: serializer.fromJson<double>(json['siteLat']),
@@ -945,6 +1005,7 @@ class ArretPreprovisionne extends DataClass
       montantAvance: serializer.fromJson<int>(json['montantAvance']),
       devise: serializer.fromJson<String>(json['devise']),
       photoExigee: serializer.fromJson<bool>(json['photoExigee']),
+      distanceMaxM: serializer.fromJson<int>(json['distanceMaxM']),
       statutLocal: serializer.fromJson<String>(json['statutLocal']),
     );
   }
@@ -954,6 +1015,7 @@ class ArretPreprovisionne extends DataClass
     return <String, dynamic>{
       'arretId': serializer.toJson<String>(arretId),
       'prestataireId': serializer.toJson<String>(prestataireId),
+      'nom': serializer.toJson<String>(nom),
       'empreinteJeton': serializer.toJson<String>(empreinteJeton),
       'empreinteCode': serializer.toJson<String>(empreinteCode),
       'siteLat': serializer.toJson<double>(siteLat),
@@ -961,6 +1023,7 @@ class ArretPreprovisionne extends DataClass
       'montantAvance': serializer.toJson<int>(montantAvance),
       'devise': serializer.toJson<String>(devise),
       'photoExigee': serializer.toJson<bool>(photoExigee),
+      'distanceMaxM': serializer.toJson<int>(distanceMaxM),
       'statutLocal': serializer.toJson<String>(statutLocal),
     };
   }
@@ -968,6 +1031,7 @@ class ArretPreprovisionne extends DataClass
   ArretPreprovisionne copyWith({
     String? arretId,
     String? prestataireId,
+    String? nom,
     String? empreinteJeton,
     String? empreinteCode,
     double? siteLat,
@@ -975,10 +1039,12 @@ class ArretPreprovisionne extends DataClass
     int? montantAvance,
     String? devise,
     bool? photoExigee,
+    int? distanceMaxM,
     String? statutLocal,
   }) => ArretPreprovisionne(
     arretId: arretId ?? this.arretId,
     prestataireId: prestataireId ?? this.prestataireId,
+    nom: nom ?? this.nom,
     empreinteJeton: empreinteJeton ?? this.empreinteJeton,
     empreinteCode: empreinteCode ?? this.empreinteCode,
     siteLat: siteLat ?? this.siteLat,
@@ -986,6 +1052,7 @@ class ArretPreprovisionne extends DataClass
     montantAvance: montantAvance ?? this.montantAvance,
     devise: devise ?? this.devise,
     photoExigee: photoExigee ?? this.photoExigee,
+    distanceMaxM: distanceMaxM ?? this.distanceMaxM,
     statutLocal: statutLocal ?? this.statutLocal,
   );
   ArretPreprovisionne copyWithCompanion(ArretsPreprovisionnesCompanion data) {
@@ -994,6 +1061,7 @@ class ArretPreprovisionne extends DataClass
       prestataireId: data.prestataireId.present
           ? data.prestataireId.value
           : this.prestataireId,
+      nom: data.nom.present ? data.nom.value : this.nom,
       empreinteJeton: data.empreinteJeton.present
           ? data.empreinteJeton.value
           : this.empreinteJeton,
@@ -1009,6 +1077,9 @@ class ArretPreprovisionne extends DataClass
       photoExigee: data.photoExigee.present
           ? data.photoExigee.value
           : this.photoExigee,
+      distanceMaxM: data.distanceMaxM.present
+          ? data.distanceMaxM.value
+          : this.distanceMaxM,
       statutLocal: data.statutLocal.present
           ? data.statutLocal.value
           : this.statutLocal,
@@ -1020,6 +1091,7 @@ class ArretPreprovisionne extends DataClass
     return (StringBuffer('ArretPreprovisionne(')
           ..write('arretId: $arretId, ')
           ..write('prestataireId: $prestataireId, ')
+          ..write('nom: $nom, ')
           ..write('empreinteJeton: $empreinteJeton, ')
           ..write('empreinteCode: $empreinteCode, ')
           ..write('siteLat: $siteLat, ')
@@ -1027,6 +1099,7 @@ class ArretPreprovisionne extends DataClass
           ..write('montantAvance: $montantAvance, ')
           ..write('devise: $devise, ')
           ..write('photoExigee: $photoExigee, ')
+          ..write('distanceMaxM: $distanceMaxM, ')
           ..write('statutLocal: $statutLocal')
           ..write(')'))
         .toString();
@@ -1036,6 +1109,7 @@ class ArretPreprovisionne extends DataClass
   int get hashCode => Object.hash(
     arretId,
     prestataireId,
+    nom,
     empreinteJeton,
     empreinteCode,
     siteLat,
@@ -1043,6 +1117,7 @@ class ArretPreprovisionne extends DataClass
     montantAvance,
     devise,
     photoExigee,
+    distanceMaxM,
     statutLocal,
   );
   @override
@@ -1051,6 +1126,7 @@ class ArretPreprovisionne extends DataClass
       (other is ArretPreprovisionne &&
           other.arretId == this.arretId &&
           other.prestataireId == this.prestataireId &&
+          other.nom == this.nom &&
           other.empreinteJeton == this.empreinteJeton &&
           other.empreinteCode == this.empreinteCode &&
           other.siteLat == this.siteLat &&
@@ -1058,6 +1134,7 @@ class ArretPreprovisionne extends DataClass
           other.montantAvance == this.montantAvance &&
           other.devise == this.devise &&
           other.photoExigee == this.photoExigee &&
+          other.distanceMaxM == this.distanceMaxM &&
           other.statutLocal == this.statutLocal);
 }
 
@@ -1065,6 +1142,7 @@ class ArretsPreprovisionnesCompanion
     extends UpdateCompanion<ArretPreprovisionne> {
   final Value<String> arretId;
   final Value<String> prestataireId;
+  final Value<String> nom;
   final Value<String> empreinteJeton;
   final Value<String> empreinteCode;
   final Value<double> siteLat;
@@ -1072,11 +1150,13 @@ class ArretsPreprovisionnesCompanion
   final Value<int> montantAvance;
   final Value<String> devise;
   final Value<bool> photoExigee;
+  final Value<int> distanceMaxM;
   final Value<String> statutLocal;
   final Value<int> rowid;
   const ArretsPreprovisionnesCompanion({
     this.arretId = const Value.absent(),
     this.prestataireId = const Value.absent(),
+    this.nom = const Value.absent(),
     this.empreinteJeton = const Value.absent(),
     this.empreinteCode = const Value.absent(),
     this.siteLat = const Value.absent(),
@@ -1084,12 +1164,14 @@ class ArretsPreprovisionnesCompanion
     this.montantAvance = const Value.absent(),
     this.devise = const Value.absent(),
     this.photoExigee = const Value.absent(),
+    this.distanceMaxM = const Value.absent(),
     this.statutLocal = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ArretsPreprovisionnesCompanion.insert({
     required String arretId,
     required String prestataireId,
+    this.nom = const Value.absent(),
     required String empreinteJeton,
     required String empreinteCode,
     required double siteLat,
@@ -1097,6 +1179,7 @@ class ArretsPreprovisionnesCompanion
     required int montantAvance,
     required String devise,
     required bool photoExigee,
+    this.distanceMaxM = const Value.absent(),
     this.statutLocal = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : arretId = Value(arretId),
@@ -1111,6 +1194,7 @@ class ArretsPreprovisionnesCompanion
   static Insertable<ArretPreprovisionne> custom({
     Expression<String>? arretId,
     Expression<String>? prestataireId,
+    Expression<String>? nom,
     Expression<String>? empreinteJeton,
     Expression<String>? empreinteCode,
     Expression<double>? siteLat,
@@ -1118,12 +1202,14 @@ class ArretsPreprovisionnesCompanion
     Expression<int>? montantAvance,
     Expression<String>? devise,
     Expression<bool>? photoExigee,
+    Expression<int>? distanceMaxM,
     Expression<String>? statutLocal,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (arretId != null) 'arret_id': arretId,
       if (prestataireId != null) 'prestataire_id': prestataireId,
+      if (nom != null) 'nom': nom,
       if (empreinteJeton != null) 'empreinte_jeton': empreinteJeton,
       if (empreinteCode != null) 'empreinte_code': empreinteCode,
       if (siteLat != null) 'site_lat': siteLat,
@@ -1131,6 +1217,7 @@ class ArretsPreprovisionnesCompanion
       if (montantAvance != null) 'montant_avance': montantAvance,
       if (devise != null) 'devise': devise,
       if (photoExigee != null) 'photo_exigee': photoExigee,
+      if (distanceMaxM != null) 'distance_max_m': distanceMaxM,
       if (statutLocal != null) 'statut_local': statutLocal,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1139,6 +1226,7 @@ class ArretsPreprovisionnesCompanion
   ArretsPreprovisionnesCompanion copyWith({
     Value<String>? arretId,
     Value<String>? prestataireId,
+    Value<String>? nom,
     Value<String>? empreinteJeton,
     Value<String>? empreinteCode,
     Value<double>? siteLat,
@@ -1146,12 +1234,14 @@ class ArretsPreprovisionnesCompanion
     Value<int>? montantAvance,
     Value<String>? devise,
     Value<bool>? photoExigee,
+    Value<int>? distanceMaxM,
     Value<String>? statutLocal,
     Value<int>? rowid,
   }) {
     return ArretsPreprovisionnesCompanion(
       arretId: arretId ?? this.arretId,
       prestataireId: prestataireId ?? this.prestataireId,
+      nom: nom ?? this.nom,
       empreinteJeton: empreinteJeton ?? this.empreinteJeton,
       empreinteCode: empreinteCode ?? this.empreinteCode,
       siteLat: siteLat ?? this.siteLat,
@@ -1159,6 +1249,7 @@ class ArretsPreprovisionnesCompanion
       montantAvance: montantAvance ?? this.montantAvance,
       devise: devise ?? this.devise,
       photoExigee: photoExigee ?? this.photoExigee,
+      distanceMaxM: distanceMaxM ?? this.distanceMaxM,
       statutLocal: statutLocal ?? this.statutLocal,
       rowid: rowid ?? this.rowid,
     );
@@ -1172,6 +1263,9 @@ class ArretsPreprovisionnesCompanion
     }
     if (prestataireId.present) {
       map['prestataire_id'] = Variable<String>(prestataireId.value);
+    }
+    if (nom.present) {
+      map['nom'] = Variable<String>(nom.value);
     }
     if (empreinteJeton.present) {
       map['empreinte_jeton'] = Variable<String>(empreinteJeton.value);
@@ -1194,6 +1288,9 @@ class ArretsPreprovisionnesCompanion
     if (photoExigee.present) {
       map['photo_exigee'] = Variable<bool>(photoExigee.value);
     }
+    if (distanceMaxM.present) {
+      map['distance_max_m'] = Variable<int>(distanceMaxM.value);
+    }
     if (statutLocal.present) {
       map['statut_local'] = Variable<String>(statutLocal.value);
     }
@@ -1208,6 +1305,7 @@ class ArretsPreprovisionnesCompanion
     return (StringBuffer('ArretsPreprovisionnesCompanion(')
           ..write('arretId: $arretId, ')
           ..write('prestataireId: $prestataireId, ')
+          ..write('nom: $nom, ')
           ..write('empreinteJeton: $empreinteJeton, ')
           ..write('empreinteCode: $empreinteCode, ')
           ..write('siteLat: $siteLat, ')
@@ -1215,6 +1313,7 @@ class ArretsPreprovisionnesCompanion
           ..write('montantAvance: $montantAvance, ')
           ..write('devise: $devise, ')
           ..write('photoExigee: $photoExigee, ')
+          ..write('distanceMaxM: $distanceMaxM, ')
           ..write('statutLocal: $statutLocal, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -1519,6 +1618,7 @@ typedef $$ArretsPreprovisionnesTableCreateCompanionBuilder =
     ArretsPreprovisionnesCompanion Function({
       required String arretId,
       required String prestataireId,
+      Value<String> nom,
       required String empreinteJeton,
       required String empreinteCode,
       required double siteLat,
@@ -1526,6 +1626,7 @@ typedef $$ArretsPreprovisionnesTableCreateCompanionBuilder =
       required int montantAvance,
       required String devise,
       required bool photoExigee,
+      Value<int> distanceMaxM,
       Value<String> statutLocal,
       Value<int> rowid,
     });
@@ -1533,6 +1634,7 @@ typedef $$ArretsPreprovisionnesTableUpdateCompanionBuilder =
     ArretsPreprovisionnesCompanion Function({
       Value<String> arretId,
       Value<String> prestataireId,
+      Value<String> nom,
       Value<String> empreinteJeton,
       Value<String> empreinteCode,
       Value<double> siteLat,
@@ -1540,6 +1642,7 @@ typedef $$ArretsPreprovisionnesTableUpdateCompanionBuilder =
       Value<int> montantAvance,
       Value<String> devise,
       Value<bool> photoExigee,
+      Value<int> distanceMaxM,
       Value<String> statutLocal,
       Value<int> rowid,
     });
@@ -1560,6 +1663,11 @@ class $$ArretsPreprovisionnesTableFilterComposer
 
   ColumnFilters<String> get prestataireId => $composableBuilder(
     column: $table.prestataireId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nom => $composableBuilder(
+    column: $table.nom,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1598,6 +1706,11 @@ class $$ArretsPreprovisionnesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get distanceMaxM => $composableBuilder(
+    column: $table.distanceMaxM,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get statutLocal => $composableBuilder(
     column: $table.statutLocal,
     builder: (column) => ColumnFilters(column),
@@ -1620,6 +1733,11 @@ class $$ArretsPreprovisionnesTableOrderingComposer
 
   ColumnOrderings<String> get prestataireId => $composableBuilder(
     column: $table.prestataireId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nom => $composableBuilder(
+    column: $table.nom,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1658,6 +1776,11 @@ class $$ArretsPreprovisionnesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get distanceMaxM => $composableBuilder(
+    column: $table.distanceMaxM,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get statutLocal => $composableBuilder(
     column: $table.statutLocal,
     builder: (column) => ColumnOrderings(column),
@@ -1680,6 +1803,9 @@ class $$ArretsPreprovisionnesTableAnnotationComposer
     column: $table.prestataireId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get nom =>
+      $composableBuilder(column: $table.nom, builder: (column) => column);
 
   GeneratedColumn<String> get empreinteJeton => $composableBuilder(
     column: $table.empreinteJeton,
@@ -1707,6 +1833,11 @@ class $$ArretsPreprovisionnesTableAnnotationComposer
 
   GeneratedColumn<bool> get photoExigee => $composableBuilder(
     column: $table.photoExigee,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get distanceMaxM => $composableBuilder(
+    column: $table.distanceMaxM,
     builder: (column) => column,
   );
 
@@ -1764,6 +1895,7 @@ class $$ArretsPreprovisionnesTableTableManager
               ({
                 Value<String> arretId = const Value.absent(),
                 Value<String> prestataireId = const Value.absent(),
+                Value<String> nom = const Value.absent(),
                 Value<String> empreinteJeton = const Value.absent(),
                 Value<String> empreinteCode = const Value.absent(),
                 Value<double> siteLat = const Value.absent(),
@@ -1771,11 +1903,13 @@ class $$ArretsPreprovisionnesTableTableManager
                 Value<int> montantAvance = const Value.absent(),
                 Value<String> devise = const Value.absent(),
                 Value<bool> photoExigee = const Value.absent(),
+                Value<int> distanceMaxM = const Value.absent(),
                 Value<String> statutLocal = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ArretsPreprovisionnesCompanion(
                 arretId: arretId,
                 prestataireId: prestataireId,
+                nom: nom,
                 empreinteJeton: empreinteJeton,
                 empreinteCode: empreinteCode,
                 siteLat: siteLat,
@@ -1783,6 +1917,7 @@ class $$ArretsPreprovisionnesTableTableManager
                 montantAvance: montantAvance,
                 devise: devise,
                 photoExigee: photoExigee,
+                distanceMaxM: distanceMaxM,
                 statutLocal: statutLocal,
                 rowid: rowid,
               ),
@@ -1790,6 +1925,7 @@ class $$ArretsPreprovisionnesTableTableManager
               ({
                 required String arretId,
                 required String prestataireId,
+                Value<String> nom = const Value.absent(),
                 required String empreinteJeton,
                 required String empreinteCode,
                 required double siteLat,
@@ -1797,11 +1933,13 @@ class $$ArretsPreprovisionnesTableTableManager
                 required int montantAvance,
                 required String devise,
                 required bool photoExigee,
+                Value<int> distanceMaxM = const Value.absent(),
                 Value<String> statutLocal = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ArretsPreprovisionnesCompanion.insert(
                 arretId: arretId,
                 prestataireId: prestataireId,
+                nom: nom,
                 empreinteJeton: empreinteJeton,
                 empreinteCode: empreinteCode,
                 siteLat: siteLat,
@@ -1809,6 +1947,7 @@ class $$ArretsPreprovisionnesTableTableManager
                 montantAvance: montantAvance,
                 devise: devise,
                 photoExigee: photoExigee,
+                distanceMaxM: distanceMaxM,
                 statutLocal: statutLocal,
                 rowid: rowid,
               ),

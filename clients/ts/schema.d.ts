@@ -1050,6 +1050,11 @@ export interface components {
             arret_id: string;
             /** @description Devise ISO 4217. */
             devise: string;
+            /**
+             * Format: int64
+             * @description Rayon max de scan (m) — validation de proximité hors-ligne.
+             */
+            distance_max_m: number;
             /** @description base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne. */
             empreinte_code: string;
             /** @description base16(sha256(jeton)) — match hors-ligne du QR scanné. */
@@ -1059,6 +1064,8 @@ export interface components {
              * @description Montant avancé (unités mineures).
              */
             montant_avance: number;
+            /** @description Nom du prestataire (affiché sur la carte K3). */
+            nom: string;
             /** @description Photo exigée (politique résolue). */
             photo_exigee: boolean;
             /**

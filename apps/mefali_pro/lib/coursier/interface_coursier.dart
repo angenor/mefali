@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mefali_core/mefali_core.dart';
 
 import '../roles/etat_roles.dart';
 import '../roles/interface_pro.dart';
@@ -20,27 +19,13 @@ class InterfaceCoursier extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final valides = etat.rolesValides;
-    if (valides.length <= 1) {
-      return const EcranCourseActive();
-    }
-    // Deux rôles validés : bascule en tête, écran de course en dessous.
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                MefaliTokens.screenMargin,
-                MefaliTokens.space3,
-                MefaliTokens.screenMargin,
-                0,
-              ),
-              child: BasculeRoles(valides: valides, actif: RolePro.coursier),
-            ),
-            const Expanded(child: EcranCourseActive()),
-          ],
-        ),
-      ),
+    // Bascule de rôle en entête UNIQUEMENT si deux rôles validés — passée à
+    // l'écran de course, qui la rend dans son propre Scaffold (aucune
+    // imbrication de Scaffold).
+    return EcranCourseActive(
+      entete: valides.length > 1
+          ? BasculeRoles(valides: valides, actif: RolePro.coursier)
+          : null,
     );
   }
 }

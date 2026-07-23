@@ -113,4 +113,27 @@ impl DepotObjets for S3Objets {
             .map_err(|e| ErreurObjets(format!("suppression de {cle} : {e}")))?;
         Ok(())
     }
+
+    async fn existe(&self, cle: &str) -> Result<bool, ErreurObjets> {
+        // `HEAD` : présence sans transfert d'octets. NotFound → false ; toute
+        // autre erreur (réseau, droits) remonte.
+        match self
+            .client
+            .head_object()
+            .bucket(&self.bucket)
+            .key(cle)
+            .send()
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                let service = e.into_service_error();
+                if service.is_not_found() {
+                    Ok(false)
+                } else {
+                    Err(ErreurObjets(format!("HEAD de {cle} : {service}")))
+                }
+            }
+        }
+    }
 }
