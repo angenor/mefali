@@ -19,7 +19,8 @@ void main() {
       // TODO
     });
 
-    // String resultat
+    // Discrimine ce membre du `oneOf` de `/auth/otp/verifier`.
+    // DiscriminantConsentement resultat
     test('to test the property `resultat`', () async {
       // TODO
     });

@@ -2474,11 +2474,11 @@
           }
         ],
         "requestBody": {
-          "description": "Partie `demande` d'un multipart, avec `photo` facultative.",
+          "description": "Partie `demande` (JSON) + `photo` binaire facultative.",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/DemandeCollecte"
+                "$ref": "#/components/schemas/CollecteMultipart"
               }
             }
           },
@@ -4680,6 +4680,27 @@
           "version_charte": {
             "type": "string",
             "description": "Version de charte en vigueur à la signature."
+          }
+        }
+      },
+      "CollecteMultipart": {
+        "type": "object",
+        "description": "Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler\nlit bien un `multipart/form-data`, pas un JSON — le client généré produit\nalors un vrai multipart). Sert UNIQUEMENT à `#[utoipa::path]`.",
+        "required": [
+          "demande"
+        ],
+        "properties": {
+          "demande": {
+            "$ref": "#/components/schemas/DemandeCollecte",
+            "description": "Partie JSON `demande` (sérialisée par l'app)."
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Photo de récupération (binaire), si la politique l'exige."
           }
         }
       },

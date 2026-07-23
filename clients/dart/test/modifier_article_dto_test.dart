@@ -31,5 +31,11 @@ void main() {
       // TODO
     });
 
+    // Retire la promotion — équivalent de `prix_barre_unites: null` pour les clients générés qui ne savent pas sérialiser un `null` EXPLICITE (built_value omet les champs nuls).
+    // bool retirerPrixBarre
+    test('to test the property `retirerPrixBarre`', () async {
+      // TODO
+    });
+
   });
 }

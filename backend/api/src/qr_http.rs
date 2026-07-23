@@ -222,6 +222,20 @@ impl From<ResultatCollecte> for ResultatCollecteDto {
     }
 }
 
+/// Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler
+/// lit bien un `multipart/form-data`, pas un JSON — le client généré produit
+/// alors un vrai multipart). Sert UNIQUEMENT à `#[utoipa::path]`.
+#[derive(ToSchema)]
+#[schema(as = CollecteMultipart)]
+#[allow(dead_code)]
+pub struct CollecteMultipartDto {
+    /// Partie JSON `demande` (sérialisée par l'app).
+    pub demande: DemandeCollecteDto,
+    /// Photo de récupération (binaire), si la politique l'exige.
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub photo: Option<Vec<u8>>,
+}
+
 /// Multipart de collecte : partie `demande` (JSON) + `photo` binaire facultative.
 #[derive(Debug, MultipartForm)]
 pub struct CollecteForm {
@@ -291,7 +305,7 @@ pub async fn course_active(auth: Auth, qr: web::Data<PgQr>) -> Result<HttpRespon
     path = "/courses/arrets/{arret_id}/collecte",
     tag = "qr",
     params(("arret_id" = Uuid, Path, description = "Arrêt à collecter de la course active.")),
-    request_body(content = DemandeCollecteDto, description = "Partie `demande` d'un multipart, avec `photo` facultative."),
+    request_body(content = CollecteMultipartDto, content_type = "multipart/form-data", description = "Partie `demande` (JSON) + `photo` binaire facultative."),
     responses(
         (status = 200, description = "Arrêt COLLECTÉ (idempotent au rejeu du même uuid_client).", body = ResultatCollecteDto),
         (status = 409, description = "Arrêt déjà collecté par un autre uuid, ou état incompatible.", body = ErreurApiDto),

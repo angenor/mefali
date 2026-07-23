@@ -7,10 +7,38 @@ void main() {
   final instance = MefaliApiClient().getMoiApi();
 
   group(MoiApi, () {
+    // URL présignée de lecture du repère vocal (FR-020).
+    //
+    //Future<UrlPresignee> ecouterRepereVocal(String adresseId) async
+    test('test ecouterRepereVocal', () async {
+      // TODO
+    });
+
+    // Enregistre une adresse — proposition post-livraison acceptée (FR-019).
+    //
+    //Future<Adresse> enregistrerAdresse(String idempotencyKey, double lat, String libelle, double lng, { int dureeS, String livraisonOrigine, MultipartFile noteVocale, String repereTexte }) async
+    test('test enregistrerAdresse', () async {
+      // TODO
+    });
+
+    // Adresses enregistrées du compte courant (FR-021).
+    //
+    //Future<BuiltList<Adresse>> mesAdresses() async
+    test('test mesAdresses', () async {
+      // TODO
+    });
+
     // Appareils/sessions actifs du compte (FR-008).
     //
     //Future<BuiltList<SessionAppareil>> mesSessions() async
     test('test mesSessions', () async {
+      // TODO
+    });
+
+    // Renomme l'adresse ou met à jour son repère écrit (FR-021).
+    //
+    //Future<Adresse> modifierAdresse(String adresseId, ModifierAdresse modifierAdresse) async
+    test('test modifierAdresse', () async {
       // TODO
     });
 
@@ -21,10 +49,38 @@ void main() {
       // TODO
     });
 
+    // État du dossier coursier du compte courant (FR-013 : l'app Pro l'affiche).
+    //
+    //Future<DossierCoursier> monDossierCoursier() async
+    test('test monDossierCoursier', () async {
+      // TODO
+    });
+
+    // Enregistre un nouveau repère vocal — après purge, ou pour le refaire.
+    //
+    //Future<Adresse> remplacerRepereVocal(String adresseId, int dureeS, MultipartFile noteVocale) async
+    test('test remplacerRepereVocal', () async {
+      // TODO
+    });
+
     // Déconnexion à distance d'un appareil (SC-004).
     //
     //Future revoquerSession(String sessionId) async
     test('test revoquerSession', () async {
+      // TODO
+    });
+
+    // Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
+    //
+    //Future<DossierCoursier> soumettreDossierCoursier(String idempotencyKey, MultipartFile piece, String referentNom, String referentTelephone, BuiltList<String> vehicules) async
+    test('test soumettreDossierCoursier', () async {
+      // TODO
+    });
+
+    // Supprime l'adresse — soft (FR-021).
+    //
+    //Future supprimerAdresse(String adresseId) async
+    test('test supprimerAdresse', () async {
       // TODO
     });
 

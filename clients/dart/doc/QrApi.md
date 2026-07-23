@@ -15,7 +15,7 @@ Method | HTTP request | Description
 
 
 # **collecter**
-> ResultatCollecte collecter(arretId, demandeCollecte)
+> ResultatCollecte collecter(arretId, demande, photo)
 
 QRC-02/03/04 — collecte un arrêt (multipart : `demande` JSON + `photo`).
 
@@ -25,10 +25,11 @@ import 'package:mefali_api_client/api.dart';
 
 final api = MefaliApiClient().getQrApi();
 final String arretId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Arrêt à collecter de la course active.
-final DemandeCollecte demandeCollecte = ; // DemandeCollecte | Partie `demande` d'un multipart, avec `photo` facultative.
+final DemandeCollecte demande = ; // DemandeCollecte | Partie JSON `demande` (sérialisée par l'app).
+final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile | Photo de récupération (binaire), si la politique l'exige.
 
 try {
-    final response = api.collecter(arretId, demandeCollecte);
+    final response = api.collecter(arretId, demande, photo);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling QrApi->collecter: $e\n');
@@ -40,7 +41,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **arretId** | **String**| Arrêt à collecter de la course active. | 
- **demandeCollecte** | [**DemandeCollecte**](DemandeCollecte.md)| Partie `demande` d'un multipart, avec `photo` facultative. | 
+ **demande** | [**DemandeCollecte**](DemandeCollecte.md)| Partie JSON `demande` (sérialisée par l'app). | 
+ **photo** | **MultipartFile**| Photo de récupération (binaire), si la politique l'exige. | [optional] 
 
 ### Return type
 
@@ -52,7 +54,7 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
+ - **Content-Type**: multipart/form-data
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

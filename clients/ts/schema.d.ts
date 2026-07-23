@@ -1198,6 +1198,20 @@ export interface components {
             /** @description Version de charte en vigueur à la signature. */
             version_charte: string;
         };
+        /**
+         * @description Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler
+         *     lit bien un `multipart/form-data`, pas un JSON — le client généré produit
+         *     alors un vrai multipart). Sert UNIQUEMENT à `#[utoipa::path]`.
+         */
+        CollecteMultipart: {
+            /** @description Partie JSON `demande` (sérialisée par l'app). */
+            demande: components["schemas"]["DemandeCollecte"];
+            /**
+             * Format: binary
+             * @description Photo de récupération (binaire), si la politique l'exige.
+             */
+            photo?: string | null;
+        };
         /** @description Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`). */
         CompteMoi: {
             /**
@@ -3853,10 +3867,10 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description Partie `demande` d'un multipart, avec `photo` facultative. */
+        /** @description Partie `demande` (JSON) + `photo` binaire facultative. */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DemandeCollecte"];
+                "multipart/form-data": components["schemas"]["CollecteMultipart"];
             };
         };
         responses: {

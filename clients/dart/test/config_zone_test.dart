@@ -13,6 +13,12 @@ void main() {
       // TODO
     });
 
+    // Version du texte de consentement ARTCI en vigueur — l'app l'affiche et la renvoie telle quelle à l'inscription (FR-006). `null` si non résolue.
+    // String consentementArtciVersion
+    test('to test the property `consentementArtciVersion`', () async {
+      // TODO
+    });
+
     // Devise résolue.
     // DeviseDto devise
     test('to test the property `devise`', () async {
@@ -22,6 +28,12 @@ void main() {
     // Drapeaux (clés `drapeau.*` sans préfixe).
     // BuiltMap<String, bool> drapeaux
     test('to test the property `drapeaux`', () async {
+      // TODO
+    });
+
+    // Durée maximale d'une note vocale, en secondes — borne l'enregistreur des apps (FR-019). `null` si la zone ne la résout pas.
+    // int noteVocaleDureeMaxS
+    test('to test the property `noteVocaleDureeMaxS`', () async {
       // TODO
     });
 

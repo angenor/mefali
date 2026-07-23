@@ -21,6 +21,15 @@ echo "→ 1/4 openapi.json (source de vérité, utoipa)"
 ( cd backend && cargo run -q -p api --bin export-openapi )
 
 echo "→ 2/4 client Dart (openapi-generator ${OPENAPI_GENERATOR_VERSION}, dart-dio)"
+# Nettoyage AVANT génération : condition du DÉTERMINISME. dart-dio SAUTE les
+# fichiers de test (`test/*_test.dart`) déjà présents et les retire alors du
+# manifeste `.openapi-generator/FILES` — une génération sur arbre non vierge
+# diverge donc d'un checkout propre (CI), et `--check` passe au rouge. Repartir
+# d'un dossier vide rend chaque exécution identique (local == CI). Tout
+# `clients/dart` est GÉNÉRÉ (lib, test, doc, pubspec) — rien à préserver ; les
+# `.g.dart` built_value sont recréés à l'étape 3.
+rm -rf clients/dart/lib clients/dart/test clients/dart/doc \
+       clients/dart/.openapi-generator clients/dart/.openapi-generator-ignore
 # Version du générateur épinglée par openapitools.json ; hideGenerationTimestamp
 # = condition du déterminisme (pas d'horodatage dans la sortie).
 npx --yes "@openapitools/openapi-generator-cli@2" generate \

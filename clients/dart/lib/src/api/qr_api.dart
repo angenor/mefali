@@ -28,7 +28,8 @@ class QrApi {
   ///
   /// Parameters:
   /// * [arretId] - Arrêt à collecter de la course active.
-  /// * [demandeCollecte] - Partie `demande` d'un multipart, avec `photo` facultative.
+  /// * [demande] - Partie JSON `demande` (sérialisée par l'app).
+  /// * [photo] - Photo de récupération (binaire), si la politique l'exige.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -40,7 +41,8 @@ class QrApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<ResultatCollecte>> collecter({ 
     required String arretId,
-    required DemandeCollecte demandeCollecte,
+    required DemandeCollecte demande,
+    MultipartFile? photo,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -64,15 +66,17 @@ class QrApi {
         ],
         ...?extra,
       },
-      contentType: 'application/json',
+      contentType: 'multipart/form-data',
       validateStatus: validateStatus,
     );
 
     dynamic _bodyData;
 
     try {
-      const _type = FullType(DemandeCollecte);
-      _bodyData = _serializers.serialize(demandeCollecte, specifiedType: _type);
+      _bodyData = FormData.fromMap(<String, dynamic>{
+        r'demande': encodeFormParameter(_serializers, demande, const FullType(DemandeCollecte)),
+        r'photo': photo,
+      });
 
     } catch(error, stackTrace) {
       throw DioException(

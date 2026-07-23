@@ -9,7 +9,7 @@ void main() {
   group(QrApi, () {
     // QRC-02/03/04 — collecte un arrêt (multipart : `demande` JSON + `photo`).
     //
-    //Future<ResultatCollecte> collecter(String arretId, DemandeCollecte demandeCollecte) async
+    //Future<ResultatCollecte> collecter(String arretId, DemandeCollecte demande, { MultipartFile photo }) async
     test('test collecter', () async {
       // TODO
     });
