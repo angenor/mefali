@@ -32,6 +32,9 @@ socle.workspace = true
 zones.workspace = true
 comptes.workspace = true
 prestataires.workspace = true
+# Socle logistique (PgCommandes) + traçabilité QR (PgQr) — cycle QRC 006.
+commandes.workspace = true
+qr.workspace = true
 sqlx.workspace = true
 # Impls RÉELLES des ports du crate `comptes` : la composition racine connaît
 # l'infra, le domaine ne connaît que ses traits (constitution II). Consommées par

@@ -14,6 +14,7 @@ pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
 pub mod prestataires_http;
+pub mod qr_http;
 pub mod signalements_http;
 pub mod vendeur_http;
 pub mod zones_http;
@@ -89,6 +90,9 @@ pub fn api_openapi() -> OpenApi {
         .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
+        .service(qr_http::telecharger_plaque)
+        .service(qr_http::course_active)
+        .service(qr_http::collecter)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -217,6 +221,7 @@ pub async fn run() -> std::io::Result<()> {
     // trop court) échoue au démarrage — `socle::Config::from_env` la refuse.
     let mut comptes_opt: Option<PgComptes> = None;
     let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
+    let mut qr_opt: Option<qr::PgQr> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -273,13 +278,30 @@ pub async fn run() -> std::io::Result<()> {
                 // CommandesActives — aucune commande active n'existe avant le
                 // cycle CMD, donc aucun signalement coursier n'est recevable
                 // (R5, exact et voulu).
-                prestataires_opt = Some(prestataires::PgPrestataires::new(
+                let presta = prestataires::PgPrestataires::new(
                     pool.clone(),
                     depot.clone(),
-                    objets,
+                    objets.clone(),
                     Arc::new(prestataires::AucuneCommandeActive),
                     Arc::from(config.plaque_secret.as_bytes()),
+                );
+                // QRC 006 — socle logistique (PgCommandes) + traçabilité (PgQr).
+                // Réutilise le pool, le domaine prestataires (résolution/identité
+                // de plaque) et le MÊME port objets ; le compteur d'essais du code
+                // dégradé passe par Redis (éphémère, R7).
+                let essais_qr: Arc<dyn qr::CompteurEssais> = Arc::new(
+                    infra_redis::RedisEssais::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis essais : {e}")))?,
+                );
+                qr_opt = Some(qr::PgQr::new(
+                    pool.clone(),
+                    commandes::PgCommandes::new(pool.clone()),
+                    presta.clone(),
+                    objets,
+                    essais_qr,
                 ));
+                eprintln!("ports QRC câblés (PgCommandes, PgQr)");
+                prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)
             }
@@ -368,6 +390,9 @@ pub async fn run() -> std::io::Result<()> {
         .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
+            .service(qr_http::telecharger_plaque)
+            .service(qr_http::course_active)
+            .service(qr_http::collecter)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -385,6 +410,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = prestataires_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = qr_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))

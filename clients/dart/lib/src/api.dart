@@ -14,6 +14,7 @@ import 'package:mefali_api_client/src/api/auth_api.dart';
 import 'package:mefali_api_client/src/api/coursier_api.dart';
 import 'package:mefali_api_client/src/api/moi_api.dart';
 import 'package:mefali_api_client/src/api/prestataires_api.dart';
+import 'package:mefali_api_client/src/api/qr_api.dart';
 import 'package:mefali_api_client/src/api/socle_api.dart';
 import 'package:mefali_api_client/src/api/vendeur_api.dart';
 import 'package:mefali_api_client/src/api/zones_api.dart';
@@ -140,6 +141,12 @@ class MefaliApiClient {
   /// by doing that all interceptors will not be executed
   PrestatairesApi getPrestatairesApi() {
     return PrestatairesApi(dio, serializers);
+  }
+
+  /// Get QrApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  QrApi getQrApi() {
+    return QrApi(dio, serializers);
   }
 
   /// Get SocleApi instance, base route and serializer can be overridden by a given but be careful,

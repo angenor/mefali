@@ -1589,6 +1589,74 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/plaque": {
+      "get": {
+        "tags": [
+          "qr"
+        ],
+        "summary": "QRC-01 — télécharge (génère au besoin) le PDF de plaque d'un prestataire.",
+        "operationId": "telecharger_plaque",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire agréé porteur d'une identité de plaque.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF (QR + nom + code) déposé ; URL présignée renvoyée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaqueUrl"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu ou jamais agréé (FR-011).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/rattachements": {
       "post": {
         "tags": [
@@ -2338,6 +2406,151 @@
             "description": "Rate-limit dépassé."
           }
         }
+      }
+    },
+    "/courses/active": {
+      "get": {
+        "tags": [
+          "qr"
+        ],
+        "summary": "QRC-02 — course active du coursier + pré-provisionnement hors-ligne.",
+        "operationId": "course_active",
+        "responses": {
+          "200": {
+            "description": "Course active du coursier (vide si aucune assignée).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseActive"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/arrets/{arret_id}/collecte": {
+      "post": {
+        "tags": [
+          "qr"
+        ],
+        "summary": "QRC-02/03/04 — collecte un arrêt (multipart : `demande` JSON + `photo`).",
+        "operationId": "collecter",
+        "parameters": [
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt à collecter de la course active.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Partie `demande` d'un multipart, avec `photo` facultative.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeCollecte"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt COLLECTÉ (idempotent au rejeu du même uuid_client).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatCollecte"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu ou hors course active (FR-012).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Arrêt déjà collecté par un autre uuid, ou état incompatible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Refus métier : hors zone, jeton révoqué, plaque invalide, photo requise, code incorrect/épuisé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/coursier/signalements-rupture": {
@@ -4161,6 +4374,64 @@
           }
         }
       },
+      "ArretPreProvisionne": {
+        "type": "object",
+        "description": "Arrêt pré-provisionné (empreintes, jamais de secret).",
+        "required": [
+          "arret_id",
+          "prestataire_id",
+          "empreinte_jeton",
+          "empreinte_code",
+          "site_lat",
+          "site_lon",
+          "montant_avance",
+          "devise",
+          "photo_exigee"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt à collecter."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "empreinte_code": {
+            "type": "string",
+            "description": "base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne."
+          },
+          "empreinte_jeton": {
+            "type": "string",
+            "description": "base16(sha256(jeton)) — match hors-ligne du QR scanné."
+          },
+          "montant_avance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant avancé (unités mineures)."
+          },
+          "photo_exigee": {
+            "type": "boolean",
+            "description": "Photo exigée (politique résolue)."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Prestataire visé."
+          },
+          "site_lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Position attendue du site."
+          },
+          "site_lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Position attendue du site."
+          }
+        }
+      },
       "ArticlePublic": {
         "type": "object",
         "description": "Article du catalogue public.",
@@ -4608,6 +4879,30 @@
           }
         }
       },
+      "CourseActive": {
+        "type": "object",
+        "description": "Course active du coursier + arrêts pré-provisionnés.",
+        "required": [
+          "arrets"
+        ],
+        "properties": {
+          "arrets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArretPreProvisionne"
+            },
+            "description": "Arrêts à collecter, avec empreintes."
+          },
+          "livraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Livraison active (première des arrêts), `None` si aucune."
+          }
+        }
+      },
       "CreerArticleDto": {
         "type": "object",
         "description": "Création d'un article (disponible par défaut — FR-020).",
@@ -4701,6 +4996,57 @@
             ],
             "description": "Motif — REQUIS pour `refuser` et `suspendre` (FR-017).",
             "maxLength": 500
+          }
+        }
+      },
+      "DemandeCollecte": {
+        "type": "object",
+        "description": "Corps de la demande de collecte (partie `demande` JSON du multipart).",
+        "required": [
+          "mode",
+          "position_lat",
+          "position_lon",
+          "uuid_client",
+          "horodatage_local"
+        ],
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Code à 4 chiffres saisi (mode `code_secours`)."
+          },
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage local de l'action."
+          },
+          "jeton": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Jeton lu dans le QR (mode `scan_qr`)."
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ModeCollecte",
+            "description": "Scan du QR ou saisie du code de secours."
+          },
+          "position_lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Position capturée du coursier."
+          },
+          "position_lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Position capturée du coursier."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 client, V)."
           }
         }
       },
@@ -5167,6 +5513,14 @@
           }
         }
       },
+      "ModeCollecte": {
+        "type": "string",
+        "description": "Mode de collecte (contrat).",
+        "enum": [
+          "scan_qr",
+          "code_secours"
+        ]
+      },
       "ModifierAdresse": {
         "type": "object",
         "description": "Champs modifiables d'une adresse (contrat).",
@@ -5366,6 +5720,25 @@
             "type": "string",
             "description": "Fin (exclue), ex. `19:00`.",
             "example": "19:00"
+          }
+        }
+      },
+      "PlaqueUrl": {
+        "type": "object",
+        "description": "URL présignée de téléchargement du PDF de plaque (TTL 10 min).",
+        "required": [
+          "url",
+          "expire_le"
+        ],
+        "properties": {
+          "expire_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration de l'URL."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL présignée de lecture."
           }
         }
       },
@@ -5615,6 +5988,41 @@
           "valide": {
             "type": "boolean",
             "description": "Validité courante — DÉRIVÉE de l'état d'agrément (FR-015)."
+          }
+        }
+      },
+      "ResultatCollecte": {
+        "type": "object",
+        "description": "Résultat d'une collecte.",
+        "required": [
+          "arret_statut",
+          "livraison_etat",
+          "nb_collectes",
+          "nb_arrets",
+          "en_livraison"
+        ],
+        "properties": {
+          "arret_statut": {
+            "type": "string",
+            "description": "Statut de l'arrêt (`collecte`)."
+          },
+          "en_livraison": {
+            "type": "boolean",
+            "description": "Vrai si la livraison vient de basculer EN_LIVRAISON."
+          },
+          "livraison_etat": {
+            "type": "string",
+            "description": "État de la livraison (`en_collecte` | `en_livraison`)."
+          },
+          "nb_arrets": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total d'arrêts."
+          },
+          "nb_collectes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Arrêts collectés."
           }
         }
       },

@@ -1,0 +1,73 @@
+//! QRC-04 — mode dégradé (code de secours) + incident (SC-006) [constitution VII].
+
+mod bac;
+use bac::{demande_code, Bac, SITE_LAT, SITE_LON};
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn bon_code_dans_le_rayon_collecte(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let (tantie, _j, code) = bac.prestataire_agree("Tantie", "restauration").await;
+    let arrets = bac.simuler_course(&[(tantie, 2000)]).await;
+
+    let r = bac
+        .qr
+        .collecter(bac.coursier, demande_code(arrets[0], &code, SITE_LAT, SITE_LON))
+        .await
+        .expect("bon code, dans le rayon");
+    assert!(r.en_livraison);
+    let ev = bac.evenements("arret.collecte").await;
+    assert_eq!(ev[0]["mode"], "code_secours");
+    // Incident « plaque à remplacer » créé une fois (dès le passage dégradé).
+    assert_eq!(bac.compter("SELECT count(*) FROM qr.incident_plaque").await, 1);
+    assert_eq!(bac.evenements("plaque.remplacement_requis").await.len(), 1);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn mauvais_code_incident_une_fois_puis_epuise(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let (tantie, _j, _code) = bac.prestataire_agree("Tantie", "restauration").await;
+    let arrets = bac.simuler_course(&[(tantie, 2000)]).await;
+
+    // 1er faux code → code_incorrect + incident créé.
+    let e1 = bac
+        .qr
+        .collecter(bac.coursier, demande_code(arrets[0], "0000", SITE_LAT, SITE_LON))
+        .await
+        .unwrap_err();
+    assert_eq!(e1.message_cle(), Some("code_incorrect"));
+    assert_eq!(bac.compter("SELECT count(*) FROM qr.incident_plaque").await, 1);
+
+    // 2e faux code → encore code_incorrect, PAS de nouvel incident.
+    let e2 = bac
+        .qr
+        .collecter(bac.coursier, demande_code(arrets[0], "0001", SITE_LAT, SITE_LON))
+        .await
+        .unwrap_err();
+    assert_eq!(e2.message_cle(), Some("code_incorrect"));
+
+    // 3e essai → épuisé (Redis/compteur), toujours un seul incident.
+    let e3 = bac
+        .qr
+        .collecter(bac.coursier, demande_code(arrets[0], "0002", SITE_LAT, SITE_LON))
+        .await
+        .unwrap_err();
+    assert_eq!(e3.message_cle(), Some("code_epuise"));
+    assert_eq!(bac.compter("SELECT count(*) FROM qr.incident_plaque").await, 1);
+    assert_eq!(bac.evenements("plaque.remplacement_requis").await.len(), 1);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn bon_code_hors_rayon_refuse(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let (tantie, _j, code) = bac.prestataire_agree("Tantie", "restauration").await;
+    let arrets = bac.simuler_course(&[(tantie, 2000)]).await;
+
+    // Bon code mais ~300 m → hors_zone (FR-022).
+    let e = bac
+        .qr
+        .collecter(bac.coursier, demande_code(arrets[0], &code, SITE_LAT + 0.0027, SITE_LON))
+        .await
+        .unwrap_err();
+    assert_eq!(e.message_cle(), Some("hors_zone"));
+    assert_eq!(bac.statut_arret(arrets[0]).await, "a_collecter");
+}

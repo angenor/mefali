@@ -19,6 +19,8 @@ use async_trait::async_trait;
 use deadpool_redis::{Config as ConfigRedis, Pool, Runtime};
 
 use comptes::{Compteur, DepotEphemere, ErreurEphemere, IssueDefi, JetonInscription};
+use qr::{CompteurEssais, ErreurCompteur};
+use uuid::Uuid;
 
 /// Codes de retour des scripts Lua — le contrat entre le script et Rust.
 const CODE_ABSENT: i64 = 0;
@@ -221,5 +223,47 @@ impl DepotEphemere for RedisEphemere {
                     .map_err(|e| ErreurEphemere(format!("désérialisation du jeton : {e}")))
             })
             .transpose()
+    }
+}
+
+// ── Compteur d'essais du code dégradé (QRC-04, port `qr::CompteurEssais`) ────
+
+/// TTL du compteur d'essais par arrêt : borne les tentatives EN LIGNE et au
+/// rejeu, puis se reconstruit (éphémère, constitution II — research R7).
+const ESSAIS_TTL_S: i64 = 30 * 60;
+
+/// Compteur d'essais du code de secours sur Redis : `INCR qr:essais:{arret_id}`
+/// avec pose du TTL à la création (backstop en ligne du plafond de 3).
+pub struct RedisEssais {
+    pool: Pool,
+}
+
+impl RedisEssais {
+    /// Construit le compteur à partir de l'URL Redis (`REDIS_URL`).
+    pub fn nouveau(redis_url: &str) -> Result<Self, ErreurCompteur> {
+        let pool = ConfigRedis::from_url(redis_url)
+            .create_pool(Some(Runtime::Tokio1))
+            .map_err(|e| ErreurCompteur(format!("pool Redis : {e}")))?;
+        Ok(Self { pool })
+    }
+}
+
+#[async_trait]
+impl CompteurEssais for RedisEssais {
+    async fn incrementer_essai(&self, arret_id: Uuid) -> Result<i64, ErreurCompteur> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| ErreurCompteur(format!("connexion Redis : {e}")))?;
+        // Même patron que l'incrément à fenêtre fixe des compteurs OTP : le TTL
+        // n'est posé qu'à la création (le 1er essai), jamais glissé ensuite.
+        let n: i64 = redis::Script::new(LUA_INCREMENTER_FENETRE_FIXE)
+            .key(format!("qr:essais:{arret_id}"))
+            .arg(ESSAIS_TTL_S)
+            .invoke_async(&mut conn)
+            .await
+            .map_err(|e| ErreurCompteur(format!("incrément des essais : {e}")))?;
+        Ok(n.max(0))
     }
 }

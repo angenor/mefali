@@ -109,6 +109,9 @@ Class | Method | HTTP request | Description
 [*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
+[*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
+[*QrApi*](doc/QrApi.md) | [**courseActive**](doc/QrApi.md#courseactive) | **GET** /courses/active | QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
+[*QrApi*](doc/QrApi.md) | [**telechargerPlaque**](doc/QrApi.md#telechargerplaque) | **GET** /admin/prestataires/{id}/plaque | QRC-01 — télécharge (génère au besoin) le PDF de plaque d&#39;un prestataire.
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
@@ -133,6 +136,7 @@ Class | Method | HTTP request | Description
  - [Adresse](doc/Adresse.md)
  - [AffichageRupture](doc/AffichageRupture.md)
  - [AppareilDto](doc/AppareilDto.md)
+ - [ArretPreProvisionne](doc/ArretPreProvisionne.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
  - [BasculeDisponibiliteDto](doc/BasculeDisponibiliteDto.md)
@@ -145,9 +149,11 @@ Class | Method | HTTP request | Description
  - [CorpsActionBoutique](doc/CorpsActionBoutique.md)
  - [CorpsForcage](doc/CorpsForcage.md)
  - [CorrigerDto](doc/CorrigerDto.md)
+ - [CourseActive](doc/CourseActive.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
+ - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
  - [DeviseDto](doc/DeviseDto.md)
@@ -165,11 +171,13 @@ Class | Method | HTTP request | Description
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
  - [JetonsDto](doc/JetonsDto.md)
+ - [ModeCollecte](doc/ModeCollecte.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
  - [PhotoAdminDto](doc/PhotoAdminDto.md)
  - [PlageDto](doc/PlageDto.md)
+ - [PlaqueUrl](doc/PlaqueUrl.md)
  - [PlateformeDto](doc/PlateformeDto.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
@@ -177,6 +185,7 @@ Class | Method | HTTP request | Description
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
+ - [ResultatCollecte](doc/ResultatCollecte.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)

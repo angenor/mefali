@@ -305,6 +305,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/plaque": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** QRC-01 — télécharge (génère au besoin) le PDF de plaque d'un prestataire. */
+        get: operations["telecharger_plaque"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/rattachements": {
         parameters: {
             query?: never;
@@ -527,6 +544,40 @@ export interface paths {
         get: operations["config"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** QRC-02 — course active du coursier + pré-provisionnement hors-ligne. */
+        get: operations["course_active"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/arrets/{arret_id}/collecte": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** QRC-02/03/04 — collecte un arrêt (multipart : `demande` JSON + `photo`). */
+        post: operations["collecter"];
         delete?: never;
         options?: never;
         head?: never;
@@ -990,6 +1041,42 @@ export interface components {
             /** @description Plateforme. */
             plateforme: components["schemas"]["PlateformeDto"];
         };
+        /** @description Arrêt pré-provisionné (empreintes, jamais de secret). */
+        ArretPreProvisionne: {
+            /**
+             * Format: uuid
+             * @description Arrêt à collecter.
+             */
+            arret_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne. */
+            empreinte_code: string;
+            /** @description base16(sha256(jeton)) — match hors-ligne du QR scanné. */
+            empreinte_jeton: string;
+            /**
+             * Format: int64
+             * @description Montant avancé (unités mineures).
+             */
+            montant_avance: number;
+            /** @description Photo exigée (politique résolue). */
+            photo_exigee: boolean;
+            /**
+             * Format: uuid
+             * @description Prestataire visé.
+             */
+            prestataire_id: string;
+            /**
+             * Format: double
+             * @description Position attendue du site.
+             */
+            site_lat: number;
+            /**
+             * Format: double
+             * @description Position attendue du site.
+             */
+            site_lon: number;
+        };
         /** @description Article du catalogue public. */
         ArticlePublic: {
             /** @description Étiquette libre de regroupement. */
@@ -1206,6 +1293,16 @@ export interface components {
              */
             ville_id?: string | null;
         };
+        /** @description Course active du coursier + arrêts pré-provisionnés. */
+        CourseActive: {
+            /** @description Arrêts à collecter, avec empreintes. */
+            arrets: components["schemas"]["ArretPreProvisionne"][];
+            /**
+             * Format: uuid
+             * @description Livraison active (première des arrêts), `None` si aucune.
+             */
+            livraison_id?: string | null;
+        };
         /** @description Création d'un article (disponible par défaut — FR-020). */
         CreerArticleDto: {
             /** @description Étiquette libre de regroupement. */
@@ -1249,6 +1346,35 @@ export interface components {
             action: components["schemas"]["ActionRoleDto"];
             /** @description Motif — REQUIS pour `refuser` et `suspendre` (FR-017). */
             motif?: string | null;
+        };
+        /** @description Corps de la demande de collecte (partie `demande` JSON du multipart). */
+        DemandeCollecte: {
+            /** @description Code à 4 chiffres saisi (mode `code_secours`). */
+            code?: string | null;
+            /**
+             * Format: date-time
+             * @description Horodatage local de l'action.
+             */
+            horodatage_local: string;
+            /** @description Jeton lu dans le QR (mode `scan_qr`). */
+            jeton?: string | null;
+            /** @description Scan du QR ou saisie du code de secours. */
+            mode: components["schemas"]["ModeCollecte"];
+            /**
+             * Format: double
+             * @description Position capturée du coursier.
+             */
+            position_lat: number;
+            /**
+             * Format: double
+             * @description Position capturée du coursier.
+             */
+            position_lon: number;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 client, V).
+             */
+            uuid_client: string;
         };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
@@ -1483,6 +1609,11 @@ export interface components {
             /** @description Opaque 256 bits — tourne à chaque usage. */
             rafraichissement: string;
         };
+        /**
+         * @description Mode de collecte (contrat).
+         * @enum {string}
+         */
+        ModeCollecte: "scan_qr" | "code_secours";
         /** @description Champs modifiables d'une adresse (contrat). */
         ModifierAdresse: {
             /** @description Nouveau libellé — absent = inchangé. */
@@ -1594,6 +1725,16 @@ export interface components {
              * @example 19:00
              */
             fin: string;
+        };
+        /** @description URL présignée de téléchargement du PDF de plaque (TTL 10 min). */
+        PlaqueUrl: {
+            /**
+             * Format: date-time
+             * @description Expiration de l'URL.
+             */
+            expire_le: string;
+            /** @description URL présignée de lecture. */
+            url: string;
         };
         /**
          * @description Plateforme de l'appareil (contrat).
@@ -1711,6 +1852,25 @@ export interface components {
             prestataire_id: string;
             /** @description Validité courante — DÉRIVÉE de l'état d'agrément (FR-015). */
             valide: boolean;
+        };
+        /** @description Résultat d'une collecte. */
+        ResultatCollecte: {
+            /** @description Statut de l'arrêt (`collecte`). */
+            arret_statut: string;
+            /** @description Vrai si la livraison vient de basculer EN_LIVRAISON. */
+            en_livraison: boolean;
+            /** @description État de la livraison (`en_collecte` | `en_livraison`). */
+            livraison_etat: string;
+            /**
+             * Format: int32
+             * @description Total d'arrêts.
+             */
+            nb_arrets: number;
+            /**
+             * Format: int32
+             * @description Arrêts collectés.
+             */
+            nb_collectes: number;
         };
         /**
          * @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
@@ -3003,6 +3163,56 @@ export interface operations {
             };
         };
     };
+    telecharger_plaque: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire agréé porteur d'une identité de plaque. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF (QR + nom + code) déposé ; URL présignée renvoyée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaqueUrl"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu ou jamais agréé (FR-011). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     rattacher_compte: {
         parameters: {
             query?: never;
@@ -3592,6 +3802,117 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    course_active: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Course active du coursier (vide si aucune assignée). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseActive"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    collecter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Arrêt à collecter de la course active. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Partie `demande` d'un multipart, avec `photo` facultative. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeCollecte"];
+            };
+        };
+        responses: {
+            /** @description Arrêt COLLECTÉ (idempotent au rejeu du même uuid_client). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatCollecte"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu ou hors course active (FR-012). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt déjà collecté par un autre uuid, ou état incompatible. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus métier : hors zone, jeton révoqué, plaque invalide, photo requise, code incorrect/épuisé. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };
