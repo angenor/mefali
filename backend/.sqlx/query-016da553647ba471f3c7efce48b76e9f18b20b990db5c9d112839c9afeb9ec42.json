@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret SET photo_cle = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "016da553647ba471f3c7efce48b76e9f18b20b990db5c9d112839c9afeb9ec42"
+}

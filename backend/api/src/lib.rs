@@ -183,6 +183,21 @@ async fn job_purge_reperes(depot: PgComptes) {
     }
 }
 
+/// Purge périodique des photos de récupération expirées (QRC-02, constitution
+/// VIII, research R8). Même patron que [`job_purge_reperes`] : une tâche tokio,
+/// un échec journalisé et retenté au passage suivant.
+async fn job_purge_photos_collecte(depot: qr::PgQr) {
+    let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
+    loop {
+        horloge.tick().await;
+        match depot.purger_photos_collecte().await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(purgees = n, "photos de récupération purgées (rétention de zone)"),
+            Err(e) => tracing::error!(erreur = %e, "purge des photos de récupération échouée"),
+        }
+    }
+}
+
 /// Supprime du stockage objet une donnée personnelle que la transaction qui
 /// vient d'être COMMITÉE a rendue orpheline (constitution VIII).
 ///
@@ -300,7 +315,8 @@ pub async fn run() -> std::io::Result<()> {
                     objets,
                     essais_qr,
                 ));
-                eprintln!("ports QRC câblés (PgCommandes, PgQr)");
+                tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
+                eprintln!("ports QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
                 prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)

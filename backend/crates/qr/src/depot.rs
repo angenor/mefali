@@ -305,6 +305,43 @@ impl PgQr {
         })
     }
 
+    // ── Purge des photos de récupération (constitution VIII, T044) ─────────
+
+    /// Supprime les photos de récupération dont la collecte dépasse la rétention
+    /// de zone (`qr.retention_photo_collecte_jours`). Best-effort (patron du
+    /// repère vocal R8) : un échec laisse un orphelin à rattraper, jamais une
+    /// incohérence. Renvoie le nombre de photos purgées.
+    pub async fn purger_photos_collecte(&self) -> Result<u64, ErreurQr> {
+        let candidats = sqlx::query!(
+            r#"SELECT a.id, a.photo_cle AS "photo_cle!", a.collecte_le AS "collecte_le!",
+                      p.ville_id
+               FROM commandes.arret a
+               JOIN prestataires.prestataire p ON p.id = a.prestataire_id
+               WHERE a.photo_cle IS NOT NULL AND a.collecte_le IS NOT NULL"#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut purgees = 0u64;
+        for c in candidats {
+            let jours = self
+                .parametre_int(c.ville_id, "qr.retention_photo_collecte_jours")
+                .await?
+                .unwrap_or(365);
+            let echeance = c.collecte_le + chrono::Duration::days(jours);
+            if Utc::now() >= echeance {
+                // Supprime l'objet PUIS déréférence en base : un échec de
+                // suppression laisse la clé (retentée au prochain passage).
+                self.objets.supprimer(&c.photo_cle).await?;
+                sqlx::query!("UPDATE commandes.arret SET photo_cle = NULL WHERE id = $1", c.id)
+                    .execute(&self.pool)
+                    .await?;
+                purgees += 1;
+            }
+        }
+        Ok(purgees)
+    }
+
     // ── Helpers internes ───────────────────────────────────────────────────
 
     /// Lit un paramètre de zone hérité comme entier (`None` si absent/illisible).
