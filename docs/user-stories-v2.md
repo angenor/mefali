@@ -190,7 +190,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 ## Module QRC — QR & traçabilité
 
 **QRC-01 — Génération QR + plaque (P0)**
-- QR : `https://mefali.ci/v/{vendor_id}?t={jeton HMAC révocable}` ; **code de secours à 4 chiffres** propre au vendeur ; PDF de plaque (QR + nom + code) dans Garage, téléchargeable admin.
+- QR : `https://mefali.com/v/{vendor_id}?t={jeton HMAC révocable}` ; **code de secours à 4 chiffres** propre au vendeur ; PDF de plaque (QR + nom + code) dans Garage, téléchargeable admin.
 
 **QRC-02 — Scan en course (P0)**
 - Préconditions : commande active du coursier comportant un **arrêt** chez ce vendeur, état compatible ; vérifications : correspondance vendeur/arrêt, GPS < 100 m (paramétrable), horodatage serveur ; succès → arrêt **COLLECTÉ** (+ photo si la politique résolue l'exige : vendeur > catégorie > défaut, forcée au-dessus d'un seuil de montant) ; toutes les collectes faites → commande EN_LIVRAISON.
@@ -428,7 +428,7 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 ## Module WEB — Web public
 
 **WEB-01 — Fiche vendeur publique (P0)**
-- Nuxt 4 SSR sur `mefali.ci/v/{vendor_id}` : nom, photos, statut, catalogue lecture seule (prix barrés visibles, badge livraison offerte), note ; « Commander dans l'app » (deep link → store) ; balises OG (aperçu WhatsApp) ; vendeur suspendu → page neutre.
+- Nuxt 4 SSR sur `mefali.com/v/{vendor_id}` : nom, photos, statut, catalogue lecture seule (prix barrés visibles, badge livraison offerte), note ; « Commander dans l'app » (deep link → store) ; balises OG (aperçu WhatsApp) ; vendeur suspendu → page neutre.
 
 **WEB-02 — Annuaire de ville (P2)** — liste SEO des vendeurs agréés par catégorie.
 
@@ -463,6 +463,9 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 | Plafond cash restauration, client sans historique | 5 000 FCFA | CMD-03 |
 | Grille plafonds d'avance par note | 5 000 / 10 000 / 15 000 | ADM-04 |
 | Distance max de scan QR | 100 m | QRC-02 |
+| Seuil de montant forçant la photo de récupération | 10 000 FCFA | QRC-02 |
+| Politique photo par catégorie | restauration : facultative ; pharmacie : obligatoire | QRC-02 |
+| Rétention des photos de récupération | 365 j | QRC-02 |
 | Essais code (vendeur / livraison) | 3 / 3 | QRC-04, CRS-04 |
 | Masquage auto après signalements rupture | 2 en 7 jours | VND-04 |
 | Affichage d'un article en rupture (par catégorie) | grisé | VND-04 |

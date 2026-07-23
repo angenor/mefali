@@ -76,6 +76,11 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `article.mis_en_rupture` | `article` | `PgPrestataires::basculer_disponibilite` / masquage automatique (cycle VND) | **Produit** — bascule en rupture, trois sources ; consommé par VND-09 |
 | `article.remis_en_vente` | `article` | `PgPrestataires::basculer_disponibilite` (cycle VND) | **Produit** — retour en stock ; consommé par VND-09 (T4) |
 | `signalement_rupture.recu` | `signalement_rupture` | `PgPrestataires::signaler_rupture` (cycle VND) | **Produit** — signalement coursier ACCEPTÉ (les refus n'émettent rien) |
+| `plaque.generee` | `plaque` | `PgQr::plaque_pdf` (cycle QRC) | **Produit** — génération (ou régénération) du PDF de plaque imprimable |
+| `arret.collecte` | `arret` | `PgCommandes::marquer_arret_collecte` (cycle QRC) | **Produit** — arrêt basculé COLLECTÉ (scan ou code de secours), horodatage serveur |
+| `livraison.mise_en_livraison` | `livraison` | `PgCommandes::marquer_arret_collecte` (cycle QRC) | **Produit** — tous les arrêts résolus → la livraison passe EN_LIVRAISON |
+| `plaque.remplacement_requis` | `plaque` | `PgQr::collecter` (cycle QRC) | **Produit** — incident « plaque à remplacer » créé au 1er passage en mode dégradé |
+| `arret.collecte_rejetee` | `arret` | `PgQr::collecter` (cycle QRC) | **Produit** — refus métier d'une collecte (hors-ligne réconciliée) ; jamais au rejeu idempotent |
 
 ### Événements du cycle ZON (002 — zones & configuration héritée)
 
@@ -189,6 +194,47 @@ sont décrites par des NOMS de champs, jamais leurs valeurs.
 - le verrouillage d'un prix (`figer_prix`) — les événements de commande du
   cycle CMD couvriront ce parcours ;
 - les seeds — chargement initial, pas une transition (patron des cycles 002/003).
+
+### Événements du cycle QRC (006 — plaque QR, scan et collecte)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
+(constitution VI ; specs/006 research R12). Le registre est posé AVANT
+l'implémentation (FR-051, Definition of Done §0.4 point 4).
+
+**Identification des entités.** L'état EN_LIVRAISON est logistique : il vit sur
+le composant `livraison`, jamais sur le tronc `commande` (constitution II,
+research R8). Les événements de plaque portent `entite_id` = `prestataire.id`
+(la plaque n'a pas d'entité propre — son identité EST le prestataire).
+
+**Minimisation (ARTCI).** AUCUN payload ne porte de position GPS brute : la
+géo-proximité est réduite à un booléen `gps_ok` (ou une `distance_m` arrondie),
+jamais un couple lat/lng. `acteur` est un UUID de compte (le coursier ou
+l'admin), jamais un nominatif. Le **téléchargement** admin du PDF n'est pas une
+transition durable : il n'émet rien (métrique produit, cycle MET). Les **rejeux
+idempotents** (même `uuid_client`) n'émettent RIEN ; seuls les rejets métier
+émettent `arret.collecte_rejetee`.
+
+| Type | `entite_type` | `entite_id` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|---|
+| `plaque.generee` | `plaque` | `prestataire.id` | `prestataire`, `format` (`pdf`), `regeneration` (booléen — `true` si le PDF existait déjà), `acteur` |
+| `arret.collecte` | `arret` | `arret.id` | `commande`, `livraison`, `segment`, `prestataire`, `mode` (`scan_qr` \| `code_secours`), `avec_photo` (booléen), `gps_ok` (booléen), `montant_avance` (unités mineures), `devise`, `acteur` |
+| `livraison.mise_en_livraison` | `livraison` | `livraison.id` | `commande`, `nb_arrets`, `acteur` |
+| `plaque.remplacement_requis` | `plaque` | `prestataire.id` | `prestataire`, `origine` (`qr_illisible`), `commande`, `arret`, `automatique` (`true`), `acteur` |
+| `arret.collecte_rejetee` | `arret` | `arret.id` | `commande`, `mode`, `motif` (`jeton_revoque` \| `hors_zone` \| `etat_incompatible` \| `code_epuise`), `horodatage_client`, `acteur` |
+
+**Ce qui n'émet PAS d'événement outbox** (specs/006 research R12) :
+
+- le TÉLÉCHARGEMENT admin du PDF de plaque — lecture, pas une transition
+  durable (la génération, elle, émet `plaque.generee`) ;
+- les rejeux idempotents (même `uuid_client`) — ni double collecte, ni double
+  événement (registre `qr.action_traitee`) ;
+- les échecs de saisie du code de secours en deçà de l'épuisement — seul
+  l'incident du 1er passage (`plaque.remplacement_requis`) et l'épuisement
+  final (`arret.collecte_rejetee`, motif `code_epuise`) sont journalisés ;
+- les seeds — chargement initial (patron des cycles 002/003/005).
+
+Le crate `metriques` reste un **stub** : QRC ne fait qu'ALIMENTER l'outbox
+(matière première des métriques MET-01/02/03, cycles ultérieurs).
 
 ## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
 
