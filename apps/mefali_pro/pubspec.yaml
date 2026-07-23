@@ -39,6 +39,14 @@ dependencies:
   uuid: 4.5.3
   flutter_riverpod: ^3.3.2
   riverpod_annotation: ^4.0.3
+  # ── Cycle QRC (006) — scan de collecte en course (research R11). ──
+  # Lecture du QR de la plaque (ML Kit / AVFoundation) — ouvre la caméra en
+  # propre (déclaration CAMERA au manifest, contrairement à image_picker).
+  mobile_scanner: ^7.1.4
+  # Position fine pour la porte de présence anti-fraude (< 100 m).
+  geolocator: ^14.0.2
+  # Demandes runtime unifiées caméra + localisation.
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:

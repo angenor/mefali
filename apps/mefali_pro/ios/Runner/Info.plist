@@ -20,6 +20,11 @@
 	<string>Mefali accède à vos photos pour que vous puissiez y choisir la photo de votre pièce d’identité.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mefali utilise le micro pour enregistrer une note vocale expliquant comment vous repérer à une adresse.</string>
+	<!-- Cycle QRC (006) — scan de collecte : la caméra lit le QR de la plaque
+	     (mobile_scanner, réutilise NSCameraUsageDescription ci-dessus) et la
+	     position fine sert la porte de présence anti-fraude (< 100 m). -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mefali utilise votre position pour confirmer que vous êtes bien chez le vendeur au moment de récupérer la commande.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
