@@ -47,6 +47,8 @@ dependencies:
   geolocator: ^14.0.2
   # Demandes runtime unifiées caméra + localisation.
   permission_handler: ^12.0.1
+  # Détection du retour réseau → drainage automatique de la file offline (V).
+  connectivity_plus: ^6.1.5
 
 dev_dependencies:
   flutter_test:

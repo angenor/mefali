@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_api_client/mefali_api_client.dart';
@@ -109,10 +110,31 @@ class EtatCourseActive extends _$EtatCourseActive {
     // Session fermée ⇒ provider invalidé ⇒ état vide (patron etat_roles).
     ref.watch(sessionProvider.select((e) => e.connecte));
     final file = ref.read(fileActionsProvider);
+    final dio = ref.read(clientSessionProvider).dio;
+
+    // Auto-synchro (V) : au RETOUR du réseau, on se ré-invalide → build() draine
+    // la file puis rafraîchit. Idempotent (uuid_client) : un drain concurrent ne
+    // double rien.
+    final sub = Connectivity().onConnectivityChanged.listen((etats) {
+      final enLigne = etats.any((e) => e != ConnectivityResult.none);
+      if (enLigne) ref.invalidateSelf();
+    });
+    ref.onDispose(sub.cancel);
+
+    // 1. Draine la file d'actions en attente AVANT de recharger (réconciliation
+    //    serveur — le rejeu idempotent fait foi une seule fois).
+    await _drainerFile(file, dio);
+
+    // 2. Recharge la course active (post-drain).
     try {
       final reponse = await ref.read(clientSessionProvider).getQrApi().courseActive();
       final arrets = reponse.data?.arrets.toList() ?? const <ArretPreProvisionne>[];
-      // Cache drift pour la validation hors-ligne.
+      // Arrêts encore EN ATTENTE de synchro = coches optimistes à PRÉSERVER
+      // (sinon `remplacerCache` les remettrait « à collecter » et le coursier
+      // re-scannerait — perte silencieuse corrigée).
+      final enAttente = <String>{
+        for (final a in await file.enAttente()) _arretDeEndpoint(a.endpoint),
+      };
       await file.remplacerCache([
         for (final a in arrets)
           ArretsPreprovisionnesCompanion.insert(
@@ -127,12 +149,47 @@ class EtatCourseActive extends _$EtatCourseActive {
             photoExigee: a.photoExigee,
           ),
       ]);
+      for (final id in enAttente) {
+        await file.cocherOptimiste(id);
+      }
       return _depuisCache(file);
     } on DioException {
       // Réseau coupé : on sert le cache pré-provisionné (offline-first, V).
       final etat = await _depuisCache(file);
       return etat.copieAvec(horsLigne: true);
     }
+  }
+
+  /// Rejoue la file d'actions hors-ligne (multipart idempotent). Succès ou
+  /// idempotent → retire ; refus métier DÉFINITIF → réconcilie (décoche + retire,
+  /// l'arrêt reste à collecter, SC-008) ; réseau toujours coupé → conserve et
+  /// s'arrête (inutile d'insister sur les suivantes).
+  Future<void> _drainerFile(FileActions file, Dio dio) async {
+    for (final action in await file.enAttente()) {
+      try {
+        final form = FormData.fromMap({
+          'demande': action.payloadJson,
+          if (action.photoOctets != null)
+            'photo': MultipartFile.fromBytes(action.photoOctets!, filename: 'photo.jpg'),
+        });
+        await dio.post<dynamic>(action.endpoint, data: form);
+        await file.retirer(action.uuidClient);
+      } on DioException catch (e) {
+        if (e.response == null) {
+          await file.marquerEchec(action.uuidClient, 'reseau');
+          return; // réseau toujours coupé
+        }
+        // Refus métier réconcilié : l'arrêt reste à collecter.
+        await file.decocherOptimiste(_arretDeEndpoint(action.endpoint));
+        await file.retirer(action.uuidClient);
+      }
+    }
+  }
+
+  /// Extrait l'`arret_id` d'un endpoint `/courses/arrets/{id}/collecte`.
+  String _arretDeEndpoint(String endpoint) {
+    final segments = endpoint.split('/');
+    return segments.length > 3 ? segments[3] : '';
   }
 
   /// Reconstitue l'état depuis le cache drift (coches optimistes comprises).

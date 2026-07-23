@@ -105,4 +105,14 @@ class FileActions {
       statutLocal: Value('collecte'),
     ));
   }
+
+  /// Annule la coche optimiste d'un arrêt (refus métier réconcilié au rejeu :
+  /// le serveur a refusé, l'arrêt RESTE à collecter — SC-008).
+  Future<void> decocherOptimiste(String arretId) async {
+    await (_base.update(_base.arretsPreprovisionnes)
+          ..where((a) => a.arretId.equals(arretId)))
+        .write(const ArretsPreprovisionnesCompanion(
+      statutLocal: Value('a_collecter'),
+    ));
+  }
 }
