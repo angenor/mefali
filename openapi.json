@@ -2080,6 +2080,84 @@
         ]
       }
     },
+    "/admin/tarification/brouillon/{grille_id}/publier": {
+      "post": {
+        "tags": [
+          "tarification"
+        ],
+        "summary": "Publie le brouillon — **gardé** par la simulation et les bornes.",
+        "operationId": "publier",
+        "parameters": [
+          {
+            "name": "grille_id",
+            "in": "path",
+            "description": "Brouillon à publier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grille en vigueur à sa date d'entrée en vigueur ; l'ancienne passe à l'historique. Émet `grille.publiee`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Grille"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Grille inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`simulation_requise` (jamais simulé, ou édité depuis) ou `regle_hors_bornes` / `devise_incoherente` (bornes resserrées après coup).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/tarification/brouillon/{grille_id}/regles/{regle_id}": {
       "put": {
         "tags": [
@@ -2251,6 +2329,104 @@
           },
           "409": {
             "description": "La grille n'est pas un brouillon.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/tarification/brouillon/{grille_id}/simuler": {
+      "post": {
+        "tags": [
+          "tarification"
+        ],
+        "summary": "Simule une course sur le brouillon — **dry run**, aucun effet de bord.",
+        "operationId": "simuler",
+        "parameters": [
+          {
+            "name": "grille_id",
+            "in": "path",
+            "description": "Brouillon à rejouer.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeSimulation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Détail complet : itinéraire (et `degraded`), règle retenue, composantes, retenue vendeur, arrondi, devis. N'écrit AUCUN événement et ne touche pas la grille en vigueur ; pose seulement la garde de publication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatSimulation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Grille inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La grille n'est pas un brouillon.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`aucune_regle` (grille à compléter — condition corrigeable par l'admin, pas une faute serveur) ou corps invalide.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4881,6 +5057,26 @@
           }
         }
       },
+      "Attente": {
+        "type": "object",
+        "description": "Attente constatée à un arrêt — les DEUX horodatages sont requis, sinon la\nprime vaut 0 (FR-029 : jamais inventée).",
+        "required": [
+          "arrivee",
+          "scan"
+        ],
+        "properties": {
+          "arrivee": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Arrivée géolocalisée du coursier."
+          },
+          "scan": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Scan QR de la plaque (fin d'attente)."
+          }
+        }
+      },
       "BasculeDisponibiliteDto": {
         "type": "object",
         "description": "Corps de la bascule.",
@@ -5015,6 +5211,62 @@
             ],
             "format": "binary",
             "description": "Photo de récupération (binaire), si la politique l'exige."
+          }
+        }
+      },
+      "Composantes": {
+        "type": "object",
+        "description": "Détail des composantes (unités mineures) — FR-020.",
+        "required": [
+          "base",
+          "km",
+          "supplements",
+          "effort_paliers",
+          "effort_attente",
+          "effort_arrets",
+          "arrondi",
+          "retenue_vendeur"
+        ],
+        "properties": {
+          "arrondi": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Reliquat d'arrondi — abonde la part coursier."
+          },
+          "base": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix client de base de la règle."
+          },
+          "effort_arrets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — suppléments d'arrêt (100 % coursier)."
+          },
+          "effort_attente": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — prime d'attente (100 % coursier)."
+          },
+          "effort_paliers": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — paliers d'articles (100 % coursier)."
+          },
+          "km": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Composante kilométrique au-delà du seuil."
+          },
+          "retenue_vendeur": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant pris en charge par le vendeur (VND-08)."
+          },
+          "supplements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Suppléments activés (pluie…)."
           }
         }
       },
@@ -5417,6 +5669,85 @@
           }
         }
       },
+      "DemandeSimulation": {
+        "type": "object",
+        "description": "Course simulée — **pas de coursier** : le devis client précède le dispatch\n(CMD-01/TRF-03, research R11).",
+        "required": [
+          "vendeurs",
+          "destination",
+          "transport_slug",
+          "instant",
+          "nb_articles",
+          "mono_vendeur"
+        ],
+        "properties": {
+          "attentes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Attente"
+            },
+            "description": "Attentes constatées, `null` = aucune."
+          },
+          "categorie_slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Catégorie de service, `null` = aucune contrainte."
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Point",
+            "description": "Destination client."
+          },
+          "instant": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant d'évaluation (plages horaires, jours, dates d'effet)."
+          },
+          "mono_vendeur": {
+            "type": "boolean",
+            "description": "Commande mono-vendeur — condition NÉCESSAIRE de VND-08."
+          },
+          "montant_panier": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant du panier (unités mineures) — seuil VND-08."
+          },
+          "nb_articles": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre total d'articles de la commande (paliers d'effort)."
+          },
+          "offre_livraison_vendeur": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OffreLivraisonVendeur",
+                "description": "Offre de livraison du vendeur, `null` = aucune."
+              }
+            ]
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule."
+          },
+          "vendeurs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "description": "Points de retrait (1..n), dans un ordre quelconque — le moteur optimise."
+          }
+        }
+      },
       "DeposerCharte": {
         "type": "object",
         "description": "Scan de charte signée + métadonnées de signature.",
@@ -5453,6 +5784,59 @@
             "type": "string",
             "format": "binary",
             "description": "La photo."
+          }
+        }
+      },
+      "Devis": {
+        "type": "object",
+        "description": "Devis figé.",
+        "required": [
+          "prix_client",
+          "part_coursier",
+          "marge",
+          "devise",
+          "distance_m",
+          "eta_s",
+          "degraded",
+          "proposer_scission"
+        ],
+        "properties": {
+          "degraded": {
+            "type": "boolean",
+            "description": "Distance issue du mode dégradé."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217 de la zone."
+          },
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distance routière totale (mètres)."
+          },
+          "eta_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée estimée (secondes)."
+          },
+          "marge": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Marge Mefali."
+          },
+          "part_coursier": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part reversée au coursier."
+          },
+          "prix_client": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix payé par le client (unités mineures)."
+          },
+          "proposer_scission": {
+            "type": "boolean",
+            "description": "Le détour dépasse le plafond de zone : CMD proposera de scinder."
           }
         }
       },
@@ -5593,6 +5977,29 @@
               "$ref": "#/components/schemas/VehiculeDeclare"
             },
             "description": "Véhicules déclarés."
+          }
+        }
+      },
+      "DrapeauxZone": {
+        "type": "object",
+        "description": "Drapeaux de zone appliqués.",
+        "required": [
+          "livraison_offerte_mefali",
+          "gratuite_commissions",
+          "pluie"
+        ],
+        "properties": {
+          "gratuite_commissions": {
+            "type": "boolean",
+            "description": "Marge forcée à 0."
+          },
+          "livraison_offerte_mefali": {
+            "type": "boolean",
+            "description": "Prix client forcé à 0 (promo Mefali)."
+          },
+          "pluie": {
+            "type": "boolean",
+            "description": "Supplément de pluie actif."
           }
         }
       },
@@ -5918,6 +6325,45 @@
           }
         }
       },
+      "ItineraireSimule": {
+        "type": "object",
+        "description": "Itinéraire retenu par la simulation.",
+        "required": [
+          "ordre",
+          "distance_m",
+          "eta_s",
+          "degraded",
+          "exhaustif"
+        ],
+        "properties": {
+          "degraded": {
+            "type": "boolean",
+            "description": "Vrai si la distance vient du repli vol d'oiseau × facteur de zone."
+          },
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distance routière totale (mètres)."
+          },
+          "eta_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée estimée (secondes)."
+          },
+          "exhaustif": {
+            "type": "boolean",
+            "description": "Vrai si l'ordre est le meilleur de TOUTES les permutations (≤ 4 arrêts) ;\nfaux si l'heuristique bornée a tranché (FR-031)."
+          },
+          "ordre": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Indices des vendeurs dans l'ordre de passage."
+          }
+        }
+      },
       "JetonsDto": {
         "type": "object",
         "description": "Paire de jetons (contrat).",
@@ -6101,6 +6547,27 @@
           }
         }
       },
+      "OffreLivraisonVendeur": {
+        "type": "object",
+        "description": "Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa\nconfiguration relève de VND, son financement de PAY (hors périmètre).",
+        "required": [
+          "toujours"
+        ],
+        "properties": {
+          "au_dela": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prise en charge à partir de ce montant de panier (unités mineures).\nIgnoré si `toujours`."
+          },
+          "toujours": {
+            "type": "boolean",
+            "description": "Le vendeur prend la livraison en charge quel que soit le panier."
+          }
+        }
+      },
       "PhotoAdminDto": {
         "type": "object",
         "description": "Photo de fiche, présignée pour l'admin.",
@@ -6172,6 +6639,26 @@
           "android",
           "ios"
         ]
+      },
+      "Point": {
+        "type": "object",
+        "description": "Point géographique d'une course simulée.",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude en degrés décimaux."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude en degrés décimaux."
+          }
+        }
       },
       "PrestataireAdmin": {
         "type": "object",
@@ -6493,6 +6980,31 @@
           }
         }
       },
+      "RegleRetenue": {
+        "type": "object",
+        "description": "Règle retenue par l'évaluation.",
+        "required": [
+          "regle_id",
+          "transport_slug",
+          "priorite"
+        ],
+        "properties": {
+          "priorite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Priorité."
+          },
+          "regle_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant de la règle."
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule."
+          }
+        }
+      },
       "RegleUpsert": {
         "type": "object",
         "description": "Écriture d'une règle de brouillon. Montants en **unités mineures**.",
@@ -6675,6 +7187,44 @@
             "type": "integer",
             "format": "int32",
             "description": "Arrêts collectés."
+          }
+        }
+      },
+      "ResultatSimulation": {
+        "type": "object",
+        "description": "Résultat COMPLET d'une simulation (FR-020).",
+        "required": [
+          "itineraire",
+          "regle_retenue",
+          "composantes",
+          "devis",
+          "drapeaux",
+          "effort_non_facture"
+        ],
+        "properties": {
+          "composantes": {
+            "$ref": "#/components/schemas/Composantes",
+            "description": "Détail des composantes."
+          },
+          "devis": {
+            "$ref": "#/components/schemas/Devis",
+            "description": "Devis final."
+          },
+          "drapeaux": {
+            "$ref": "#/components/schemas/DrapeauxZone",
+            "description": "Drapeaux appliqués."
+          },
+          "effort_non_facture": {
+            "type": "boolean",
+            "description": "Vrai si l'effort a été calculé mais NON facturé (promo — FR-033)."
+          },
+          "itineraire": {
+            "$ref": "#/components/schemas/ItineraireSimule",
+            "description": "Itinéraire utilisé."
+          },
+          "regle_retenue": {
+            "$ref": "#/components/schemas/RegleRetenue",
+            "description": "Règle retenue."
           }
         }
       },

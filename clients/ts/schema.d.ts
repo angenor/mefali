@@ -417,6 +417,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/tarification/brouillon/{grille_id}/publier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publie le brouillon — **gardé** par la simulation et les bornes. */
+        post: operations["publier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/tarification/brouillon/{grille_id}/regles/{regle_id}": {
         parameters: {
             query?: never;
@@ -430,6 +447,23 @@ export interface paths {
         post?: never;
         /** Supprime une règle du brouillon — **réarme la simulation**. */
         delete: operations["supprimer_regle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tarification/brouillon/{grille_id}/simuler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simule une course sur le brouillon — **dry run**, aucun effet de bord. */
+        post: operations["simuler"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1200,6 +1234,22 @@ export interface components {
             rupture_admin: boolean;
             source_derniere_bascule?: null | components["schemas"]["SourceBascule"];
         };
+        /**
+         * @description Attente constatée à un arrêt — les DEUX horodatages sont requis, sinon la
+         *     prime vaut 0 (FR-029 : jamais inventée).
+         */
+        Attente: {
+            /**
+             * Format: date-time
+             * @description Arrivée géolocalisée du coursier.
+             */
+            arrivee: string;
+            /**
+             * Format: date-time
+             * @description Scan QR de la plaque (fin d'attente).
+             */
+            scan: string;
+        };
         /** @description Corps de la bascule. */
         BasculeDisponibiliteDto: {
             /** @description `false` = rupture, `true` = retour en vente. */
@@ -1270,6 +1320,49 @@ export interface components {
              * @description Photo de récupération (binaire), si la politique l'exige.
              */
             photo?: string | null;
+        };
+        /** @description Détail des composantes (unités mineures) — FR-020. */
+        Composantes: {
+            /**
+             * Format: int64
+             * @description Reliquat d'arrondi — abonde la part coursier.
+             */
+            arrondi: number;
+            /**
+             * Format: int64
+             * @description Prix client de base de la règle.
+             */
+            base: number;
+            /**
+             * Format: int64
+             * @description Effort — suppléments d'arrêt (100 % coursier).
+             */
+            effort_arrets: number;
+            /**
+             * Format: int64
+             * @description Effort — prime d'attente (100 % coursier).
+             */
+            effort_attente: number;
+            /**
+             * Format: int64
+             * @description Effort — paliers d'articles (100 % coursier).
+             */
+            effort_paliers: number;
+            /**
+             * Format: int64
+             * @description Composante kilométrique au-delà du seuil.
+             */
+            km: number;
+            /**
+             * Format: int64
+             * @description Montant pris en charge par le vendeur (VND-08).
+             */
+            retenue_vendeur: number;
+            /**
+             * Format: int64
+             * @description Suppléments activés (pluie…).
+             */
+            supplements: number;
         };
         /** @description Compte courant et l'état de TOUS ses rôles (contrat `CompteMoi`). */
         CompteMoi: {
@@ -1464,6 +1557,40 @@ export interface components {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
         };
+        /**
+         * @description Course simulée — **pas de coursier** : le devis client précède le dispatch
+         *     (CMD-01/TRF-03, research R11).
+         */
+        DemandeSimulation: {
+            /** @description Attentes constatées, `null` = aucune. */
+            attentes?: components["schemas"]["Attente"][] | null;
+            /** @description Catégorie de service, `null` = aucune contrainte. */
+            categorie_slug?: string | null;
+            /** @description Destination client. */
+            destination: components["schemas"]["Point"];
+            /**
+             * Format: date-time
+             * @description Instant d'évaluation (plages horaires, jours, dates d'effet).
+             */
+            instant: string;
+            /** @description Commande mono-vendeur — condition NÉCESSAIRE de VND-08. */
+            mono_vendeur: boolean;
+            /**
+             * Format: int64
+             * @description Montant du panier (unités mineures) — seuil VND-08.
+             */
+            montant_panier?: number | null;
+            /**
+             * Format: int32
+             * @description Nombre total d'articles de la commande (paliers d'effort).
+             */
+            nb_articles: number;
+            offre_livraison_vendeur?: null | components["schemas"]["OffreLivraisonVendeur"];
+            /** @description Véhicule. */
+            transport_slug: string;
+            /** @description Points de retrait (1..n), dans un ordre quelconque — le moteur optimise. */
+            vendeurs: components["schemas"]["Point"][];
+        };
         /** @description Scan de charte signée + métadonnées de signature. */
         DeposerCharte: {
             /**
@@ -1486,6 +1613,40 @@ export interface components {
              * @description La photo.
              */
             fichier: string;
+        };
+        /** @description Devis figé. */
+        Devis: {
+            /** @description Distance issue du mode dégradé. */
+            degraded: boolean;
+            /** @description Devise ISO 4217 de la zone. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Distance routière totale (mètres).
+             */
+            distance_m: number;
+            /**
+             * Format: int64
+             * @description Durée estimée (secondes).
+             */
+            eta_s: number;
+            /**
+             * Format: int64
+             * @description Marge Mefali.
+             */
+            marge: number;
+            /**
+             * Format: int64
+             * @description Part reversée au coursier.
+             */
+            part_coursier: number;
+            /**
+             * Format: int64
+             * @description Prix payé par le client (unités mineures).
+             */
+            prix_client: number;
+            /** @description Le détour dépasse le plafond de zone : CMD proposera de scinder. */
+            proposer_scission: boolean;
         };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
@@ -1564,6 +1725,15 @@ export interface components {
             telephone_e164: string;
             /** @description Véhicules déclarés. */
             vehicules: components["schemas"]["VehiculeDeclare"][];
+        };
+        /** @description Drapeaux de zone appliqués. */
+        DrapeauxZone: {
+            /** @description Marge forcée à 0. */
+            gratuite_commissions: boolean;
+            /** @description Prix client forcé à 0 (promo Mefali). */
+            livraison_offerte_mefali: boolean;
+            /** @description Supplément de pluie actif. */
+            pluie: boolean;
         };
         /** @description Corps d'erreur du contrat — `{ code, message_cle }`. */
         ErreurApi: {
@@ -1717,6 +1887,28 @@ export interface components {
             /** @description Émis par `/auth/otp/verifier`, usage unique, TTL 10 min. */
             jeton_inscription: string;
         };
+        /** @description Itinéraire retenu par la simulation. */
+        ItineraireSimule: {
+            /** @description Vrai si la distance vient du repli vol d'oiseau × facteur de zone. */
+            degraded: boolean;
+            /**
+             * Format: int64
+             * @description Distance routière totale (mètres).
+             */
+            distance_m: number;
+            /**
+             * Format: int64
+             * @description Durée estimée (secondes).
+             */
+            eta_s: number;
+            /**
+             * @description Vrai si l'ordre est le meilleur de TOUTES les permutations (≤ 4 arrêts) ;
+             *     faux si l'heuristique bornée a tranché (FR-031).
+             */
+            exhaustif: boolean;
+            /** @description Indices des vendeurs dans l'ordre de passage. */
+            ordre: number[];
+        };
         /** @description Paire de jetons (contrat). */
         JetonsDto: {
             /** @description JWT HS256, 15 min (claims sub/sid). */
@@ -1813,6 +2005,20 @@ export interface components {
             /** @description Repère écrit. */
             repere_texte?: string | null;
         };
+        /**
+         * @description Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa
+         *     configuration relève de VND, son financement de PAY (hors périmètre).
+         */
+        OffreLivraisonVendeur: {
+            /**
+             * Format: int64
+             * @description Prise en charge à partir de ce montant de panier (unités mineures).
+             *     Ignoré si `toujours`.
+             */
+            au_dela?: number | null;
+            /** @description Le vendeur prend la livraison en charge quel que soit le panier. */
+            toujours: boolean;
+        };
         /** @description Photo de fiche, présignée pour l'admin. */
         PhotoAdminDto: {
             /**
@@ -1856,6 +2062,19 @@ export interface components {
          * @enum {string}
          */
         PlateformeDto: "android" | "ios";
+        /** @description Point géographique d'une course simulée. */
+        Point: {
+            /**
+             * Format: double
+             * @description Latitude en degrés décimaux.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude en degrés décimaux.
+             */
+            lon: number;
+        };
         /** @description Résumé admin d'un prestataire. */
         PrestataireAdmin: {
             /** @description Slug de la catégorie de service. */
@@ -2022,6 +2241,21 @@ export interface components {
             /** @description Véhicule. */
             transport_slug: string;
         };
+        /** @description Règle retenue par l'évaluation. */
+        RegleRetenue: {
+            /**
+             * Format: int32
+             * @description Priorité.
+             */
+            priorite: number;
+            /**
+             * Format: uuid
+             * @description Identifiant de la règle.
+             */
+            regle_id: string;
+            /** @description Véhicule. */
+            transport_slug: string;
+        };
         /** @description Écriture d'une règle de brouillon. Montants en **unités mineures**. */
         RegleUpsert: {
             /** @description Règle active à l'évaluation. */
@@ -2129,6 +2363,21 @@ export interface components {
              * @description Arrêts collectés.
              */
             nb_collectes: number;
+        };
+        /** @description Résultat COMPLET d'une simulation (FR-020). */
+        ResultatSimulation: {
+            /** @description Détail des composantes. */
+            composantes: components["schemas"]["Composantes"];
+            /** @description Devis final. */
+            devis: components["schemas"]["Devis"];
+            /** @description Drapeaux appliqués. */
+            drapeaux: components["schemas"]["DrapeauxZone"];
+            /** @description Vrai si l'effort a été calculé mais NON facturé (promo — FR-033). */
+            effort_non_facture: boolean;
+            /** @description Itinéraire utilisé. */
+            itineraire: components["schemas"]["ItineraireSimule"];
+            /** @description Règle retenue. */
+            regle_retenue: components["schemas"]["RegleRetenue"];
         };
         /**
          * @description Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.
@@ -3778,6 +4027,65 @@ export interface operations {
             };
         };
     };
+    publier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Brouillon à publier. */
+                grille_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grille en vigueur à sa date d'entrée en vigueur ; l'ancienne passe à l'historique. Émet `grille.publiee`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Grille"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Grille inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description `simulation_requise` (jamais simulé, ou édité depuis) ou `regle_hors_bornes` / `devise_incoherente` (bornes resserrées après coup). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     ecrire_regle: {
         parameters: {
             query?: never;
@@ -3902,6 +4210,78 @@ export interface operations {
             };
             /** @description La grille n'est pas un brouillon. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    simuler: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Brouillon à rejouer. */
+                grille_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeSimulation"];
+            };
+        };
+        responses: {
+            /** @description Détail complet : itinéraire (et `degraded`), règle retenue, composantes, retenue vendeur, arrondi, devis. N'écrit AUCUN événement et ne touche pas la grille en vigueur ; pose seulement la garde de publication. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatSimulation"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Grille inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description La grille n'est pas un brouillon. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description `aucune_regle` (grille à compléter — condition corrigeable par l'admin, pas une faute serveur) ou corps invalide. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

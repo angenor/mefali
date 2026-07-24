@@ -7,10 +7,14 @@
 //! **réarme** l'obligation — « ce qui est simulé est ce qui sera publié ».
 
 use chrono::{DateTime, Utc};
+use serde_json::json;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::modele::{ErreurTarif, EtatGrille, Grille, Regle};
+use socle::{ecrire_evenement, NouvelEvenement};
+
+use crate::modele::{DemandeDevis, ErreurTarif, EtatGrille, Evaluation, Grille, Regle, SourceGrille};
+use crate::regle;
 use crate::PgTarification;
 
 /// En-tête d'une grille, sans ses règles — ce qu'il faut pour garder une
@@ -359,5 +363,146 @@ mod tests {
         assert_ne!(reference, empreinte(&ajout), "règle ajoutée");
 
         assert_ne!(reference, empreinte(&[]), "brouillon vidé");
+    }
+}
+
+impl PgTarification {
+    // ── T023 : simulation (dry run gardant la publication) ─────────────────
+
+    /// Rejoue le **cœur d'évaluation** contre un brouillon et rend le détail
+    /// complet (FR-020) : itinéraire et `degraded`, règle retenue, composantes,
+    /// retenue vendeur, arrondi, devis final.
+    ///
+    /// **Sans effet de bord tarifaire** : aucun événement outbox (research R10),
+    /// aucune modification de la grille en vigueur. La seule écriture est la
+    /// pose de la garde — `simulee_le` et l'empreinte du contenu simulé — sans
+    /// quoi « simuler » ne prouverait rien à la publication.
+    ///
+    /// La zone évaluée est celle du BROUILLON, jamais une zone fournie par
+    /// l'appelant : simuler la grille de Tiassalé contre la configuration d'une
+    /// autre ville rendrait un prix qui ne sera jamais facturé.
+    pub async fn simuler(
+        &self,
+        grille_id: Uuid,
+        demande: &DemandeDevis,
+    ) -> Result<Evaluation, ErreurTarif> {
+        let grille = self.grille(grille_id).await?;
+        if grille.etat != EtatGrille::Brouillon {
+            return Err(ErreurTarif::PasUnBrouillon(grille_id));
+        }
+        let demande = DemandeDevis {
+            zone_id: grille.zone_id,
+            ..demande.clone()
+        };
+        let evaluation = self
+            .evaluer_detail(&demande, SourceGrille::Brouillon(grille_id))
+            .await?;
+
+        // Posée APRÈS le succès seulement : une simulation qui échoue (aucune
+        // règle applicable) ne doit pas ouvrir la porte de la publication.
+        sqlx::query!(
+            "UPDATE tarification.grille
+             SET simulee_le = now(), simulee_empreinte = $2
+             WHERE id = $1",
+            grille_id,
+            empreinte(&grille.regles),
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(evaluation)
+    }
+
+    // ── T024 : publication gardée ──────────────────────────────────────────
+
+    /// Publie un brouillon : il devient la grille **en vigueur** à sa date
+    /// d'entrée en vigueur, l'ancienne passant à l'**historique** (FR-022).
+    ///
+    /// Deux gardes INVIOLABLES côté serveur (FR-021, maquette A3) :
+    ///
+    /// 1. une simulation doit avoir porté sur l'**empreinte courante** — simuler
+    ///    puis éditer ne suffit pas, l'empreinte étant recalculée à la lecture ;
+    /// 2. aucune règle hors des bornes de marge de la zone, ni en devise
+    ///    étrangère — les bornes ont pu être resserrées APRÈS l'écriture.
+    ///
+    /// Un brouillon VIDE est publiable sur le papier ; en pratique il ne l'est
+    /// jamais : simuler une grille sans règle échoue (`aucune_regle`), donc la
+    /// garde 1 ne peut pas être satisfaite.
+    ///
+    /// Transaction : archivage, activation et événement `grille.publiee`
+    /// commitent ensemble ou pas du tout (constitution VI).
+    pub async fn publier(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        grille_id: Uuid,
+        acteur: Uuid,
+    ) -> Result<Grille, ErreurTarif> {
+        let grille = charger(&mut **tx, grille_id)
+            .await?
+            .ok_or(ErreurTarif::GrilleInconnue(grille_id))?;
+        if grille.etat != EtatGrille::Brouillon {
+            return Err(ErreurTarif::PasUnBrouillon(grille_id));
+        }
+        if !grille.simulation_a_jour() {
+            return Err(ErreurTarif::SimulationRequise);
+        }
+
+        let bornes = self.bornes_marge(grille.zone_id).await?;
+        let devise = self.devise(grille.zone_id).await?;
+        for r in &grille.regles {
+            // Une borne resserrée après coup doit BLOQUER la publication, pas
+            // passer inaperçue : on revalide tout le catalogue, pas seulement
+            // les règles éditées depuis.
+            if !bornes.contient(r.marge) {
+                return Err(ErreurTarif::RegleHorsBornes);
+            }
+        }
+        regle::verifier_devises_homogenes(&grille.regles, &devise.code)?;
+
+        // Archiver AVANT d'activer : l'index unique partiel
+        // `grille_en_vigueur_unique` refuse deux grilles en vigueur, et il est
+        // vérifié à chaque instruction — pas seulement au commit.
+        let version_precedente: Option<i32> = sqlx::query_scalar!(
+            "UPDATE tarification.grille SET etat = 'historique'
+             WHERE zone_id = $1 AND etat = 'en_vigueur'
+             RETURNING version",
+            grille.zone_id,
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+
+        let effet_le = Utc::now();
+        sqlx::query!(
+            "UPDATE tarification.grille SET etat = 'en_vigueur', effet_le = $2 WHERE id = $1",
+            grille_id,
+            effet_le,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "grille.publiee",
+                entite_type: "grille",
+                entite_id: grille_id,
+                payload: json!({
+                    "zone": grille.zone_id,
+                    "grille": grille_id,
+                    "version": grille.version,
+                    "effet_le": effet_le,
+                    "version_precedente": version_precedente,
+                    "nb_regles": grille.regles.len(),
+                    "acteur": acteur,
+                }),
+                survenu_le: effet_le,
+            },
+        )
+        .await?;
+
+        Ok(Grille {
+            etat: EtatGrille::EnVigueur,
+            effet_le: Some(effet_le),
+            ..grille
+        })
     }
 }

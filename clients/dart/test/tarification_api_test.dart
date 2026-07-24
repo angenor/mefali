@@ -28,6 +28,20 @@ void main() {
       // TODO
     });
 
+    // Publie le brouillon — **gardé** par la simulation et les bornes.
+    //
+    //Future<Grille> publier(String grilleId) async
+    test('test publier', () async {
+      // TODO
+    });
+
+    // Simule une course sur le brouillon — **dry run**, aucun effet de bord.
+    //
+    //Future<ResultatSimulation> simuler(String grilleId, DemandeSimulation demandeSimulation) async
+    test('test simuler', () async {
+      // TODO
+    });
+
     // Supprime une règle du brouillon — **réarme la simulation**.
     //
     //Future supprimerRegle(String grilleId, String regleId) async

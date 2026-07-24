@@ -177,7 +177,9 @@ impl Bac {
                 .service(tarif::grille_de_zone)
                 .service(tarif::creer_brouillon)
                 .service(tarif::ecrire_regle)
-                .service(tarif::supprimer_regle);
+                .service(tarif::supprimer_regle)
+                .service(tarif::simuler)
+                .service(tarif::publier);
         }
     }
 
@@ -216,4 +218,41 @@ pub fn regle_moto(marge: i64) -> Value {
         "priorite": 0,
         "actif": true
     })
+}
+
+/// Corps d'une course simulée : un vendeur, une destination, en moto.
+pub fn course_simulee() -> Value {
+    json!({
+        "vendeurs": [{"lat": 5.9020, "lon": -4.8180}],
+        "destination": {"lat": 5.8980, "lon": -4.8230},
+        "transport_slug": "moto",
+        "instant": "2026-07-22T19:30:00Z",
+        "nb_articles": 3,
+        "categorie_slug": null,
+        "attentes": null,
+        "montant_panier": 0,
+        "offre_livraison_vendeur": null,
+        "mono_vendeur": true
+    })
+}
+
+/// Pose un paramètre de zone au niveau VILLE (bornes, arrondi, drapeaux…).
+impl Bac {
+    pub async fn poser_parametre(&self, cle: &str, valeur: Value) {
+        let z = PgZones::new(self.pool.clone());
+        let mut tx = self.pool.begin().await.unwrap();
+        z.definir_parametre(&mut tx, self.ville, cle, valeur, "bac")
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    /// État courant d'une grille (`brouillon` | `en_vigueur` | `historique`).
+    pub async fn etat_grille(&self, grille: Uuid) -> String {
+        sqlx::query_scalar("SELECT etat::text FROM tarification.grille WHERE id = $1")
+            .bind(grille)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
+    }
 }

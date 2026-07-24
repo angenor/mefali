@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tarification.grille\n             SET simulee_le = now(), simulee_empreinte = $2\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1246d74cc5a496430bac8a29c76351b3b348a43e6f05623c5eda0e500a19fa8f"
+}

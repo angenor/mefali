@@ -98,6 +98,8 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_tarification_http::creer_brouillon)
         .service(admin_tarification_http::ecrire_regle)
         .service(admin_tarification_http::supprimer_regle)
+        .service(admin_tarification_http::simuler)
+        .service(admin_tarification_http::publier)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -450,6 +452,8 @@ pub async fn run() -> std::io::Result<()> {
             .service(admin_tarification_http::creer_brouillon)
             .service(admin_tarification_http::ecrire_regle)
             .service(admin_tarification_http::supprimer_regle)
+            .service(admin_tarification_http::simuler)
+            .service(admin_tarification_http::publier)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
