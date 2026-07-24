@@ -351,6 +351,7 @@ dependencies = [
  "serde_json",
  "socle",
  "sqlx",
+ "tarification",
  "tokio",
  "tracing",
  "tracing-actix-web",
@@ -5069,6 +5070,21 @@ dependencies = [
 [[package]]
 name = "tarification"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "socle",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+ "zones",
+]
 
 [[package]]
 name = "tempfile"

@@ -24,3 +24,8 @@ Historique :
 `api::run`) : après l'ajout d'un fichier ici, reconstruire
 `cargo build -p api --bin api`, sinon le binaire déjà compilé applique
 l'ancienne liste.
+- `0007_tarification.sql` — schéma `tarification` : grilles versionnées par zone
+  (brouillon / en vigueur / historique, index uniques partiels, garde de
+  simulation) et règles {conditions → sorties} à marge bornée, devise ISO 4217,
+  provision `point_relais_id` gardée `NULL` (cycle TRF 007, T003 ;
+  specs/007-tarification-moteur-effort/data-model.md §1).

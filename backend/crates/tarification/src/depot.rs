@@ -1,0 +1,162 @@
+//! Racine de composition du domaine tarification (`PgTarification`).
+//!
+//! Compose le pool + la configuration de zone (`PgZones`, knobs/devise/drapeaux
+//! hérités) + le port [`Routage`] (client OSRM réel en production, doubles en
+//! test) + le port [`CacheRoutage`] (Redis en production, mémoire en test). Les
+//! impls réelles sont câblées dans `api::run`.
+//!
+//! Convention du dépôt (cycles 002/005/006) : **lectures sur pool**, **écritures
+//! sur `&mut PgTransaction`**, l'événement outbox écrit dans la MÊME transaction
+//! que l'opération (constitution VI).
+
+use std::sync::Arc;
+
+use serde_json::Value;
+use sqlx::PgPool;
+use uuid::Uuid;
+use zones::{ConfigurationZones, Devise, PgZones};
+
+use crate::modele::{DrapeauxZone, ErreurTarif};
+use crate::ports::{CacheRoutage, Routage};
+
+/// Bornes de marge d'une zone (FR-009), résolues par héritage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BornesMarge {
+    /// Borne basse incluse.
+    pub min: i64,
+    /// Borne haute incluse.
+    pub max: i64,
+}
+
+impl BornesMarge {
+    /// La marge est-elle dans les bornes ?
+    pub fn contient(&self, marge: i64) -> bool {
+        marge >= self.min && marge <= self.max
+    }
+}
+
+/// Défauts des knobs de zone — appliqués UNIQUEMENT si la clé est absente de
+/// toute la chaîne d'héritage.
+///
+/// Ce ne sont pas des « paramètres en dur » (constitution I) mais des valeurs de
+/// repli documentées : la valeur SERVIE vient du seed
+/// `50_tarification_tiassale.sql` et s'édite en configuration de zone. Elles
+/// existent pour qu'une zone neuve tarife plutôt que d'échouer, et pour que les
+/// bornes de marge restent gardées même sans seed.
+pub mod defauts {
+    /// Bornes de marge par défaut (spec FR-009 « défaut 25–100 »).
+    pub const MARGE_MIN: i64 = 25;
+    /// Borne haute de marge par défaut.
+    pub const MARGE_MAX: i64 = 100;
+    /// Pas d'arrondi du prix client (FCFA supérieur).
+    pub const ARRONDI_PAS: i64 = 25;
+    /// Facteur du dégradé vol d'oiseau (Récapitulatif « ×1,4 »).
+    pub const FACTEUR_DEGRADE: f64 = 1.4;
+    /// TTL du cache de routage (heures).
+    pub const CACHE_TTL_H: i64 = 24;
+    /// Décimales de la clé de cache (~11 m à 4 décimales, research R3).
+    pub const ARRONDI_CLE_DECIMALES: u32 = 4;
+    /// Supplément de pluie (unités mineures) quand le drapeau est ON.
+    pub const SUPPLEMENT_PLUIE: i64 = 100;
+}
+
+/// Handle de dépôt du domaine tarification. Clone bon marché (pool et ports
+/// partagés).
+#[derive(Clone)]
+pub struct PgTarification {
+    pub(crate) pool: PgPool,
+    pub(crate) zones: PgZones,
+    pub(crate) routage: Arc<dyn Routage>,
+    pub(crate) cache: Arc<dyn CacheRoutage>,
+}
+
+impl PgTarification {
+    /// Compose le dépôt. `PgZones` est dérivé du pool (même base) ; le routage
+    /// et son cache sont injectés par la racine de composition.
+    pub fn new(pool: PgPool, routage: Arc<dyn Routage>, cache: Arc<dyn CacheRoutage>) -> Self {
+        Self {
+            zones: PgZones::new(pool.clone()),
+            pool,
+            routage,
+            cache,
+        }
+    }
+
+    /// Accès au pool applicatif (ouverture de transaction par la couche `api`).
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+
+    // ── Knobs de zone (configuration héritée — constitution I) ─────────────
+
+    /// Paramètre hérité brut (`None` si explicitement absent de la chaîne).
+    pub(crate) async fn parametre(&self, zone: Uuid, cle: &str) -> Result<Option<Value>, ErreurTarif> {
+        Ok(self.zones.parametre(zone, cle).await?)
+    }
+
+    /// Paramètre hérité lu comme entier, avec repli documenté.
+    pub(crate) async fn parametre_i64(
+        &self,
+        zone: Uuid,
+        cle: &str,
+        defaut: i64,
+    ) -> Result<i64, ErreurTarif> {
+        Ok(self
+            .parametre(zone, cle)
+            .await?
+            .and_then(|v| v.as_i64())
+            .unwrap_or(defaut))
+    }
+
+    /// Paramètre hérité lu comme flottant NON monétaire (facteur de dégradé).
+    /// Accepte aussi un entier JSON (`1` vaut `1.0`).
+    pub(crate) async fn parametre_f64(
+        &self,
+        zone: Uuid,
+        cle: &str,
+        defaut: f64,
+    ) -> Result<f64, ErreurTarif> {
+        Ok(self
+            .parametre(zone, cle)
+            .await?
+            .and_then(|v| v.as_f64())
+            .unwrap_or(defaut))
+    }
+
+    /// Bornes de marge de la zone (`tarification.marge.min` / `.max`, FR-009).
+    pub async fn bornes_marge(&self, zone: Uuid) -> Result<BornesMarge, ErreurTarif> {
+        Ok(BornesMarge {
+            min: self
+                .parametre_i64(zone, "tarification.marge.min", defauts::MARGE_MIN)
+                .await?,
+            max: self
+                .parametre_i64(zone, "tarification.marge.max", defauts::MARGE_MAX)
+                .await?,
+        })
+    }
+
+    /// Devise ISO 4217 de la zone (FR-023) — source unique de la devise des
+    /// règles et des devis ; jamais une constante du module.
+    pub async fn devise(&self, zone: Uuid) -> Result<Devise, ErreurTarif> {
+        Ok(self.zones.devise(zone).await?)
+    }
+
+    /// Drapeaux de zone consommés par l'évaluation (FR-007/FR-017). Un drapeau
+    /// absent vaut `false` — « absent » et « défini à faux » ont ici le même
+    /// effet tarifaire (aucun forçage).
+    pub(crate) async fn drapeaux(&self, zone: Uuid) -> Result<DrapeauxZone, ErreurTarif> {
+        Ok(DrapeauxZone {
+            livraison_offerte_mefali: self
+                .zones
+                .drapeau(zone, "livraison_offerte_mefali")
+                .await?
+                .unwrap_or(false),
+            gratuite_commissions: self
+                .zones
+                .drapeau(zone, "gratuite_commissions")
+                .await?
+                .unwrap_or(false),
+            pluie: self.zones.drapeau(zone, "pluie").await?.unwrap_or(false),
+        })
+    }
+}
