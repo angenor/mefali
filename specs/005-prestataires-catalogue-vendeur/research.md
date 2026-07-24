@@ -264,7 +264,7 @@ servie en lecture seule avec horaires et réouverture (FR-029).
 **Rationale** : FR-011 dit que SEULE la consultation de FR-027 échappe à la
 protection par rôle — et la résolution n'a aucun consommateur public réel : les
 tests et le scan en course (QRC) sont authentifiés, et le scan hors contexte
-d'un passant passe par l'URL `mefali.ci/v/{vendor_id}` imprimée sur la plaque
+d'un passant passe par l'URL `mefali.com/v/{vendor_id}` imprimée sur la plaque
 (fiche publique du cycle WEB), pas par la résolution du jeton. L'exception VIII
 reste donc limitée à la consultation, documentée au Complexity Tracking au même
 titre que `/config?zone=` (cycle 002) et les URLs présignées (cycle 003) — la

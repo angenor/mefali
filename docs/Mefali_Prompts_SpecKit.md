@@ -358,7 +358,7 @@ docs/cadrage-v5.md section §5.3.
 
 Fonctionnalité : QR prestataire, plaque et scans de collecte.
 Périmètre : QRC-01, QRC-02, QRC-03, QRC-04 — critères tels quels. QR encodant
-https://mefali.ci/v/{vendor_id}?t={jeton HMAC révocable} + code de secours à
+https://mefali.com/v/{vendor_id}?t={jeton HMAC révocable} + code de secours à
 4 chiffres propre au prestataire ; PDF de plaque (MinIO) téléchargeable depuis
 l'admin ; scan en course PAR ARRÊT : correspondance prestataire/arrêt, GPS
 < 100 m (paramétrable), horodatage serveur → arrêt COLLECTÉ (+ photo si la
@@ -640,7 +640,7 @@ section §5.3.
 
 Fonctionnalité : fiche prestataire publique (cible du scan QR hors contexte).
 Périmètre : WEB-01 — critères tels quels. Page Nuxt 4 SSR sur
-mefali.ci/v/{vendor_id} : nom, photos, statut ouvert/fermé, catalogue en lecture
+mefali.com/v/{vendor_id} : nom, photos, statut ouvert/fermé, catalogue en lecture
 seule (prix barrés visibles, badge livraison offerte), note ; bouton « Commander
 dans l'app » (deep link, sinon store) ; balises OG pour un aperçu propre au
 partage WhatsApp ; prestataire suspendu → page neutre « indisponible ».

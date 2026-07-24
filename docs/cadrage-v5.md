@@ -110,7 +110,7 @@ Chaque catégorie est une **configuration** : champs de fiche, politique photo �
 
 ### 5.3 Spécification du QR
 
-- **Contenu** : URL courte `mefali.ci/v/{vendor_id}` avec jeton signé (HMAC), révocable côté serveur (vendeur suspendu → QR inactif sans changer la plaque).
+- **Contenu** : URL courte `mefali.com/v/{vendor_id}` avec jeton signé (HMAC), révocable côté serveur (vendeur suspendu → QR inactif sans changer la plaque).
 - **Scan en course** : correspondance vendeur/commande, position GPS < ~100 m (paramétrable), horodatage serveur.
 - **Scan hors contexte** : fiche publique du vendeur (Nuxt SSR) avec catalogue et lien « ouvrir dans l'app » — la plaque est un canal d'acquisition.
 - **Dégradé (QR illisible)** : saisie du **code de secours à 4 chiffres** imprimé sur la plaque. Ce code n'est **pas** un identifiant global (aucun problème d'échelle, même avec des millions de vendeurs) : c'est une **confirmation locale** comparée au code du vendeur de la commande active du coursier. Protections : géolocalisation < 100 m toujours exigée + 3 essais maximum. Incident « plaque à remplacer » créé automatiquement.
