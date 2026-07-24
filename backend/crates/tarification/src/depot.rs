@@ -17,6 +17,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use zones::{ConfigurationZones, Devise, PgZones};
 
+use crate::effort::ParametresEffort;
 use crate::modele::{DrapeauxZone, ErreurTarif, Regle, RegleUpsert};
 use crate::ports::{CacheRoutage, Routage};
 use crate::regle;
@@ -94,6 +95,8 @@ pub struct Knobs {
     /// Plafond de détour au-delà duquel une scission est PROPOSÉE (FR-032).
     /// `None` (défaut) ⇒ aucune scission n'est jamais proposée.
     pub plafond_eclatement_m: Option<i64>,
+    /// Barèmes de la grille d'effort (100 % part coursier).
+    pub effort: ParametresEffort,
 }
 
 /// Handle de dépôt du domaine tarification. Clone bon marché (pool et ports
@@ -240,6 +243,7 @@ impl PgTarification {
             plafond_eclatement_m: config
                 .valeur("effort.plafond_eclatement_m")
                 .and_then(Value::as_i64),
+            effort: ParametresEffort::depuis_config(|cle| config.valeur(cle).cloned()),
         })
     }
 

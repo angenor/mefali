@@ -283,6 +283,16 @@ pub struct Itineraire {
     pub exhaustif: bool,
 }
 
+impl Itineraire {
+    /// Jambes reliant deux RETRAITS consécutifs — sans la jambe de livraison
+    /// finale. C'est la matière du barème de supplément d'arrêt (FR-029) : un
+    /// « arrêt supplémentaire » est un retrait de plus, jamais la remise au
+    /// client. Vide pour une course à un seul retrait.
+    pub fn troncons_entre_arrets(&self) -> &[Troncon] {
+        self.troncons.split_last().map_or(&[], |(_, debut)| debut)
+    }
+}
+
 // ── Devis ──────────────────────────────────────────────────────────────────
 
 /// Détail des composantes du devis, en unités mineures (FR-020, simulateur).

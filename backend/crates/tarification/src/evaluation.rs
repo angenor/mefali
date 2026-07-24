@@ -132,8 +132,15 @@ impl PgTarification {
             0
         };
 
-        // ── 5. Grille d'effort — greffée en US6 (T030), 100 % part coursier.
-        let effort = crate::effort::Effort::default();
+        // ── 5. Grille d'effort — 100 % part coursier (T030, SC-007). Elle
+        //       abonde le prix client ET la part coursier ; la marge, elle, ne
+        //       bouge pas d'un franc.
+        let effort = crate::effort::calculer(
+            &knobs.effort,
+            demande.nb_articles,
+            &demande.attentes,
+            itineraire.troncons_entre_arrets(),
+        );
 
         // ── 6. Arrondi du prix client ; le reliquat abonde la part coursier.
         let avant_arrondi = base + km + supplements + effort.total();
