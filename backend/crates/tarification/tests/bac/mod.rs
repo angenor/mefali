@@ -270,3 +270,27 @@ impl Routage for RoutageFixe {
         Ok(self.matrice.clone())
     }
 }
+
+/// Charge des fichiers de `backend/seeds/` dans l'ordre donné, en UNE
+/// transaction — même sémantique que `api::charger_seeds`, sans dépendre du
+/// crate `api` (qui dépend de `tarification` : l'inverse serait un cycle).
+pub async fn charger_seeds(pool: &PgPool, fichiers: &[&str]) {
+    let dossier = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../seeds");
+    let mut tx = pool.begin().await.unwrap();
+    for fichier in fichiers {
+        let sql = std::fs::read_to_string(dossier.join(fichier))
+            .unwrap_or_else(|e| panic!("lecture de {fichier} : {e}"));
+        sqlx::raw_sql(sqlx::AssertSqlSafe(sql))
+            .execute(&mut *tx)
+            .await
+            .unwrap_or_else(|e| panic!("exécution de {fichier} : {e}"));
+    }
+    tx.commit().await.unwrap();
+}
+
+/// Seeds nécessaires à la tarification de Tiassalé : l'arbre de zones et ses
+/// paramètres, puis la grille tarifaire.
+pub const SEEDS_TARIFICATION: &[&str] = &["10_zones_tiassale.sql", "50_tarification_tiassale.sql"];
+
+/// Identifiant de la ville de Tiassalé dans les seeds.
+pub const TIASSALE: &str = "01900000-0000-7000-8000-000000000002";

@@ -115,8 +115,8 @@ Backend Rust : crate `backend/crates/tarification/`, binaire `backend/api/`, mig
 
 **Independent Test** : chaque montant Tiassalé vérifié au FCFA près ; drapeaux de lancement → client 0/marge 0 ; rejeu idempotent.
 
-- [ ] T027 [US4] Seed `backend/seeds/50_tarification_tiassale.sql` (**idempotent**, `ON CONFLICT DO NOTHING`, séparé des migrations — constitution I) : **knobs de zone** (bornes de marge, pas d'arrondi, facteur dégradé, TTL cache, seeds d'effort, plafonds — [data-model.md §2](./data-model.md)) + **grille en vigueur Tiassalé** (règles `a_pied`/`velo`/`moto`, marge 50 dans les bornes ; marge 0 du lancement via drapeau `gratuite_commissions`, R4).
-- [ ] T028 [P] [US4] Test d'intégration US4 dans `backend/crates/tarification/tests/seed_tiassale.rs` : `a_pied` 100 (≤ 800 m), `velo` 150 (≤ 2 km), `moto` 200 + 50/km (plafond 500), `pluie` +100 ; drapeaux ON → prix client 0 / marge 0 / part journalisée ; rejeu du seed **idempotent**.
+- [X] T027 [US4] Seed `backend/seeds/50_tarification_tiassale.sql` (**idempotent**, `ON CONFLICT DO NOTHING`, séparé des migrations — constitution I) : **knobs de zone** (bornes de marge, pas d'arrondi, facteur dégradé, TTL cache, seeds d'effort, plafonds — [data-model.md §2](./data-model.md)) + **grille en vigueur Tiassalé** (règles `a_pied`/`velo`/`moto`, marge 50 dans les bornes ; marge 0 du lancement via drapeau `gratuite_commissions`, R4).
+- [X] T028 [P] [US4] Test d'intégration US4 dans `backend/crates/tarification/tests/seed_tiassale.rs` : `a_pied` 100 (≤ 800 m), `velo` 150 (≤ 2 km), `moto` 200 + 50/km (plafond 500), `pluie` +100 ; drapeaux ON → prix client 0 / marge 0 / part journalisée ; rejeu du seed **idempotent**.
 
 **Checkpoint** : Tiassalé peut tarifer dès le premier jour.
 

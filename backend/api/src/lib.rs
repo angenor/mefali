@@ -727,8 +727,10 @@ mod tests {
         // cycle 005 : fuseau, conservation charte, 6 affichages de rupture)
         // + 3 (pays, cycle 006 : distance de scan, seuil photo, rétention photo
         // de collecte) + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 :
-        // seuil et fenêtre du masquage automatique).
-        assert_eq!(apres_un.4, 35, "23 (pays) + 12 (ville) paramètres");
+        // seuil et fenêtre du masquage automatique) + 12 (ville, cycle 007 :
+        // 2 bornes de marge, arrondi, supplément pluie, 4 knobs de routage,
+        // 4 knobs d'effort — `effort.plafond_eclatement_m` reste DORMANT).
+        assert_eq!(apres_un.4, 47, "23 (pays) + 24 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),
