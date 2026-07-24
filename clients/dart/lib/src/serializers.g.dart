@@ -44,6 +44,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(EtatRoleDto.serializer)
       ..add(FichePublique.serializer)
       ..add(ForcageDto.serializer)
+      ..add(Grille.serializer)
+      ..add(GrillesZone.serializer)
       ..add(HealthResponse.serializer)
       ..add(HorairesSemaineDto.serializer)
       ..add(Inscription.serializer)
@@ -61,6 +63,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PrestatairePilotable.serializer)
       ..add(RattachementDto.serializer)
       ..add(RattacherCompteDto.serializer)
+      ..add(Regle.serializer)
+      ..add(RegleUpsert.serializer)
       ..add(ResolutionPlaque.serializer)
       ..add(ResultatCollecte.serializer)
       ..add(ResultatVerification.serializer)
@@ -121,6 +125,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PlageDto)]),
           () => ListBuilder<PlageDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Regle)]),
+          () => ListBuilder<Regle>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(VehiculeDeclare)]),
           () => ListBuilder<VehiculeDeclare>())

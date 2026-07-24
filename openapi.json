@@ -2080,6 +2080,309 @@
         ]
       }
     },
+    "/admin/tarification/brouillon/{grille_id}/regles/{regle_id}": {
+      "put": {
+        "tags": [
+          "tarification"
+        ],
+        "summary": "Crée ou met à jour une règle du brouillon — **réarme la simulation**.",
+        "operationId": "ecrire_regle",
+        "parameters": [
+          {
+            "name": "grille_id",
+            "in": "path",
+            "description": "Brouillon.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "regle_id",
+            "in": "path",
+            "description": "Règle (identifiant choisi par l'appelant).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegleUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Règle enregistrée. La grille redevient NON publiable tant qu'une nouvelle simulation n'a pas porté sur ce contenu (FR-021).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Regle"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Grille inconnue, ou règle appartenant à une autre grille.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`marge_hors_bornes` (le corps porte `min`/`max`/`valeur`), `devise_incoherente`, ou grille qui n'est pas un brouillon.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corps invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tarification"
+        ],
+        "summary": "Supprime une règle du brouillon — **réarme la simulation**.",
+        "operationId": "supprimer_regle",
+        "parameters": [
+          {
+            "name": "grille_id",
+            "in": "path",
+            "description": "Brouillon.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "regle_id",
+            "in": "path",
+            "description": "Règle à supprimer.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Supprimée. La grille redevient non publiable tant qu'une nouvelle simulation n'a pas porté sur ce contenu."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Grille ou règle inconnues.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La grille n'est pas un brouillon.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/tarification/zones/{zone_id}/brouillon": {
+      "post": {
+        "tags": [
+          "tarification"
+        ],
+        "summary": "Crée (ou rend) le brouillon de la zone — **idempotent**.",
+        "operationId": "creer_brouillon",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "path",
+            "description": "Zone tarifée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brouillon de la zone. À la CRÉATION, il clone la grille en vigueur (l'admin part du tarif réel) ; un second appel rend le même brouillon, sans rien recréer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Grille"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/tarification/zones/{zone_id}/grille": {
+      "get": {
+        "tags": [
+          "tarification"
+        ],
+        "summary": "Grille en vigueur ET brouillon d'une zone.",
+        "operationId": "grille_de_zone",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "path",
+            "description": "Zone tarifée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grille en vigueur et brouillon (avec statut de simulation et règles).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrillesZone"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
       "put": {
         "tags": [
@@ -5469,6 +5772,94 @@
           "force_inactif"
         ]
       },
+      "Grille": {
+        "type": "object",
+        "description": "Grille servie à l'admin (en-tête + règles + statut de simulation).",
+        "required": [
+          "id",
+          "zone_id",
+          "version",
+          "etat",
+          "simulee",
+          "regles"
+        ],
+        "properties": {
+          "effet_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Entrée en vigueur (posée à la publication)."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`brouillon` | `en_vigueur` | `historique`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "regles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Regle"
+            },
+            "description": "Règles, triées par identifiant (ordre stable)."
+          },
+          "simulee": {
+            "type": "boolean",
+            "description": "**Publiable** : la simulation porte sur le contenu EXACT du brouillon.\nRepasse à `false` dès qu'une règle est éditée (FR-021)."
+          },
+          "simulee_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Dernière simulation réussie."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Version."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone tarifée."
+          }
+        }
+      },
+      "GrillesZone": {
+        "type": "object",
+        "description": "Vue d'ensemble de la tarification d'une zone.",
+        "properties": {
+          "brouillon": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Grille",
+                "description": "Brouillon en cours d'édition, `null` s'il n'y en a pas."
+              }
+            ]
+          },
+          "en_vigueur": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Grille",
+                "description": "Grille qui tarife aujourd'hui, `null` si la zone n'en a aucune."
+              }
+            ]
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "description": "Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde\nmesure la disponibilité du processus (non authentifiée, constitution VIII).",
@@ -5981,6 +6372,235 @@
             "type": "string",
             "format": "uuid",
             "description": "Compte vérifié à rattacher."
+          }
+        }
+      },
+      "Regle": {
+        "type": "object",
+        "description": "Règle servie à l'admin.",
+        "required": [
+          "id",
+          "transport_slug",
+          "distance_min_m",
+          "part_coursier_base",
+          "marge",
+          "prix_par_km",
+          "seuil_km_m",
+          "devise",
+          "priorite",
+          "actif",
+          "prix_client_base"
+        ],
+        "properties": {
+          "actif": {
+            "type": "boolean",
+            "description": "Active."
+          },
+          "categorie_slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Catégorie, `null` = toutes."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "distance_max_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Borne haute incluse."
+          },
+          "distance_min_m": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Borne basse de tranche (mètres)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "jours_masque": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Masque de jours."
+          },
+          "marge": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Marge Mefali."
+          },
+          "part_coursier_base": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part coursier de base."
+          },
+          "plage_debut_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Début de plage horaire."
+          },
+          "plage_fin_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Fin de plage horaire."
+          },
+          "priorite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Priorité."
+          },
+          "prix_client_base": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix client de base DÉRIVÉ (`part_coursier_base + marge`) — jamais\nstocké, servi pour que l'admin lise le tarif sans le recalculer."
+          },
+          "prix_par_km": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix par km au-delà du seuil."
+          },
+          "prix_plafond": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Plafond du prix client."
+          },
+          "seuil_km_m": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Seuil de kilométrage facturé (mètres)."
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule."
+          }
+        }
+      },
+      "RegleUpsert": {
+        "type": "object",
+        "description": "Écriture d'une règle de brouillon. Montants en **unités mineures**.",
+        "required": [
+          "transport_slug",
+          "distance_min_m",
+          "part_coursier_base",
+          "marge",
+          "prix_par_km",
+          "seuil_km_m",
+          "devise",
+          "priorite",
+          "actif"
+        ],
+        "properties": {
+          "actif": {
+            "type": "boolean",
+            "description": "Règle active à l'évaluation."
+          },
+          "categorie_slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Slug de catégorie, `null` = toutes catégories."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217 — DOIT égaler celle de la zone (FR-023)."
+          },
+          "distance_max_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Borne haute INCLUSE, `null` = +∞."
+          },
+          "distance_min_m": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Borne basse de la tranche de distance routière (mètres).",
+            "minimum": 0
+          },
+          "jours_masque": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Masque de jours (bit 0 = lundi … bit 6 = dimanche), `null` = tous."
+          },
+          "marge": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Marge Mefali — DOIT être dans les bornes de la zone (FR-009).",
+            "minimum": 0
+          },
+          "part_coursier_base": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part coursier de base (unités mineures).",
+            "minimum": 0
+          },
+          "plage_debut_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Début de plage horaire (minutes depuis minuit, fuseau de la zone)."
+          },
+          "plage_fin_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Fin de plage horaire (exclue)."
+          },
+          "priorite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Priorité de départage."
+          },
+          "prix_par_km": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix par kilomètre au-delà du seuil (abonde client ET coursier).",
+            "minimum": 0
+          },
+          "prix_plafond": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Plafond du prix client, `null` = aucun."
+          },
+          "seuil_km_m": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Seuil (mètres) au-delà duquel le kilométrage est facturé.",
+            "minimum": 0
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Slug du véhicule (référentiel `zones.type_transport`)."
           }
         }
       },

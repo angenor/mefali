@@ -11,13 +11,15 @@
 
 use std::sync::Arc;
 
+use chrono_tz::Tz;
 use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 use zones::{ConfigurationZones, Devise, PgZones};
 
-use crate::modele::{DrapeauxZone, ErreurTarif};
+use crate::modele::{DrapeauxZone, ErreurTarif, Regle, RegleUpsert};
 use crate::ports::{CacheRoutage, Routage};
+use crate::regle;
 
 /// Bornes de marge d'une zone (FR-009), résolues par héritage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,5 +160,154 @@ impl PgTarification {
                 .unwrap_or(false),
             pluie: self.zones.drapeau(zone, "pluie").await?.unwrap_or(false),
         })
+    }
+
+    /// Fuseau de la zone (`zone.fuseau_horaire`) — les plages horaires et jours
+    /// des règles s'y interprètent, jamais dans celui du serveur (précédent VND
+    /// 005, research R8). Repli UTC si la clé est absente ou illisible : un
+    /// fuseau fautif ne doit pas faire échouer une tarification.
+    pub(crate) async fn fuseau(&self, zone: Uuid) -> Result<Tz, ErreurTarif> {
+        let brut = self.parametre(zone, "zone.fuseau_horaire").await?;
+        Ok(brut
+            .as_ref()
+            .and_then(Value::as_str)
+            .and_then(|s| s.parse::<Tz>().ok())
+            .unwrap_or(Tz::UTC))
+    }
+
+    // ── Écriture d'une règle de brouillon (US1 — T009, FR-009/FR-023) ──────
+
+    /// Crée ou remplace une règle DANS UN BROUILLON, sous double garde :
+    /// **marge dans les bornes** de la zone (FR-009) et **devise = devise de la
+    /// zone** (FR-023). Rien d'hors bornes n'entre donc jamais en base.
+    ///
+    /// Écrire dans une grille `en_vigueur` ou `historique` est refusé
+    /// ([`ErreurTarif::PasUnBrouillon`]) : la tarification en cours ne se
+    /// modifie pas sous les pieds des clients (FR-012) — elle se remplace par
+    /// une publication.
+    ///
+    /// **Aucun événement outbox** : éditer un brouillon n'est pas une transition
+    /// (le brouillon n'a aucun effet tarifaire). Seule la publication en est
+    /// une. La garde de simulation se réarme d'elle-même — l'empreinte est
+    /// RECALCULÉE à la lecture, jamais mémorisée (research R7).
+    pub async fn ecrire_regle(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        grille_id: Uuid,
+        regle_id: Uuid,
+        upsert: &RegleUpsert,
+    ) -> Result<Regle, ErreurTarif> {
+        let entete = crate::grille::charger_entete(&mut *tx, grille_id)
+            .await?
+            .ok_or(ErreurTarif::GrilleInconnue(grille_id))?;
+        if entete.etat != crate::modele::EtatGrille::Brouillon {
+            return Err(ErreurTarif::PasUnBrouillon(grille_id));
+        }
+
+        regle::verifier_marge(self.bornes_marge(entete.zone_id).await?, upsert.marge)?;
+        regle::verifier_devise(&self.devise(entete.zone_id).await?.code, &upsert.devise)?;
+
+        let ligne = sqlx::query!(
+            r#"
+            INSERT INTO tarification.regle
+                (id, grille_id, transport_slug, categorie_slug, distance_min_m, distance_max_m,
+                 plage_debut_min, plage_fin_min, jours_masque, part_coursier_base, marge,
+                 prix_par_km, seuil_km_m, prix_plafond, devise, priorite, actif)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ON CONFLICT (id) DO UPDATE SET
+                transport_slug = EXCLUDED.transport_slug,
+                categorie_slug = EXCLUDED.categorie_slug,
+                distance_min_m = EXCLUDED.distance_min_m,
+                distance_max_m = EXCLUDED.distance_max_m,
+                plage_debut_min = EXCLUDED.plage_debut_min,
+                plage_fin_min = EXCLUDED.plage_fin_min,
+                jours_masque = EXCLUDED.jours_masque,
+                part_coursier_base = EXCLUDED.part_coursier_base,
+                marge = EXCLUDED.marge,
+                prix_par_km = EXCLUDED.prix_par_km,
+                seuil_km_m = EXCLUDED.seuil_km_m,
+                prix_plafond = EXCLUDED.prix_plafond,
+                devise = EXCLUDED.devise,
+                priorite = EXCLUDED.priorite,
+                actif = EXCLUDED.actif
+            -- Une règle appartenant à une AUTRE grille n'est pas « mise à jour »
+            -- ici : la clause exclut la ligne, RETURNING ne rend rien, et
+            -- l'appelant reçoit `RegleInconnue` plutôt qu'un déplacement muet.
+            WHERE tarification.regle.grille_id = $2
+            RETURNING id, grille_id, transport_slug, categorie_slug, distance_min_m,
+                      distance_max_m, plage_debut_min, plage_fin_min, jours_masque,
+                      point_relais_id, part_coursier_base, marge, prix_par_km, seuil_km_m,
+                      prix_plafond, devise, priorite, actif
+            "#,
+            regle_id,
+            grille_id,
+            upsert.transport_slug,
+            upsert.categorie_slug,
+            upsert.distance_min_m,
+            upsert.distance_max_m,
+            upsert.plage_debut_min,
+            upsert.plage_fin_min,
+            upsert.jours_masque,
+            upsert.part_coursier_base,
+            upsert.marge,
+            upsert.prix_par_km,
+            upsert.seuil_km_m,
+            upsert.prix_plafond,
+            upsert.devise,
+            upsert.priorite,
+            upsert.actif,
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or(ErreurTarif::RegleInconnue(regle_id))?;
+
+        Ok(Regle {
+            id: ligne.id,
+            grille_id: ligne.grille_id,
+            transport_slug: ligne.transport_slug,
+            categorie_slug: ligne.categorie_slug,
+            distance_min_m: ligne.distance_min_m,
+            distance_max_m: ligne.distance_max_m,
+            plage_debut_min: ligne.plage_debut_min,
+            plage_fin_min: ligne.plage_fin_min,
+            jours_masque: ligne.jours_masque,
+            point_relais_id: ligne.point_relais_id,
+            part_coursier_base: ligne.part_coursier_base,
+            marge: ligne.marge,
+            prix_par_km: ligne.prix_par_km,
+            seuil_km_m: ligne.seuil_km_m,
+            prix_plafond: ligne.prix_plafond,
+            devise: ligne.devise,
+            priorite: ligne.priorite,
+            actif: ligne.actif,
+        })
+    }
+
+    /// Supprime une règle d'un brouillon. Réarme la garde de simulation par le
+    /// même mécanisme d'empreinte recalculée.
+    pub async fn supprimer_regle(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        grille_id: Uuid,
+        regle_id: Uuid,
+    ) -> Result<(), ErreurTarif> {
+        let entete = crate::grille::charger_entete(&mut *tx, grille_id)
+            .await?
+            .ok_or(ErreurTarif::GrilleInconnue(grille_id))?;
+        if entete.etat != crate::modele::EtatGrille::Brouillon {
+            return Err(ErreurTarif::PasUnBrouillon(grille_id));
+        }
+        let effacees = sqlx::query!(
+            "DELETE FROM tarification.regle WHERE id = $1 AND grille_id = $2",
+            regle_id,
+            grille_id,
+        )
+        .execute(&mut **tx)
+        .await?
+        .rows_affected();
+        if effacees == 0 {
+            return Err(ErreurTarif::RegleInconnue(regle_id));
+        }
+        Ok(())
     }
 }

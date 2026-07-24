@@ -6,9 +6,236 @@
 //! règle hors bornes (FR-021). Toute édition de règle change l'empreinte, donc
 //! **réarme** l'obligation — « ce qui est simulé est ce qui sera publié ».
 
+use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
-use crate::modele::Regle;
+use crate::modele::{ErreurTarif, EtatGrille, Grille, Regle};
+use crate::PgTarification;
+
+/// En-tête d'une grille, sans ses règles — ce qu'il faut pour garder une
+/// écriture (état, zone) sans payer le chargement du catalogue.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Entete {
+    pub(crate) id: Uuid,
+    pub(crate) zone_id: Uuid,
+    pub(crate) version: i32,
+    pub(crate) etat: EtatGrille,
+    pub(crate) effet_le: Option<DateTime<Utc>>,
+    pub(crate) simulee_le: Option<DateTime<Utc>>,
+    pub(crate) simulee_empreinte: Option<String>,
+}
+
+/// Charge l'en-tête d'une grille sur une connexion quelconque (pool OU
+/// transaction) — une écriture doit lire dans SA transaction.
+pub(crate) async fn charger_entete(
+    conn: &mut sqlx::PgConnection,
+    grille_id: Uuid,
+) -> Result<Option<Entete>, ErreurTarif> {
+    let ligne = sqlx::query!(
+        r#"SELECT id, zone_id, version, etat::text AS "etat!", effet_le, simulee_le,
+                  simulee_empreinte
+           FROM tarification.grille WHERE id = $1"#,
+        grille_id,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    Ok(ligne.map(|l| Entete {
+        id: l.id,
+        zone_id: l.zone_id,
+        version: l.version,
+        etat: l.etat.parse().expect("énum Postgres tarification.etat_grille"),
+        effet_le: l.effet_le,
+        simulee_le: l.simulee_le,
+        simulee_empreinte: l.simulee_empreinte,
+    }))
+}
+
+/// Charge les règles d'une grille, **triées par `id`** — ordre stable qui rend
+/// l'empreinte et la sélection rejouables (research R5/R7).
+pub(crate) async fn charger_regles(
+    conn: &mut sqlx::PgConnection,
+    grille_id: Uuid,
+) -> Result<Vec<Regle>, ErreurTarif> {
+    let lignes = sqlx::query!(
+        r#"SELECT id, grille_id, transport_slug, categorie_slug, distance_min_m, distance_max_m,
+                  plage_debut_min, plage_fin_min, jours_masque, point_relais_id,
+                  part_coursier_base, marge, prix_par_km, seuil_km_m, prix_plafond, devise,
+                  priorite, actif
+           FROM tarification.regle WHERE grille_id = $1 ORDER BY id"#,
+        grille_id,
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    Ok(lignes
+        .into_iter()
+        .map(|l| Regle {
+            id: l.id,
+            grille_id: l.grille_id,
+            transport_slug: l.transport_slug,
+            categorie_slug: l.categorie_slug,
+            distance_min_m: l.distance_min_m,
+            distance_max_m: l.distance_max_m,
+            plage_debut_min: l.plage_debut_min,
+            plage_fin_min: l.plage_fin_min,
+            jours_masque: l.jours_masque,
+            point_relais_id: l.point_relais_id,
+            part_coursier_base: l.part_coursier_base,
+            marge: l.marge,
+            prix_par_km: l.prix_par_km,
+            seuil_km_m: l.seuil_km_m,
+            prix_plafond: l.prix_plafond,
+            devise: l.devise,
+            priorite: l.priorite,
+            actif: l.actif,
+        })
+        .collect())
+}
+
+/// Assemble une grille complète (en-tête + règles) sur une connexion.
+pub(crate) async fn charger(
+    conn: &mut sqlx::PgConnection,
+    grille_id: Uuid,
+) -> Result<Option<Grille>, ErreurTarif> {
+    let Some(entete) = charger_entete(&mut *conn, grille_id).await? else {
+        return Ok(None);
+    };
+    let regles = charger_regles(&mut *conn, grille_id).await?;
+    Ok(Some(Grille {
+        id: entete.id,
+        zone_id: entete.zone_id,
+        version: entete.version,
+        etat: entete.etat,
+        effet_le: entete.effet_le,
+        simulee_le: entete.simulee_le,
+        simulee_empreinte: entete.simulee_empreinte,
+        regles,
+    }))
+}
+
+impl PgTarification {
+    /// Grille dans un état donné pour une zone (au plus une — index uniques
+    /// partiels `grille_en_vigueur_unique` / `grille_brouillon_unique`).
+    async fn grille_de_zone(
+        &self,
+        zone: Uuid,
+        etat: EtatGrille,
+    ) -> Result<Option<Grille>, ErreurTarif> {
+        let id: Option<Uuid> = sqlx::query_scalar!(
+            "SELECT id FROM tarification.grille
+             WHERE zone_id = $1 AND etat = $2::text::tarification.etat_grille",
+            zone,
+            etat.comme_str(),
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        let Some(id) = id else { return Ok(None) };
+        let mut conn = self.pool.acquire().await?;
+        charger(&mut conn, id).await
+    }
+
+    /// Grille **en vigueur** de la zone (celle qui tarife), ou `None`.
+    pub async fn grille_en_vigueur(&self, zone: Uuid) -> Result<Option<Grille>, ErreurTarif> {
+        self.grille_de_zone(zone, EtatGrille::EnVigueur).await
+    }
+
+    /// **Brouillon** de la zone, ou `None` s'il n'y en a pas.
+    pub async fn brouillon(&self, zone: Uuid) -> Result<Option<Grille>, ErreurTarif> {
+        self.grille_de_zone(zone, EtatGrille::Brouillon).await
+    }
+
+    /// Grille par identifiant (toute zone, tout état).
+    pub async fn grille(&self, grille_id: Uuid) -> Result<Grille, ErreurTarif> {
+        let mut conn = self.pool.acquire().await?;
+        charger(&mut conn, grille_id)
+            .await?
+            .ok_or(ErreurTarif::GrilleInconnue(grille_id))
+    }
+
+    /// Crée le brouillon de la zone, ou rend celui qui existe — **idempotent**
+    /// (T010, contrat `POST zones/{zone}/brouillon`).
+    ///
+    /// À la création, le brouillon **clone la grille en vigueur** : l'admin part
+    /// du tarif réel et corrige, il ne repart pas d'une grille vide qui
+    /// n'appliquerait plus aucun prix. Sans grille en vigueur (zone neuve), le
+    /// brouillon naît vide.
+    ///
+    /// `version` = max(version de la zone) + 1 : le numéro est acquis à la
+    /// CRÉATION du brouillon, pas à sa publication — deux brouillons successifs
+    /// ne peuvent pas se disputer un numéro.
+    pub async fn obtenir_ou_creer_brouillon(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        zone: Uuid,
+    ) -> Result<Grille, ErreurTarif> {
+        // Verrou de la zone pendant la création : deux appels concurrents ne
+        // doivent pas se heurter sur l'index unique partiel (l'un des deux
+        // rendrait une erreur SQL brute au lieu du brouillon existant).
+        let existant: Option<Uuid> = sqlx::query_scalar!(
+            "SELECT id FROM tarification.grille
+             WHERE zone_id = $1 AND etat = 'brouillon' FOR UPDATE",
+            zone,
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+        if let Some(id) = existant {
+            return charger(&mut **tx, id)
+                .await?
+                .ok_or(ErreurTarif::GrilleInconnue(id));
+        }
+
+        let version: i32 = sqlx::query_scalar!(
+            r#"SELECT COALESCE(MAX(version), 0) + 1 AS "suivante!"
+               FROM tarification.grille WHERE zone_id = $1"#,
+            zone,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+
+        let id = Uuid::now_v7();
+        sqlx::query!(
+            "INSERT INTO tarification.grille (id, zone_id, version, etat)
+             VALUES ($1, $2, $3, 'brouillon')",
+            id,
+            zone,
+            version,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        // Clone des règles de la grille en vigueur, si elle existe. Les règles
+        // reçoivent de NOUVEAUX identifiants : la grille historisée garde les
+        // siennes intactes (traçabilité de version).
+        let en_vigueur: Option<Uuid> = sqlx::query_scalar!(
+            "SELECT id FROM tarification.grille WHERE zone_id = $1 AND etat = 'en_vigueur'",
+            zone,
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+        if let Some(source) = en_vigueur {
+            sqlx::query!(
+                r#"
+                INSERT INTO tarification.regle
+                    (id, grille_id, transport_slug, categorie_slug, distance_min_m, distance_max_m,
+                     plage_debut_min, plage_fin_min, jours_masque, part_coursier_base, marge,
+                     prix_par_km, seuil_km_m, prix_plafond, devise, priorite, actif)
+                SELECT uuidv7(), $1, transport_slug, categorie_slug, distance_min_m, distance_max_m,
+                       plage_debut_min, plage_fin_min, jours_masque, part_coursier_base, marge,
+                       prix_par_km, seuil_km_m, prix_plafond, devise, priorite, actif
+                FROM tarification.regle WHERE grille_id = $2
+                "#,
+                id,
+                source,
+            )
+            .execute(&mut **tx)
+            .await?;
+        }
+
+        charger(&mut **tx, id)
+            .await?
+            .ok_or(ErreurTarif::GrilleInconnue(id))
+    }
+}
 
 /// Empreinte SHA-256 du CONTENU tarifaire d'une grille.
 ///

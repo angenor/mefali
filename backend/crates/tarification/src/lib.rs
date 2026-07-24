@@ -47,3 +47,4 @@ pub use ports::{
     CacheDesactive, CacheMemoire, CacheRoutage, ErreurCache, EvaluationTarifaire,
     OptimisationArrets, Routage,
 };
+pub use routage::RoutageIndisponible;

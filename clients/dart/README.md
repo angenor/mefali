@@ -113,6 +113,10 @@ Class | Method | HTTP request | Description
 [*QrApi*](doc/QrApi.md) | [**courseActive**](doc/QrApi.md#courseactive) | **GET** /courses/active | QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
 [*QrApi*](doc/QrApi.md) | [**telechargerPlaque**](doc/QrApi.md#telechargerplaque) | **GET** /admin/prestataires/{id}/plaque | QRC-01 — télécharge (génère au besoin) le PDF de plaque d&#39;un prestataire.
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
+[*TarificationApi*](doc/TarificationApi.md) | [**creerBrouillon**](doc/TarificationApi.md#creerbrouillon) | **POST** /admin/tarification/zones/{zone_id}/brouillon | Crée (ou rend) le brouillon de la zone — **idempotent**.
+[*TarificationApi*](doc/TarificationApi.md) | [**ecrireRegle**](doc/TarificationApi.md#ecrireregle) | **PUT** /admin/tarification/brouillon/{grille_id}/regles/{regle_id} | Crée ou met à jour une règle du brouillon — **réarme la simulation**.
+[*TarificationApi*](doc/TarificationApi.md) | [**grilleDeZone**](doc/TarificationApi.md#grilledezone) | **GET** /admin/tarification/zones/{zone_id}/grille | Grille en vigueur ET brouillon d&#39;une zone.
+[*TarificationApi*](doc/TarificationApi.md) | [**supprimerRegle**](doc/TarificationApi.md#supprimerregle) | **DELETE** /admin/tarification/brouillon/{grille_id}/regles/{regle_id} | Supprime une règle du brouillon — **réarme la simulation**.
 [*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
@@ -167,6 +171,8 @@ Class | Method | HTTP request | Description
  - [EtatRoleDto](doc/EtatRoleDto.md)
  - [FichePublique](doc/FichePublique.md)
  - [ForcageDto](doc/ForcageDto.md)
+ - [Grille](doc/Grille.md)
+ - [GrillesZone](doc/GrillesZone.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
@@ -184,6 +190,8 @@ Class | Method | HTTP request | Description
  - [PrestatairePilotable](doc/PrestatairePilotable.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
+ - [Regle](doc/Regle.md)
+ - [RegleUpsert](doc/RegleUpsert.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
  - [ResultatVerification](doc/ResultatVerification.md)

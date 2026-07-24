@@ -68,5 +68,8 @@ comptes.workspace = true
 prestataires.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+# Fuseau de la zone dans les critères de sélection de règle (cycle TRF 007,
+# tests d'intégration T013) — le domaine le résout, les tests le fournissent.
+chrono-tz.workspace = true
 # Consomme une URL présignée Garage pour prouver l'aller-retour d'octets (SC-007).
 reqwest.workspace = true

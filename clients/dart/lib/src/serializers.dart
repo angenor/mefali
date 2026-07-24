@@ -51,6 +51,8 @@ import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
+import 'package:mefali_api_client/src/model/grille.dart';
+import 'package:mefali_api_client/src/model/grilles_zone.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
 import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
@@ -68,6 +70,8 @@ import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
 import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
 import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
+import 'package:mefali_api_client/src/model/regle.dart';
+import 'package:mefali_api_client/src/model/regle_upsert.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_collecte.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
@@ -125,6 +129,8 @@ part 'serializers.g.dart';
   EtatRoleDto,
   FichePublique,
   ForcageDto,
+  Grille,
+  GrillesZone,
   HealthResponse,
   HorairesSemaineDto,
   Inscription,
@@ -142,6 +148,8 @@ part 'serializers.g.dart';
   PrestatairePilotable,
   RattachementDto,
   RattacherCompteDto,
+  Regle,
+  RegleUpsert,
   ResolutionPlaque,
   ResultatCollecte,
   ResultatVerification,

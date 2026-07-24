@@ -417,6 +417,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/tarification/brouillon/{grille_id}/regles/{regle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Crée ou met à jour une règle du brouillon — **réarme la simulation**. */
+        put: operations["ecrire_regle"];
+        post?: never;
+        /** Supprime une règle du brouillon — **réarme la simulation**. */
+        delete: operations["supprimer_regle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tarification/zones/{zone_id}/brouillon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crée (ou rend) le brouillon de la zone — **idempotent**. */
+        post: operations["creer_brouillon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tarification/zones/{zone_id}/grille": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Grille en vigueur ET brouillon d'une zone. */
+        get: operations["grille_de_zone"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/zones/{zone_id}/categories/{categorie_slug}/forcage": {
         parameters: {
             query?: never;
@@ -1595,6 +1647,48 @@ export interface components {
          * @enum {string}
          */
         ForcageDto: "automatique" | "force_actif" | "force_inactif";
+        /** @description Grille servie à l'admin (en-tête + règles + statut de simulation). */
+        Grille: {
+            /**
+             * Format: date-time
+             * @description Entrée en vigueur (posée à la publication).
+             */
+            effet_le?: string | null;
+            /** @description `brouillon` | `en_vigueur` | `historique`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /** @description Règles, triées par identifiant (ordre stable). */
+            regles: components["schemas"]["Regle"][];
+            /**
+             * @description **Publiable** : la simulation porte sur le contenu EXACT du brouillon.
+             *     Repasse à `false` dès qu'une règle est éditée (FR-021).
+             */
+            simulee: boolean;
+            /**
+             * Format: date-time
+             * @description Dernière simulation réussie.
+             */
+            simulee_le?: string | null;
+            /**
+             * Format: int32
+             * @description Version.
+             */
+            version: number;
+            /**
+             * Format: uuid
+             * @description Zone tarifée.
+             */
+            zone_id: string;
+        };
+        /** @description Vue d'ensemble de la tarification d'une zone. */
+        GrillesZone: {
+            brouillon?: null | components["schemas"]["Grille"];
+            en_vigueur?: null | components["schemas"]["Grille"];
+        };
         /**
          * @description Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde
          *     mesure la disponibilité du processus (non authentifiée, constitution VIII).
@@ -1850,6 +1944,149 @@ export interface components {
              * @description Compte vérifié à rattacher.
              */
             compte_id: string;
+        };
+        /** @description Règle servie à l'admin. */
+        Regle: {
+            /** @description Active. */
+            actif: boolean;
+            /** @description Catégorie, `null` = toutes. */
+            categorie_slug?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int32
+             * @description Borne haute incluse.
+             */
+            distance_max_m?: number | null;
+            /**
+             * Format: int32
+             * @description Borne basse de tranche (mètres).
+             */
+            distance_min_m: number;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /**
+             * Format: int32
+             * @description Masque de jours.
+             */
+            jours_masque?: number | null;
+            /**
+             * Format: int64
+             * @description Marge Mefali.
+             */
+            marge: number;
+            /**
+             * Format: int64
+             * @description Part coursier de base.
+             */
+            part_coursier_base: number;
+            /**
+             * Format: int32
+             * @description Début de plage horaire.
+             */
+            plage_debut_min?: number | null;
+            /**
+             * Format: int32
+             * @description Fin de plage horaire.
+             */
+            plage_fin_min?: number | null;
+            /**
+             * Format: int32
+             * @description Priorité.
+             */
+            priorite: number;
+            /**
+             * Format: int64
+             * @description Prix client de base DÉRIVÉ (`part_coursier_base + marge`) — jamais
+             *     stocké, servi pour que l'admin lise le tarif sans le recalculer.
+             */
+            prix_client_base: number;
+            /**
+             * Format: int64
+             * @description Prix par km au-delà du seuil.
+             */
+            prix_par_km: number;
+            /**
+             * Format: int64
+             * @description Plafond du prix client.
+             */
+            prix_plafond?: number | null;
+            /**
+             * Format: int32
+             * @description Seuil de kilométrage facturé (mètres).
+             */
+            seuil_km_m: number;
+            /** @description Véhicule. */
+            transport_slug: string;
+        };
+        /** @description Écriture d'une règle de brouillon. Montants en **unités mineures**. */
+        RegleUpsert: {
+            /** @description Règle active à l'évaluation. */
+            actif: boolean;
+            /** @description Slug de catégorie, `null` = toutes catégories. */
+            categorie_slug?: string | null;
+            /** @description Devise ISO 4217 — DOIT égaler celle de la zone (FR-023). */
+            devise: string;
+            /**
+             * Format: int32
+             * @description Borne haute INCLUSE, `null` = +∞.
+             */
+            distance_max_m?: number | null;
+            /**
+             * Format: int32
+             * @description Borne basse de la tranche de distance routière (mètres).
+             */
+            distance_min_m: number;
+            /**
+             * Format: int32
+             * @description Masque de jours (bit 0 = lundi … bit 6 = dimanche), `null` = tous.
+             */
+            jours_masque?: number | null;
+            /**
+             * Format: int64
+             * @description Marge Mefali — DOIT être dans les bornes de la zone (FR-009).
+             */
+            marge: number;
+            /**
+             * Format: int64
+             * @description Part coursier de base (unités mineures).
+             */
+            part_coursier_base: number;
+            /**
+             * Format: int32
+             * @description Début de plage horaire (minutes depuis minuit, fuseau de la zone).
+             */
+            plage_debut_min?: number | null;
+            /**
+             * Format: int32
+             * @description Fin de plage horaire (exclue).
+             */
+            plage_fin_min?: number | null;
+            /**
+             * Format: int32
+             * @description Priorité de départage.
+             */
+            priorite: number;
+            /**
+             * Format: int64
+             * @description Prix par kilomètre au-delà du seuil (abonde client ET coursier).
+             */
+            prix_par_km: number;
+            /**
+             * Format: int64
+             * @description Plafond du prix client, `null` = aucun.
+             */
+            prix_plafond?: number | null;
+            /**
+             * Format: int32
+             * @description Seuil (mètres) au-delà duquel le kilométrage est facturé.
+             */
+            seuil_km_m: number;
+            /** @description Slug du véhicule (référentiel `zones.type_transport`). */
+            transport_slug: string;
         };
         /** @description Nouveau repère parlé pour une adresse existante. */
         RemplacementRepereVocal: {
@@ -3532,6 +3769,221 @@ export interface operations {
             };
             /** @description Motif manquant (FR-010). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ecrire_regle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Brouillon. */
+                grille_id: string;
+                /** @description Règle (identifiant choisi par l'appelant). */
+                regle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegleUpsert"];
+            };
+        };
+        responses: {
+            /** @description Règle enregistrée. La grille redevient NON publiable tant qu'une nouvelle simulation n'a pas porté sur ce contenu (FR-021). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Regle"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Grille inconnue, ou règle appartenant à une autre grille. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description `marge_hors_bornes` (le corps porte `min`/`max`/`valeur`), `devise_incoherente`, ou grille qui n'est pas un brouillon. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Corps invalide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    supprimer_regle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Brouillon. */
+                grille_id: string;
+                /** @description Règle à supprimer. */
+                regle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Supprimée. La grille redevient non publiable tant qu'une nouvelle simulation n'a pas porté sur ce contenu. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Grille ou règle inconnues. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description La grille n'est pas un brouillon. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    creer_brouillon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Zone tarifée. */
+                zone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Brouillon de la zone. À la CRÉATION, il clone la grille en vigueur (l'admin part du tarif réel) ; un second appel rend le même brouillon, sans rien recréer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Grille"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    grille_de_zone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Zone tarifée. */
+                zone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grille en vigueur et brouillon (avec statut de simulation et règles). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrillesZone"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

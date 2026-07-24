@@ -1,0 +1,248 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO tarification.regle\n                (id, grille_id, transport_slug, categorie_slug, distance_min_m, distance_max_m,\n                 plage_debut_min, plage_fin_min, jours_masque, part_coursier_base, marge,\n                 prix_par_km, seuil_km_m, prix_plafond, devise, priorite, actif)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n            ON CONFLICT (id) DO UPDATE SET\n                transport_slug = EXCLUDED.transport_slug,\n                categorie_slug = EXCLUDED.categorie_slug,\n                distance_min_m = EXCLUDED.distance_min_m,\n                distance_max_m = EXCLUDED.distance_max_m,\n                plage_debut_min = EXCLUDED.plage_debut_min,\n                plage_fin_min = EXCLUDED.plage_fin_min,\n                jours_masque = EXCLUDED.jours_masque,\n                part_coursier_base = EXCLUDED.part_coursier_base,\n                marge = EXCLUDED.marge,\n                prix_par_km = EXCLUDED.prix_par_km,\n                seuil_km_m = EXCLUDED.seuil_km_m,\n                prix_plafond = EXCLUDED.prix_plafond,\n                devise = EXCLUDED.devise,\n                priorite = EXCLUDED.priorite,\n                actif = EXCLUDED.actif\n            -- Une règle appartenant à une AUTRE grille n'est pas « mise à jour »\n            -- ici : la clause exclut la ligne, RETURNING ne rend rien, et\n            -- l'appelant reçoit `RegleInconnue` plutôt qu'un déplacement muet.\n            WHERE tarification.regle.grille_id = $2\n            RETURNING id, grille_id, transport_slug, categorie_slug, distance_min_m,\n                      distance_max_m, plage_debut_min, plage_fin_min, jours_masque,\n                      point_relais_id, part_coursier_base, marge, prix_par_km, seuil_km_m,\n                      prix_plafond, devise, priorite, actif\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "grille_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "grille_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "transport_slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "transport_slug"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "categorie_slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "categorie_slug"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "distance_min_m",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "distance_min_m"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "distance_max_m",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "distance_max_m"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "plage_debut_min",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "plage_debut_min"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "plage_fin_min",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "plage_fin_min"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "jours_masque",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "jours_masque"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "point_relais_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "point_relais_id"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "part_coursier_base",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "part_coursier_base"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "marge",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "marge"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "prix_par_km",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "prix_par_km"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "seuil_km_m",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "seuil_km_m"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "prix_plafond",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "prix_plafond"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "priorite",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "priorite"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "actif",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tarification.regle",
+            "name": "actif"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int2",
+        "Int2",
+        "Int2",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int4",
+        "Int8",
+        "Text",
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8604b8ba3aaa00c6fb1d9992dc930c23e207a6b7b036420d6cf5bdfb6183883f"
+}

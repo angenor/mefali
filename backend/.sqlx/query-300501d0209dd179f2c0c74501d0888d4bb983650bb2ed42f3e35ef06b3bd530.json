@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tarification.grille (id, zone_id, version, etat)\n             VALUES ($1, $2, $3, 'brouillon')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "300501d0209dd179f2c0c74501d0888d4bb983650bb2ed42f3e35ef06b3bd530"
+}

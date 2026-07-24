@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO tarification.regle\n                    (id, grille_id, transport_slug, categorie_slug, distance_min_m, distance_max_m,\n                     plage_debut_min, plage_fin_min, jours_masque, part_coursier_base, marge,\n                     prix_par_km, seuil_km_m, prix_plafond, devise, priorite, actif)\n                SELECT uuidv7(), $1, transport_slug, categorie_slug, distance_min_m, distance_max_m,\n                       plage_debut_min, plage_fin_min, jours_masque, part_coursier_base, marge,\n                       prix_par_km, seuil_km_m, prix_plafond, devise, priorite, actif\n                FROM tarification.regle WHERE grille_id = $2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ca80dba4ddf423ed1ad85fdc0fd680ad3fd05499d0a8a641062ab57ae7be21e2"
+}

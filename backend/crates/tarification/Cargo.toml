@@ -23,6 +23,10 @@ serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+# Plages horaires et jours d'une règle : interprétés dans le fuseau de la ZONE
+# (`zone.fuseau_horaire`, seed Africa/Abidjan) — jamais celui du serveur. Même
+# précédent que les horaires d'ouverture du cycle VND (005, research R3/R8).
+chrono-tz.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 tracing.workspace = true

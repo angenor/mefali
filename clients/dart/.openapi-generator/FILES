@@ -42,6 +42,8 @@ doc/EtatEffectifBoutique.md
 doc/EtatRoleDto.md
 doc/FichePublique.md
 doc/ForcageDto.md
+doc/Grille.md
+doc/GrillesZone.md
 doc/HealthResponse.md
 doc/HorairesSemaineDto.md
 doc/Inscription.md
@@ -62,6 +64,8 @@ doc/PrestatairesApi.md
 doc/QrApi.md
 doc/RattachementDto.md
 doc/RattacherCompteDto.md
+doc/Regle.md
+doc/RegleUpsert.md
 doc/ResolutionPlaque.md
 doc/ResultatCollecte.md
 doc/ResultatVerification.md
@@ -76,6 +80,7 @@ doc/SourceBascule.md
 doc/StatutBoutique.md
 doc/StatutPrestataire.md
 doc/SuspendreDto.md
+doc/TarificationApi.md
 doc/UrlPresignee.md
 doc/VehiculeDeclare.md
 doc/VendeurApi.md
@@ -90,6 +95,7 @@ lib/src/api/moi_api.dart
 lib/src/api/prestataires_api.dart
 lib/src/api/qr_api.dart
 lib/src/api/socle_api.dart
+lib/src/api/tarification_api.dart
 lib/src/api/vendeur_api.dart
 lib/src/api/zones_api.dart
 lib/src/api_util.dart
@@ -137,6 +143,8 @@ lib/src/model/etat_effectif_boutique.dart
 lib/src/model/etat_role_dto.dart
 lib/src/model/fiche_publique.dart
 lib/src/model/forcage_dto.dart
+lib/src/model/grille.dart
+lib/src/model/grilles_zone.dart
 lib/src/model/health_response.dart
 lib/src/model/horaires_semaine_dto.dart
 lib/src/model/inscription.dart
@@ -154,6 +162,8 @@ lib/src/model/prestataire_admin_detail.dart
 lib/src/model/prestataire_pilotable.dart
 lib/src/model/rattachement_dto.dart
 lib/src/model/rattacher_compte_dto.dart
+lib/src/model/regle.dart
+lib/src/model/regle_upsert.dart
 lib/src/model/resolution_plaque.dart
 lib/src/model/resultat_collecte.dart
 lib/src/model/resultat_verification.dart
@@ -212,6 +222,8 @@ test/etat_effectif_boutique_test.dart
 test/etat_role_dto_test.dart
 test/fiche_publique_test.dart
 test/forcage_dto_test.dart
+test/grille_test.dart
+test/grilles_zone_test.dart
 test/health_response_test.dart
 test/horaires_semaine_dto_test.dart
 test/inscription_test.dart
@@ -232,6 +244,8 @@ test/prestataires_api_test.dart
 test/qr_api_test.dart
 test/rattachement_dto_test.dart
 test/rattacher_compte_dto_test.dart
+test/regle_test.dart
+test/regle_upsert_test.dart
 test/resolution_plaque_test.dart
 test/resultat_collecte_test.dart
 test/resultat_verification_test.dart
@@ -246,6 +260,7 @@ test/source_bascule_test.dart
 test/statut_boutique_test.dart
 test/statut_prestataire_test.dart
 test/suspendre_dto_test.dart
+test/tarification_api_test.dart
 test/url_presignee_test.dart
 test/vehicule_declare_test.dart
 test/vendeur_api_test.dart

@@ -5,6 +5,7 @@
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
 pub mod admin_prestataires_http;
+pub mod admin_tarification_http;
 pub mod adresses_http;
 pub mod auth_http;
 pub mod comptes_http;
@@ -93,6 +94,10 @@ pub fn api_openapi() -> OpenApi {
         .service(qr_http::telecharger_plaque)
         .service(qr_http::course_active)
         .service(qr_http::collecter)
+        .service(admin_tarification_http::grille_de_zone)
+        .service(admin_tarification_http::creer_brouillon)
+        .service(admin_tarification_http::ecrire_regle)
+        .service(admin_tarification_http::supprimer_regle)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -237,6 +242,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut comptes_opt: Option<PgComptes> = None;
     let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
     let mut qr_opt: Option<qr::PgQr> = None;
+    let mut tarification_opt: Option<tarification::PgTarification> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -317,6 +323,19 @@ pub async fn run() -> std::io::Result<()> {
                 ));
                 tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
                 eprintln!("ports QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+
+                // TRF 007 — moteur de tarification. Le routage réel (client
+                // OSRM) et son cache Redis sont câblés par les tâches T014/T015 ;
+                // en attendant, `RoutageIndisponible` fait tarifer en DÉGRADÉ
+                // (vol d'oiseau × facteur de zone, journalisé) plutôt que de
+                // refuser un devis — c'est exactement la garantie « le routage
+                // ne bloque jamais une commande » (constitution IV).
+                tarification_opt = Some(tarification::PgTarification::new(
+                    pool.clone(),
+                    Arc::new(tarification::RoutageIndisponible),
+                    Arc::new(tarification::CacheDesactive),
+                ));
+                eprintln!("moteur de tarification câblé (routage dégradé — OSRM à brancher)");
                 prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)
@@ -409,6 +428,10 @@ pub async fn run() -> std::io::Result<()> {
             .service(qr_http::telecharger_plaque)
             .service(qr_http::course_active)
             .service(qr_http::collecter)
+            .service(admin_tarification_http::grille_de_zone)
+            .service(admin_tarification_http::creer_brouillon)
+            .service(admin_tarification_http::ecrire_regle)
+            .service(admin_tarification_http::supprimer_regle)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -429,6 +452,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = qr_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = tarification_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))

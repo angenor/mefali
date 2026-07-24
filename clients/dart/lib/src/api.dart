@@ -16,6 +16,7 @@ import 'package:mefali_api_client/src/api/moi_api.dart';
 import 'package:mefali_api_client/src/api/prestataires_api.dart';
 import 'package:mefali_api_client/src/api/qr_api.dart';
 import 'package:mefali_api_client/src/api/socle_api.dart';
+import 'package:mefali_api_client/src/api/tarification_api.dart';
 import 'package:mefali_api_client/src/api/vendeur_api.dart';
 import 'package:mefali_api_client/src/api/zones_api.dart';
 
@@ -153,6 +154,12 @@ class MefaliApiClient {
   /// by doing that all interceptors will not be executed
   SocleApi getSocleApi() {
     return SocleApi(dio, serializers);
+  }
+
+  /// Get TarificationApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  TarificationApi getTarificationApi() {
+    return TarificationApi(dio, serializers);
   }
 
   /// Get VendeurApi instance, base route and serializer can be overridden by a given but be careful,

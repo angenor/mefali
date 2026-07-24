@@ -52,12 +52,12 @@ Backend Rust : crate `backend/crates/tarification/`, binaire `backend/api/`, mig
 
 **Independent Test** : créer un brouillon, ajouter une règle bien formée (acceptée) ; porter sa marge hors bornes (refusée) ; vérifier la sélection de la règle la plus spécifique en vigueur — sans évaluation ni publication.
 
-- [ ] T008 [US1] Résolution des bornes de marge via `ConfigurationZones` (`tarification.marge.min/max` d'une zone) dans `backend/crates/tarification/src/regle.rs`.
-- [ ] T009 [US1] Écriture (upsert) de règle dans `backend/crates/tarification/src/depot.rs` avec **garde de borne de marge** (refus hors `[min,max]`) et garde de devise = devise de zone ; `cargo sqlx prepare`.
-- [ ] T010 [US1] Création/obtention du **brouillon** de zone (clone de la grille en vigueur si absent) dans `backend/crates/tarification/src/grille.rs` ; `cargo sqlx prepare`.
-- [ ] T011 [US1] Sélection de la règle la plus spécifique en vigueur dans `backend/crates/tarification/src/regle.rs` : filtre {véhicule, catégorie?, plage horaire/jour, tranche de distance}, score de spécificité → priorité → **départage déterministe par id** (R5).
-- [ ] T012 [US1] Endpoints admin **brouillon CRUD** dans `backend/api/src/admin_tarification_http.rs` (`GET zones/{zone}/grille`, `POST zones/{zone}/brouillon`, `PUT`/`DELETE brouillon/{id}/regles/{id}`), gardés `auth.exiger_role(Role::Admin)` + journalisés ; erreurs i18n `tarification.erreur.*`. **Terminer par** : `#[utoipa::path]` à jour → régénérer `openapi.json` + clients Dart/TS (sans diff) → **build vert**.
-- [ ] T013 [P] [US1] Tests d'intégration US1 dans `backend/api/tests/` : marge hors bornes → 409 ; sélection spécifique/priorité/départage **déterministe et rejouable** ; `point_relais` reste NULL (provision) ; rôle admin exigé (403/401).
+- [X] T008 [US1] Résolution des bornes de marge via `ConfigurationZones` (`tarification.marge.min/max` d'une zone) dans `backend/crates/tarification/src/regle.rs`.
+- [X] T009 [US1] Écriture (upsert) de règle dans `backend/crates/tarification/src/depot.rs` avec **garde de borne de marge** (refus hors `[min,max]`) et garde de devise = devise de zone ; `cargo sqlx prepare`.
+- [X] T010 [US1] Création/obtention du **brouillon** de zone (clone de la grille en vigueur si absent) dans `backend/crates/tarification/src/grille.rs` ; `cargo sqlx prepare`.
+- [X] T011 [US1] Sélection de la règle la plus spécifique en vigueur dans `backend/crates/tarification/src/regle.rs` : filtre {véhicule, catégorie?, plage horaire/jour, tranche de distance}, score de spécificité → priorité → **départage déterministe par id** (R5).
+- [X] T012 [US1] Endpoints admin **brouillon CRUD** dans `backend/api/src/admin_tarification_http.rs` (`GET zones/{zone}/grille`, `POST zones/{zone}/brouillon`, `PUT`/`DELETE brouillon/{id}/regles/{id}`), gardés `auth.exiger_role(Role::Admin)` + journalisés ; erreurs i18n `tarification.erreur.*`. **Terminer par** : `#[utoipa::path]` à jour → régénérer `openapi.json` + clients Dart/TS (sans diff) → **build vert**.
+- [X] T013 [P] [US1] Tests d'intégration US1 dans `backend/api/tests/` : marge hors bornes → 409 ; sélection spécifique/priorité/départage **déterministe et rejouable** ; `point_relais` reste NULL (provision) ; rôle admin exigé (403/401).
 
 **Checkpoint** : catalogue de règles éditable et gardé, démontrable seul.
 
