@@ -21,6 +21,18 @@ enum ModeScan {
   codeSecours,
 }
 
+/// En ligne ? — dérivé de `connectivity_plus`, réduit à un booléen et
+/// `.distinct()` : n'émet qu'aux VRAIES transitions (le flux brut envoie de
+/// nombreux événements redondants, surtout sur l'émulateur). Sans ce filtre,
+/// chaque événement déclencherait un rebuild de la course (tempête observée).
+@riverpod
+Stream<bool> connectiviteEnLigne(Ref ref) {
+  return Connectivity()
+      .onConnectivityChanged
+      .map((etats) => etats.any((e) => e != ConnectivityResult.none))
+      .distinct();
+}
+
 /// Un arrêt de la course, fusion de la donnée serveur (pré-provisionnement) et
 /// de la coche optimiste locale (drift).
 class ArretCourse {
@@ -122,14 +134,15 @@ class EtatCourseActive extends _$EtatCourseActive {
     final file = ref.read(fileActionsProvider);
     final dio = ref.read(clientSessionProvider).dio;
 
-    // Auto-synchro (V) : au RETOUR du réseau, on se ré-invalide → build() draine
-    // la file puis rafraîchit. Idempotent (uuid_client) : un drain concurrent ne
-    // double rien.
-    final sub = Connectivity().onConnectivityChanged.listen((etats) {
-      final enLigne = etats.any((e) => e != ConnectivityResult.none);
-      if (enLigne) ref.invalidateSelf();
+    // Auto-synchro (V) : au RETOUR du réseau (transition offline→online
+    // seulement, via le flux `.distinct()`), on se ré-invalide → build() draine
+    // la file puis rafraîchit. `ref.listen` (et non `watch`) : la course ne se
+    // reconstruit PAS à chaque événement de connectivité, seulement quand on
+    // repasse en ligne. Idempotent (uuid_client) : un drain concurrent ne double
+    // rien.
+    ref.listen(connectiviteEnLigneProvider, (precedent, actuel) {
+      if (actuel.value == true) ref.invalidateSelf();
     });
-    ref.onDispose(sub.cancel);
 
     // 1. Draine la file d'actions en attente AVANT de recharger (réconciliation
     //    serveur — le rejeu idempotent fait foi une seule fois).
