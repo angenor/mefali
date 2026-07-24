@@ -44,6 +44,20 @@ pub fn verifier_devise(devise_zone: &str, devise_regle: &str) -> Result<(), Erre
     }
 }
 
+/// Refuse un catalogue qui MÊLERAIT des devises (FR-025, research R8).
+///
+/// Garde de publication, complémentaire de [`verifier_devise`] : cette dernière
+/// ferme la porte d'entrée règle par règle, celle-ci vérifie qu'un catalogue
+/// entier est homogène avant de devenir la grille qui tarife. Les deux sont
+/// nécessaires — la devise d'une zone peut être éditée APRÈS l'écriture des
+/// règles, et rien ne doit alors se convertir en silence.
+pub fn verifier_devises_homogenes(regles: &[Regle], devise_zone: &str) -> Result<(), ErreurTarif> {
+    for regle in regles {
+        verifier_devise(devise_zone, &regle.devise)?;
+    }
+    Ok(())
+}
+
 /// Critères d'appariement d'une course à une règle, à l'instant considéré.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Criteres<'a> {

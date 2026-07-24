@@ -87,8 +87,8 @@ Backend Rust : crate `backend/crates/tarification/`, binaire `backend/api/`, mig
 
 **Independent Test** : montants en unités mineures + code XOF ; règle en devise ≠ zone rejetée ; mélange de devises rejeté (jamais converti).
 
-- [ ] T021 [US5] Intégrité de devise : garde à l'écriture de règle (409 `tarification.erreur.devise_incoherente` si ≠ `ConfigurationZones::devise`) et **rejet du mélange de devises** dans `evaluation.rs` (aucune conversion, R8) ; `cargo sqlx prepare` si requêtes modifiées.
-- [ ] T022 [P] [US5] Tests d'intégration US5 dans `backend/crates/tarification/tests/devise.rs` : XOF entier sans décimale ; règle en devise étrangère rejetée ; opération inter-devises rejetée.
+- [X] T021 [US5] Intégrité de devise : garde à l'écriture de règle (409 `tarification.erreur.devise_incoherente` si ≠ `ConfigurationZones::devise`) et **rejet du mélange de devises** dans `evaluation.rs` (aucune conversion, R8) ; `cargo sqlx prepare` si requêtes modifiées.
+- [X] T022 [P] [US5] Tests d'intégration US5 dans `backend/crates/tarification/tests/devise.rs` : XOF entier sans décimale ; règle en devise étrangère rejetée ; opération inter-devises rejetée.
 
 **Checkpoint** : tout montant du moteur est exact et non ambigu.
 
