@@ -324,18 +324,36 @@ pub async fn run() -> std::io::Result<()> {
                 tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
                 eprintln!("ports QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
 
-                // TRF 007 — moteur de tarification. Le routage réel (client
-                // OSRM) et son cache Redis sont câblés par les tâches T014/T015 ;
-                // en attendant, `RoutageIndisponible` fait tarifer en DÉGRADÉ
-                // (vol d'oiseau × facteur de zone, journalisé) plutôt que de
-                // refuser un devis — c'est exactement la garantie « le routage
-                // ne bloque jamais une commande » (constitution IV).
+                // TRF 007 — moteur de tarification. Client OSRM `/table` et
+                // cache de tronçons Redis (24 h). Si OSRM n'est pas joignable au
+                // DÉMARRAGE, on câble `RoutageIndisponible` : le service tarife
+                // alors en dégradé vol d'oiseau × facteur de zone, journalisé —
+                // il ne refuse JAMAIS un devis (constitution IV). Un OSRM qui
+                // tombe en cours de route emprunte exactement le même chemin.
+                let routage: Arc<dyn tarification::Routage> =
+                    match tarification::RoutageOsrm::nouveau(&config.osrm_url) {
+                        Ok(client) => Arc::new(client),
+                        Err(e) => {
+                            eprintln!("client OSRM non construit ({e}) — tarification en dégradé");
+                            Arc::new(tarification::RoutageIndisponible)
+                        }
+                    };
+                let cache_routage: Arc<dyn tarification::CacheRoutage> =
+                    match infra_redis::RedisCacheRoutage::nouveau(&config.redis_url) {
+                        Ok(cache) => Arc::new(cache),
+                        // Un cache muet coûte un appel OSRM par course, rien de
+                        // plus : jamais une raison de refuser de démarrer.
+                        Err(e) => {
+                            eprintln!("cache de routage indisponible ({e}) — sans cache");
+                            Arc::new(tarification::CacheDesactive)
+                        }
+                    };
                 tarification_opt = Some(tarification::PgTarification::new(
                     pool.clone(),
-                    Arc::new(tarification::RoutageIndisponible),
-                    Arc::new(tarification::CacheDesactive),
+                    routage,
+                    cache_routage,
                 ));
-                eprintln!("moteur de tarification câblé (routage dégradé — OSRM à brancher)");
+                eprintln!("moteur de tarification câblé (OSRM {} ; cache Redis)", config.osrm_url);
                 prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)

@@ -20,6 +20,7 @@ use zones::{ConfigurationZones, Devise, PgZones};
 use crate::modele::{DrapeauxZone, ErreurTarif, Regle, RegleUpsert};
 use crate::ports::{CacheRoutage, Routage};
 use crate::regle;
+use crate::routage::OptionsCache;
 
 /// Bornes de marge d'une zone (FR-009), résolues par héritage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +61,39 @@ pub mod defauts {
     pub const ARRONDI_CLE_DECIMALES: u32 = 4;
     /// Supplément de pluie (unités mineures) quand le drapeau est ON.
     pub const SUPPLEMENT_PLUIE: i64 = 100;
+    /// Vitesse d'estimation de l'ETA en mode dégradé (km/h, deux-roues en ville).
+    /// Ne touche AUCUN montant — la tarification est en distance, jamais en durée.
+    pub const VITESSE_DEGRADEE_KMH: f64 = 20.0;
+}
+
+/// Paramètres de zone d'une évaluation, résolus par héritage en une lecture.
+///
+/// Aucune de ces valeurs n'est en dur dans le code de calcul (constitution I) :
+/// changer un tarif, un arrondi ou un facteur de dégradé est une édition de
+/// configuration de zone, pas un déploiement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Knobs {
+    /// Devise ISO 4217 de la zone — celle de tous les montants du devis.
+    pub devise: Devise,
+    /// Drapeaux appliqués après le calcul de base (FR-017).
+    pub drapeaux: DrapeauxZone,
+    /// Fuseau d'interprétation des plages horaires et jours des règles.
+    pub fuseau: Tz,
+    /// Bornes de marge (gardent l'écriture ET la publication).
+    pub bornes_marge: BornesMarge,
+    /// Pas d'arrondi du prix client (unités mineures).
+    pub arrondi_pas: i64,
+    /// Supplément appliqué quand le drapeau `pluie` est ON.
+    pub supplement_pluie: i64,
+    /// Facteur du repli vol d'oiseau (non monétaire).
+    pub facteur_degrade: f64,
+    /// Vitesse d'estimation de l'ETA en dégradé (non monétaire).
+    pub vitesse_degradee_kmh: f64,
+    /// Options du cache de routage.
+    pub cache: OptionsCache,
+    /// Plafond de détour au-delà duquel une scission est PROPOSÉE (FR-032).
+    /// `None` (défaut) ⇒ aucune scission n'est jamais proposée.
+    pub plafond_eclatement_m: Option<i64>,
 }
 
 /// Handle de dépôt du domaine tarification. Clone bon marché (pool et ports
@@ -110,21 +144,6 @@ impl PgTarification {
             .unwrap_or(defaut))
     }
 
-    /// Paramètre hérité lu comme flottant NON monétaire (facteur de dégradé).
-    /// Accepte aussi un entier JSON (`1` vaut `1.0`).
-    pub(crate) async fn parametre_f64(
-        &self,
-        zone: Uuid,
-        cle: &str,
-        defaut: f64,
-    ) -> Result<f64, ErreurTarif> {
-        Ok(self
-            .parametre(zone, cle)
-            .await?
-            .and_then(|v| v.as_f64())
-            .unwrap_or(defaut))
-    }
-
     /// Bornes de marge de la zone (`tarification.marge.min` / `.max`, FR-009).
     pub async fn bornes_marge(&self, zone: Uuid) -> Result<BornesMarge, ErreurTarif> {
         Ok(BornesMarge {
@@ -143,36 +162,85 @@ impl PgTarification {
         Ok(self.zones.devise(zone).await?)
     }
 
-    /// Drapeaux de zone consommés par l'évaluation (FR-007/FR-017). Un drapeau
-    /// absent vaut `false` — « absent » et « défini à faux » ont ici le même
-    /// effet tarifaire (aucun forçage).
-    pub(crate) async fn drapeaux(&self, zone: Uuid) -> Result<DrapeauxZone, ErreurTarif> {
-        Ok(DrapeauxZone {
-            livraison_offerte_mefali: self
-                .zones
-                .drapeau(zone, "livraison_offerte_mefali")
-                .await?
-                .unwrap_or(false),
-            gratuite_commissions: self
-                .zones
-                .drapeau(zone, "gratuite_commissions")
-                .await?
-                .unwrap_or(false),
-            pluie: self.zones.drapeau(zone, "pluie").await?.unwrap_or(false),
-        })
-    }
+    /// TOUS les paramètres de zone d'une évaluation, résolus en **une** lecture.
+    ///
+    /// La configuration effective résout toute la chaîne d'héritage d'un coup ;
+    /// lire chaque clé séparément coûterait une dizaine de requêtes par devis,
+    /// pour un objectif de « devis perçu instantané ».
+    pub async fn knobs(&self, zone: Uuid) -> Result<Knobs, ErreurTarif> {
+        let config = self.zones.configuration_effective(zone).await?;
+        let entier = |cle: &str, defaut: i64| {
+            config.valeur(cle).and_then(Value::as_i64).unwrap_or(defaut)
+        };
+        let flottant = |cle: &str, defaut: f64| {
+            config.valeur(cle).and_then(Value::as_f64).unwrap_or(defaut)
+        };
+        // Un drapeau ABSENT vaut `false` : « absent » et « défini à faux » ont
+        // ici le même effet tarifaire (aucun forçage).
+        let drapeau = |cle: &str| {
+            config
+                .valeur(&format!("drapeau.{cle}"))
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        };
 
-    /// Fuseau de la zone (`zone.fuseau_horaire`) — les plages horaires et jours
-    /// des règles s'y interprètent, jamais dans celui du serveur (précédent VND
-    /// 005, research R8). Repli UTC si la clé est absente ou illisible : un
-    /// fuseau fautif ne doit pas faire échouer une tarification.
-    pub(crate) async fn fuseau(&self, zone: Uuid) -> Result<Tz, ErreurTarif> {
-        let brut = self.parametre(zone, "zone.fuseau_horaire").await?;
-        Ok(brut
-            .as_ref()
-            .and_then(Value::as_str)
-            .and_then(|s| s.parse::<Tz>().ok())
-            .unwrap_or(Tz::UTC))
+        let (code, decimales) = (
+            config.valeur("devise.code").and_then(Value::as_str),
+            config.valeur("devise.decimales").and_then(Value::as_u64),
+        );
+        let (Some(code), Some(decimales)) = (code, decimales) else {
+            // Sans devise résolue, aucun montant n'a de sens : on refuse plutôt
+            // que de supposer XOF (constitution III, portabilité hors zone CFA).
+            return Err(ErreurTarif::Zones(zones::ErreurZones::DeviseIrresolvable(
+                zone,
+            )));
+        };
+
+        Ok(Knobs {
+            devise: Devise {
+                code: code.to_owned(),
+                decimales: decimales as u8,
+            },
+            drapeaux: DrapeauxZone {
+                livraison_offerte_mefali: drapeau("livraison_offerte_mefali"),
+                gratuite_commissions: drapeau("gratuite_commissions"),
+                pluie: drapeau("pluie"),
+            },
+            // Repli UTC si la clé est absente ou illisible : un fuseau fautif ne
+            // doit pas faire échouer une tarification (précédent VND 005, R8).
+            fuseau: config
+                .valeur("zone.fuseau_horaire")
+                .and_then(Value::as_str)
+                .and_then(|s| s.parse::<Tz>().ok())
+                .unwrap_or(Tz::UTC),
+            bornes_marge: BornesMarge {
+                min: entier("tarification.marge.min", defauts::MARGE_MIN),
+                max: entier("tarification.marge.max", defauts::MARGE_MAX),
+            },
+            arrondi_pas: entier("tarification.arrondi_pas", defauts::ARRONDI_PAS),
+            supplement_pluie: entier(
+                "tarification.supplement_pluie",
+                defauts::SUPPLEMENT_PLUIE,
+            ),
+            facteur_degrade: flottant("routage.facteur_degrade", defauts::FACTEUR_DEGRADE),
+            vitesse_degradee_kmh: flottant(
+                "routage.vitesse_degradee_kmh",
+                defauts::VITESSE_DEGRADEE_KMH,
+            ),
+            cache: OptionsCache {
+                ttl_s: (entier("routage.cache_ttl_h", defauts::CACHE_TTL_H).max(0) as u64) * 3_600,
+                decimales: entier(
+                    "routage.arrondi_cle_decimales",
+                    defauts::ARRONDI_CLE_DECIMALES as i64,
+                )
+                .clamp(0, 9) as u32,
+            },
+            // ABSENT par défaut (data-model §2 : « dormant ») : tant que la zone
+            // ne pose pas ce seuil, aucune scission n'est jamais proposée.
+            plafond_eclatement_m: config
+                .valeur("effort.plafond_eclatement_m")
+                .and_then(Value::as_i64),
+        })
     }
 
     // ── Écriture d'une règle de brouillon (US1 — T009, FR-009/FR-023) ──────

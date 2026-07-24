@@ -213,3 +213,86 @@ async fn jeton_inconnu_renvoie_none() {
         None
     );
 }
+
+// ── Cache de routage (cycle TRF 007, T015) ─────────────────────────────────
+
+/// Cache branché sur le Redis local, ou `None` s'il est injoignable (sauté).
+async fn cache_routage() -> Option<api::infra_redis::RedisCacheRoutage> {
+    use tarification::CacheRoutage;
+    let url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_owned());
+    let cache = api::infra_redis::RedisCacheRoutage::nouveau(&url).ok()?;
+    // Sonde : un pool se crée sans jamais toucher au serveur, il faut donc une
+    // vraie commande pour savoir si Redis répond.
+    cache.lire(&["tarif:route:v1:sonde".to_owned()]).await.ok()?;
+    Some(cache)
+}
+
+/// Le cache RÉEL tient la même promesse que `CacheMemoire` : ce qui est écrit se
+/// relit à l'identique, ce qui n'a jamais été écrit rend `None`.
+///
+/// Ce que le double mémoire ne peut PAS prouver : que la sérialisation
+/// `distance:duree` survit à un aller-retour Redis, et qu'un `MGET` de clés
+/// mêlant présentes et absentes garde l'ORDRE — sans quoi la matrice serait
+/// reconstruite avec des tronçons permutés, donc un prix faux.
+#[tokio::test]
+async fn cache_routage_aller_retour_et_ordre() {
+    use tarification::{CacheRoutage, Troncon};
+    let Some(cache) = cache_routage().await else {
+        eprintln!("Redis injoignable — test du cache de routage sauté");
+        return;
+    };
+
+    let marque = Uuid::now_v7();
+    let cle_a = format!("tarif:route:v1:test-{marque}-a");
+    let cle_b = format!("tarif:route:v1:test-{marque}-b");
+    let absente = format!("tarif:route:v1:test-{marque}-absente");
+    let a = Troncon {
+        distance_m: 1_234,
+        duree_s: 321,
+    };
+    let b = Troncon {
+        distance_m: 42,
+        duree_s: 7,
+    };
+
+    cache
+        .ecrire(&[(cle_a.clone(), a), (cle_b.clone(), b)], 60)
+        .await
+        .unwrap();
+
+    let lus = cache
+        .lire(&[cle_b.clone(), absente.clone(), cle_a.clone()])
+        .await
+        .unwrap();
+    assert_eq!(
+        lus,
+        vec![Some(b), None, Some(a)],
+        "l'ordre des clés demandées est préservé, trous compris"
+    );
+
+    // Une valeur corrompue est traitée comme ABSENTE : un cache abîmé coûte un
+    // appel de routage, jamais un prix faux.
+    let mut conn = deadpool_redis::Config::from_url(
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_owned()),
+    )
+    .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+    .unwrap()
+    .get()
+    .await
+    .unwrap();
+    redis::cmd("SET")
+        .arg(&cle_a)
+        .arg("pas-un-troncon")
+        .query_async::<()>(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(cache.lire(&[cle_a.clone()]).await.unwrap(), vec![None]);
+
+    // Ménage.
+    redis::cmd("DEL")
+        .arg(&cle_a)
+        .arg(&cle_b)
+        .query_async::<()>(&mut conn)
+        .await
+        .unwrap();
+}

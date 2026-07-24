@@ -20,6 +20,7 @@ use deadpool_redis::{Config as ConfigRedis, Pool, Runtime};
 
 use comptes::{Compteur, DepotEphemere, ErreurEphemere, IssueDefi, JetonInscription};
 use qr::{CompteurEssais, ErreurCompteur};
+use tarification::{CacheRoutage, ErreurCache, Troncon};
 use uuid::Uuid;
 
 /// Codes de retour des scripts Lua — le contrat entre le script et Rust.
@@ -265,5 +266,97 @@ impl CompteurEssais for RedisEssais {
             .await
             .map_err(|e| ErreurCompteur(format!("incrément des essais : {e}")))?;
         Ok(n.max(0))
+    }
+}
+
+// ── Cache de routage par tronçon (cycle TRF 007, port `tarification::CacheRoutage`) ──
+
+/// Cache des tronçons routiers sur Redis (research R3).
+///
+/// STRICTEMENT éphémère et reconstructible (constitution II) : perdre ces clés
+/// coûte un appel OSRM, rien de plus. Une panne du cache n'échoue donc jamais un
+/// devis — le domaine journalise et interroge le routage.
+///
+/// Layout : `tarif:route:v1:{lat_a},{lon_a}:{lat_b},{lon_b}` → `"{distance_m}:{duree_s}"`,
+/// TTL posé par la zone (`routage.cache_ttl_h`, 24 h par défaut). Clés
+/// composées par le domaine (`tarification::routage::cle_troncon`) : la
+/// précision de l'arrondi est un paramètre de zone, pas une décision d'infra.
+pub struct RedisCacheRoutage {
+    pool: Pool,
+}
+
+impl RedisCacheRoutage {
+    /// Construit le cache à partir de l'URL Redis (`REDIS_URL`).
+    pub fn nouveau(redis_url: &str) -> Result<Self, ErreurCache> {
+        let pool = ConfigRedis::from_url(redis_url)
+            .create_pool(Some(Runtime::Tokio1))
+            .map_err(|e| ErreurCache(format!("pool Redis : {e}")))?;
+        Ok(Self { pool })
+    }
+
+    /// Sérialisation compacte d'un tronçon (deux entiers, jamais un flottant).
+    fn encoder(t: Troncon) -> String {
+        format!("{}:{}", t.distance_m, t.duree_s)
+    }
+
+    /// Relit un tronçon ; toute valeur illisible est traitée comme ABSENTE — un
+    /// cache corrompu doit coûter un appel de routage, jamais un prix faux.
+    fn decoder(brut: &str) -> Option<Troncon> {
+        let (d, t) = brut.split_once(':')?;
+        Some(Troncon {
+            distance_m: d.parse().ok()?,
+            duree_s: t.parse().ok()?,
+        })
+    }
+}
+
+#[async_trait]
+impl CacheRoutage for RedisCacheRoutage {
+    async fn lire(&self, cles: &[String]) -> Result<Vec<Option<Troncon>>, ErreurCache> {
+        if cles.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| ErreurCache(format!("connexion Redis : {e}")))?;
+        // MGET : UN aller-retour pour toute la matrice. Un appel par paire
+        // ferait N² allers-retours et coûterait plus cher que le routage lui-même.
+        let brut: Vec<Option<String>> = redis::cmd("MGET")
+            .arg(cles)
+            .query_async(&mut conn)
+            .await
+            .map_err(|e| ErreurCache(format!("lecture des tronçons : {e}")))?;
+        Ok(brut
+            .into_iter()
+            .map(|v| v.as_deref().and_then(Self::decoder))
+            .collect())
+    }
+
+    async fn ecrire(&self, entrees: &[(String, Troncon)], ttl_s: u64) -> Result<(), ErreurCache> {
+        if entrees.is_empty() {
+            return Ok(());
+        }
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| ErreurCache(format!("connexion Redis : {e}")))?;
+        // Pipeline (pas MSET) : chaque clé doit porter SON expiration. Un MSET
+        // écrirait des tronçons éternels — le TTL de 24 h est ce qui garantit
+        // qu'un changement de voirie finit par être repris.
+        let mut pipe = redis::pipe();
+        for (cle, troncon) in entrees {
+            pipe.cmd("SET")
+                .arg(cle)
+                .arg(Self::encoder(*troncon))
+                .arg("EX")
+                .arg(ttl_s.max(1))
+                .ignore();
+        }
+        pipe.query_async::<()>(&mut conn)
+            .await
+            .map_err(|e| ErreurCache(format!("écriture des tronçons : {e}")))
     }
 }
