@@ -39,7 +39,8 @@ l'extrait Côte d'Ivoire puis `extract`/`partition`/`customize`), puis
 ## Suite backend
 
 ```bash
-cd backend && cargo test -p tarification && cargo test -p api admin_tarification
+cd backend && cargo test -p tarification \
+  && cargo test -p api --test tarification_regles --test tarification_publication
 ```
 
 ## Scénarios de validation
@@ -104,3 +105,50 @@ cd backend && cargo test -p tarification && cargo test -p api admin_tarification
 ## Porte de sortie
 
 Tous les scénarios verts ; `cargo test` + `cargo sqlx prepare` OK ; `openapi.json` régénéré **sans diff** de clients ; les 3 événements présents dans `docs/taxonomie-evenements.md`. Le simulateur ne laisse **aucune** trace outbox et ne modifie pas la grille en vigueur.
+
+---
+
+## Journal de validation (T033) — 2026-07-24
+
+Déroulé de bout en bout sur Postgres local (port 5433). **Aucune socket** n'est
+ouverte : les scénarios injectent les doubles de routage et des géométries de
+course simulées, comme prévu ci-dessus. **77 tests TRF verts**, 0 échec.
+
+| Scénario | Prouvé par | Statut |
+|---|---|---|
+| **SC-001** bornes de marge | `api::tarification_regles::marge_hors_bornes_refusee` (409 + bornes dans le corps, base restée vide, bornes incluses, marge 0 refusée) · `…publication::regle_hors_bornes_bloque_la_publication` | ✓ |
+| **SC-002** devis routé | `tarification::evaluation::devis_route_et_invariant` (distance de l'itinéraire, une seule requête de matrice) · `…kilometrage_au_dela_du_seuil_et_plafond` | ✓ |
+| **SC-003** non-blocage | `…degrade_aboutit_et_se_journalise` (devis produit, `degraded=true`, ×1,4, `routage.degrade` émis, aucune coordonnée au journal) | ✓ |
+| **SC-004** cache 24 h | `…cache_de_routage_evite_le_second_appel` (2ᵉ devis sans appel, identique ; TTL vidé → appel de nouveau) · unitaire `routage::cache_evite_le_second_appel` · `api::infra_redis::cache_routage_aller_retour_et_ordre` (impl RÉELLE) | ✓ |
+| **SC-005** garde du simulateur | `api::tarification_publication` — 7 tests : sans simulation, édition ET suppression qui réarment, bornes resserrées, archivage + `grille.publiee`, republication refusée, brouillon vide, 401/403, simulateur sans trace | ✓ |
+| **SC-006** seed Tiassalé au FCFA près | `tarification::seed_tiassale::montants_tiassale_au_fcfa_pres` (100 / 150 / 300 / 500 plafond / +100 pluie) · `…drapeaux_de_lancement_du_seed` · `…seed_idempotent` | ✓ |
+| **SC-007** 100 % effort au coursier | `tarification::effort::effort_integralement_au_coursier` (marge strictement inchangée) | ✓ |
+| **SC-008** marché 12 articles / 3 étals | `…effort::marche_douze_articles_trois_etals_voisins` (2 × 25 + 100 = 150, km réels intacts) | ✓ |
+| **SC-009** ordre ≤ 4 déterministe | `…evaluation::ordre_optimise_expose_et_deterministe` (meilleure permutation, rejouable, exposée par `OptimisationArrets`) · `…effort::ordre_optimise_nourrit_l_effort` · `…plafond_d_eclatement_propose_la_scission` | ✓ |
+| **SC-010** promo : effort non facturé | `…effort::promo_effort_journalise_non_facture` (`effort.calcule` `facture=false`, puis bascule par simple drapeau) | ✓ |
+| **SC-011** devise sans conversion | `tarification::devise` — 5 tests (XOF sans décimale, règle EUR refusée, mélange rejeté, zone sans devise) | ✓ |
+| **SC-012** invariant du devis | `…devis_route_et_invariant`, `…kilometrage_au_dela_du_seuil_et_plafond`, `…drapeaux_de_lancement` (et `Devis::invariant_verifie()` rend `None` — non applicable — sur un prix forcé à 0) | ✓ |
+| **Prime d'attente une fois/course** | `…effort::prime_attente_une_fois_par_course` (2 arrêts lents → +100, pas 2 × 100) | ✓ |
+| **VND-08 mono vs multi** | `…evaluation::vnd08_mono_vendeur_seulement` (mono → 0 et part coursier intacte ; multi → ignoré ; seuil sous/au seuil) | ✓ |
+
+### Porte de sortie
+
+- `cargo test` : **59 suites vertes, 0 échec** (dont 77 tests TRF).
+- `cargo sqlx prepare --workspace` : vert, cache `.sqlx` commité.
+- `openapi.json` + clients Dart/TS régénérés — génération vérifiée **déterministe**
+  sur les fichiers versionnés (l'écart observé au premier contrôle venait du cache
+  `.dart_tool`, ignoré par git).
+- Les **3 événements** sont déclarés dans `docs/taxonomie-evenements.md` et émis
+  (ou volontairement tus) conformément au registre.
+- Le simulateur ne laisse **aucune** trace outbox et ne modifie pas la grille en
+  vigueur (`simulateur_detaille_et_sans_effet_de_bord`).
+
+### Non exercé en réel
+
+**Le client OSRM `/table`** n'a pas été exercé contre un vrai serveur : l'extrait
+OSM n'est pas préparé sur ce poste (voir « Prérequis d'infrastructure » plus
+haut). Ce qui EST couvert : la construction de l'URL en `lon,lat` (test
+unitaire), le décodage de la matrice, et surtout le comportement quand OSRM
+manque — le mode dégradé, qui est précisément le chemin emprunté ici de bout en
+bout. Reste à faire au premier déploiement disposant d'OSRM : rejouer SC-002
+avec `RoutageOsrm` pour confirmer qu'une matrice réelle se décode et se cache.

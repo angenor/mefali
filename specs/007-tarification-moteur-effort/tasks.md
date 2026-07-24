@@ -138,10 +138,10 @@ Backend Rust : crate `backend/crates/tarification/`, binaire `backend/api/`, mig
 
 ## Phase 9: Polish & transverse — clôture
 
-- [ ] T032 [P] Vérifier l'externalisation des **clés i18n fr** (`tarification.erreur.*`, libellés du détail de simulation) dans `backend/crates/tarification/` et `backend/api/src/admin_tarification_http.rs` — aucune chaîne utilisateur en dur (constitution VII).
-- [ ] T033 Exécuter la **validation `quickstart.md`** de bout en bout (SC-001..012 + prime/course + VND-08).
-- [ ] T034 `cargo test` complet + `cargo sqlx prepare` vert + `openapi.json` régénéré **sans diff** de clients (CI verte par chemins du monorepo).
-- [ ] T035 **Revue Definition of Done (`docs/user-stories-v2.md` §0.4)** : (1) critères d'acceptation couverts par des tests d'intégration ; (2) annotations utoipa à jour + clients Dart/TS régénérés sans diff manuel ; (3) migration `0007` versionnée + seed `50_` à jour ; (4) événement outbox pour tout changement d'état (`grille.publiee`) + `routage.degrade`/`effort.calcule` déclarés dans la taxonomie (matière des métriques MET) ; (5) clés i18n fr externalisées ; (6) paramètres « paramétrables » en configuration de zone (bornes, arrondi, facteur dégradé, TTL, seeds d'effort, plafonds). **Note UI** : aucune capture `docs/design/png/` à référencer ce cycle — la surface A3 relève du cycle ADM ; règle UI **sans objet**.
+- [X] T032 [P] Vérifier l'externalisation des **clés i18n fr** (`tarification.erreur.*`, libellés du détail de simulation) dans `backend/crates/tarification/` et `backend/api/src/admin_tarification_http.rs` — aucune chaîne utilisateur en dur (constitution VII).
+- [X] T033 Exécuter la **validation `quickstart.md`** de bout en bout (SC-001..012 + prime/course + VND-08).
+- [X] T034 `cargo test` complet + `cargo sqlx prepare` vert + `openapi.json` régénéré **sans diff** de clients (CI verte par chemins du monorepo).
+- [X] T035 **Revue Definition of Done (`docs/user-stories-v2.md` §0.4)** : (1) critères d'acceptation couverts par des tests d'intégration ; (2) annotations utoipa à jour + clients Dart/TS régénérés sans diff manuel ; (3) migration `0007` versionnée + seed `50_` à jour ; (4) événement outbox pour tout changement d'état (`grille.publiee`) + `routage.degrade`/`effort.calcule` déclarés dans la taxonomie (matière des métriques MET) ; (5) clés i18n fr externalisées ; (6) paramètres « paramétrables » en configuration de zone (bornes, arrondi, facteur dégradé, TTL, seeds d'effort, plafonds). **Note UI** : aucune capture `docs/design/png/` à référencer ce cycle — la surface A3 relève du cycle ADM ; règle UI **sans objet**.
 
 ---
 
@@ -192,3 +192,27 @@ US5 (intégrité devise) → US3 (simulateur + garde de publication) → US4 (se
 - Aucune tâche n'édite `clients/dart` ou `clients/ts` (régénération seule).
 - **Aucune app Flutter ni page Nuxt** ce cycle : backend + API admin uniquement ; les traits `EvaluationTarifaire`/`OptimisationArrets` sont la capacité exposée à CMD/DSP/CRS, exercée par des courses simulées dans les tests (patron cycle 006).
 - Commit conventionnel par tâche/groupe, référençant la story (ex. `feat(tarification): TRF-02 …`).
+
+---
+
+## Revue Definition of Done (T035) — 2026-07-24
+
+Revue de `docs/user-stories-v2.md` §0.4, point par point, sur le périmètre livré.
+
+| # | Point | Statut | Preuve |
+|---|---|---|---|
+| 1 | Critères d'acceptation couverts par des tests | ✓ | **77 tests TRF** : 32 unitaires (sélection de règle, cache, dégradé, permutations, arrondi, barèmes d'effort) + 45 d'intégration sur transitions et scénarios. Table SC-001..012 → test : [quickstart.md, Journal de validation](./quickstart.md). |
+| 2 | utoipa à jour ; clients régénérés sans diff manuel | ✓ | 5 chemins `/admin/tarification/**` annotés ; `openapi.json` + `clients/dart` + `clients/ts` régénérés par `scripts/generate-clients.sh`, **déterminisme vérifié** (deux exécutions → mêmes fichiers versionnés). Aucun client édité à la main. |
+| 3 | Migration SQL versionnée ; seeds à jour | ✓ | `0007_tarification.sql` (nouvelle ; `0001..0006` intouchées) + `50_tarification_tiassale.sql` idempotent, tous deux inscrits aux README. `cargo sqlx prepare --check` vert. |
+| 4 | Événement outbox pour tout changement d'état + taxonomie | ✓ | `grille.publiee` (seule transition d'état du cycle) dans la MÊME transaction que l'archivage/activation ; `routage.degrade` et `effort.calcule` déclarés et émis. Les 3 sont au registre `docs/taxonomie-evenements.md`, **posés avant implémentation**, payloads minimisés ARTCI (tests d'absence de lat/lon). Ce qui n'émet PAS est documenté et testé (édition de brouillon, évaluation nominale, simulation). Aucun événement PRODUIT (MET-01) : ce cycle n'a **aucun parcours utilisateur** — la surface A3 est au cycle ADM. |
+| 5 | Clés i18n (fr) externalisées | ✓ | 10 clés `tarification.erreur.*` dérivées de `ErreurTarif::message_cle()` ; le corps d'erreur est **toujours** `{code, message_cle}` (+ données structurées `min`/`max`/`valeur`, `attendue`/`fournie`). Audit : aucune chaîne utilisateur en dur dans le crate ni dans le module HTTP. |
+| 6 | Paramètres « paramétrables » en configuration de zone | ✓ | 12 knobs seedés au niveau ville + devise/fuseau hérités du pays, tous résolus en **une** lecture (`PgTarification::knobs`). Rien en dur : les constantes de `depot::defauts` ne sont que des replis documentés pour une zone neuve, jamais la valeur servie. `effort.plafond_eclatement_m` reste **dormant** (absent ⇒ aucune scission proposée). |
+
+**Note UI** : aucune capture `docs/design/png/` à référencer ce cycle — la maquette
+A3 est la cible du cycle **ADM**, les consommateurs du devis (CMD/DSP/CRS) sont
+futurs. La règle « UI conforme aux captures et aux tokens » est donc **sans
+objet** ici, par absence de surface visuelle (plan, Constitution XI).
+
+**Provisions restées données seulement** (constitution IX) : `point_relais_id`
+existe au schéma et est gardé par un `CHECK (… IS NULL)` — un test prouve qu'il
+résiste même à un `UPDATE` SQL direct. Aucune conversion de devise n'existe.

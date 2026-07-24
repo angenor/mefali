@@ -286,7 +286,7 @@ async fn cache_routage_aller_retour_et_ordre() {
         .query_async::<()>(&mut conn)
         .await
         .unwrap();
-    assert_eq!(cache.lire(&[cle_a.clone()]).await.unwrap(), vec![None]);
+    assert_eq!(cache.lire(std::slice::from_ref(&cle_a)).await.unwrap(), vec![None]);
 
     // Ménage.
     redis::cmd("DEL")

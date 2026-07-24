@@ -85,7 +85,14 @@ Les `lat/lon` transitent en clair **dans les DTO de simulation** (positions de v
 
 ## 3. Traits internes exposés (pas d'HTTP) — consommés par CMD/DSP/CRS
 
-`EvaluationTarifaire::evaluer(DemandeDevis, SourceGrille) -> Devis` · `OptimisationArrets::optimiser(&[Point], Point) -> Itineraire` · `Routage::matrice(&[Point]) -> Matrice` (injecté ; OSRM réel en prod, doubles en test). Détail des structures : [data-model.md §5](../data-model.md). Ces traits sont la **capacité** que CMD (verrouillage du devis), DSP (offre + ordre des arrêts) et CRS (gain coursier) consommeront ; ce cycle les exerce par des **courses simulées dans les tests**.
+`EvaluationTarifaire::evaluer(DemandeDevis, SourceGrille) -> Devis` · `OptimisationArrets::optimiser(zone, &[Point], Point) -> Itineraire` · `Routage::matrice(&[Point]) -> Matrice` (injecté ; OSRM réel en prod, doubles en test) · `CacheRoutage::{lire, ecrire}` (Redis en prod, mémoire en test). Détail des structures : [data-model.md §5](../data-model.md). Ces traits sont la **capacité** que CMD (verrouillage du devis), DSP (offre + ordre des arrêts) et CRS (gain coursier) consommeront ; ce cycle les exerce par des **courses simulées dans les tests**.
+
+**Deux écarts assumés au data-model §5**, tous deux pour garder « tout paramètre paramétrable vit en configuration de zone » (constitution I) :
+
+1. `OptimisationArrets::optimiser` prend la **zone** en premier argument — elle seule résout le facteur de dégradé et la précision de la clé de cache. Sans elle, ces deux valeurs seraient forcément en dur dans l'implémentation.
+2. Le **cache n'est pas dans `Routage`** mais composé au-dessus (`routage::matrice_ou_degrade`). Placé dedans, un double compteur d'appels serait appelé aux DEUX passages d'une même course et SC-004 (« le 2ᵉ passage ne rappelle pas le routage ») ne serait pas démontrable.
+
+`Itineraire` porte en plus `exhaustif: bool` — faux quand l'heuristique bornée a tranché au-delà de 4 retraits, pour qu'un ordre sous-optimal ne soit jamais présenté comme optimal (FR-031) — et `troncons_entre_arrets()`, la matière du barème de supplément d'arrêt (jambes entre retraits, **sans** la jambe de livraison).
 
 ## 4. Événements (registre `docs/taxonomie-evenements.md`)
 
@@ -99,14 +106,20 @@ Payloads : voir [data-model.md §6](../data-model.md). **Aucun** lat/lng brut ; 
 
 ## 5. Codes d'erreur (clés i18n fr)
 
+Le corps d'erreur est **toujours** `{ code, message_cle }` — jamais une phrase en dur (FR-001). Deux refus l'enrichissent de données structurées pour que l'admin sache quoi corriger sans aller lire la configuration de zone : `marge_hors_bornes` porte `min`/`max`/`valeur`, `devise_incoherente` porte `attendue`/`fournie`.
+
 | HTTP | Clé | Sens |
 |---|---|---|
-| 409 | `tarification.erreur.marge_hors_bornes` | marge de règle hors [min,max] de zone |
-| 409 | `tarification.erreur.devise_incoherente` | devise de règle ≠ devise de zone |
+| 409 | `tarification.erreur.marge_hors_bornes` | marge de règle hors [min,max] de zone (+ `min`/`max`/`valeur`) |
+| 409 | `tarification.erreur.devise_incoherente` | devise de règle ≠ devise de zone (+ `attendue`/`fournie`) |
 | 409 | `tarification.erreur.simulation_requise` | publication sans simulation valide sur l'empreinte courante |
 | 409 | `tarification.erreur.regle_hors_bornes` | publication avec une règle hors bornes |
-| 422 | `tarification.erreur.corps_invalide` | DTO invalide |
+| 409 | `tarification.erreur.pas_un_brouillon` | écriture, simulation ou publication visant une grille `en_vigueur`/`historique` — la tarification en cours ne se modifie pas sous les pieds des clients (FR-012) |
+| 404 | `tarification.erreur.grille_inconnue` | grille absente |
+| 404 | `tarification.erreur.regle_inconnue` | règle absente, ou appartenant à une AUTRE grille (jamais déplacée en silence) |
+| 422 | `tarification.erreur.corps_invalide` | DTO invalide (ex. aucun point de retrait) |
 | 422 | `tarification.erreur.aucune_regle` | aucune règle applicable au simulateur (grille à compléter — condition corrigible par l'admin, pas une faute serveur ni un prix arbitraire). Côté **trait interne** (CMD/DSP), l'évaluation renvoie `ErreurTarif::AucuneRegle`, à traiter par l'appelant. |
+| 422 | `tarification.erreur.aucune_grille_en_vigueur` | la zone n'a aucune grille publiée, ou sa grille n'entre en vigueur qu'à une date future |
 
 Le **routage indisponible n'est pas une erreur** : il produit un devis `degraded=true` (jamais un blocage — constitution IV).
 

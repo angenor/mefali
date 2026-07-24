@@ -183,7 +183,7 @@ impl PgTarification {
         .fetch_optional(&mut **tx)
         .await?;
         if let Some(id) = existant {
-            return charger(&mut **tx, id)
+            return charger(&mut *tx, id)
                 .await?
                 .ok_or(ErreurTarif::GrilleInconnue(id));
         }
@@ -235,7 +235,7 @@ impl PgTarification {
             .await?;
         }
 
-        charger(&mut **tx, id)
+        charger(&mut *tx, id)
             .await?
             .ok_or(ErreurTarif::GrilleInconnue(id))
     }
@@ -296,74 +296,6 @@ fn hex(octets: &[u8]) -> String {
         write!(s, "{o:02x}").expect("écriture en mémoire");
     }
     s
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use uuid::Uuid;
-
-    fn regle(id: Uuid, marge: i64) -> Regle {
-        Regle {
-            id,
-            grille_id: Uuid::now_v7(),
-            transport_slug: "moto".to_owned(),
-            categorie_slug: None,
-            distance_min_m: 0,
-            distance_max_m: None,
-            plage_debut_min: None,
-            plage_fin_min: None,
-            jours_masque: None,
-            point_relais_id: None,
-            part_coursier_base: 150,
-            marge,
-            prix_par_km: 50,
-            seuil_km_m: 2000,
-            prix_plafond: Some(500),
-            devise: "XOF".to_owned(),
-            priorite: 0,
-            actif: true,
-        }
-    }
-
-    /// L'empreinte ne dépend NI de l'ordre de lecture NI de la grille porteuse :
-    /// sans cela, cloner la grille en vigueur en brouillon invaliderait une
-    /// simulation portant sur un contenu strictement identique.
-    #[test]
-    fn empreinte_stable_par_contenu() {
-        let (a, b) = (Uuid::now_v7(), Uuid::now_v7());
-        let ordre_un = vec![regle(a, 50), regle(b, 60)];
-        let mut ordre_deux = vec![regle(b, 60), regle(a, 50)];
-        ordre_deux[0].grille_id = Uuid::now_v7();
-        assert_eq!(empreinte(&ordre_un), empreinte(&ordre_deux));
-    }
-
-    /// Toute édition tarifaire change l'empreinte — c'est ce qui RÉARME la garde
-    /// de publication (FR-021).
-    #[test]
-    fn empreinte_change_a_chaque_edition() {
-        let id = Uuid::now_v7();
-        let base = vec![regle(id, 50)];
-        let reference = empreinte(&base);
-
-        let mut marge_modifiee = base.clone();
-        marge_modifiee[0].marge = 60;
-        assert_ne!(reference, empreinte(&marge_modifiee), "marge");
-
-        let mut desactivee = base.clone();
-        desactivee[0].actif = false;
-        assert_ne!(reference, empreinte(&desactivee), "actif");
-
-        let mut plafond_retire = base.clone();
-        plafond_retire[0].prix_plafond = None;
-        assert_ne!(reference, empreinte(&plafond_retire), "plafond");
-
-        let mut ajout = base.clone();
-        ajout.push(regle(Uuid::now_v7(), 50));
-        assert_ne!(reference, empreinte(&ajout), "règle ajoutée");
-
-        assert_ne!(reference, empreinte(&[]), "brouillon vidé");
-    }
 }
 
 impl PgTarification {
@@ -436,7 +368,7 @@ impl PgTarification {
         grille_id: Uuid,
         acteur: Uuid,
     ) -> Result<Grille, ErreurTarif> {
-        let grille = charger(&mut **tx, grille_id)
+        let grille = charger(&mut *tx, grille_id)
             .await?
             .ok_or(ErreurTarif::GrilleInconnue(grille_id))?;
         if grille.etat != EtatGrille::Brouillon {
@@ -504,5 +436,73 @@ impl PgTarification {
             effet_le: Some(effet_le),
             ..grille
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    fn regle(id: Uuid, marge: i64) -> Regle {
+        Regle {
+            id,
+            grille_id: Uuid::now_v7(),
+            transport_slug: "moto".to_owned(),
+            categorie_slug: None,
+            distance_min_m: 0,
+            distance_max_m: None,
+            plage_debut_min: None,
+            plage_fin_min: None,
+            jours_masque: None,
+            point_relais_id: None,
+            part_coursier_base: 150,
+            marge,
+            prix_par_km: 50,
+            seuil_km_m: 2000,
+            prix_plafond: Some(500),
+            devise: "XOF".to_owned(),
+            priorite: 0,
+            actif: true,
+        }
+    }
+
+    /// L'empreinte ne dépend NI de l'ordre de lecture NI de la grille porteuse :
+    /// sans cela, cloner la grille en vigueur en brouillon invaliderait une
+    /// simulation portant sur un contenu strictement identique.
+    #[test]
+    fn empreinte_stable_par_contenu() {
+        let (a, b) = (Uuid::now_v7(), Uuid::now_v7());
+        let ordre_un = vec![regle(a, 50), regle(b, 60)];
+        let mut ordre_deux = vec![regle(b, 60), regle(a, 50)];
+        ordre_deux[0].grille_id = Uuid::now_v7();
+        assert_eq!(empreinte(&ordre_un), empreinte(&ordre_deux));
+    }
+
+    /// Toute édition tarifaire change l'empreinte — c'est ce qui RÉARME la garde
+    /// de publication (FR-021).
+    #[test]
+    fn empreinte_change_a_chaque_edition() {
+        let id = Uuid::now_v7();
+        let base = vec![regle(id, 50)];
+        let reference = empreinte(&base);
+
+        let mut marge_modifiee = base.clone();
+        marge_modifiee[0].marge = 60;
+        assert_ne!(reference, empreinte(&marge_modifiee), "marge");
+
+        let mut desactivee = base.clone();
+        desactivee[0].actif = false;
+        assert_ne!(reference, empreinte(&desactivee), "actif");
+
+        let mut plafond_retire = base.clone();
+        plafond_retire[0].prix_plafond = None;
+        assert_ne!(reference, empreinte(&plafond_retire), "plafond");
+
+        let mut ajout = base.clone();
+        ajout.push(regle(Uuid::now_v7(), 50));
+        assert_ne!(reference, empreinte(&ajout), "règle ajoutée");
+
+        assert_ne!(reference, empreinte(&[]), "brouillon vidé");
     }
 }
