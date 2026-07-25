@@ -11,6 +11,8 @@ pub mod auth_http;
 pub mod comptes_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
+/// Mapping HTTP partagé des refus du domaine commandes (T014).
+pub mod erreurs_commandes;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
