@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.livraison SET livree_le = $2, mode_remise = $3 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ecc164cac37c4d37ff928c93782ba508fae530138a4c2e332d1f80062f943eb0"
+}

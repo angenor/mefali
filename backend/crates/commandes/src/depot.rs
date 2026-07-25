@@ -23,8 +23,10 @@ use tarification::{EvaluationTarifaire, OptimisationArrets};
 use uuid::Uuid;
 use zones::PgZones;
 
+use crate::etats::{verifier_transition, Acteur, Niveau};
 use crate::modele::{
-    ArretACollecter, ErreurCommandes, ModeCollecte, ProgressionCollecte, StatutArret,
+    ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, ModeCollecte,
+    ProgressionCollecte, StatutArret,
 };
 use crate::ports::{ArretsDeCollecte, RestrictionsCompte};
 
@@ -83,6 +85,242 @@ impl PgCommandes {
     /// Accès au stockage objet (photos de substitution, rétention de zone).
     pub fn objets(&self) -> &Arc<dyn DepotObjets> {
         &self.objets
+    }
+
+    // ── Transitions GARDÉES des deux niveaux supérieurs (T034) ─────────────
+    //
+    // Un seul chemin d'écriture par niveau. Toute bascule — collecte, remise,
+    // affectation, mise en attente, annulation, échec — passe par ces deux
+    // méthodes, donc par `etats::verifier_transition` : il est impossible
+    // d'écrire un état sans l'avoir fait valider, et impossible de le faire
+    // sans son événement, qui voyage dans le même appel.
+
+    /// Transition GARDÉE d'une livraison + son événement, dans la MÊME
+    /// transaction (constitution VI).
+    ///
+    /// La ligne est verrouillée avant la garde : l'état lu est celui sur lequel
+    /// la transition sera écrite, jamais un état devenu obsolète entre-temps.
+    pub(crate) async fn transition_livraison(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        livraison_id: Uuid,
+        vers: EtatLivraison,
+        acteur: Acteur,
+        horodatage: DateTime<Utc>,
+        evenement: Option<NouvelEvenement<'_>>,
+    ) -> Result<EtatLivraison, ErreurCommandes> {
+        let depuis = sqlx::query_scalar!(
+            r#"SELECT etat::text AS "etat!" FROM commandes.livraison
+               WHERE id = $1 FOR UPDATE"#,
+            livraison_id,
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or(ErreurCommandes::LivraisonInconnue(livraison_id))?;
+
+        verifier_transition(Niveau::Livraison, Some(&depuis), vers.comme_str(), acteur)?;
+
+        sqlx::query!(
+            "UPDATE commandes.livraison
+                SET etat = $2::text::commandes.etat_livraison, etat_le = $3
+              WHERE id = $1",
+            livraison_id,
+            vers.comme_str(),
+            horodatage,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        if let Some(evenement) = evenement {
+            ecrire_evenement(tx, evenement).await?;
+        }
+        Ok(vers)
+    }
+
+    /// Transition GARDÉE du tronc commande + son événement, dans la MÊME
+    /// transaction (constitution VI).
+    pub(crate) async fn transition_commande(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        commande_id: Uuid,
+        vers: EtatCommande,
+        acteur: Acteur,
+        horodatage: DateTime<Utc>,
+        evenement: Option<NouvelEvenement<'_>>,
+    ) -> Result<EtatCommande, ErreurCommandes> {
+        let depuis = sqlx::query_scalar!(
+            r#"SELECT etat::text AS "etat!" FROM commandes.commande
+               WHERE id = $1 FOR UPDATE"#,
+            commande_id,
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande_id))?;
+
+        verifier_transition(Niveau::Commande, Some(&depuis), vers.comme_str(), acteur)?;
+
+        sqlx::query!(
+            "UPDATE commandes.commande
+                SET etat = $2::text::commandes.etat_commande, etat_le = $3
+              WHERE id = $1",
+            commande_id,
+            vers.comme_str(),
+            horodatage,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        if let Some(evenement) = evenement {
+            ecrire_evenement(tx, evenement).await?;
+        }
+        Ok(vers)
+    }
+
+    /// Affecte un coursier à la commande : la livraison reçoit son coursier, le
+    /// tronc passe EN_COURS. Reprend une commande en attente exactement comme
+    /// une commande neuve — c'est la table de transitions qui autorise les deux
+    /// origines (`nouvelle` et `en_attente_coursier`), pas un `if`.
+    ///
+    /// C'est **DSP** qui décidera QUEL coursier ; ce cycle offre l'écriture et
+    /// l'exerce par le double [`crate::AffectationSimulee`] (research R16).
+    pub async fn assigner_coursier(
+        &self,
+        commande_id: Uuid,
+        coursier: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<Uuid, ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        let livraison_id = self
+            .assigner_coursier_tx(&mut tx, commande_id, coursier, horodatage)
+            .await?;
+        tx.commit().await?;
+        Ok(livraison_id)
+    }
+
+    /// Variante transactionnelle d'[`Self::assigner_coursier`] — l'affectation
+    /// et son événement dans une transaction que l'appelant possède déjà.
+    pub(crate) async fn assigner_coursier_tx(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        commande_id: Uuid,
+        coursier: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<Uuid, ErreurCommandes> {
+        let livraison = sqlx::query!(
+            r#"SELECT l.id, l.etat::text AS "etat!", c.cree_le,
+                      c.etat::text AS "etat_commande!"
+               FROM commandes.livraison l
+               JOIN commandes.commande c ON c.id = l.commande_id
+               WHERE l.commande_id = $1
+               FOR UPDATE OF l"#,
+            commande_id,
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande_id))?;
+
+        let depuis_attente = livraison.etat_commande == EtatCommande::EnAttenteCoursier.comme_str();
+        let delai_assignation_s = (horodatage - livraison.cree_le).num_seconds().max(0);
+
+        sqlx::query!(
+            "UPDATE commandes.livraison SET coursier_id = $2, assignee_le = $3 WHERE id = $1",
+            livraison.id,
+            coursier,
+            horodatage,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "livraison.affectee",
+                entite_type: "livraison",
+                entite_id: livraison.id,
+                payload: json!({
+                    "commande": commande_id,
+                    "coursier": coursier,
+                    "delai_assignation_s": delai_assignation_s,
+                }),
+                survenu_le: horodatage,
+            },
+        )
+        .await?;
+
+        self.transition_commande(
+            tx,
+            commande_id,
+            EtatCommande::EnCours,
+            Acteur::Systeme,
+            horodatage,
+            Some(NouvelEvenement {
+                type_evenement: "commande.assignee",
+                entite_type: "commande",
+                entite_id: commande_id,
+                payload: json!({
+                    "livraison": livraison.id,
+                    "coursier": coursier,
+                    "depuis_attente": depuis_attente,
+                }),
+                survenu_le: horodatage,
+            }),
+        )
+        .await?;
+
+        Ok(livraison.id)
+    }
+
+    /// Prépaiement confirmé (PAY **simulé** ce cycle, research R16) : le tronc
+    /// repasse `nouvelle`, le paiement est `regle`. Rien ne part avant ce
+    /// passage — c'est le seul moyen pour une commande en attente de paiement
+    /// d'atteindre le dispatch.
+    pub async fn confirmer_prepaiement(
+        &self,
+        commande_id: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<EtatCommande, ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        let commande = sqlx::query!(
+            r#"SELECT total_unites, devise, mode_paiement::text AS "mode_paiement!"
+               FROM commandes.commande WHERE id = $1"#,
+            commande_id,
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande_id))?;
+
+        let etat = self
+            .transition_commande(
+                &mut tx,
+                commande_id,
+                EtatCommande::Nouvelle,
+                Acteur::Systeme,
+                horodatage,
+                Some(NouvelEvenement {
+                    type_evenement: "commande.paiement_confirme",
+                    entite_type: "commande",
+                    entite_id: commande_id,
+                    payload: json!({
+                        "mode": commande.mode_paiement,
+                        "total": commande.total_unites,
+                        "devise": commande.devise,
+                    }),
+                    survenu_le: horodatage,
+                }),
+            )
+            .await?;
+
+        // Un seul montant, encaissé en une fois : `regle` ou rien. Aucun état
+        // intermédiaire « partiellement réglé » n'existe (constitution III).
+        sqlx::query!(
+            "UPDATE commandes.commande SET etat_paiement = 'regle' WHERE id = $1",
+            commande_id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(etat)
     }
 
     /// Bascule l'arrêt en COLLECTÉ dans `tx`, écrit `arret.collecte`, et si tous
@@ -212,7 +450,7 @@ impl PgCommandes {
     /// `collecte`, et la livraison resterait bloquée en collecte pour toujours.
     /// Régression silencieuse : aucun test du cycle 006 ne la signalait, faute
     /// d'arrêt de remise dans ses fixtures.
-    async fn gating_livraison(
+    pub(crate) async fn gating_livraison(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
         livraison_id: Uuid,
@@ -239,19 +477,16 @@ impl PgCommandes {
         let tous_resolus = comptes.total > 0 && comptes.resolus == comptes.total;
 
         let en_livraison = if tous_resolus && livraison_en_collecte {
-            sqlx::query!(
-                r#"UPDATE commandes.livraison
-                   SET etat = 'en_livraison', etat_le = $2
-                   WHERE id = $1 AND etat = 'en_collecte'"#,
-                livraison_id,
-                horodatage_serveur,
-            )
-            .execute(&mut **tx)
-            .await?;
-
-            ecrire_evenement(
+            // Passe par la garde unique (T034) : la bascule du cycle 006 est
+            // désormais une transition VÉRIFIÉE comme les autres, pas un UPDATE
+            // conditionnel isolé.
+            self.transition_livraison(
                 tx,
-                NouvelEvenement {
+                livraison_id,
+                EtatLivraison::EnLivraison,
+                Acteur::Coursier,
+                horodatage_serveur,
+                Some(NouvelEvenement {
                     type_evenement: "livraison.mise_en_livraison",
                     entite_type: "livraison",
                     entite_id: livraison_id,
@@ -261,7 +496,7 @@ impl PgCommandes {
                         "acteur": acteur,
                     }),
                     survenu_le: horodatage_serveur,
-                },
+                }),
             )
             .await?;
             true

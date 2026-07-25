@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT total_unites, devise, mode_paiement::text AS \"mode_paiement!\"\n               FROM commandes.commande WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "mode_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "5b5785bd92bce94dbb10fefcd634751870b58e1eb3654f6347a7009b793f76e1"
+}

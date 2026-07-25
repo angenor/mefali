@@ -413,6 +413,140 @@ async fn scanner_sans_declarer_son_arrivee_est_refuse(pool: sqlx::PgPool) {
     tx.commit().await.unwrap();
 }
 
+/// **T034 (CMD-04)** — le PREMIER départ ouvre la collecte : la livraison passe
+/// `assignee → en_collecte`, sous garde, avec son événement.
+#[sqlx::test(migrations = "../../migrations")]
+async fn premier_depart_ouvre_la_collecte(pool: sqlx::PgPool) {
+    let (coursier, livraison, arrets) = semer(&pool, &[2000, 1500], true).await;
+    let depot = depot(&pool);
+    sqlx::query("UPDATE commandes.livraison SET etat = 'assignee' WHERE id = $1")
+        .bind(livraison).execute(&pool).await.unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+    let r = depot
+        .marquer_arret_en_route(&mut tx, arrets[0], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(r.livraison_etat.comme_str(), "en_collecte");
+
+    // Le SECOND départ ne rouvre rien : la garde refuserait `en_collecte →
+    // en_collecte`, et le code ne la sollicite même pas.
+    let mut tx = pool.begin().await.unwrap();
+    let r = depot
+        .marquer_arret_en_route(&mut tx, arrets[1], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(r.livraison_etat.comme_str(), "en_collecte");
+
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM outbox.evenement WHERE type_evenement = 'livraison.mise_en_collecte'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, 1, "une seule ouverture de collecte par course");
+}
+
+/// **T034** — arrêt entièrement indisponible : RÉSOLU au gating, **montant
+/// avancé remis à zéro** (le coursier n'a rien acheté), et la course avance
+/// jusqu'à la remise même si c'est le dernier étal qui a fermé.
+#[sqlx::test(migrations = "../../migrations")]
+async fn arret_indisponible_resout_et_annule_l_avance(pool: sqlx::PgPool) {
+    let (coursier, livraison, arrets) = semer(&pool, &[2000, 1500], true).await;
+    let depot = depot(&pool);
+
+    let mut tx = pool.begin().await.unwrap();
+    depot
+        .marquer_arret_collecte(
+            &mut tx, arrets[0], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+        )
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    // Le vendeur du dernier arrêt a fermé.
+    let mut tx = pool.begin().await.unwrap();
+    let r = depot
+        .marquer_arret_indisponible(
+            &mut tx,
+            arrets[1],
+            coursier,
+            Uuid::now_v7(),
+            commandes::MotifIndisponible::VendeurFerme,
+            Utc::now(),
+            Utc::now(),
+        )
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    assert_eq!(r.statut.comme_str(), "indisponible");
+    assert!(
+        r.progression.en_livraison,
+        "un arrêt indisponible est RÉSOLU : la course continue vers le client",
+    );
+    assert_eq!(r.livraison_etat.comme_str(), "en_livraison");
+
+    let (statut, avance): (String, i64) = sqlx::query_as(
+        "SELECT statut::text, montant_avance FROM commandes.arret WHERE id = $1",
+    )
+    .bind(arrets[1])
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(statut, "indisponible");
+    assert_eq!(avance, 0, "rien acheté, rien avancé");
+
+    let etat: String = sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
+        .bind(livraison).fetch_one(&pool).await.unwrap();
+    assert_eq!(etat, "en_livraison");
+
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM outbox.evenement WHERE type_evenement = 'arret.indisponible'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, 1);
+}
+
+/// **T034** — un arrêt indisponible constaté AVANT le trajet est accepté
+/// (`à_collecter → indisponible`), et le rejeu du même uuid reste sans effet.
+#[sqlx::test(migrations = "../../migrations")]
+async fn indisponible_avant_le_trajet_et_idempotent(pool: sqlx::PgPool) {
+    let (coursier, _l, arrets) = semer(&pool, &[2000, 1500], true).await;
+    let depot = depot(&pool);
+    let uuid = Uuid::now_v7();
+
+    for _ in 0..2 {
+        let mut tx = pool.begin().await.unwrap();
+        let r = depot
+            .marquer_arret_indisponible(
+                &mut tx,
+                arrets[0],
+                coursier,
+                uuid,
+                commandes::MotifIndisponible::VendeurFerme,
+                Utc::now(),
+                Utc::now(),
+            )
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        assert_eq!(r.statut.comme_str(), "indisponible");
+    }
+
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM outbox.evenement WHERE type_evenement = 'arret.indisponible'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, 1, "le rejeu n'émet pas un second événement");
+}
+
 #[sqlx::test(migrations = "../../migrations")]
 async fn idempotence_meme_uuid(pool: sqlx::PgPool) {
     let (coursier, _l, arrets) = semer(&pool, &[2000], false).await;

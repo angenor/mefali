@@ -87,6 +87,7 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `commande.creee` | `commande` | `commandes::creation` (cycle CMD) | **Produit** — commande née avec ses prix verrouillés et son devis figé |
 | `commande.paiement_requis` | `commande` | `commandes::creation` (cycle CMD) | **Produit** — prépaiement imposé (plafond, restriction, restauration sans historique) |
 | `commande.prete_a_dispatcher` | `commande` | `commandes::creation` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par DSP) |
+| `commande.paiement_confirme` | `commande` | `PgCommandes::confirmer_prepaiement` (cycle CMD) | **Produit** — prépaiement confirmé (PAY simulé) ; le tronc repasse NOUVELLE |
 | `commande.mise_en_attente_coursier` | `commande` | `PgCommandes::mettre_en_attente_coursier` (cycle CMD) | **Produit** — aucun coursier éligible ; file FIFO par âge |
 | `commande.attente_coursier_escaladee` | `commande` | `PgCommandes::escalader_attentes` (cycle CMD) | **Produit** — seuil d'attente franchi (FR-038) |
 | `commande.assignee` | `commande` | `PgCommandes::affecter` (cycle CMD) | **Produit** — livraison assignée, le tronc passe EN_COURS |
@@ -96,6 +97,7 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `panier.scission_proposee` | `commande` (virtuel) | `commandes::panier` (cycle CMD) | **Produit** — proposition de scission (métrique SC-006) ; le devis lui-même n'écrit rien |
 | `livraison.creee` | `livraison` | `commandes::creation` (cycle CMD) | **Produit** — composant de livraison avec son devis figé |
 | `livraison.affectee` | `livraison` | `PgCommandes::affecter` (cycle CMD) | **Produit** — coursier affecté à la livraison |
+| `livraison.mise_en_collecte` | `livraison` | `commandes::collecte` (cycle CMD) | **Produit** — premier arrêt passé EN ROUTE → la livraison passe EN_COLLECTE |
 | `livraison.livree` | `livraison` | `commandes::collecte::remise` (cycle CMD) | **Produit** — remise validée (QR, code ou dépôt) |
 | `arret.en_route` | `arret` | `commandes::collecte` (cycle CMD) | **Produit** — le coursier part vers l'arrêt |
 | `arret.arrive` | `arret` | `commandes::collecte` (cycle CMD) | **Produit** — arrivée sur l'arrêt (base de la prime d'attente TRF-06) |
@@ -310,7 +312,7 @@ admin, jamais un nominatif.
 
 Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
 (constitution VI ; specs/008 data-model §7). Registre posé AVANT l'implémentation
-(Definition of Done §0.4 point 4). **25 événements** : 23 nouveaux ci-dessous +
+(Definition of Done §0.4 point 4). **27 événements** : 25 nouveaux ci-dessous +
 `arret.collecte` et `livraison.mise_en_livraison`, hérités du cycle QRC 006 et
 **inchangés** (leur payload ne bouge pas — le type d'arrêt n'y entre pas).
 
@@ -341,6 +343,7 @@ propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
 | `commande.creee` | `commande` | `commande.id` | `zone`, `categorie`, `nb_vendeurs`, `nb_articles`, `montant_articles`, `total`, `devise`, `mode_paiement`, `mono_vendeur` (booléen), `acteur` |
 | `commande.paiement_requis` | `commande` | `commande.id` | `motif` (`plafond` \| `prepaiement_impose` \| `restauration_sans_historique`), `total`, `devise`, `plafond` |
 | `commande.prete_a_dispatcher` | `commande` | `commande.id` | `zone`, `nb_arrets`, `montant_a_avancer`, `devise`, `transport_requis` (slug) — **consommé par DSP** |
+| `commande.paiement_confirme` | `commande` | `commande.id` | `mode` (`mobile_money`), `total`, `devise` — le tronc repasse `nouvelle` |
 | `commande.mise_en_attente_coursier` | `commande` | `commande.id` | `zone`, `motif` (`aucun_coursier_eligible`), `age_s` |
 | `commande.attente_coursier_escaladee` | `commande` | `commande.id` | `zone`, `age_s`, `seuil_s` (paramètre de zone franchi) |
 | `commande.assignee` | `commande` | `commande.id` | `livraison`, `coursier`, `depuis_attente` (booléen — reprise FIFO) |
@@ -350,6 +353,7 @@ propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
 | `panier.scission_proposee` | `commande` (virtuel) | `compte.id` (client) | `zone`, `categorie`, `cause` (`categorie_non_mixable` \| `plafond_eclatement`), `nb_commandes` — **métrique SC-006** |
 | `livraison.creee` | `livraison` | `livraison.id` | `commande`, `nb_arrets`, `devis_prix_client`, `devis_part_coursier`, `devise`, `degraded` (booléen) |
 | `livraison.affectee` | `livraison` | `livraison.id` | `commande`, `coursier`, `delai_assignation_s` |
+| `livraison.mise_en_collecte` | `livraison` | `livraison.id` | `commande`, `arret` (celui qui a déclenché), `acteur` |
 | `livraison.livree` | `livraison` | `livraison.id` | `commande`, `mode_remise`, `essais_code` (entier) |
 | `arret.en_route` | `arret` | `arret.id` | `commande`, `livraison`, `ordre`, `acteur` |
 | `arret.arrive` | `arret` | `arret.id` | `commande`, `livraison`, `ordre`, `attente_depuis_s` — **base de la prime d'attente TRF-06** |

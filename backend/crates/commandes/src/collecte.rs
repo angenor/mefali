@@ -57,6 +57,40 @@ pub(crate) struct ContexteArret {
     pub livraison_etat: EtatLivraison,
 }
 
+/// Motif d'un arrêt entièrement indisponible (taxonomie `arret.indisponible`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MotifIndisponible {
+    /// Le coursier constate le vendeur fermé — avant ou pendant le trajet.
+    VendeurFerme,
+    /// Toutes les lignes de l'arrêt ont été retirées ou refusées (CMD-06).
+    ToutesLignesRetirees,
+}
+
+impl MotifIndisponible {
+    /// Valeur journalisée dans le payload de l'événement.
+    pub fn comme_str(self) -> &'static str {
+        match self {
+            MotifIndisponible::VendeurFerme => "vendeur_ferme",
+            MotifIndisponible::ToutesLignesRetirees => "toutes_lignes_retirees",
+        }
+    }
+}
+
+impl std::str::FromStr for MotifIndisponible {
+    type Err = ErreurCommandes;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "vendeur_ferme" => Ok(MotifIndisponible::VendeurFerme),
+            "toutes_lignes_retirees" => Ok(MotifIndisponible::ToutesLignesRetirees),
+            autre => Err(ErreurCommandes::StatutInconnu(autre.to_owned())),
+        }
+    }
+}
+
+/// Motif porté par `ligne.retiree` quand c'est l'ARRÊT qui est indisponible —
+/// à distinguer d'un retrait décidé par la préférence du client (T047).
+pub(crate) const MOTIF_LIGNE_ARRET_INDISPONIBLE: &str = "arret_indisponible";
+
 /// Résultat d'une transition d'arrêt, tel que la surface coursier le rend.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransitionArret {
@@ -187,7 +221,35 @@ impl PgCommandes {
         )
         .await?;
 
-        self.resultat_transition(tx, &ctx, StatutArret::EnRoute, ctx.livraison_etat, false)
+        // Le PREMIER départ ouvre la collecte (data-model §3.2). La condition
+        // porte sur l'état de la livraison, jamais sur « est-ce le premier
+        // arrêt ? » : une course reprise après réassignation n'a pas d'arrêt
+        // d'ordre 0 disponible, et se serait bloquée.
+        let livraison_etat = if ctx.livraison_etat == EtatLivraison::Assignee {
+            self.transition_livraison(
+                tx,
+                ctx.livraison_id,
+                EtatLivraison::EnCollecte,
+                Acteur::Coursier,
+                horodatage_serveur,
+                Some(NouvelEvenement {
+                    type_evenement: "livraison.mise_en_collecte",
+                    entite_type: "livraison",
+                    entite_id: ctx.livraison_id,
+                    payload: json!({
+                        "commande": ctx.commande_id,
+                        "arret": arret_id,
+                        "acteur": coursier,
+                    }),
+                    survenu_le: horodatage_serveur,
+                }),
+            )
+            .await?
+        } else {
+            ctx.livraison_etat
+        };
+
+        self.resultat_transition(tx, &ctx, StatutArret::EnRoute, livraison_etat, false)
             .await
     }
 
@@ -260,6 +322,208 @@ impl PgCommandes {
 
         self.resultat_transition(tx, &ctx, StatutArret::Arrive, ctx.livraison_etat, false)
             .await
+    }
+
+    /// Arrêt **entièrement indisponible** (FR-051) : vendeur fermé constaté, ou
+    /// toutes les lignes de l'arrêt retirées.
+    ///
+    /// Trois conséquences, indissociables :
+    /// 1. l'arrêt est **RÉSOLU** pour le gating (`StatutArret::est_resolu`) —
+    ///    une course ne reste pas coincée parce qu'un étal a fermé ;
+    /// 2. le **montant avancé tombe à zéro** — le coursier n'a rien acheté, il
+    ///    ne doit rien avancer, et l'avance nulle est ce qui le prouve ;
+    /// 3. les lignes de l'arrêt sont **retirées** et le montant de la commande
+    ///    révisé — le client ne paie pas ce qui n'a pas été acheté. Le devis de
+    ///    livraison, lui, ne bouge pas (FR-050).
+    pub async fn marquer_arret_indisponible(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        arret_id: Uuid,
+        coursier: Uuid,
+        uuid_client: Uuid,
+        motif: MotifIndisponible,
+        horodatage_local: DateTime<Utc>,
+        horodatage_serveur: DateTime<Utc>,
+    ) -> Result<TransitionArret, ErreurCommandes> {
+        let ctx = self.charger_arret_du_coursier(tx, arret_id, coursier).await?;
+
+        if let Some(rejeu) = self.rejeu_transition(tx, &ctx, uuid_client).await? {
+            return Ok(rejeu);
+        }
+
+        verifier_transition(
+            Niveau::Arret,
+            Some(ctx.statut.comme_str()),
+            StatutArret::Indisponible.comme_str(),
+            Acteur::Coursier,
+        )?;
+
+        sqlx::query!(
+            "UPDATE commandes.arret
+                SET statut = 'indisponible', montant_avance = 0,
+                    transition_uuid_client = $2
+              WHERE id = $1",
+            arret_id,
+            uuid_client,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        let (nb_lignes_retirees, montant_retire) = self
+            .retirer_lignes_de_l_arret(
+                tx,
+                arret_id,
+                ctx.commande_id,
+                MOTIF_LIGNE_ARRET_INDISPONIBLE,
+                horodatage_serveur,
+            )
+            .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "arret.indisponible",
+                entite_type: "arret",
+                entite_id: arret_id,
+                payload: json!({
+                    "commande": ctx.commande_id,
+                    "livraison": ctx.livraison_id,
+                    "segment": ctx.segment_id,
+                    "ordre": ctx.ordre,
+                    "prestataire": ctx.prestataire_id,
+                    "nb_lignes_retirees": nb_lignes_retirees,
+                    "montant_retire": montant_retire,
+                    "motif": motif.comme_str(),
+                    "derive_horloge_s": (horodatage_serveur - horodatage_local).num_seconds(),
+                    "acteur": coursier,
+                }),
+                survenu_le: horodatage_serveur,
+            },
+        )
+        .await?;
+
+        // Un arrêt indisponible peut être le DERNIER à résoudre : le gating doit
+        // tourner ici aussi, sinon une course dont le dernier étal a fermé
+        // n'atteindrait jamais la remise.
+        let progression = self
+            .gating_livraison(
+                tx,
+                ctx.livraison_id,
+                ctx.commande_id,
+                coursier,
+                horodatage_serveur,
+                ctx.livraison_etat == EtatLivraison::EnCollecte,
+            )
+            .await?;
+
+        Ok(TransitionArret {
+            arret_id,
+            statut: StatutArret::Indisponible,
+            livraison_id: ctx.livraison_id,
+            commande_id: ctx.commande_id,
+            livraison_etat: if progression.en_livraison {
+                EtatLivraison::EnLivraison
+            } else {
+                ctx.livraison_etat
+            },
+            progression,
+            rejeu: false,
+        })
+    }
+
+    /// Clôt la course : la livraison passe `livree`, le tronc `terminee`, dans
+    /// la MÊME transaction et sous la garde des deux niveaux.
+    ///
+    /// ⚠ **Cette méthode ne VÉRIFIE rien** : elle écrit la fin d'une remise déjà
+    /// prouvée. La preuve — jeton QR, code de secours ou dépôt photographié,
+    /// avec son compteur d'essais — est posée par T058, qui appelle ceci en
+    /// dernier. Séparer les deux garde la machine à états lisible et empêche
+    /// qu'une future modalité de remise réinvente ses propres transitions.
+    ///
+    /// Le paiement passe `regle` : la contrainte `commande_terminee_payee`
+    /// l'exige, et c'est la traduction en base de « un seul montant, encaissé
+    /// en une fois » (constitution III).
+    pub async fn cloturer_livraison_prouvee(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        livraison_id: Uuid,
+        commande_id: Uuid,
+        mode_remise: &str,
+        essais_code: i16,
+        coursier: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        self.transition_livraison(
+            tx,
+            livraison_id,
+            EtatLivraison::Livree,
+            Acteur::Coursier,
+            horodatage,
+            Some(NouvelEvenement {
+                type_evenement: "livraison.livree",
+                entite_type: "livraison",
+                entite_id: livraison_id,
+                payload: json!({
+                    "commande": commande_id,
+                    "mode_remise": mode_remise,
+                    "essais_code": essais_code,
+                    "acteur": coursier,
+                }),
+                survenu_le: horodatage,
+            }),
+        )
+        .await?;
+
+        sqlx::query!(
+            "UPDATE commandes.livraison SET livree_le = $2, mode_remise = $3 WHERE id = $1",
+            livraison_id,
+            horodatage,
+            mode_remise,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        let commande = sqlx::query!(
+            r#"SELECT cree_le, total_unites, devise,
+                      etat_paiement::text AS "etat_paiement!"
+               FROM commandes.commande WHERE id = $1"#,
+            commande_id,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+
+        // Un remboursement déjà prononcé n'est pas écrasé par l'encaissement.
+        if commande.etat_paiement != "rembourse" {
+            sqlx::query!(
+                "UPDATE commandes.commande SET etat_paiement = 'regle' WHERE id = $1",
+                commande_id,
+            )
+            .execute(&mut **tx)
+            .await?;
+        }
+
+        self.transition_commande(
+            tx,
+            commande_id,
+            crate::modele::EtatCommande::Terminee,
+            Acteur::Coursier,
+            horodatage,
+            Some(NouvelEvenement {
+                type_evenement: "commande.terminee",
+                entite_type: "commande",
+                entite_id: commande_id,
+                payload: json!({
+                    "mode_remise": mode_remise,
+                    "duree_totale_s": (horodatage - commande.cree_le).num_seconds().max(0),
+                    "total_encaisse": commande.total_unites,
+                    "devise": commande.devise,
+                }),
+                survenu_le: horodatage,
+            }),
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// Rejeu du MÊME `uuid_client` : l'état courant, sans écriture ni événement.

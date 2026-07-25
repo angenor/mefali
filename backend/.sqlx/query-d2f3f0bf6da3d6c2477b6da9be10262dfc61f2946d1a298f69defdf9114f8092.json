@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lc.id,\n                      lc.quantite * COALESCE(lc.remplace_prix_unites, pf.prix_unites)\n                          AS \"montant!\",\n                      pf.devise\n               FROM commandes.ligne_commande lc\n               JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id\n               WHERE lc.arret_id = $1 AND lc.statut = 'presente'\n               ORDER BY lc.cree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.ligne_commande",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "montant!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prix_fige",
+            "name": "devise"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "d2f3f0bf6da3d6c2477b6da9be10262dfc61f2946d1a298f69defdf9114f8092"
+}

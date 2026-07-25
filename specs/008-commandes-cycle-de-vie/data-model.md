@@ -414,6 +414,7 @@ Tous écrits **dans la même transaction** que leur transition (constitution VI)
 | `commande.creee` | `commande` | `nb_vendeurs`, `nb_articles`, `montant_articles`, `total`, `devise`, `mode_paiement`, `mono_vendeur` |
 | `commande.paiement_requis` | `commande` | `motif` (`plafond` \| `prepaiement_impose` \| `restauration_sans_historique`), `total` |
 | `commande.prete_a_dispatcher` | `commande` | `nb_arrets`, `montant_a_avancer`, `transport_requis` — **consommé par DSP** |
+| `commande.paiement_confirme` | `commande` | `mode`, `total`, `devise` — prépaiement confirmé (PAY simulé), le tronc repasse `nouvelle` |
 | `commande.mise_en_attente_coursier` | `commande` | `motif`, `age_s` |
 | `commande.assignee` | `commande` | `livraison`, `coursier` |
 | `commande.terminee` | `commande` | `mode_remise`, `duree_totale_s`, `total_encaisse` |
@@ -422,6 +423,7 @@ Tous écrits **dans la même transaction** que leur transition (constitution VI)
 | `panier.scission_proposee` | `commande` (virtuel) | `cause` (`categorie_non_mixable` \| `plafond_eclatement`), `nb_commandes` — **métrique SC-006** |
 | `livraison.creee` | `livraison` | `nb_arrets`, `devis_prix_client`, `devis_part_coursier`, `degraded` |
 | `livraison.affectee` | `livraison` | `coursier`, `delai_assignation_s` |
+| `livraison.mise_en_collecte` | `livraison` | `arret` (celui qui a déclenché), `acteur` — premier arrêt passé EN ROUTE |
 | `livraison.livree` | `livraison` | `mode_remise`, `essais_code` |
 | `arret.en_route` | `arret` | `commande`, `ordre` |
 | `arret.arrive` | `arret` | `commande`, `attente_depuis_s` — **base de la prime d'attente TRF-06** |
