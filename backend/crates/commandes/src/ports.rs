@@ -202,6 +202,35 @@ pub trait RestrictionsCompte: Send + Sync {
     ) -> Result<(), ErreurCommandes>;
 }
 
+/// Adaptateur de PRODUCTION : le dépôt du crate `comptes` satisfait le port.
+///
+/// Le trait est local à `commandes`, le type est étranger — la règle d'orphelin
+/// autorise cette implémentation, et c'est elle qui referme le montage de
+/// **P3** : toute la SQL qui touche `comptes.compte` vit dans le crate
+/// `comptes` (`restriction.rs`), `commandes` n'en écrit pas une ligne.
+///
+/// `Sanction::Aucune` n'est pas une pose : la demander ne fait rien.
+#[async_trait]
+impl RestrictionsCompte for comptes::PgComptes {
+    async fn restrictions(&self, compte: Uuid) -> Result<Restrictions, ErreurCommandes> {
+        Ok(comptes::RestrictionsDeCompte::restrictions_de(self, compte).await?)
+    }
+
+    async fn poser_restriction(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        compte: Uuid,
+        sanction: Sanction,
+        motif_cle: &str,
+    ) -> Result<(), ErreurCommandes> {
+        let Some(sanction) = sanction.pour_compte() else {
+            return Ok(());
+        };
+        comptes::PgComptes::poser_restriction(self, tx, compte, sanction, motif_cle).await?;
+        Ok(())
+    }
+}
+
 /// Double de test : restrictions en mémoire, sanctions mémorisées.
 #[derive(Debug, Default)]
 pub struct RestrictionsSimulees {

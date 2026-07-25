@@ -481,6 +481,18 @@ impl Sanction {
             Sanction::Bloque => 2,
         }
     }
+
+    /// Sanction POSABLE côté `comptes`, ou `None` pour `Aucune` — « aucune
+    /// sanction » n'est pas une pose, c'est une absence. Cette conversion est
+    /// la frontière entre l'énum Postgres `commandes.sanction` (porté par
+    /// `issue_echec`) et le concept CPT-06 qui vit dans le crate `comptes`.
+    pub fn pour_compte(self) -> Option<comptes::SanctionCompte> {
+        match self {
+            Sanction::Aucune => None,
+            Sanction::PrepaiementImpose => Some(comptes::SanctionCompte::PrepaiementImpose),
+            Sanction::Bloque => Some(comptes::SanctionCompte::Bloque),
+        }
+    }
 }
 
 impl FromStr for Sanction {
@@ -495,15 +507,13 @@ impl FromStr for Sanction {
     }
 }
 
-/// Restrictions courantes d'un compte client (CPT-06, lues par le port
-/// `RestrictionsCompte`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Restrictions {
-    /// Le compte doit prépayer — le cash lui est refusé (FR-025).
-    pub prepaiement_impose: bool,
-    /// Le compte ne peut plus commander du tout (FR-026).
-    pub bloque: bool,
-}
+/// Restrictions courantes d'un compte client (CPT-06).
+///
+/// **Ré-export** du type du crate `comptes` : les drapeaux vivent dans SON
+/// schéma, la restriction est SON concept (research R12). CMD les lit par le
+/// port [`crate::ports::RestrictionsCompte`] et ne les écrit jamais lui-même.
+/// Dupliquer la structure ici créerait deux vérités pour un même fait.
+pub use comptes::Restrictions;
 
 /// Méthode de collecte (unifie scan et dégradé — cadrage §7.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

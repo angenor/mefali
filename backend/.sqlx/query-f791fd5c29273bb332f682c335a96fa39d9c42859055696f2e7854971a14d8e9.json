@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT prepaiement_impose, bloque FROM comptes.compte\n             WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prepaiement_impose",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "prepaiement_impose"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "bloque",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "bloque"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "f791fd5c29273bb332f682c335a96fa39d9c42859055696f2e7854971a14d8e9"
+}

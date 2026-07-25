@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE comptes.compte SET prepaiement_impose = true WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "587a2f60df514d3ac02d0da2d6e24a037c4ca021b41f4d8abdb99760bac72e98"
+}
