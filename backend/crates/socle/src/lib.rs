@@ -9,6 +9,7 @@
 
 pub mod config;
 pub mod db;
+pub mod empreintes;
 pub mod health;
 pub mod objets;
 pub mod outbox;
@@ -16,6 +17,7 @@ pub mod telemetry;
 
 pub use config::{AppEnv, Config, SmsMode};
 pub use db::connect_pg;
+pub use empreintes::{empreinte_code, empreinte_jeton};
 pub use health::HealthResponse;
 pub use objets::{DepotObjets, ErreurObjets, MemoireObjets, UrlPresignee};
 pub use outbox::{

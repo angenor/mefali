@@ -15,9 +15,18 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
+pub mod annulation;
+pub mod collecte;
+pub mod creation;
 pub mod depot;
+pub mod echec;
+pub mod etats;
 pub mod modele;
+pub mod panier;
 pub mod ports;
+pub mod substitution;
+pub mod suivi;
+pub mod workflow;
 
 pub use depot::PgCommandes;
 pub use modele::{

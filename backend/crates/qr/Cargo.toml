@@ -26,8 +26,9 @@ chrono.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
-# Empreintes hors-ligne (sha256 du jeton et du code salé) — pré-provisionnement R6.
-sha2.workspace = true
+# Les empreintes hors-ligne (sha256) sont remontées dans `socle::empreintes` au
+# cycle CMD 008 (`qr` dépend de `commandes` — l'inverse serait un cycle) :
+# `verification` les ré-exporte, `sha2` n'est plus tiré directement ici.
 # Plaque QR imprimable (T018, research R2) — dépendances pures, aucune I/O.
 qrcode.workspace = true
 printpdf.workspace = true

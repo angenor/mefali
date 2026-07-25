@@ -8,9 +8,6 @@
 //!   l'UUID du prestataire (le code en clair ne quitte jamais le serveur, R6).
 //! - **Politique photo** : prestataire > catégorie > seuil de montant (R4).
 
-use sha2::{Digest, Sha256};
-use uuid::Uuid;
-
 /// Rayon terrestre moyen (m) — suffisant pour une porte de présence < 100 m.
 const RAYON_TERRE_M: f64 = 6_371_000.0;
 
@@ -23,19 +20,14 @@ pub fn distance_grand_cercle_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f6
     2.0 * RAYON_TERRE_M * a.sqrt().asin()
 }
 
-/// base16(sha256(jeton)) — empreinte publique du jeton pour le match hors-ligne.
-pub fn empreinte_jeton(jeton: &str) -> String {
-    hex(&Sha256::digest(jeton.as_bytes()))
-}
-
-/// base16(sha256(prestataire_id ‖ code)) — empreinte SALÉE du code de secours.
-/// Le sel (UUID du prestataire) interdit toute table arc-en-ciel entre arrêts.
-pub fn empreinte_code(prestataire_id: Uuid, code: &str) -> String {
-    let mut h = Sha256::new();
-    h.update(prestataire_id.as_bytes());
-    h.update(code.as_bytes());
-    hex(&h.finalize())
-}
+// Les deux empreintes vivent désormais dans `socle::empreintes` : le cycle CMD
+// 008 en a besoin pour les secrets de remise, et `qr` dépend déjà de
+// `commandes` — l'inverse serait un cycle de dépendances. Une seule
+// implémentation, deux consommateurs ; les appelants d'ici ne changent pas.
+//
+// `empreinte_code` y prend un « sel » générique là où il s'appelait
+// `prestataire_id` : c'est exactement le même argument, nommé pour son rôle.
+pub use socle::empreintes::{empreinte_code, empreinte_jeton};
 
 /// Résout l'exigence de photo (R4) : la base prestataire > catégorie est forcée
 /// à `obligatoire` si le montant avancé atteint le seuil de zone.
@@ -44,15 +36,6 @@ pub fn photo_exigee(politique_base: &str, montant_avance: i64, seuil_montant: i6
         return true; // niveau 3 : forçage par montant, quel que soit le niveau au-dessus
     }
     politique_base == "obligatoire"
-}
-
-fn hex(octets: &[u8]) -> String {
-    use std::fmt::Write;
-    let mut s = String::with_capacity(octets.len() * 2);
-    for o in octets {
-        write!(s, "{o:02x}").expect("écriture en mémoire");
-    }
-    s
 }
 
 #[cfg(test)]
@@ -79,8 +62,8 @@ mod tests {
 
     #[test]
     fn empreinte_code_salee_par_prestataire() {
-        let p1 = Uuid::now_v7();
-        let p2 = Uuid::now_v7();
+        let p1 = uuid::Uuid::now_v7();
+        let p2 = uuid::Uuid::now_v7();
         // même code, prestataires différents → empreintes différentes (anti arc-en-ciel).
         assert_ne!(empreinte_code(p1, "1234"), empreinte_code(p2, "1234"));
     }
