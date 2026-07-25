@@ -49,4 +49,8 @@ pub use modele::{
     IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
     Restrictions, Sanction, StatutArret, StatutLigne, TypeArret, TypeIssueEchec,
 };
-pub use ports::{ArretsDeCollecte, ArretsFixes};
+pub use ports::{
+    AffectationSimulee, ArretsDeCollecte, ArretsFixes, CommandeADispatcher, CommandesADispatcher,
+    PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
+    RestrictionsCompte, RestrictionsSimulees,
+};
