@@ -288,3 +288,32 @@ Task: "T014 i18n : module d'erreurs API + entrées ARB"
 - **Ne jamais** éditer `clients/dart` ni `clients/ts` à la main — régénération uniquement.
 - **Ne jamais** modifier une migration déjà appliquée — `0001..0007` sont intouchables.
 - S'arrêter à n'importe quel checkpoint pour valider une story isolément.
+
+---
+
+## État d'avancement — session du 2026-07-25
+
+**30 tâches sur 68 livrées**, 17 commits, `cargo test --workspace` **399 verts**,
+`dart analyze` propre sur `mefali_core` et `mefali_client`, clients Dart/TS
+régénérés **sans diff**.
+
+| Phase | État |
+|---|---|
+| 1 — Setup (T001–T003) | ✅ complète |
+| 2 — Foundational (T004–T014) | ✅ complète — **P1 et P2 vérifiés** |
+| 3 — US1 panier (T015–T020) | ✅ complète, **UI comprise** |
+| 4 — US2 adresse (T021–T024) | API ✅ (T021–T023) · **UI T024 à faire** |
+| 5 — US3 création (T025–T032) | API ✅ (T025–T031) · **UI T032 à faire** |
+| 6 à 11 — US4 à US9 (T033–T062) | ⬜ à faire |
+| 12 — Polish (T063–T068) | ⬜ à faire |
+
+**Reprise conseillée** : T033 (transitions d'arrêt) — le socle, la table de
+transitions fermée, les doubles et le harnais `api/tests/bac_commandes/` sont
+déjà en place et suffisent à écrire US4 sans nouvelle fondation. Les deux
+tâches d'UI restantes (T024, T032) closent US2 et US3.
+
+**Quatre écarts de conception tranchés** — détaillés dans les messages de commit
+correspondants : dépendance `commandes`→`qr` impossible (empreintes remontées
+dans `socle`), `RestrictionsCompte` implémenté côté `commandes` pour `PgComptes`
+(P3 tenu), `panier.scission_proposee` seule écriture du chemin de devis (P4 vs
+SC-006), et `en_route → collecte` refusé conformément à data-model §3.3.
