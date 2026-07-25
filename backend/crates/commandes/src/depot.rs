@@ -427,15 +427,31 @@ impl PgCommandes {
         )
         .await?;
 
-        // ── Partie B : gating EN_LIVRAISON (livraison déjà lue en_collecte) ──
-        let bascule = arret.etat_livraison == "en_collecte";
+        // ── Partie B : ouverture de collecte, puis gating EN_LIVRAISON ──────
+        //
+        // Un scan peut être la PREMIÈRE action de la course : le chemin direct
+        // `à_collecter → collecte` du cycle 006 reste autorisé, et un coursier
+        // qui scanne sans avoir déclaré son trajet laisserait sinon la
+        // livraison en `assignee` — donc hors du gating, donc bloquée pour
+        // toujours. C'est la même classe de panne que P1, par l'autre bout.
+        let etat_livraison = self
+            .ouvrir_collecte_si_besoin(
+                tx,
+                arret.livraison_id,
+                arret.commande_id,
+                arret_id,
+                arret.etat_livraison.parse()?,
+                acteur,
+                horodatage_serveur,
+            )
+            .await?;
         self.gating_livraison(
             tx,
             arret.livraison_id,
             arret.commande_id,
             acteur,
             horodatage_serveur,
-            bascule,
+            etat_livraison == EtatLivraison::EnCollecte,
         )
         .await
     }

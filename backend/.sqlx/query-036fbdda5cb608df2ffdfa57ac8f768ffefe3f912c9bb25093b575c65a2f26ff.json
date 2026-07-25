@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n                 SELECT 1 FROM commandes.arret a\n                 JOIN commandes.segment s ON s.id = a.segment_id\n                 WHERE a.id = $1 AND s.livraison_id = $2\n             ) AS \"existe!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "existe!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "036fbdda5cb608df2ffdfa57ac8f768ffefe3f912c9bb25093b575c65a2f26ff"
+}

@@ -323,36 +323,67 @@ impl PgCommandes {
         )
         .await?;
 
-        // Le PREMIER départ ouvre la collecte (data-model §3.2). La condition
-        // porte sur l'état de la livraison, jamais sur « est-ce le premier
-        // arrêt ? » : une course reprise après réassignation n'a pas d'arrêt
-        // d'ordre 0 disponible, et se serait bloquée.
-        let livraison_etat = if ctx.livraison_etat == EtatLivraison::Assignee {
-            self.transition_livraison(
+        let livraison_etat = self
+            .ouvrir_collecte_si_besoin(
                 tx,
                 ctx.livraison_id,
-                EtatLivraison::EnCollecte,
-                Acteur::Coursier,
+                ctx.commande_id,
+                arret_id,
+                ctx.livraison_etat,
+                coursier,
                 horodatage_serveur,
-                Some(NouvelEvenement {
-                    type_evenement: "livraison.mise_en_collecte",
-                    entite_type: "livraison",
-                    entite_id: ctx.livraison_id,
-                    payload: json!({
-                        "commande": ctx.commande_id,
-                        "arret": arret_id,
-                        "acteur": coursier,
-                    }),
-                    survenu_le: horodatage_serveur,
-                }),
             )
-            .await?
-        } else {
-            ctx.livraison_etat
-        };
+            .await?;
 
         self.resultat_transition(tx, &ctx, StatutArret::EnRoute, livraison_etat, false)
             .await
+    }
+
+    /// Ouvre la collecte d'une course encore `assignee` (data-model §3.2).
+    ///
+    /// Appelée par **TOUTE** première action sur un arrêt — départ déclaré,
+    /// scan direct du cycle 006, ou constat d'indisponibilité. Ne la brancher
+    /// que sur le départ déclaré laisserait la course d'un coursier qui scanne
+    /// sans déclarer son trajet bloquée en `assignee` pour toujours : le gating
+    /// EN_LIVRAISON ne se déclenche que depuis `en_collecte`, et le chemin
+    /// direct `à_collecter → collecte` est explicitement autorisé.
+    ///
+    /// La condition porte sur l'ÉTAT de la livraison, jamais sur « est-ce
+    /// l'arrêt d'ordre 0 ? » : une course reprise après réassignation n'a plus
+    /// forcément son premier arrêt disponible.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn ouvrir_collecte_si_besoin(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        livraison_id: Uuid,
+        commande_id: Uuid,
+        arret_id: Uuid,
+        etat_courant: EtatLivraison,
+        coursier: Uuid,
+        horodatage_serveur: DateTime<Utc>,
+    ) -> Result<EtatLivraison, ErreurCommandes> {
+        if etat_courant != EtatLivraison::Assignee {
+            return Ok(etat_courant);
+        }
+        self.transition_livraison(
+            tx,
+            livraison_id,
+            EtatLivraison::EnCollecte,
+            Acteur::Coursier,
+            horodatage_serveur,
+            Some(NouvelEvenement {
+                type_evenement: "livraison.mise_en_collecte",
+                entite_type: "livraison",
+                entite_id: livraison_id,
+                payload: json!({
+                    "commande": commande_id,
+                    "arret": arret_id,
+                    "acteur": coursier,
+                }),
+                survenu_le: horodatage_serveur,
+            }),
+        )
+        .await
     }
 
     /// `en_route → arrivé` — arrivée géolocalisée. `arrive_le` fonde la **prime
@@ -504,9 +535,20 @@ impl PgCommandes {
         )
         .await?;
 
-        // Un arrêt indisponible peut être le DERNIER à résoudre : le gating doit
-        // tourner ici aussi, sinon une course dont le dernier étal a fermé
-        // n'atteindrait jamais la remise.
+        // Un constat d'indisponibilité peut être la PREMIÈRE action de la
+        // course (étal fermé avant même d'y aller) comme la DERNIÈRE : il faut
+        // donc et l'ouverture de collecte, et le gating.
+        let livraison_etat = self
+            .ouvrir_collecte_si_besoin(
+                tx,
+                ctx.livraison_id,
+                ctx.commande_id,
+                arret_id,
+                ctx.livraison_etat,
+                coursier,
+                horodatage_serveur,
+            )
+            .await?;
         let progression = self
             .gating_livraison(
                 tx,
@@ -514,7 +556,7 @@ impl PgCommandes {
                 ctx.commande_id,
                 coursier,
                 horodatage_serveur,
-                ctx.livraison_etat == EtatLivraison::EnCollecte,
+                livraison_etat == EtatLivraison::EnCollecte,
             )
             .await?;
 
@@ -526,7 +568,7 @@ impl PgCommandes {
             livraison_etat: if progression.en_livraison {
                 EtatLivraison::EnLivraison
             } else {
-                ctx.livraison_etat
+                livraison_etat
             },
             progression,
             rejeu: false,

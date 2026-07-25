@@ -89,6 +89,19 @@ impl Vendeur {
     }
 }
 
+/// Une course prête à être déroulée : la commande, sa livraison affectée, ses
+/// arrêts de collecte dans l'ordre optimisé, et son arrêt de remise.
+pub struct Course {
+    /// Tronc commande.
+    pub commande: Uuid,
+    /// Livraison assignée au coursier du bac.
+    pub livraison: Uuid,
+    /// Arrêts de COLLECTE, dans l'ordre de passage.
+    pub collectes: Vec<Uuid>,
+    /// Arrêt de remise (dernier du segment).
+    pub remise: Uuid,
+}
+
 pub struct Bac {
     pub pool: PgPool,
     pub comptes: PgComptes,
@@ -446,6 +459,7 @@ impl Bac {
     /// Configure une `App` Actix avec les MÊMES handlers que la production.
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
         use api::commandes_http as cmd;
+        use api::course_http as crs;
         let pool = self.pool.clone();
         let comptes = self.comptes.clone();
         let commandes = self.commandes.clone();
@@ -454,8 +468,205 @@ impl Bac {
                 .app_data(web::Data::new(comptes))
                 .app_data(web::Data::new(commandes))
                 .service(cmd::devis_panier)
-                .service(cmd::creer_commande);
+                .service(cmd::creer_commande)
+                .service(crs::arret_en_route)
+                .service(crs::arret_arrive)
+                .service(crs::arret_indisponible);
         }
+    }
+
+    // ── Aides de PARCOURS (US4 et suivantes) ──────────────────────────────
+
+    /// Corps de création nominal : repère écrit assez long, cash, lieu fixe.
+    pub fn demande_creation(&self, categorie_slug: &str, lignes: Vec<Value>) -> Value {
+        json!({
+            "zone_id": self.ville,
+            "categorie_slug": categorie_slug,
+            "transport_slug": "moto",
+            "lieu": { "lat": 5.9050, "lon": -4.8300 },
+            "repere_texte": "Près de la pharmacie Sainte-Marie",
+            "lignes": lignes,
+            "mode_paiement": "cash",
+        })
+    }
+
+    /// Crée une commande par l'API (mêmes gardes qu'en production) et rend son
+    /// identifiant. Panique si la création échoue : c'est une PRÉCONDITION du
+    /// test, pas son objet.
+    pub async fn creer_commande_api(&self, categorie_slug: &str, lignes: Vec<Value>) -> Uuid {
+        let app = actix_web::test::init_service(
+            actix_web::App::new().configure(self.configurer()),
+        )
+        .await;
+        let req = actix_web::test::TestRequest::post()
+            .uri("/commandes")
+            .insert_header(("authorization", format!("Bearer {}", self.jeton_client)))
+            .insert_header(("idempotency-key", Uuid::now_v7().to_string()))
+            .set_json(self.demande_creation(categorie_slug, lignes))
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        assert_eq!(resp.status().as_u16(), 201, "création de commande du bac");
+        let corps: Value = actix_web::test::read_body_json(resp).await;
+        corps["id"].as_str().unwrap().parse().unwrap()
+    }
+
+    /// Une commande de 3 vendeurs `marche` (3 collectes + 1 remise), affectée au
+    /// coursier du bac. Rend `(commande, livraison, [arrêts de collecte
+    /// ordonnés], arrêt de remise)` — la course type d'US4.
+    pub async fn course_prete(&self) -> Course {
+        let lignes: Vec<Value> = self.vendeurs.iter().map(|v| v.ligne(2)).collect();
+        let commande = self.creer_commande_api("marche", lignes).await;
+        let livraison = self
+            .commandes
+            .assigner_coursier(commande, self.coursier, chrono::Utc::now())
+            .await
+            .expect("affectation simulée (DSP non construit)");
+        let (collectes, remise) = self.arrets_de(livraison).await;
+        Course {
+            commande,
+            livraison,
+            collectes,
+            remise,
+        }
+    }
+
+    /// Arrêts d'une livraison : collectes dans l'ordre, puis la remise.
+    pub async fn arrets_de(&self, livraison: Uuid) -> (Vec<Uuid>, Uuid) {
+        let lignes: Vec<(Uuid, String)> = sqlx::query_as(
+            "SELECT a.id, a.type_arret::text FROM commandes.arret a
+             JOIN commandes.segment s ON s.id = a.segment_id
+             WHERE s.livraison_id = $1 ORDER BY a.ordre",
+        )
+        .bind(livraison)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap();
+        let collectes = lignes
+            .iter()
+            .filter(|(_, t)| t == "collecte")
+            .map(|(id, _)| *id)
+            .collect();
+        let remise = lignes
+            .iter()
+            .find(|(_, t)| t == "remise")
+            .map(|(id, _)| *id)
+            .expect("tout segment porte son arrêt de remise");
+        (collectes, remise)
+    }
+
+    /// Joue une action déclarative du coursier sur un arrêt.
+    /// `action` ∈ { `en-route`, `arrive`, `indisponible` }.
+    pub async fn action_coursier(
+        &self,
+        livraison: Uuid,
+        arret: Uuid,
+        action: &str,
+        uuid_client: Uuid,
+    ) -> (u16, Value) {
+        self.action_coursier_par(&self.jeton_coursier, livraison, arret, action, uuid_client)
+            .await
+    }
+
+    /// Variante avec un jeton explicite — sert les refus de propriété.
+    pub async fn action_coursier_par(
+        &self,
+        jeton: &str,
+        livraison: Uuid,
+        arret: Uuid,
+        action: &str,
+        uuid_client: Uuid,
+    ) -> (u16, Value) {
+        let app = actix_web::test::init_service(
+            actix_web::App::new().configure(self.configurer()),
+        )
+        .await;
+        let req = actix_web::test::TestRequest::post()
+            .uri(&format!("/courses/{livraison}/arrets/{arret}/{action}"))
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .set_json(json!({
+                "uuid_client": uuid_client,
+                "horodatage_local": chrono::Utc::now(),
+            }))
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        (statut, actix_web::test::read_body_json(resp).await)
+    }
+
+    /// Collecte un arrêt par le domaine (le scan lui-même vit dans `qr_http`,
+    /// cycle 006, et exige plaque + multipart : hors sujet ici).
+    pub async fn collecter(&self, arret: Uuid) -> commandes::ProgressionCollecte {
+        let mut tx = self.pool.begin().await.unwrap();
+        let p = self
+            .commandes
+            .marquer_arret_collecte(
+                &mut tx,
+                arret,
+                Uuid::now_v7(),
+                commandes::ModeCollecte::ScanQr,
+                None,
+                10,
+                chrono::Utc::now(),
+                self.coursier,
+            )
+            .await
+            .expect("collecte d'un arrêt du bac");
+        tx.commit().await.unwrap();
+        p
+    }
+
+    /// Clôt la course (remise déjà prouvée — la preuve est l'objet de T058).
+    pub async fn cloturer(&self, course: &Course, mode_remise: &str) {
+        let mut tx = self.pool.begin().await.unwrap();
+        self.commandes
+            .cloturer_livraison_prouvee(
+                &mut tx,
+                course.livraison,
+                course.commande,
+                mode_remise,
+                0,
+                self.coursier,
+                chrono::Utc::now(),
+            )
+            .await
+            .expect("clôture de la course");
+        tx.commit().await.unwrap();
+    }
+
+    /// État courant du tronc, de la livraison et d'un arrêt.
+    pub async fn etat_commande(&self, commande: Uuid) -> String {
+        sqlx::query_scalar("SELECT etat::text FROM commandes.commande WHERE id = $1")
+            .bind(commande)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
+    }
+
+    /// État courant de la livraison.
+    pub async fn etat_livraison(&self, livraison: Uuid) -> String {
+        sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
+            .bind(livraison)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
+    }
+
+    /// Statut courant d'un arrêt.
+    pub async fn statut_arret(&self, arret: Uuid) -> String {
+        sqlx::query_scalar("SELECT statut::text FROM commandes.arret WHERE id = $1")
+            .bind(arret)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
+    }
+
+    /// Nombre d'événements outbox d'un type donné.
+    pub async fn nb_evenements(&self, type_evenement: &str) -> i64 {
+        sqlx::query_scalar("SELECT count(*) FROM outbox.evenement WHERE type_evenement = $1")
+            .bind(type_evenement)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
     }
 
     pub async fn compter(&self, sql: &'static str) -> i64 {
