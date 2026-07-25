@@ -833,6 +833,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/paniers/devis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Devis d'un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
+         * @description Regroupe par vendeur, chiffre les frais via le moteur tarifaire, et renvoie
+         *     les deux déclencheurs de proposition de scission en UNE seule surface.
+         *     Aucune ligne n'est écrite, aucune commande n'est créée : rien n'est engagé
+         *     tant que le client n'a pas confirmé (FR-010, research R8).
+         */
+        post: operations["devis_panier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/prestataires/plaque/{jeton}": {
         parameters: {
             query?: never;
@@ -1321,6 +1344,18 @@ export interface components {
              */
             photo?: string | null;
         };
+        /** @description Une commande telle qu'elle sortirait de la scission. */
+        CommandeProposee: {
+            /** @description Articles qui la composeraient. */
+            articles: string[];
+            /** @description Clé i18n du libellé. */
+            libelle_cle: string;
+            /**
+             * Format: int64
+             * @description Total des ARTICLES de cette commande (unités mineures).
+             */
+            total_articles_unites: number;
+        };
         /** @description Détail des composantes (unités mineures) — FR-020. */
         Composantes: {
             /**
@@ -1361,6 +1396,49 @@ export interface components {
             /**
              * Format: int64
              * @description Suppléments activés (pluie…).
+             */
+            supplements: number;
+        };
+        /** @description Détail des composantes du devis (affichage du récapitulatif). */
+        ComposantesDevis: {
+            /**
+             * Format: int64
+             * @description Reliquat d'arrondi (abonde la part coursier).
+             */
+            arrondi: number;
+            /**
+             * Format: int64
+             * @description Prix client de base.
+             */
+            base: number;
+            /**
+             * Format: int64
+             * @description Effort — suppléments d'arrêt.
+             */
+            effort_arrets: number;
+            /**
+             * Format: int64
+             * @description Effort — prime d'attente.
+             */
+            effort_attente: number;
+            /**
+             * Format: int64
+             * @description Effort — paliers d'articles.
+             */
+            effort_paliers: number;
+            /**
+             * Format: int64
+             * @description Composante kilométrique.
+             */
+            km: number;
+            /**
+             * Format: int64
+             * @description Retenue vendeur (VND-08).
+             */
+            retenue_vendeur: number;
+            /**
+             * Format: int64
+             * @description Suppléments (pluie, plage horaire…).
              */
             supplements: number;
         };
@@ -1542,6 +1620,22 @@ export interface components {
              */
             uuid_client: string;
         };
+        /** @description Demande de devis de panier — **aucun effet de bord** (P4). */
+        DemandeDevisPanier: {
+            /** @description Catégorie de service (`marche`, `restauration`…). */
+            categorie_slug: string;
+            /** @description Lieu de prestation — destination de la course. */
+            lieu: components["schemas"]["Lieu"];
+            /** @description Lignes du panier, dans l'ordre de composition. */
+            lignes: components["schemas"]["LignePanier"][];
+            /** @description Véhicule demandé (`moto`, `velo`…). */
+            transport_slug: string;
+            /**
+             * Format: uuid
+             * @description Zone de la commande (résout mixage, plafonds, devise).
+             */
+            zone_id: string;
+        };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
             /** @description Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4). */
@@ -1647,6 +1741,64 @@ export interface components {
             prix_client: number;
             /** @description Le détour dépasse le plafond de zone : CMD proposera de scinder. */
             proposer_scission: boolean;
+        };
+        /** @description Devis de livraison figé (cycle 007). */
+        DevisLivraison: {
+            /** @description Détail des composantes. */
+            composantes: components["schemas"]["ComposantesDevis"];
+            /** @description Vrai si la distance vient du repli vol d'oiseau (constitution IV). */
+            degraded: boolean;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Distance routière totale (m).
+             */
+            distance_m: number;
+            /**
+             * Format: int64
+             * @description Durée estimée (s).
+             */
+            eta_s: number;
+            /**
+             * Format: int64
+             * @description Marge Mefali.
+             */
+            marge_unites: number;
+            /** @description Ordre de passage retenu pour les retraits. */
+            ordre_arrets: number[];
+            /**
+             * Format: int64
+             * @description Part reversée au coursier.
+             */
+            part_coursier_unites: number;
+            /**
+             * Format: int64
+             * @description Prix payé par le client (unités mineures).
+             */
+            prix_client_unites: number;
+        };
+        /** @description Réponse du devis de panier. */
+        DevisPanier: {
+            /** @description Devis de livraison. */
+            devis: components["schemas"]["DevisLivraison"];
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Regroupement par vendeur. */
+            groupes: components["schemas"]["GroupeVendeur"][];
+            /**
+             * Format: int64
+             * @description Montant des ARTICLES seuls (unités mineures).
+             */
+            montant_articles_unites: number;
+            /** @description Décision d'encaissement. */
+            paiement: components["schemas"]["PaiementPanier"];
+            scission?: null | components["schemas"]["ScissionProposee"];
+            /**
+             * Format: int64
+             * @description Total à payer = articles + prix client du devis.
+             */
+            total_unites: number;
         };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
@@ -1859,6 +2011,28 @@ export interface components {
             brouillon?: null | components["schemas"]["Grille"];
             en_vigueur?: null | components["schemas"]["Grille"];
         };
+        /** @description Les lignes d'un vendeur, regroupées (maquette C3-3a). */
+        GroupeVendeur: {
+            /** @description Lignes du vendeur. */
+            lignes: components["schemas"]["LigneDevis"][];
+            /**
+             * Format: int32
+             * @description Nombre d'articles du groupe.
+             */
+            nb_articles: number;
+            /** @description Nom affiché sur la carte vendeur. */
+            nom: string;
+            /**
+             * Format: uuid
+             * @description Vendeur.
+             */
+            prestataire_id: string;
+            /**
+             * Format: int64
+             * @description Sous-total du vendeur (unités mineures).
+             */
+            sous_total_unites: number;
+        };
         /**
          * @description Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde
          *     mesure la disponibilité du processus (non authentifiée, constitution VIII).
@@ -1915,6 +2089,69 @@ export interface components {
             acces: string;
             /** @description Opaque 256 bits — tourne à chaque usage. */
             rafraichissement: string;
+        };
+        /** @description Position d'un lieu (pin GPS). */
+        Lieu: {
+            /**
+             * Format: double
+             * @description Latitude.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            lon: number;
+        };
+        /** @description Une ligne résolue contre le catalogue. */
+        LigneDevis: {
+            /**
+             * Format: uuid
+             * @description Article.
+             */
+            article_id: string;
+            /** @description Nom de l'article. */
+            nom: string;
+            /** @description Préférence de substitution retenue. */
+            preference: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire courant (unités mineures).
+             */
+            prix_unites: number;
+            /**
+             * Format: int32
+             * @description Quantité.
+             */
+            quantite: number;
+            /**
+             * Format: int64
+             * @description Sous-total de la ligne (unités mineures).
+             */
+            sous_total_unites: number;
+        };
+        /** @description Une ligne de panier soumise. */
+        LignePanier: {
+            /**
+             * Format: uuid
+             * @description Article demandé.
+             */
+            article_id: string;
+            /**
+             * @description Que faire si l'article manque : `remplacer` | `appeler` | `retirer`.
+             *     Absent = `appeler`, le défaut produit (CMD-01).
+             */
+            preference?: string | null;
+            /**
+             * Format: uuid
+             * @description Vendeur chez qui l'article est pris.
+             */
+            prestataire_id: string;
+            /**
+             * Format: int32
+             * @description Quantité (> 0).
+             */
+            quantite: number;
         };
         /**
          * @description Mode de collecte (contrat).
@@ -2018,6 +2255,21 @@ export interface components {
             au_dela?: number | null;
             /** @description Le vendeur prend la livraison en charge quel que soit le panier. */
             toujours: boolean;
+        };
+        /** @description Décision d'encaissement (maquette C3-3b). */
+        PaiementPanier: {
+            /** @description Le paiement en espèces est possible. */
+            cash_autorise: boolean;
+            /**
+             * @description Clé i18n de la RAISON du refus (`null` si autorisé) — le client voit
+             *     pourquoi le cash est grisé, jamais un bouton mort.
+             */
+            motif_cle?: string | null;
+            /**
+             * Format: int64
+             * @description Plafond appliqué (unités mineures).
+             */
+            plafond_unites: number;
         };
         /** @description Photo de fiche, présignée pour l'admin. */
         PhotoAdminDto: {
@@ -2387,6 +2639,15 @@ export interface components {
          *     deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
          */
         ResultatVerification: components["schemas"]["SessionOuverte"] | components["schemas"]["ConsentementRequis"];
+        /** @description Proposition de scission — une seule surface pour ses deux causes (R9). */
+        ScissionProposee: {
+            /** @description `categorie_non_mixable` | `plafond_eclatement`. */
+            cause: string;
+            /** @description Prévisualisation CHIFFRÉE des commandes résultantes. */
+            commandes_proposees: components["schemas"]["CommandeProposee"][];
+            /** @description Clé i18n du message affiché. */
+            message_cle: string;
+        };
         /** @description Session/appareil du compte (contrat `SessionAppareil`). */
         SessionAppareil: {
             /** @description Nom déclaré par l'app. */
@@ -5303,6 +5564,66 @@ export interface operations {
             };
             /** @description Session inconnue ou n'appartenant pas au compte. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    devis_panier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeDevisPanier"];
+            };
+        };
+        responses: {
+            /** @description Panier chiffré : groupes, sous-totaux, devis détaillé, drapeau de paiement et bloc de scission. AUCUNE écriture, aucune commande créée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevisPanier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Vendeur fermé ou article indisponible. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Panier vide, quantité nulle, catégorie inactive. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

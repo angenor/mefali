@@ -356,6 +356,117 @@ impl PgCommandes {
         })
     }
 
+    /// Construit la **géométrie** de la course : un point de retrait par
+    /// vendeur du panier (position de son SITE), et le lieu de prestation
+    /// fourni par le client comme destination.
+    ///
+    /// Partagée par le devis de panier et par la création (T026) : le devis
+    /// annoncé et le devis figé portent ainsi sur la MÊME géométrie — sans
+    /// quoi le client paierait autre chose que ce qu'on lui a montré.
+    pub(crate) fn geometrie(
+        panier: &PanierValide,
+        lieu: (f64, f64),
+    ) -> (Vec<tarification::Point>, tarification::Point) {
+        let retraits = panier
+            .groupes
+            .iter()
+            .map(|g| tarification::Point {
+                lat: g.site_lat,
+                lon: g.site_lon,
+            })
+            .collect();
+        let client = tarification::Point {
+            lat: lieu.0,
+            lon: lieu.1,
+        };
+        (retraits, client)
+    }
+
+    /// Évalue un panier : ordre des arrêts + devis figé, sur la géométrie
+    /// ci-dessus. **Aucune écriture, aucun événement** (P4).
+    ///
+    /// `mono_vendeur` est renseigné ici : c'est la condition NÉCESSAIRE qui
+    /// active l'offre de livraison vendeur VND-08 côté tarification (FR-014).
+    /// L'oublier ferait payer au client une livraison que le vendeur offrait.
+    pub async fn evaluer_panier(
+        &self,
+        panier: &PanierValide,
+        lieu: (f64, f64),
+        transport_slug: &str,
+        instant: chrono::DateTime<chrono::Utc>,
+    ) -> Result<tarification::Devis, ErreurCommandes> {
+        let (retraits, client) = Self::geometrie(panier, lieu);
+        let itineraire = self
+            .optimisation
+            .optimiser(panier.zone_id, &retraits, client)
+            .await?;
+        // Les retraits partent dans l'ORDRE OPTIMISÉ : l'évaluation tarifie le
+        // trajet réellement parcouru, pas l'ordre de composition du panier.
+        let retraits_ordonnes: Vec<tarification::Point> =
+            itineraire.ordre.iter().map(|&i| retraits[i]).collect();
+
+        let devis = self
+            .evaluation
+            .evaluer(
+                tarification::DemandeDevis {
+                    zone_id: panier.zone_id,
+                    transport_slug: transport_slug.to_owned(),
+                    retraits: retraits_ordonnes,
+                    client,
+                    nb_articles: panier.nb_articles(),
+                    instant,
+                    categorie_slug: Some(panier.categorie_slug.clone()),
+                    attentes: Vec::new(),
+                    montant_panier: panier.montant_articles_unites(),
+                    // VND-08 : l'offre du vendeur est lue par TRF ; CMD n'en
+                    // décide pas, il fournit la condition nécessaire.
+                    offre_livraison_vendeur: None,
+                    mono_vendeur: panier.mono_vendeur(),
+                },
+                tarification::SourceGrille::EnVigueur,
+            )
+            .await?;
+        Ok(devis)
+    }
+
+    /// Journalise `panier.scission_proposee` — **métrique SC-006**.
+    ///
+    /// ⚠ Seule écriture que le chemin du devis puisse produire, et uniquement
+    /// quand une proposition est réellement FORMULÉE : le devis nominal reste
+    /// strictement muet (P4). Sans cet événement, « combien de paniers mixtes
+    /// se forment ? » ne serait mesurable nulle part — or c'est précisément ce
+    /// que SC-006 demande de suivre.
+    ///
+    /// `entite_id` = le CLIENT : aucun panier n'existe côté serveur, c'est la
+    /// seule entité durable en jeu (research R8).
+    pub async fn journaliser_scission_proposee(
+        &self,
+        client_id: Uuid,
+        panier: &PanierValide,
+        cause: CauseScission,
+        nb_commandes: usize,
+    ) -> Result<(), ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        socle::ecrire_evenement(
+            &mut tx,
+            socle::NouvelEvenement {
+                type_evenement: "panier.scission_proposee",
+                entite_type: "commande",
+                entite_id: client_id,
+                payload: serde_json::json!({
+                    "zone": panier.zone_id,
+                    "categorie": panier.categorie_slug,
+                    "cause": cause.comme_str(),
+                    "nb_commandes": nb_commandes,
+                }),
+                survenu_le: chrono::Utc::now(),
+            },
+        )
+        .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Identifiant de la catégorie de service par son slug.
     pub(crate) async fn categorie_id(&self, slug: &str) -> Result<Uuid, ErreurCommandes> {
         sqlx::query_scalar!("SELECT id FROM zones.categorie WHERE slug = $1", slug)

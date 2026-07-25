@@ -8,6 +8,7 @@ pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
 pub mod auth_http;
+pub mod commandes_http;
 pub mod comptes_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
@@ -102,6 +103,7 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_tarification_http::supprimer_regle)
         .service(admin_tarification_http::simuler)
         .service(admin_tarification_http::publier)
+        .service(commandes_http::devis_panier)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -473,6 +475,7 @@ pub async fn run() -> std::io::Result<()> {
             .service(admin_tarification_http::supprimer_regle)
             .service(admin_tarification_http::simuler)
             .service(admin_tarification_http::publier)
+            .service(commandes_http::devis_panier)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

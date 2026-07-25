@@ -3765,6 +3765,83 @@
         ]
       }
     },
+    "/paniers/devis": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "Devis d'un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).",
+        "description": "Regroupe par vendeur, chiffre les frais via le moteur tarifaire, et renvoie\nles deux déclencheurs de proposition de scission en UNE seule surface.\nAucune ligne n'est écrite, aucune commande n'est créée : rien n'est engagé\ntant que le client n'a pas confirmé (FR-010, research R8).",
+        "operationId": "devis_panier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDevisPanier"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Panier chiffré : groupes, sous-totaux, devis détaillé, drapeau de paiement et bloc de scission. AUCUNE écriture, aucune commande créée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevisPanier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Vendeur fermé ou article indisponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Panier vide, quantité nulle, catégorie inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/prestataires/plaque/{jeton}": {
       "get": {
         "tags": [
@@ -5214,6 +5291,34 @@
           }
         }
       },
+      "CommandeProposee": {
+        "type": "object",
+        "description": "Une commande telle qu'elle sortirait de la scission.",
+        "required": [
+          "libelle_cle",
+          "total_articles_unites",
+          "articles"
+        ],
+        "properties": {
+          "articles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Articles qui la composeraient."
+          },
+          "libelle_cle": {
+            "type": "string",
+            "description": "Clé i18n du libellé."
+          },
+          "total_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total des ARTICLES de cette commande (unités mineures)."
+          }
+        }
+      },
       "Composantes": {
         "type": "object",
         "description": "Détail des composantes (unités mineures) — FR-020.",
@@ -5267,6 +5372,62 @@
             "type": "integer",
             "format": "int64",
             "description": "Suppléments activés (pluie…)."
+          }
+        }
+      },
+      "ComposantesDevis": {
+        "type": "object",
+        "description": "Détail des composantes du devis (affichage du récapitulatif).",
+        "required": [
+          "base",
+          "km",
+          "supplements",
+          "effort_paliers",
+          "effort_attente",
+          "effort_arrets",
+          "arrondi",
+          "retenue_vendeur"
+        ],
+        "properties": {
+          "arrondi": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Reliquat d'arrondi (abonde la part coursier)."
+          },
+          "base": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix client de base."
+          },
+          "effort_arrets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — suppléments d'arrêt."
+          },
+          "effort_attente": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — prime d'attente."
+          },
+          "effort_paliers": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — paliers d'articles."
+          },
+          "km": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Composante kilométrique."
+          },
+          "retenue_vendeur": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Retenue vendeur (VND-08)."
+          },
+          "supplements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Suppléments (pluie, plage horaire…)."
           }
         }
       },
@@ -5637,6 +5798,43 @@
           }
         }
       },
+      "DemandeDevisPanier": {
+        "type": "object",
+        "description": "Demande de devis de panier — **aucun effet de bord** (P4).",
+        "required": [
+          "zone_id",
+          "categorie_slug",
+          "transport_slug",
+          "lieu",
+          "lignes"
+        ],
+        "properties": {
+          "categorie_slug": {
+            "type": "string",
+            "description": "Catégorie de service (`marche`, `restauration`…)."
+          },
+          "lieu": {
+            "$ref": "#/components/schemas/Lieu",
+            "description": "Lieu de prestation — destination de la course."
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LignePanier"
+            },
+            "description": "Lignes du panier, dans l'ordre de composition."
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule demandé (`moto`, `velo`…)."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande (résout mixage, plafonds, devise)."
+          }
+        }
+      },
       "DemandeOtp": {
         "type": "object",
         "description": "Corps de `POST /auth/otp/demander`.",
@@ -5837,6 +6035,122 @@
           "proposer_scission": {
             "type": "boolean",
             "description": "Le détour dépasse le plafond de zone : CMD proposera de scinder."
+          }
+        }
+      },
+      "DevisLivraison": {
+        "type": "object",
+        "description": "Devis de livraison figé (cycle 007).",
+        "required": [
+          "prix_client_unites",
+          "part_coursier_unites",
+          "marge_unites",
+          "devise",
+          "distance_m",
+          "eta_s",
+          "degraded",
+          "composantes",
+          "ordre_arrets"
+        ],
+        "properties": {
+          "composantes": {
+            "$ref": "#/components/schemas/ComposantesDevis",
+            "description": "Détail des composantes."
+          },
+          "degraded": {
+            "type": "boolean",
+            "description": "Vrai si la distance vient du repli vol d'oiseau (constitution IV)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distance routière totale (m)."
+          },
+          "eta_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée estimée (s)."
+          },
+          "marge_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Marge Mefali."
+          },
+          "ordre_arrets": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Ordre de passage retenu pour les retraits."
+          },
+          "part_coursier_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part reversée au coursier."
+          },
+          "prix_client_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix payé par le client (unités mineures)."
+          }
+        }
+      },
+      "DevisPanier": {
+        "type": "object",
+        "description": "Réponse du devis de panier.",
+        "required": [
+          "groupes",
+          "montant_articles_unites",
+          "devis",
+          "total_unites",
+          "devise",
+          "paiement"
+        ],
+        "properties": {
+          "devis": {
+            "$ref": "#/components/schemas/DevisLivraison",
+            "description": "Devis de livraison."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "groupes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupeVendeur"
+            },
+            "description": "Regroupement par vendeur."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des ARTICLES seuls (unités mineures)."
+          },
+          "paiement": {
+            "$ref": "#/components/schemas/PaiementPanier",
+            "description": "Décision d'encaissement."
+          },
+          "scission": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScissionProposee",
+                "description": "Proposition de scission, ou `null`."
+              }
+            ]
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer = articles + prix client du devis."
           }
         }
       },
@@ -6267,6 +6581,45 @@
           }
         }
       },
+      "GroupeVendeur": {
+        "type": "object",
+        "description": "Les lignes d'un vendeur, regroupées (maquette C3-3a).",
+        "required": [
+          "prestataire_id",
+          "nom",
+          "nb_articles",
+          "sous_total_unites",
+          "lignes"
+        ],
+        "properties": {
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneDevis"
+            },
+            "description": "Lignes du vendeur."
+          },
+          "nb_articles": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre d'articles du groupe."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom affiché sur la carte vendeur."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Vendeur."
+          },
+          "sous_total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sous-total du vendeur (unités mineures)."
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "description": "Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde\nmesure la disponibilité du processus (non authentifiée, constitution VIII).",
@@ -6379,6 +6732,101 @@
           "rafraichissement": {
             "type": "string",
             "description": "Opaque 256 bits — tourne à chaque usage."
+          }
+        }
+      },
+      "Lieu": {
+        "type": "object",
+        "description": "Position d'un lieu (pin GPS).",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
+          }
+        }
+      },
+      "LigneDevis": {
+        "type": "object",
+        "description": "Une ligne résolue contre le catalogue.",
+        "required": [
+          "article_id",
+          "nom",
+          "quantite",
+          "prix_unites",
+          "sous_total_unites",
+          "preference"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Article."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom de l'article."
+          },
+          "preference": {
+            "type": "string",
+            "description": "Préférence de substitution retenue."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix unitaire courant (unités mineures)."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité."
+          },
+          "sous_total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sous-total de la ligne (unités mineures)."
+          }
+        }
+      },
+      "LignePanier": {
+        "type": "object",
+        "description": "Une ligne de panier soumise.",
+        "required": [
+          "prestataire_id",
+          "article_id",
+          "quantite"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Article demandé."
+          },
+          "preference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Que faire si l'article manque : `remplacer` | `appeler` | `retirer`.\nAbsent = `appeler`, le défaut produit (CMD-01)."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Vendeur chez qui l'article est pris."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité (> 0)."
           }
         }
       },
@@ -6565,6 +7013,32 @@
           "toujours": {
             "type": "boolean",
             "description": "Le vendeur prend la livraison en charge quel que soit le panier."
+          }
+        }
+      },
+      "PaiementPanier": {
+        "type": "object",
+        "description": "Décision d'encaissement (maquette C3-3b).",
+        "required": [
+          "cash_autorise",
+          "plafond_unites"
+        ],
+        "properties": {
+          "cash_autorise": {
+            "type": "boolean",
+            "description": "Le paiement en espèces est possible."
+          },
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n de la RAISON du refus (`null` si autorisé) — le client voit\npourquoi le cash est grisé, jamais un bouton mort."
+          },
+          "plafond_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Plafond appliqué (unités mineures)."
           }
         }
       },
@@ -7240,6 +7714,32 @@
           }
         ],
         "description": "Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.\n\n`untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du\ncâble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose\ndeux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes."
+      },
+      "ScissionProposee": {
+        "type": "object",
+        "description": "Proposition de scission — une seule surface pour ses deux causes (R9).",
+        "required": [
+          "cause",
+          "message_cle",
+          "commandes_proposees"
+        ],
+        "properties": {
+          "cause": {
+            "type": "string",
+            "description": "`categorie_non_mixable` | `plafond_eclatement`."
+          },
+          "commandes_proposees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandeProposee"
+            },
+            "description": "Prévisualisation CHIFFRÉE des commandes résultantes."
+          },
+          "message_cle": {
+            "type": "string",
+            "description": "Clé i18n du message affiché."
+          }
+        }
       },
       "SessionAppareil": {
         "type": "object",

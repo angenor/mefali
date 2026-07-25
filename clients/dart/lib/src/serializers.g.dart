@@ -21,7 +21,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(BoutiqueVendeur.serializer)
       ..add(CategorieDto.serializer)
       ..add(CharteAdminDto.serializer)
+      ..add(CommandeProposee.serializer)
       ..add(Composantes.serializer)
+      ..add(ComposantesDevis.serializer)
       ..add(CompteMoi.serializer)
       ..add(ConfigZone.serializer)
       ..add(ConsentementRequis.serializer)
@@ -33,10 +35,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CreerPrestataireDto.serializer)
       ..add(DecisionRole.serializer)
       ..add(DemandeCollecte.serializer)
+      ..add(DemandeDevisPanier.serializer)
       ..add(DemandeOtp.serializer)
       ..add(DemandeRafraichissement.serializer)
       ..add(DemandeSimulation.serializer)
       ..add(Devis.serializer)
+      ..add(DevisLivraison.serializer)
+      ..add(DevisPanier.serializer)
       ..add(DeviseDto.serializer)
       ..add(DiscriminantConsentement.serializer)
       ..add(DiscriminantSession.serializer)
@@ -51,16 +56,21 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ForcageDto.serializer)
       ..add(Grille.serializer)
       ..add(GrillesZone.serializer)
+      ..add(GroupeVendeur.serializer)
       ..add(HealthResponse.serializer)
       ..add(HorairesSemaineDto.serializer)
       ..add(Inscription.serializer)
       ..add(ItineraireSimule.serializer)
       ..add(JetonsDto.serializer)
+      ..add(Lieu.serializer)
+      ..add(LigneDevis.serializer)
+      ..add(LignePanier.serializer)
       ..add(ModeCollecte.serializer)
       ..add(ModifierAdresse.serializer)
       ..add(ModifierArticleDto.serializer)
       ..add(ModifierPrestataireDto.serializer)
       ..add(OffreLivraisonVendeur.serializer)
+      ..add(PaiementPanier.serializer)
       ..add(PhotoAdminDto.serializer)
       ..add(PlageDto.serializer)
       ..add(PlaqueUrl.serializer)
@@ -78,6 +88,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ResultatCollecte.serializer)
       ..add(ResultatSimulation.serializer)
       ..add(ResultatVerification.serializer)
+      ..add(ScissionProposee.serializer)
       ..add(SessionAppareil.serializer)
       ..add(SessionOuverte.serializer)
       ..add(SignalementRecuDto.serializer)
@@ -136,8 +147,20 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(RattachementDto)]),
           () => ListBuilder<RattachementDto>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommandeProposee)]),
+          () => ListBuilder<CommandeProposee>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
           () => ListBuilder<EtatRoleDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupeVendeur)]),
+          () => ListBuilder<GroupeVendeur>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneDevis)]),
+          () => ListBuilder<LigneDevis>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LignePanier)]),
+          () => ListBuilder<LignePanier>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PlageDto)]),
           () => ListBuilder<PlageDto>())
@@ -145,11 +168,17 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(Regle)]),
           () => ListBuilder<Regle>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(VehiculeDeclare)]),
           () => ListBuilder<VehiculeDeclare>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(VehiculeDeclare)]),
           () => ListBuilder<VehiculeDeclare>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(int)]),
           () => ListBuilder<int>()))

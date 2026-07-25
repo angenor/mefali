@@ -28,7 +28,9 @@ import 'package:mefali_api_client/src/model/bascule_disponibilite_dto.dart';
 import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
+import 'package:mefali_api_client/src/model/commande_proposee.dart';
 import 'package:mefali_api_client/src/model/composantes.dart';
+import 'package:mefali_api_client/src/model/composantes_devis.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/config_zone.dart';
 import 'package:mefali_api_client/src/model/consentement_requis.dart';
@@ -40,10 +42,13 @@ import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/demande_collecte.dart';
+import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/demande_simulation.dart';
 import 'package:mefali_api_client/src/model/devis.dart';
+import 'package:mefali_api_client/src/model/devis_livraison.dart';
+import 'package:mefali_api_client/src/model/devis_panier.dart';
 import 'package:mefali_api_client/src/model/devise_dto.dart';
 import 'package:mefali_api_client/src/model/discriminant_consentement.dart';
 import 'package:mefali_api_client/src/model/discriminant_session.dart';
@@ -58,16 +63,21 @@ import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/grille.dart';
 import 'package:mefali_api_client/src/model/grilles_zone.dart';
+import 'package:mefali_api_client/src/model/groupe_vendeur.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
 import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/itineraire_simule.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
+import 'package:mefali_api_client/src/model/lieu.dart';
+import 'package:mefali_api_client/src/model/ligne_devis.dart';
+import 'package:mefali_api_client/src/model/ligne_panier.dart';
 import 'package:mefali_api_client/src/model/mode_collecte.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
+import 'package:mefali_api_client/src/model/paiement_panier.dart';
 import 'package:mefali_api_client/src/model/photo_admin_dto.dart';
 import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plaque_url.dart';
@@ -85,6 +95,7 @@ import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_collecte.dart';
 import 'package:mefali_api_client/src/model/resultat_simulation.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
+import 'package:mefali_api_client/src/model/scission_proposee.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
 import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
@@ -116,7 +127,9 @@ part 'serializers.g.dart';
   BoutiqueVendeur,
   CategorieDto,
   CharteAdminDto,
+  CommandeProposee,
   Composantes,
+  ComposantesDevis,
   CompteMoi,
   ConfigZone,
   ConsentementRequis,
@@ -128,10 +141,13 @@ part 'serializers.g.dart';
   CreerPrestataireDto,
   DecisionRole,
   DemandeCollecte,
+  DemandeDevisPanier,
   DemandeOtp,
   DemandeRafraichissement,
   DemandeSimulation,
   Devis,
+  DevisLivraison,
+  DevisPanier,
   DeviseDto,
   DiscriminantConsentement,
   DiscriminantSession,
@@ -146,16 +162,21 @@ part 'serializers.g.dart';
   ForcageDto,
   Grille,
   GrillesZone,
+  GroupeVendeur,
   HealthResponse,
   HorairesSemaineDto,
   Inscription,
   ItineraireSimule,
   JetonsDto,
+  Lieu,
+  LigneDevis,
+  LignePanier,
   ModeCollecte,
   ModifierAdresse,
   ModifierArticleDto,
   ModifierPrestataireDto,
   OffreLivraisonVendeur,
+  PaiementPanier,
   PhotoAdminDto,
   PlageDto,
   PlaqueUrl,
@@ -173,6 +194,7 @@ part 'serializers.g.dart';
   ResultatCollecte,
   ResultatSimulation,
   ResultatVerification,
+  ScissionProposee,
   SessionAppareil,
   SessionOuverte,
   SignalementRecuDto,
