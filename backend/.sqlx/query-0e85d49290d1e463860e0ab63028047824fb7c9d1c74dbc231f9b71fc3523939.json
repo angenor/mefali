@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret\n                SET statut = 'arrive', arrive_le = $2, transition_uuid_client = $3\n              WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e85d49290d1e463860e0ab63028047824fb7c9d1c74dbc231f9b71fc3523939"
+}

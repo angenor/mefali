@@ -233,6 +233,186 @@ async fn gating_ignore_l_arret_de_remise(pool: sqlx::PgPool) {
     assert_eq!(remise_statut, "a_collecter");
 }
 
+/// **T033 (CMD-04)** — boucle déclarative du coursier : `à_collecter →
+/// en_route → arrivé`, horodatée par le SERVEUR, puis le scan du cycle 006
+/// par-dessus. `arrive_le` fonde la prime d'attente TRF-06.
+#[sqlx::test(migrations = "../../migrations")]
+async fn boucle_en_route_puis_arrive_puis_collecte(pool: sqlx::PgPool) {
+    let (coursier, _l, arrets) = semer(&pool, &[2000], true).await;
+    let depot = depot(&pool);
+    let arret = arrets[0];
+
+    let mut tx = pool.begin().await.unwrap();
+    let r = depot
+        .marquer_arret_en_route(&mut tx, arret, coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(r.statut.comme_str(), "en_route");
+    assert!(!r.rejeu);
+
+    let mut tx = pool.begin().await.unwrap();
+    let r = depot
+        .marquer_arret_arrive(&mut tx, arret, coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(r.statut.comme_str(), "arrive");
+
+    // Les DEUX horodatages serveur sont posés — sans `arrive_le`, la prime
+    // d'attente TRF-06 n'aurait aucune borne de départ.
+    let (en_route_le, arrive_le): (Option<chrono::DateTime<Utc>>, Option<chrono::DateTime<Utc>>) =
+        sqlx::query_as("SELECT en_route_le, arrive_le FROM commandes.arret WHERE id = $1")
+            .bind(arret)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(en_route_le.is_some() && arrive_le.is_some());
+    assert!(arrive_le >= en_route_le, "on arrive après être parti");
+
+    // `arrivé → collecté` : chemin NOMINAL de la boucle CMD-04.
+    let mut tx = pool.begin().await.unwrap();
+    depot
+        .marquer_arret_collecte(
+            &mut tx, arret, Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+        )
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    // Un événement par transition acceptée (constitution VI).
+    for (type_evenement, attendu) in [("arret.en_route", 1), ("arret.arrive", 1), ("arret.collecte", 1)] {
+        let n: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM outbox.evenement WHERE type_evenement = $1",
+        )
+        .bind(type_evenement)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(n, attendu, "événement « {type_evenement} »");
+    }
+}
+
+/// **T033** — rejeu du MÊME `uuid_client` : l'état est rendu, rien n'est
+/// réécrit, aucun second événement. C'est la file hors-ligne du coursier qui
+/// rejoue (constitution V).
+#[sqlx::test(migrations = "../../migrations")]
+async fn transition_idempotente_par_uuid_client(pool: sqlx::PgPool) {
+    let (coursier, _l, arrets) = semer(&pool, &[2000], true).await;
+    let depot = depot(&pool);
+    let uuid = Uuid::now_v7();
+
+    let mut horodatages = Vec::new();
+    for _ in 0..2 {
+        let mut tx = pool.begin().await.unwrap();
+        let r = depot
+            .marquer_arret_en_route(&mut tx, arrets[0], coursier, uuid, Utc::now(), Utc::now())
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        assert_eq!(r.statut.comme_str(), "en_route");
+        horodatages.push(
+            sqlx::query_scalar::<_, Option<chrono::DateTime<Utc>>>(
+                "SELECT en_route_le FROM commandes.arret WHERE id = $1",
+            )
+            .bind(arrets[0])
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        );
+    }
+    assert_eq!(horodatages[0], horodatages[1], "le rejeu ne réécrit rien");
+
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM outbox.evenement WHERE type_evenement = 'arret.en_route'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, 1, "un seul événement pour deux envois du même uuid");
+}
+
+/// **T033** — les refus. La garde est la table FERMÉE : « arriver » sans être
+/// parti n'y figure pas, et un arrêt d'une AUTRE course n'appartient pas à
+/// l'appelant.
+#[sqlx::test(migrations = "../../migrations")]
+async fn transitions_hors_sequence_et_hors_course_refusees(pool: sqlx::PgPool) {
+    let (coursier, _l, arrets) = semer(&pool, &[2000], true).await;
+    let depot = depot(&pool);
+
+    // `à_collecter → arrivé` : absent de la table (data-model §3.3).
+    let mut tx = pool.begin().await.unwrap();
+    let e = depot
+        .marquer_arret_arrive(&mut tx, arrets[0], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .await
+        .unwrap_err();
+    tx.rollback().await.unwrap();
+    assert_eq!(e.message_cle(), Some("transition_refusee"));
+
+    // Un AUTRE coursier ne peut pas faire avancer cette course.
+    let mut tx = pool.begin().await.unwrap();
+    let e = depot
+        .marquer_arret_en_route(
+            &mut tx, arrets[0], Uuid::now_v7(), Uuid::now_v7(), Utc::now(), Utc::now(),
+        )
+        .await
+        .unwrap_err();
+    tx.rollback().await.unwrap();
+    assert_eq!(e.message_cle(), Some("non_proprietaire"));
+
+    // Aucun état n'a bougé, aucun événement n'a été écrit.
+    let statut: String = sqlx::query_scalar("SELECT statut::text FROM commandes.arret WHERE id = $1")
+        .bind(arrets[0])
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(statut, "a_collecter");
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM outbox.evenement WHERE type_evenement LIKE 'arret.%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, 0, "un refus n'émet rien");
+}
+
+/// **T033 / décision de conception** — `en_route → collecte` est REFUSÉ : le
+/// coursier qui a déclaré partir doit déclarer son arrivée avant de scanner,
+/// sans quoi `arrive_le` manquerait et la prime d'attente TRF-06 serait perdue.
+/// Le chemin DIRECT `à_collecter → collecte` du cycle 006, lui, reste ouvert.
+#[sqlx::test(migrations = "../../migrations")]
+async fn scanner_sans_declarer_son_arrivee_est_refuse(pool: sqlx::PgPool) {
+    let (coursier, _l, arrets) = semer(&pool, &[2000, 1500], true).await;
+    let depot = depot(&pool);
+
+    let mut tx = pool.begin().await.unwrap();
+    depot
+        .marquer_arret_en_route(&mut tx, arrets[0], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+    let e = depot
+        .marquer_arret_collecte(
+            &mut tx, arrets[0], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+        )
+        .await
+        .unwrap_err();
+    tx.rollback().await.unwrap();
+    assert_eq!(e.message_cle(), Some("etat_incompatible"));
+
+    // Non-régression du cycle 006 : sans déclaration de trajet, le scan passe.
+    let mut tx = pool.begin().await.unwrap();
+    depot
+        .marquer_arret_collecte(
+            &mut tx, arrets[1], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+        )
+        .await
+        .expect("chemin direct du cycle 006 conservé");
+    tx.commit().await.unwrap();
+}
+
 #[sqlx::test(migrations = "../../migrations")]
 async fn idempotence_meme_uuid(pool: sqlx::PgPool) {
     let (coursier, _l, arrets) = semer(&pool, &[2000], false).await;

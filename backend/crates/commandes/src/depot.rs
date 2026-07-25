@@ -358,7 +358,7 @@ impl PgCommandes {
     /// ⚠ Compte les seules COLLECTES (P1 / research R4) : l'arrêt de remise
     /// n'est pas une collecte, une livraison à 2 collectes + 1 remise annonce
     /// « 2 sur 2 », jamais « 2 sur 3 ».
-    async fn progression(
+    pub(crate) async fn progression(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
         livraison_id: Uuid,

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret\n                SET statut = 'en_route', en_route_le = $2, transition_uuid_client = $3\n              WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2fc63b1ca69ed431ee6cb314095b38c4f363ccb8531081ddf54ff7937151dbe6"
+}

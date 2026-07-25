@@ -43,7 +43,9 @@ pub mod substitution;
 pub mod suivi;
 pub mod workflow;
 
+pub use collecte::TransitionArret;
 pub use depot::PgCommandes;
+pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};
 pub use modele::{
     ArretACollecter, Detenteur, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement,
     IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
