@@ -726,11 +726,15 @@ mod tests {
         // repère vocal, durée max de note vocale, version ARTCI) + 8 (pays,
         // cycle 005 : fuseau, conservation charte, 6 affichages de rupture)
         // + 3 (pays, cycle 006 : distance de scan, seuil photo, rétention photo
-        // de collecte) + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 :
-        // seuil et fenêtre du masquage automatique) + 12 (ville, cycle 007 :
-        // 2 bornes de marge, arrondi, supplément pluie, 4 knobs de routage,
-        // 4 knobs d'effort — `effort.plafond_eclatement_m` reste DORMANT).
-        assert_eq!(apres_un.4, 47, "23 (pays) + 24 (ville) paramètres");
+        // de collecte) + 13 (pays, cycle 008 : 6 « périssable » de catégorie,
+        // longueur du repère écrit, essais du code, seuil d'historique, délai et
+        // écart de substitution, rétention des photos, période de position)
+        // + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 : seuil et fenêtre
+        // du masquage automatique) + 12 (ville, cycle 007 : 2 bornes de marge,
+        // arrondi, supplément pluie, 4 knobs de routage, 4 knobs d'effort —
+        // `effort.plafond_eclatement_m` reste DORMANT) + 3 (ville, cycle 008 :
+        // 2 plafonds cash et l'escalade d'attente coursier).
+        assert_eq!(apres_un.4, 63, "36 (pays) + 27 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),
