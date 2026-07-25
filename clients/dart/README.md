@@ -97,6 +97,9 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
 [*CommandesApi*](doc/CommandesApi.md) | [**creerCommande**](doc/CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [*CommandesApi*](doc/CommandesApi.md) | [**devisPanier**](doc/CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
+[*CoursesApi*](doc/CoursesApi.md) | [**arretArrive**](doc/CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
+[*CoursesApi*](doc/CoursesApi.md) | [**arretEnRoute**](doc/CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
+[*CoursesApi*](doc/CoursesApi.md) | [**arretIndisponible**](doc/CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
@@ -139,6 +142,7 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [Accepte](doc/Accepte.md)
+ - [ActionArret](doc/ActionArret.md)
  - [ActionBoutiqueDto](doc/ActionBoutiqueDto.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
  - [Adresse](doc/Adresse.md)
@@ -182,6 +186,7 @@ Class | Method | HTTP request | Description
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
  - [DrapeauxZone](doc/DrapeauxZone.md)
  - [ErreurApi](doc/ErreurApi.md)
+ - [EtatArretCourse](doc/EtatArretCourse.md)
  - [EtatCategorie](doc/EtatCategorie.md)
  - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)

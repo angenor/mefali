@@ -43,7 +43,9 @@ pub mod substitution;
 pub mod suivi;
 pub mod workflow;
 
-pub use collecte::{MotifIndisponible, TransitionArret};
+pub use collecte::{
+    ActionArret, DemandeTransitionArret, MotifIndisponible, TransitionArret,
+};
 pub use depot::PgCommandes;
 pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};
 pub use modele::{

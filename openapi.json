@@ -3131,6 +3131,303 @@
         ]
       }
     },
+    "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.",
+        "description": "`arrive_le` est posé par le serveur : c'est la borne de départ de l'attente\nfacturable (prime TRF-06). C'est pour cela que `en_route → collecte`\nn'existe pas — on ne saute pas une déclaration qui vaut de l'argent.",
+        "operationId": "arret_arrive",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt de cette course, déjà EN ROUTE.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionArret"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt ARRIVÉ, `arrive_le` posé par le serveur.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatArretCourse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou hors de la livraison indiquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Arriver sans être parti : transition absente de la table.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/arrets/{arret_id}/en-route": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-04 — le coursier déclare partir vers un arrêt.",
+        "description": "Le PREMIER départ d'une course la fait passer EN_COLLECTE (data-model §3.2).",
+        "operationId": "arret_en_route",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt de cette course.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionArret"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt EN ROUTE (idempotent au rejeu du même uuid_client).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatArretCourse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou hors de la livraison indiquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition absente de la table fermée (data-model §3.3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/arrets/{arret_id}/indisponible": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).",
+        "description": "Vendeur fermé, ou plus une seule ligne à collecter. L'arrêt est compté\n**résolu** (la course continue), son montant avancé retombe à zéro, et ses\nlignes sont retirées de la commande — les frais de livraison, eux, ne\nbougent pas (FR-050).",
+        "operationId": "arret_indisponible",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt de cette course.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionArret"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt INDISPONIBLE, compté résolu ; avance nulle, lignes retirées, montants révisés.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatArretCourse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou hors de la livraison indiquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Arrêt déjà résolu : transition absente de la table.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/coursier/signalements-rupture": {
       "post": {
         "tags": [
@@ -4911,6 +5208,33 @@
           }
         }
       },
+      "ActionArret": {
+        "type": "object",
+        "description": "Corps commun des actions déclaratives d'arrêt.",
+        "required": [
+          "uuid_client",
+          "horodatage_local"
+        ],
+        "properties": {
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil. **Observation seulement** : le serveur écrit\nle sien, parce que `arrive_le` fonde une prime (TRF-06)."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pour `indisponible` : `vendeur_ferme` (défaut) ou\n`toutes_lignes_retirees`. Ignoré par les autres actions."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V)."
+          }
+        }
+      },
       "ActionBoutiqueDto": {
         "type": "string",
         "description": "Geste de boutique (FR-033) — toujours une DÉCISION.",
@@ -6552,6 +6876,64 @@
           "message_cle": {
             "type": "string",
             "description": "Clé i18n fr — aucune chaîne UI en dur (constitution VII)."
+          }
+        }
+      },
+      "EtatArretCourse": {
+        "type": "object",
+        "description": "État de l'arrêt et de sa course après la transition.",
+        "required": [
+          "arret_id",
+          "statut",
+          "livraison_id",
+          "commande_id",
+          "livraison_etat",
+          "collectes_faites",
+          "collectes_total",
+          "en_livraison",
+          "rejeu"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt concerné."
+          },
+          "collectes_faites": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Collectes déjà faites (la remise n'en est pas une)."
+          },
+          "collectes_total": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre total de COLLECTES de la course."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande ancre."
+          },
+          "en_livraison": {
+            "type": "boolean",
+            "description": "Vrai si la course vient de basculer EN_LIVRAISON."
+          },
+          "livraison_etat": {
+            "type": "string",
+            "description": "État de la livraison : `assignee` | `en_collecte` | `en_livraison`."
+          },
+          "livraison_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Livraison porteuse."
+          },
+          "rejeu": {
+            "type": "boolean",
+            "description": "Vrai si l'appel était un rejeu du même `uuid_client` : rien n'a été\nréécrit, aucun événement n'a été ré-émis."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut de l'arrêt : `en_route` | `arrive` | `indisponible`."
           }
         }
       },

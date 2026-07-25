@@ -12,6 +12,7 @@ import 'package:mefali_api_client/src/auth/oauth.dart';
 import 'package:mefali_api_client/src/api/admin_api.dart';
 import 'package:mefali_api_client/src/api/auth_api.dart';
 import 'package:mefali_api_client/src/api/commandes_api.dart';
+import 'package:mefali_api_client/src/api/courses_api.dart';
 import 'package:mefali_api_client/src/api/coursier_api.dart';
 import 'package:mefali_api_client/src/api/moi_api.dart';
 import 'package:mefali_api_client/src/api/prestataires_api.dart';
@@ -131,6 +132,12 @@ class MefaliApiClient {
   /// by doing that all interceptors will not be executed
   CommandesApi getCommandesApi() {
     return CommandesApi(dio, serializers);
+  }
+
+  /// Get CoursesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CoursesApi getCoursesApi() {
+    return CoursesApi(dio, serializers);
   }
 
   /// Get CoursierApi instance, base route and serializer can be overridden by a given but be careful,

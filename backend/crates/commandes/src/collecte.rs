@@ -91,6 +91,36 @@ impl std::str::FromStr for MotifIndisponible {
 /// à distinguer d'un retrait décidé par la préférence du client (T047).
 pub(crate) const MOTIF_LIGNE_ARRET_INDISPONIBLE: &str = "arret_indisponible";
 
+/// Action déclarative du coursier sur un arrêt (surface `course_http`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionArret {
+    /// « Je pars vers cet arrêt. »
+    EnRoute,
+    /// « J'y suis. » — pose `arrive_le`, base de la prime d'attente TRF-06.
+    Arrive,
+    /// « Rien à prendre ici. » — vendeur fermé, ou plus une ligne à collecter.
+    Indisponible(MotifIndisponible),
+}
+
+/// Demande de transition d'arrêt, telle qu'elle arrive de l'app coursier.
+///
+/// `uuid_client` et `horodatage_local` sont **obligatoires** (constitution V) :
+/// le premier rend l'action rejouable sans doublon, le second dit ce que
+/// l'appareil croyait — la base, elle, n'écrit que son propre horodatage.
+#[derive(Debug, Clone, Copy)]
+pub struct DemandeTransitionArret {
+    /// Livraison de l'URL — doit être celle qui porte l'arrêt.
+    pub livraison_id: Uuid,
+    /// Arrêt visé.
+    pub arret_id: Uuid,
+    /// Ce que le coursier déclare.
+    pub action: ActionArret,
+    /// Clé d'idempotence de la file hors-ligne.
+    pub uuid_client: Uuid,
+    /// Horodatage de l'appareil (observation).
+    pub horodatage_local: DateTime<Utc>,
+}
+
 /// Résultat d'une transition d'arrêt, tel que la surface coursier le rend.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransitionArret {
@@ -112,6 +142,78 @@ pub struct TransitionArret {
 }
 
 impl PgCommandes {
+    /// Point d'entrée UNIQUE des trois transitions déclaratives du coursier.
+    ///
+    /// Ouvre la transaction, vérifie que l'arrêt appartient bien à la livraison
+    /// de l'URL, puis délègue. Une seule porte pour trois endpoints : la
+    /// surface HTTP ne manipule jamais de transaction, et les trois actions ne
+    /// peuvent pas diverger sur les gardes.
+    pub async fn transiter_arret(
+        &self,
+        coursier: Uuid,
+        demande: DemandeTransitionArret,
+    ) -> Result<TransitionArret, ErreurCommandes> {
+        let horodatage_serveur = Utc::now();
+        let mut tx = self.pool.begin().await?;
+
+        // L'arrêt doit être CELUI de la livraison nommée dans l'URL — sans quoi
+        // `/courses/{a}/arrets/{x}` ferait avancer la course d'un autre.
+        let appartient = sqlx::query_scalar!(
+            "SELECT EXISTS (
+                 SELECT 1 FROM commandes.arret a
+                 JOIN commandes.segment s ON s.id = a.segment_id
+                 WHERE a.id = $1 AND s.livraison_id = $2
+             ) AS \"existe!\"",
+            demande.arret_id,
+            demande.livraison_id,
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+        if !appartient {
+            return Err(ErreurCommandes::ArretInconnu(demande.arret_id));
+        }
+
+        let resultat = match demande.action {
+            ActionArret::EnRoute => {
+                self.marquer_arret_en_route(
+                    &mut tx,
+                    demande.arret_id,
+                    coursier,
+                    demande.uuid_client,
+                    demande.horodatage_local,
+                    horodatage_serveur,
+                )
+                .await?
+            }
+            ActionArret::Arrive => {
+                self.marquer_arret_arrive(
+                    &mut tx,
+                    demande.arret_id,
+                    coursier,
+                    demande.uuid_client,
+                    demande.horodatage_local,
+                    horodatage_serveur,
+                )
+                .await?
+            }
+            ActionArret::Indisponible(motif) => {
+                self.marquer_arret_indisponible(
+                    &mut tx,
+                    demande.arret_id,
+                    coursier,
+                    demande.uuid_client,
+                    motif,
+                    demande.horodatage_local,
+                    horodatage_serveur,
+                )
+                .await?
+            }
+        };
+
+        tx.commit().await?;
+        Ok(resultat)
+    }
+
     /// Charge et VERROUILLE un arrêt en vue d'une transition, en vérifiant que
     /// la livraison porteuse est bien assignée à l'appelant.
     ///

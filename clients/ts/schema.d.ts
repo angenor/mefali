@@ -692,6 +692,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
+         * @description `arrive_le` est posé par le serveur : c'est la borne de départ de l'attente
+         *     facturable (prime TRF-06). C'est pour cela que `en_route → collecte`
+         *     n'existe pas — on ne saute pas une déclaration qui vaut de l'argent.
+         */
+        post: operations["arret_arrive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/arrets/{arret_id}/en-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-04 — le coursier déclare partir vers un arrêt.
+         * @description Le PREMIER départ d'une course la fait passer EN_COLLECTE (data-model §3.2).
+         */
+        post: operations["arret_en_route"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/arrets/{arret_id}/indisponible": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+         * @description Vendeur fermé, ou plus une seule ligne à collecter. L'arrêt est compté
+         *     **résolu** (la course continue), son montant avancé retombe à zéro, et ses
+         *     lignes sont retirées de la commande — les frais de livraison, eux, ne
+         *     bougent pas (FR-050).
+         */
+        post: operations["arret_indisponible"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/coursier/signalements-rupture": {
         parameters: {
             query?: never;
@@ -1100,6 +1165,25 @@ export interface components {
              * @example comptes.otp.envoye_si_valide
              */
             message_cle: string;
+        };
+        /** @description Corps commun des actions déclaratives d'arrêt. */
+        ActionArret: {
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil. **Observation seulement** : le serveur écrit
+             *     le sien, parce que `arrive_le` fonde une prime (TRF-06).
+             */
+            horodatage_local: string;
+            /**
+             * @description Pour `indisponible` : `vendeur_ferme` (défaut) ou
+             *     `toutes_lignes_retirees`. Ignoré par les autres actions.
+             */
+            motif?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
         };
         /**
          * @description Geste de boutique (FR-033) — toujours une DÉCISION.
@@ -1969,6 +2053,45 @@ export interface components {
             code: string;
             /** @description Clé i18n fr — aucune chaîne UI en dur (constitution VII). */
             message_cle: string;
+        };
+        /** @description État de l'arrêt et de sa course après la transition. */
+        EtatArretCourse: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné.
+             */
+            arret_id: string;
+            /**
+             * Format: int32
+             * @description Collectes déjà faites (la remise n'en est pas une).
+             */
+            collectes_faites: number;
+            /**
+             * Format: int32
+             * @description Nombre total de COLLECTES de la course.
+             */
+            collectes_total: number;
+            /**
+             * Format: uuid
+             * @description Commande ancre.
+             */
+            commande_id: string;
+            /** @description Vrai si la course vient de basculer EN_LIVRAISON. */
+            en_livraison: boolean;
+            /** @description État de la livraison : `assignee` | `en_collecte` | `en_livraison`. */
+            livraison_etat: string;
+            /**
+             * Format: uuid
+             * @description Livraison porteuse.
+             */
+            livraison_id: string;
+            /**
+             * @description Vrai si l'appel était un rejeu du même `uuid_client` : rien n'a été
+             *     réécrit, aucun événement n'a été ré-émis.
+             */
+            rejeu: boolean;
+            /** @description Statut de l'arrêt : `en_route` | `arrive` | `indisponible`. */
+            statut: string;
         };
         /** @description État effectif d'une catégorie renvoyé après forçage (contrat). */
         EtatCategorie: {
@@ -5206,6 +5329,201 @@ export interface operations {
             };
             /** @description Refus métier : hors zone, jeton révoqué, plaque invalide, photo requise, code incorrect/épuisé. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    arret_arrive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+                /** @description Arrêt de cette course, déjà EN ROUTE. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionArret"];
+            };
+        };
+        responses: {
+            /** @description Arrêt ARRIVÉ, `arrive_le` posé par le serveur. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatArretCourse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou hors de la livraison indiquée. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arriver sans être parti : transition absente de la table. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    arret_en_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+                /** @description Arrêt de cette course. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionArret"];
+            };
+        };
+        responses: {
+            /** @description Arrêt EN ROUTE (idempotent au rejeu du même uuid_client). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatArretCourse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou hors de la livraison indiquée. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition absente de la table fermée (data-model §3.3). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    arret_indisponible: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+                /** @description Arrêt de cette course. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionArret"];
+            };
+        };
+        responses: {
+            /** @description Arrêt INDISPONIBLE, compté résolu ; avance nulle, lignes retirées, montants révisés. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatArretCourse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou hors de la livraison indiquée. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt déjà résolu : transition absente de la table. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

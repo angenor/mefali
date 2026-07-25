@@ -10,6 +10,8 @@ pub mod adresses_http;
 pub mod auth_http;
 pub mod commandes_http;
 pub mod comptes_http;
+/// Surface HTTP coursier du cycle CMD (boucle d'arrêt, remise, échec).
+pub mod course_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
@@ -105,6 +107,9 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_tarification_http::publier)
         .service(commandes_http::devis_panier)
         .service(commandes_http::creer_commande)
+        .service(course_http::arret_en_route)
+        .service(course_http::arret_arrive)
+        .service(course_http::arret_indisponible)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -478,6 +483,9 @@ pub async fn run() -> std::io::Result<()> {
             .service(admin_tarification_http::publier)
             .service(commandes_http::devis_panier)
             .service(commandes_http::creer_commande)
+            .service(course_http::arret_en_route)
+            .service(course_http::arret_arrive)
+            .service(course_http::arret_indisponible)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

@@ -3,6 +3,7 @@
 README.md
 analysis_options.yaml
 doc/Accepte.md
+doc/ActionArret.md
 doc/ActionBoutiqueDto.md
 doc/ActionRoleDto.md
 doc/AdminApi.md
@@ -30,6 +31,7 @@ doc/CorpsActionBoutique.md
 doc/CorpsForcage.md
 doc/CorrigerDto.md
 doc/CourseActive.md
+doc/CoursesApi.md
 doc/CoursierApi.md
 doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
@@ -50,6 +52,7 @@ doc/DossierCoursier.md
 doc/DossierCoursierAdmin.md
 doc/DrapeauxZone.md
 doc/ErreurApi.md
+doc/EtatArretCourse.md
 doc/EtatCategorie.md
 doc/EtatEffectifBoutique.md
 doc/EtatRoleDto.md
@@ -118,6 +121,7 @@ lib/src/api.dart
 lib/src/api/admin_api.dart
 lib/src/api/auth_api.dart
 lib/src/api/commandes_api.dart
+lib/src/api/courses_api.dart
 lib/src/api/coursier_api.dart
 lib/src/api/moi_api.dart
 lib/src/api/prestataires_api.dart
@@ -134,6 +138,7 @@ lib/src/auth/bearer_auth.dart
 lib/src/auth/oauth.dart
 lib/src/date_serializer.dart
 lib/src/model/accepte.dart
+lib/src/model/action_arret.dart
 lib/src/model/action_boutique_dto.dart
 lib/src/model/action_role_dto.dart
 lib/src/model/adresse.dart
@@ -178,6 +183,7 @@ lib/src/model/dossier_coursier.dart
 lib/src/model/dossier_coursier_admin.dart
 lib/src/model/drapeaux_zone.dart
 lib/src/model/erreur_api.dart
+lib/src/model/etat_arret_course.dart
 lib/src/model/etat_categorie.dart
 lib/src/model/etat_effectif_boutique.dart
 lib/src/model/etat_role_dto.dart
@@ -237,6 +243,7 @@ lib/src/model/verification_otp.dart
 lib/src/serializers.dart
 pubspec.yaml
 test/accepte_test.dart
+test/action_arret_test.dart
 test/action_boutique_dto_test.dart
 test/action_role_dto_test.dart
 test/admin_api_test.dart
@@ -264,6 +271,7 @@ test/corps_action_boutique_test.dart
 test/corps_forcage_test.dart
 test/corriger_dto_test.dart
 test/course_active_test.dart
+test/courses_api_test.dart
 test/coursier_api_test.dart
 test/creer_article_dto_test.dart
 test/creer_prestataire_dto_test.dart
@@ -284,6 +292,7 @@ test/dossier_coursier_admin_test.dart
 test/dossier_coursier_test.dart
 test/drapeaux_zone_test.dart
 test/erreur_api_test.dart
+test/etat_arret_course_test.dart
 test/etat_categorie_test.dart
 test/etat_effectif_boutique_test.dart
 test/etat_role_dto_test.dart

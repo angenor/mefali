@@ -15,6 +15,7 @@ import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
 import 'package:mefali_api_client/src/model/accepte.dart';
+import 'package:mefali_api_client/src/model/action_arret.dart';
 import 'package:mefali_api_client/src/model/action_boutique_dto.dart';
 import 'package:mefali_api_client/src/model/action_role_dto.dart';
 import 'package:mefali_api_client/src/model/adresse.dart';
@@ -58,6 +59,7 @@ import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 import 'package:mefali_api_client/src/model/drapeaux_zone.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
+import 'package:mefali_api_client/src/model/etat_arret_course.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
 import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
@@ -119,6 +121,7 @@ part 'serializers.g.dart';
 
 @SerializersFor([
   Accepte,
+  ActionArret,
   ActionBoutiqueDto,
   ActionRoleDto,
   Adresse,
@@ -162,6 +165,7 @@ part 'serializers.g.dart';
   DossierCoursierAdmin,
   DrapeauxZone,
   ErreurApi,
+  EtatArretCourse,
   EtatCategorie,
   EtatEffectifBoutique,
   EtatRoleDto,
