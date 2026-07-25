@@ -75,14 +75,21 @@ impl PgCommandes {
             StatutArret::Collecte if arret.collecte_uuid_client == Some(uuid_client) => {
                 return self.progression(tx, arret.livraison_id, false).await;
             }
-            // Déjà collecté par un AUTRE uuid, ou arrêt indisponible → refus.
-            StatutArret::Collecte | StatutArret::Indisponible => {
+            // Déjà collecté par un AUTRE uuid, arrêt indisponible, ou coursier
+            // en route sans avoir déclaré son arrivée → refus. `en_route` est
+            // absent de la table de transitions (data-model §3.3) : c'est
+            // `arrive_le` qui fonde la prime d'attente (TRF-06), on ne peut pas
+            // le sauter.
+            StatutArret::Collecte | StatutArret::Indisponible | StatutArret::EnRoute => {
                 return Err(ErreurCommandes::EtatIncompatible {
                     avant: statut.comme_str().to_owned(),
                     apres: StatutArret::Collecte.comme_str().to_owned(),
                 });
             }
-            StatutArret::ACollecter => {}
+            // `a_collecter → collecte` DIRECT : chemin du cycle 006, conservé
+            // tel quel (le coursier peut scanner sans avoir déclaré son trajet).
+            // `arrive → collecte` : chemin nominal de la boucle CMD-04.
+            StatutArret::ACollecter | StatutArret::Arrive => {}
         }
 
         // ── Partie A : bascule a_collecter → collecte ──────────────────────
