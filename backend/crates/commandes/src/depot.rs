@@ -1,36 +1,88 @@
-//! Composition racine du socle logistique et transition d'arrêt (data-model §4.1).
+//! Composition racine du domaine commandes (data-model §4).
 //!
-//! ÉCRITURE = méthode inhérente `marquer_arret_collecte` sur `&mut PgTransaction`
-//! (transition + événement dans la même transaction, constitution VI).
-//! LECTURE = impl du port `ArretsDeCollecte`.
+//! ÉCRITURES = méthodes inhérentes sur `&mut PgTransaction` — la transition et
+//! son événement outbox vivent dans la MÊME transaction, et c'est impossible à
+//! contourner (constitution VI). LECTURES = sur le pool.
+//!
+//! `PgCommandes` porte les collaborateurs du domaine : la configuration de zone
+//! (dérivée du pool, comme `PgPrestataires` le fait), le catalogue et les prix
+//! figés (`PgPrestataires`), l'évaluation tarifaire et l'optimisation d'arrêts
+//! (cycle 007), les restrictions de compte (port implémenté par `comptes`) et
+//! le stockage objet. Aucun n'est optionnel : une composition incomplète ne
+//! compile pas.
+
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use prestataires::PgPrestataires;
 use serde_json::json;
-use socle::{ecrire_evenement, NouvelEvenement};
+use socle::{ecrire_evenement, DepotObjets, NouvelEvenement};
 use sqlx::PgPool;
+use tarification::{EvaluationTarifaire, OptimisationArrets};
 use uuid::Uuid;
+use zones::PgZones;
 
 use crate::modele::{
     ArretACollecter, ErreurCommandes, ModeCollecte, ProgressionCollecte, StatutArret,
 };
-use crate::ports::ArretsDeCollecte;
+use crate::ports::{ArretsDeCollecte, RestrictionsCompte};
 
-/// Handle de dépôt du socle logistique. Clone bon marché (pool partagé).
+/// Handle de dépôt du domaine commandes. Clone bon marché (pool et ports
+/// partagés).
 #[derive(Clone)]
 pub struct PgCommandes {
     pub(crate) pool: PgPool,
+    /// Configuration héritée — DÉRIVÉE du pool (même base), patron du cycle 005.
+    pub(crate) zones: PgZones,
+    /// Catalogue, commandabilité, sites, `figer_prix`.
+    pub(crate) prestataires: PgPrestataires,
+    /// Devis figé (cycle 007) — injecté : il porte le client OSRM.
+    pub(crate) evaluation: Arc<dyn EvaluationTarifaire>,
+    /// Ordre des arrêts (cycle 007).
+    pub(crate) optimisation: Arc<dyn OptimisationArrets>,
+    /// Restrictions CPT-06 — implémentées par le crate `comptes` (P3, R12).
+    pub(crate) restrictions: Arc<dyn RestrictionsCompte>,
+    /// Stockage objet (photos de substitution, photo de dépôt).
+    pub(crate) objets: Arc<dyn DepotObjets>,
 }
 
 impl PgCommandes {
-    /// Nouveau dépôt sur le pool applicatif.
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    /// Compose le domaine. `PgZones` est dérivé du pool ; tous les autres
+    /// collaborateurs sont injectés par la racine (`api`), qui seule connaît
+    /// l'infrastructure (constitution II).
+    pub fn new(
+        pool: PgPool,
+        prestataires: PgPrestataires,
+        evaluation: Arc<dyn EvaluationTarifaire>,
+        optimisation: Arc<dyn OptimisationArrets>,
+        restrictions: Arc<dyn RestrictionsCompte>,
+        objets: Arc<dyn DepotObjets>,
+    ) -> Self {
+        Self {
+            zones: PgZones::new(pool.clone()),
+            pool,
+            prestataires,
+            evaluation,
+            optimisation,
+            restrictions,
+            objets,
+        }
     }
 
     /// Accès au pool (racine de composition `qr`).
     pub fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    /// Accès aux restrictions de compte (garde de création, sanctions §7.5).
+    pub fn restrictions(&self) -> &Arc<dyn RestrictionsCompte> {
+        &self.restrictions
+    }
+
+    /// Accès au stockage objet (photos de substitution, rétention de zone).
+    pub fn objets(&self) -> &Arc<dyn DepotObjets> {
+        &self.objets
     }
 
     /// Bascule l'arrêt en COLLECTÉ dans `tx`, écrit `arret.collecte`, et si tous

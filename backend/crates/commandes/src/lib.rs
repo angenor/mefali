@@ -55,6 +55,6 @@ pub use panier::{
 pub use ports::{
     AffectationSimulee, ArretsDeCollecte, ArretsFixes, CommandeADispatcher, CommandesADispatcher,
     PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
-    RestrictionsCompte, RestrictionsSimulees,
+    RestrictionsCompte, RestrictionsSimulees, TarifFixe,
 };
 pub use workflow::{CoursesWorkflow, RestaurationWorkflow, ServiceWorkflow};

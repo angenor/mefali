@@ -5,9 +5,44 @@
 //! (FK) : on insère le minimum en SQL direct (zones → catégorie → prestataire →
 //! compte), sans passer par le domaine prestataires (hors périmètre du crate).
 
+use std::sync::Arc;
+
 use chrono::Utc;
-use commandes::{ModeCollecte, PgCommandes};
+use commandes::{ModeCollecte, PgCommandes, RestrictionsSimulees, TarifFixe};
 use uuid::Uuid;
+
+/// Compose le dépôt du domaine pour les tests du SOCLE (cycle 006).
+///
+/// Ces tests n'exercent ni tarif, ni catalogue, ni restriction : les
+/// collaborateurs sont réels (prestataires) ou des doubles (`TarifFixe`,
+/// `RestrictionsSimulees`), ce qui garde la fixture courte sans rendre aucun
+/// champ optionnel dans le dépôt.
+fn depot(pool: &sqlx::PgPool) -> PgCommandes {
+    let objets: Arc<dyn socle::DepotObjets> = Arc::new(socle::MemoireObjets::new());
+    let comptes = comptes::PgComptes::new(
+        pool.clone(),
+        Arc::new(comptes::MemoireEphemere::new()),
+        Arc::new(comptes::SmsTraces::new()),
+        objets.clone(),
+        Arc::from(&b"secret-de-test-de-32-octets-mini"[..]),
+    );
+    let presta = prestataires::PgPrestataires::new(
+        pool.clone(),
+        comptes,
+        objets.clone(),
+        Arc::new(prestataires::AucuneCommandeActive),
+        Arc::from(&b"secret-plaque-de-test-32-octets!"[..]),
+    );
+    let tarif = Arc::new(TarifFixe::simple(2_500, 2_500, 0));
+    PgCommandes::new(
+        pool.clone(),
+        presta,
+        tarif.clone(),
+        tarif,
+        Arc::new(RestrictionsSimulees::nouveau()),
+        objets,
+    )
+}
 
 /// Sème les FK minimales et une course (livraison → segment → arrêts).
 /// Renvoie `(coursier, livraison, [arrets de COLLECTE])`.
@@ -94,7 +129,7 @@ async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uui
 #[sqlx::test(migrations = "../../migrations")]
 async fn transition_et_gating_avec_indisponible(pool: sqlx::PgPool) {
     let (coursier, livraison, arrets) = semer(&pool, &[2000, 1500], false).await;
-    let depot = PgCommandes::new(pool.clone());
+    let depot = depot(&pool);
 
     // Un arrêt posé indisponible (façon CMD-06) — compté résolu (FR-018).
     sqlx::query("UPDATE commandes.arret SET statut = 'indisponible' WHERE id = $1")
@@ -136,7 +171,7 @@ async fn transition_et_gating_avec_indisponible(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn gating_ignore_l_arret_de_remise(pool: sqlx::PgPool) {
     let (coursier, livraison, collectes) = semer(&pool, &[2000, 1500], true).await;
-    let depot = PgCommandes::new(pool.clone());
+    let depot = depot(&pool);
 
     // Le segment porte bien 3 arrêts, dont 1 de remise.
     let (total, remises): (i64, i64) = sqlx::query_as(
@@ -201,7 +236,7 @@ async fn gating_ignore_l_arret_de_remise(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn idempotence_meme_uuid(pool: sqlx::PgPool) {
     let (coursier, _l, arrets) = semer(&pool, &[2000], false).await;
-    let depot = PgCommandes::new(pool.clone());
+    let depot = depot(&pool);
     let uuid = Uuid::now_v7();
 
     for _ in 0..2 {

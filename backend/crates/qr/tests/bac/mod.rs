@@ -114,9 +114,21 @@ impl Bac {
         );
         let essais = Arc::new(CompteurMemoire::nouveau());
         let essais_dyn: Arc<dyn CompteurEssais> = essais.clone();
+        // Le dépôt commandes a gagné ses collaborateurs au cycle CMD 008. QRC
+        // n'exerce que la collecte par arrêt : le tarif et les restrictions
+        // passent par des doubles, le catalogue par le dépôt réel.
+        let tarif = Arc::new(commandes::TarifFixe::simple(2_500, 2_500, 0));
+        let depot_commandes = commandes::PgCommandes::new(
+            pool.clone(),
+            prestataires.clone(),
+            tarif.clone(),
+            tarif,
+            Arc::new(commandes::RestrictionsSimulees::nouveau()),
+            objets_dyn.clone(),
+        );
         let qr = PgQr::new(
             pool.clone(),
-            commandes::PgCommandes::new(pool.clone()),
+            depot_commandes,
             prestataires.clone(),
             objets_dyn,
             essais_dyn,

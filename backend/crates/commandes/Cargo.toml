@@ -41,3 +41,8 @@ tracing.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
+# Harnais : composition réelle du dépôt (prestataires + comptes) et doubles
+# mémoire de socle. Tous déjà dépendances normales du crate.
+socle.workspace = true
+comptes.workspace = true
+prestataires.workspace = true

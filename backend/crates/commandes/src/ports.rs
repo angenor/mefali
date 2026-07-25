@@ -407,6 +407,90 @@ impl PositionCoursier for PositionFixe {
     }
 }
 
+// ── Doubles TARIFAIRES (cycle 007 réel en production) ─────────────────────
+
+/// Double de test du moteur tarifaire : un devis **fixe**, un ordre d'arrêts
+/// **identité**.
+///
+/// Le vrai moteur (cycle 007) est branché en production ; ici, un devis figé et
+/// connu d'avance permet d'asserter des montants au FCFA près sans OSRM ni
+/// grille — et surtout de prouver que le devis **ne bouge pas** après une
+/// substitution ou un retrait (FR-050), ce qu'un devis calculé rendrait flou.
+#[derive(Debug, Clone)]
+pub struct TarifFixe {
+    devis: tarification::Devis,
+}
+
+impl TarifFixe {
+    /// Devis fixe complet.
+    pub fn nouveau(devis: tarification::Devis) -> Self {
+        Self { devis }
+    }
+
+    /// Devis simple : prix client, part coursier, marge, en XOF.
+    pub fn simple(prix_client: i64, part_coursier: i64, marge: i64) -> Self {
+        Self {
+            devis: tarification::Devis {
+                prix_client,
+                part_coursier,
+                marge,
+                devise: "XOF".to_owned(),
+                distance_m: 2_400,
+                eta_s: 480,
+                degraded: false,
+                proposer_scission: false,
+                ordre: Vec::new(),
+                composantes: tarification::Composantes::default(),
+            },
+        }
+    }
+
+    /// Force le drapeau de proposition de scission (plafond d'éclatement).
+    pub fn avec_proposer_scission(mut self, proposer: bool) -> Self {
+        self.devis.proposer_scission = proposer;
+        self
+    }
+
+    /// Le devis servi (pour asserter l'invariance côté test).
+    pub fn devis(&self) -> &tarification::Devis {
+        &self.devis
+    }
+}
+
+#[async_trait]
+impl tarification::EvaluationTarifaire for TarifFixe {
+    async fn evaluer(
+        &self,
+        demande: tarification::DemandeDevis,
+        _source: tarification::SourceGrille,
+    ) -> Result<tarification::Devis, tarification::ErreurTarif> {
+        let mut devis = self.devis.clone();
+        // L'ordre suit le nombre de retraits demandés : un double qui renverrait
+        // un ordre plus court ferait silencieusement disparaître des arrêts.
+        devis.ordre = (0..demande.retraits.len()).collect();
+        Ok(devis)
+    }
+}
+
+#[async_trait]
+impl tarification::OptimisationArrets for TarifFixe {
+    async fn optimiser(
+        &self,
+        _zone: Uuid,
+        retraits: &[tarification::Point],
+        _client: tarification::Point,
+    ) -> Result<tarification::Itineraire, tarification::ErreurTarif> {
+        Ok(tarification::Itineraire {
+            ordre: (0..retraits.len()).collect(),
+            distance_m: self.devis.distance_m,
+            eta_s: self.devis.eta_s,
+            degraded: self.devis.degraded,
+            troncons: Vec::new(),
+            exhaustif: true,
+        })
+    }
+}
+
 // ── Double de PAIEMENT (PAY non construit, research R16) ───────────────────
 
 /// Double de test du module paiements : confirme un prépaiement ou le fait

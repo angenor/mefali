@@ -245,6 +245,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
     let mut qr_opt: Option<qr::PgQr> = None;
     let mut tarification_opt: Option<tarification::PgTarification> = None;
+    let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -308,24 +309,6 @@ pub async fn run() -> std::io::Result<()> {
                     Arc::new(prestataires::AucuneCommandeActive),
                     Arc::from(config.plaque_secret.as_bytes()),
                 );
-                // QRC 006 — socle logistique (PgCommandes) + traçabilité (PgQr).
-                // Réutilise le pool, le domaine prestataires (résolution/identité
-                // de plaque) et le MÊME port objets ; le compteur d'essais du code
-                // dégradé passe par Redis (éphémère, R7).
-                let essais_qr: Arc<dyn qr::CompteurEssais> = Arc::new(
-                    infra_redis::RedisEssais::nouveau(&config.redis_url)
-                        .map_err(|e| std::io::Error::other(format!("Redis essais : {e}")))?,
-                );
-                qr_opt = Some(qr::PgQr::new(
-                    pool.clone(),
-                    commandes::PgCommandes::new(pool.clone()),
-                    presta.clone(),
-                    objets,
-                    essais_qr,
-                ));
-                tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
-                eprintln!("ports QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
-
                 // TRF 007 — moteur de tarification. Client OSRM `/table` et
                 // cache de tronçons Redis (24 h). Si OSRM n'est pas joignable au
                 // DÉMARRAGE, on câble `RoutageIndisponible` : le service tarife
@@ -350,12 +333,46 @@ pub async fn run() -> std::io::Result<()> {
                             Arc::new(tarification::CacheDesactive)
                         }
                     };
-                tarification_opt = Some(tarification::PgTarification::new(
+                let tarification = tarification::PgTarification::new(
                     pool.clone(),
                     routage,
                     cache_routage,
-                ));
+                );
                 eprintln!("moteur de tarification câblé (OSRM {} ; cache Redis)", config.osrm_url);
+
+                // CMD 008 — domaine commandes COMPLET, puis QRC 006 par-dessus.
+                // Le dépôt commandes est câblé APRÈS la tarification : il en
+                // consomme l'évaluation et l'optimisation d'arrêts pour figer
+                // son devis (research R11). Les restrictions CPT-06 passent par
+                // le dépôt comptes, qui satisfait le port (P3, R12) — aucune
+                // requête de `commandes` n'écrit dans `comptes.compte`.
+                let tarification_dyn = Arc::new(tarification.clone());
+                let depot_commandes = commandes::PgCommandes::new(
+                    pool.clone(),
+                    presta.clone(),
+                    tarification_dyn.clone(),
+                    tarification_dyn,
+                    Arc::new(depot.clone()),
+                    objets.clone(),
+                );
+                // Le compteur d'essais du code dégradé passe par Redis
+                // (éphémère, R7).
+                let essais_qr: Arc<dyn qr::CompteurEssais> = Arc::new(
+                    infra_redis::RedisEssais::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis essais : {e}")))?,
+                );
+                qr_opt = Some(qr::PgQr::new(
+                    pool.clone(),
+                    depot_commandes.clone(),
+                    presta.clone(),
+                    objets,
+                    essais_qr,
+                ));
+                tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
+                eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+
+                commandes_domaine_opt = Some(depot_commandes);
+                tarification_opt = Some(tarification);
                 prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)
@@ -477,6 +494,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = tarification_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = commandes_domaine_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
