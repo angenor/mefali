@@ -236,6 +236,49 @@ idempotents** (même `uuid_client`) n'émettent RIEN ; seuls les rejets métier
 Le crate `metriques` reste un **stub** : QRC ne fait qu'ALIMENTER l'outbox
 (matière première des métriques MET-01/02/03, cycles ultérieurs).
 
+### Événements du cycle TRF (007 — tarification, routage, grille d'effort)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que l'opération
+(constitution VI ; specs/007 research R10). Registre posé AVANT l'implémentation
+(Definition of Done §0.4 point 4).
+
+**Le simulateur est MUET.** Rejouer un brouillon est un *dry run* (research
+R11) : aucune de ces trois lignes n'est écrite en simulation, sans quoi les
+métriques MET compteraient des essais d'admin comme des courses réelles.
+
+**Identification des entités.** Une grille tarifaire est une entité durable
+(`tarification.grille`) : `grille.publiee` porte son `id`. Un **devis** n'est en
+revanche pas persisté par TRF ce cycle (CMD le verrouillera) : `routage.degrade`
+et `effort.calcule` portent en `entite_id` l'identifiant de la **zone** évaluée
+— la seule entité durable en jeu au moment du calcul. Ces deux événements sont
+des faits de calcul agrégeables par zone, pas des transitions d'état.
+
+**Minimisation (ARTCI).** AUCUN payload ne porte de coordonnée brute : les
+positions des retraits et de la destination restent dans la requête et n'entrent
+jamais dans l'outbox. Seules des **distances arrondies** (mètres, entiers) et des
+**montants en unités mineures** sont journalisés. `acteur` est un UUID de compte
+admin, jamais un nominatif.
+
+| Type | `entite_type` | `entite_id` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|---|
+| `grille.publiee` | `grille` | `grille.id` | `zone`, `grille`, `version`, `effet_le`, `version_precedente` (entier \| null — la grille passée à l'historique), `nb_regles`, `acteur` |
+| `routage.degrade` | `devis` | `zone.id` | `zone`, `transport`, `nb_points`, `distance_m` (**arrondie**, vol d'oiseau × facteur), `facteur` (ex. `1.4`), `motif` (`routage_indisponible`) |
+| `effort.calcule` | `devis` | `zone.id` | `zone`, `transport`, `montant_effort`, `paliers`, `attente`, `arrets` (unités mineures), `nb_articles`, `nb_arrets`, `facture` (`false` — journalisé non facturé pendant la promo), `devise` |
+
+**Ce qui n'émet PAS d'événement outbox** (specs/007 research R10/R11) :
+
+- la **simulation** d'un brouillon — dry run, aucune trace (elle pose seulement
+  `simulee_le`/`simulee_empreinte` sur le brouillon, garde de publication) ;
+- l'**édition** d'une règle de brouillon — le brouillon n'a aucun effet
+  tarifaire tant qu'il n'est pas publié ; seule la publication est une
+  transition (`grille.publiee`) ;
+- une **évaluation nominale** — pas de `devis.calcule` : le volume serait élevé
+  pour une valeur métrique nulle (le devis vivra dans la commande, cycle CMD) ;
+- un **effort FACTURÉ** (drapeaux de promo OFF) — `effort.calcule` ne journalise
+  que le cas « calculé mais non facturé », qui est précisément celui qu'aucune
+  ligne de paiement ne tracerait ;
+- les **seeds** — chargement initial, pas une transition (patron 002/003/005/006).
+
 ## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
 
 Événements PRODUIT émis par les apps (cadrage §10.9), distincts du journal

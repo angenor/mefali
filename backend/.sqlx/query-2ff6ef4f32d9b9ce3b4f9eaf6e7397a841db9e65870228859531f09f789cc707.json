@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(MAX(version), 0) + 1 AS \"suivante!\"\n               FROM tarification.grille WHERE zone_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "suivante!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2ff6ef4f32d9b9ce3b4f9eaf6e7397a841db9e65870228859531f09f789cc707"
+}

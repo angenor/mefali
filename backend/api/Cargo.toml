@@ -35,6 +35,10 @@ prestataires.workspace = true
 # Socle logistique (PgCommandes) + traçabilité QR (PgQr) — cycle QRC 006.
 commandes.workspace = true
 qr.workspace = true
+# Moteur de tarification (PgTarification) — cycle TRF 007. La couche `api`
+# fournit les impls réelles de ses ports : client OSRM (`RoutageOsrm`) et cache
+# de routage Redis (`infra_redis::RedisCacheRoutage`).
+tarification.workspace = true
 sqlx.workspace = true
 # Impls RÉELLES des ports du crate `comptes` : la composition racine connaît
 # l'infra, le domaine ne connaît que ses traits (constitution II). Consommées par
@@ -64,5 +68,8 @@ comptes.workspace = true
 prestataires.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+# Fuseau de la zone dans les critères de sélection de règle (cycle TRF 007,
+# tests d'intégration T013) — le domaine le résout, les tests le fournissent.
+chrono-tz.workspace = true
 # Consomme une URL présignée Garage pour prouver l'aller-retour d'octets (SC-007).
 reqwest.workspace = true

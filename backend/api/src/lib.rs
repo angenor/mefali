@@ -5,6 +5,7 @@
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
 pub mod admin_prestataires_http;
+pub mod admin_tarification_http;
 pub mod adresses_http;
 pub mod auth_http;
 pub mod comptes_http;
@@ -93,6 +94,12 @@ pub fn api_openapi() -> OpenApi {
         .service(qr_http::telecharger_plaque)
         .service(qr_http::course_active)
         .service(qr_http::collecter)
+        .service(admin_tarification_http::grille_de_zone)
+        .service(admin_tarification_http::creer_brouillon)
+        .service(admin_tarification_http::ecrire_regle)
+        .service(admin_tarification_http::supprimer_regle)
+        .service(admin_tarification_http::simuler)
+        .service(admin_tarification_http::publier)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -237,6 +244,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut comptes_opt: Option<PgComptes> = None;
     let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
     let mut qr_opt: Option<qr::PgQr> = None;
+    let mut tarification_opt: Option<tarification::PgTarification> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -317,6 +325,37 @@ pub async fn run() -> std::io::Result<()> {
                 ));
                 tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
                 eprintln!("ports QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+
+                // TRF 007 — moteur de tarification. Client OSRM `/table` et
+                // cache de tronçons Redis (24 h). Si OSRM n'est pas joignable au
+                // DÉMARRAGE, on câble `RoutageIndisponible` : le service tarife
+                // alors en dégradé vol d'oiseau × facteur de zone, journalisé —
+                // il ne refuse JAMAIS un devis (constitution IV). Un OSRM qui
+                // tombe en cours de route emprunte exactement le même chemin.
+                let routage: Arc<dyn tarification::Routage> =
+                    match tarification::RoutageOsrm::nouveau(&config.osrm_url) {
+                        Ok(client) => Arc::new(client),
+                        Err(e) => {
+                            eprintln!("client OSRM non construit ({e}) — tarification en dégradé");
+                            Arc::new(tarification::RoutageIndisponible)
+                        }
+                    };
+                let cache_routage: Arc<dyn tarification::CacheRoutage> =
+                    match infra_redis::RedisCacheRoutage::nouveau(&config.redis_url) {
+                        Ok(cache) => Arc::new(cache),
+                        // Un cache muet coûte un appel OSRM par course, rien de
+                        // plus : jamais une raison de refuser de démarrer.
+                        Err(e) => {
+                            eprintln!("cache de routage indisponible ({e}) — sans cache");
+                            Arc::new(tarification::CacheDesactive)
+                        }
+                    };
+                tarification_opt = Some(tarification::PgTarification::new(
+                    pool.clone(),
+                    routage,
+                    cache_routage,
+                ));
+                eprintln!("moteur de tarification câblé (OSRM {} ; cache Redis)", config.osrm_url);
                 prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)
@@ -409,6 +448,12 @@ pub async fn run() -> std::io::Result<()> {
             .service(qr_http::telecharger_plaque)
             .service(qr_http::course_active)
             .service(qr_http::collecter)
+            .service(admin_tarification_http::grille_de_zone)
+            .service(admin_tarification_http::creer_brouillon)
+            .service(admin_tarification_http::ecrire_regle)
+            .service(admin_tarification_http::supprimer_regle)
+            .service(admin_tarification_http::simuler)
+            .service(admin_tarification_http::publier)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -429,6 +474,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = qr_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = tarification_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
@@ -679,8 +727,10 @@ mod tests {
         // cycle 005 : fuseau, conservation charte, 6 affichages de rupture)
         // + 3 (pays, cycle 006 : distance de scan, seuil photo, rétention photo
         // de collecte) + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 :
-        // seuil et fenêtre du masquage automatique).
-        assert_eq!(apres_un.4, 35, "23 (pays) + 12 (ville) paramètres");
+        // seuil et fenêtre du masquage automatique) + 12 (ville, cycle 007 :
+        // 2 bornes de marge, arrondi, supplément pluie, 4 knobs de routage,
+        // 4 knobs d'effort — `effort.plafond_eclatement_m` reste DORMANT).
+        assert_eq!(apres_un.4, 47, "23 (pays) + 24 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

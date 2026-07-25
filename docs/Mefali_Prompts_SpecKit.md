@@ -375,7 +375,7 @@ Points d'attention : les jetons sont révocables côté serveur sans changer la
 plaque physique ; maquette de référence : docs/design/png/K3.
 ```
 
-### Cycle 6 — TRF
+### Cycle 6 — TRF(en cours)
 
 ```
 /speckit-specify

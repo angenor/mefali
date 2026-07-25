@@ -113,6 +113,12 @@ Class | Method | HTTP request | Description
 [*QrApi*](doc/QrApi.md) | [**courseActive**](doc/QrApi.md#courseactive) | **GET** /courses/active | QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
 [*QrApi*](doc/QrApi.md) | [**telechargerPlaque**](doc/QrApi.md#telechargerplaque) | **GET** /admin/prestataires/{id}/plaque | QRC-01 — télécharge (génère au besoin) le PDF de plaque d&#39;un prestataire.
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
+[*TarificationApi*](doc/TarificationApi.md) | [**creerBrouillon**](doc/TarificationApi.md#creerbrouillon) | **POST** /admin/tarification/zones/{zone_id}/brouillon | Crée (ou rend) le brouillon de la zone — **idempotent**.
+[*TarificationApi*](doc/TarificationApi.md) | [**ecrireRegle**](doc/TarificationApi.md#ecrireregle) | **PUT** /admin/tarification/brouillon/{grille_id}/regles/{regle_id} | Crée ou met à jour une règle du brouillon — **réarme la simulation**.
+[*TarificationApi*](doc/TarificationApi.md) | [**grilleDeZone**](doc/TarificationApi.md#grilledezone) | **GET** /admin/tarification/zones/{zone_id}/grille | Grille en vigueur ET brouillon d&#39;une zone.
+[*TarificationApi*](doc/TarificationApi.md) | [**publier**](doc/TarificationApi.md#publier) | **POST** /admin/tarification/brouillon/{grille_id}/publier | Publie le brouillon — **gardé** par la simulation et les bornes.
+[*TarificationApi*](doc/TarificationApi.md) | [**simuler**](doc/TarificationApi.md#simuler) | **POST** /admin/tarification/brouillon/{grille_id}/simuler | Simule une course sur le brouillon — **dry run**, aucun effet de bord.
+[*TarificationApi*](doc/TarificationApi.md) | [**supprimerRegle**](doc/TarificationApi.md#supprimerregle) | **DELETE** /admin/tarification/brouillon/{grille_id}/regles/{regle_id} | Supprime une règle du brouillon — **réarme la simulation**.
 [*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
@@ -139,10 +145,12 @@ Class | Method | HTTP request | Description
  - [ArretPreProvisionne](doc/ArretPreProvisionne.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
+ - [Attente](doc/Attente.md)
  - [BasculeDisponibiliteDto](doc/BasculeDisponibiliteDto.md)
  - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
+ - [Composantes](doc/Composantes.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [ConsentementRequis](doc/ConsentementRequis.md)
@@ -156,36 +164,48 @@ Class | Method | HTTP request | Description
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
+ - [DemandeSimulation](doc/DemandeSimulation.md)
+ - [Devis](doc/Devis.md)
  - [DeviseDto](doc/DeviseDto.md)
  - [DiscriminantConsentement](doc/DiscriminantConsentement.md)
  - [DiscriminantSession](doc/DiscriminantSession.md)
  - [DossierCoursier](doc/DossierCoursier.md)
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
+ - [DrapeauxZone](doc/DrapeauxZone.md)
  - [ErreurApi](doc/ErreurApi.md)
  - [EtatCategorie](doc/EtatCategorie.md)
  - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
  - [FichePublique](doc/FichePublique.md)
  - [ForcageDto](doc/ForcageDto.md)
+ - [Grille](doc/Grille.md)
+ - [GrillesZone](doc/GrillesZone.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
+ - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
  - [ModeCollecte](doc/ModeCollecte.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
+ - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
  - [PhotoAdminDto](doc/PhotoAdminDto.md)
  - [PlageDto](doc/PlageDto.md)
  - [PlaqueUrl](doc/PlaqueUrl.md)
  - [PlateformeDto](doc/PlateformeDto.md)
+ - [Point](doc/Point.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
  - [PrestatairePilotable](doc/PrestatairePilotable.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
+ - [Regle](doc/Regle.md)
+ - [RegleRetenue](doc/RegleRetenue.md)
+ - [RegleUpsert](doc/RegleUpsert.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
+ - [ResultatSimulation](doc/ResultatSimulation.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)

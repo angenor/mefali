@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tarification.grille SET etat = 'historique'\n             WHERE zone_id = $1 AND etat = 'en_vigueur'\n             RETURNING version",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tarification.grille",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "be5f809f527fb5f35ca1bc5aa6b85481c6a67cd605a3a29ea81380b9be392f65"
+}

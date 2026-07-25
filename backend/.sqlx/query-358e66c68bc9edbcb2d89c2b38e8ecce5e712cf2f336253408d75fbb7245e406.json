@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tarification.grille SET etat = 'en_vigueur', effet_le = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "358e66c68bc9edbcb2d89c2b38e8ecce5e712cf2f336253408d75fbb7245e406"
+}

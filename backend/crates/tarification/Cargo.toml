@@ -6,4 +6,49 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine QUASI pur (constitution II) : la seule I/O directe est le client de
+# routage OSRM (`routage.rs`), premier consommateur de routage tarifaire du dépôt
+# (constitution IV, research R2). Le cache de tronçons passe par le port
+# `CacheRoutage` — impl Redis dans la couche `api`, double mémoire en test.
+# AUCUNE nouvelle dépendance tierce (constitution X, plan « Primary
+# Dependencies ») : tout est déjà figé au workspace.
 [dependencies]
+socle.workspace = true
+# Knobs scalaires (bornes de marge, pas d'arrondi, facteur dégradé, TTL cache,
+# seeds d'effort, plafonds), devise et drapeaux : configuration de zone héritée,
+# lue via `ConfigurationZones` (constitution I, research R1/R8).
+zones.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+# Plages horaires et jours d'une règle : interprétés dans le fuseau de la ZONE
+# (`zone.fuseau_horaire`, seed Africa/Abidjan) — jamais celui du serveur. Même
+# précédent que les horaires d'ouverture du cycle VND (005, research R3/R8).
+chrono-tz.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+# Client OSRM `/table` (matrice de distances par waypoints — research R2).
+#
+# ⚠ AUCUNE feature TLS, volontairement. OSRM est un service INTERNE joint en
+# clair (`infra/.env.example` : `OSRM_URL=http://localhost:5000` ; en compose,
+# `http://osrm:5000`) — le trafic ne quitte pas le réseau du déploiement. Activer
+# `rustls` tirerait `aws-lc-sys`, dont le build exige `cmake` : le builder de
+# `backend/Dockerfile` n'a que `build-essential`/`pkg-config` (même contrainte
+# que le choix `rust_crypto` de jsonwebtoken). Un `OSRM_URL` en https échouerait
+# donc à la connexion — ce qui, ici, ne bloque RIEN : c'est le mode dégradé
+# ×1,4 journalisé (constitution IV).
+reqwest = { workspace = true, features = ["json"] }
+# Empreinte SHA-256 du contenu d'un brouillon : garde de publication réarmée par
+# toute édition (research R7, FR-021).
+sha2.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+# Harnais d'intégration : zones réelles (paramètres hérités) + assertions outbox.
+zones.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+async-trait.workspace = true

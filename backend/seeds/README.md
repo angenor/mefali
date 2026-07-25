@@ -26,3 +26,11 @@ zéro doublon (data-model.md §3).
 | `40_tarification.sql` | Grilles de tarif | TRF *(à venir)* |
 
 Chaque cycle **ajoute ses fichiers** ici ; le runner ne change pas.
+
+- `50_tarification_tiassale.sql` — knobs tarifaires de Tiassalé (bornes de
+  marge, arrondi, supplément pluie, routage, grille d'effort) et **grille en
+  vigueur v1** : à pied 100 (≤ 800 m), vélo 150 (≤ 2 km), moto 200 + 50/km
+  au-delà de 2 km, plafond 500 — marge 50 partout (la marge 0 du lancement vient
+  du drapeau `gratuite_commissions`, pas d'une règle). `effort.plafond_eclatement_m`
+  reste volontairement NON seedé (dormant, à calibrer en promo). Cycle TRF 007,
+  T027 ; specs/007-tarification-moteur-effort/data-model.md §2.
