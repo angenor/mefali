@@ -49,8 +49,12 @@ pub use modele::{
     IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
     Restrictions, Sanction, StatutArret, StatutLigne, TypeArret, TypeIssueEchec,
 };
+pub use panier::{
+    CauseScission, DetailsVertical, GroupeVendeur, LignePanier, LigneValidee, PanierValide,
+};
 pub use ports::{
     AffectationSimulee, ArretsDeCollecte, ArretsFixes, CommandeADispatcher, CommandesADispatcher,
     PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
     RestrictionsCompte, RestrictionsSimulees,
 };
+pub use workflow::{CoursesWorkflow, RestaurationWorkflow, ServiceWorkflow};
