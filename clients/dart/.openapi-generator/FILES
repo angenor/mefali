@@ -18,6 +18,7 @@ doc/BasculeDisponibiliteDto.md
 doc/BoutiqueVendeur.md
 doc/CategorieDto.md
 doc/CharteAdminDto.md
+doc/Commande.md
 doc/CommandeProposee.md
 doc/CommandesApi.md
 doc/Composantes.md
@@ -34,6 +35,7 @@ doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionRole.md
 doc/DemandeCollecte.md
+doc/DemandeCreationCommande.md
 doc/DemandeDevisPanier.md
 doc/DemandeOtp.md
 doc/DemandeRafraichissement.md
@@ -64,12 +66,14 @@ doc/JetonsDto.md
 doc/Lieu.md
 doc/LigneDevis.md
 doc/LignePanier.md
+doc/LivraisonCommande.md
 doc/ModeCollecte.md
 doc/ModifierAdresse.md
 doc/ModifierArticleDto.md
 doc/ModifierPrestataireDto.md
 doc/MoiApi.md
 doc/OffreLivraisonVendeur.md
+doc/PaiementCommande.md
 doc/PaiementPanier.md
 doc/PhotoAdminDto.md
 doc/PlageDto.md
@@ -91,6 +95,7 @@ doc/ResultatCollecte.md
 doc/ResultatSimulation.md
 doc/ResultatVerification.md
 doc/ScissionProposee.md
+doc/SecretsRemise.md
 doc/SessionAppareil.md
 doc/SessionOuverte.md
 doc/SignalementRecuDto.md
@@ -142,6 +147,7 @@ lib/src/model/bascule_disponibilite_dto.dart
 lib/src/model/boutique_vendeur.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/charte_admin_dto.dart
+lib/src/model/commande.dart
 lib/src/model/commande_proposee.dart
 lib/src/model/composantes.dart
 lib/src/model/composantes_devis.dart
@@ -157,6 +163,7 @@ lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
 lib/src/model/decision_role.dart
 lib/src/model/demande_collecte.dart
+lib/src/model/demande_creation_commande.dart
 lib/src/model/demande_devis_panier.dart
 lib/src/model/demande_otp.dart
 lib/src/model/demande_rafraichissement.dart
@@ -187,11 +194,13 @@ lib/src/model/jetons_dto.dart
 lib/src/model/lieu.dart
 lib/src/model/ligne_devis.dart
 lib/src/model/ligne_panier.dart
+lib/src/model/livraison_commande.dart
 lib/src/model/mode_collecte.dart
 lib/src/model/modifier_adresse.dart
 lib/src/model/modifier_article_dto.dart
 lib/src/model/modifier_prestataire_dto.dart
 lib/src/model/offre_livraison_vendeur.dart
+lib/src/model/paiement_commande.dart
 lib/src/model/paiement_panier.dart
 lib/src/model/photo_admin_dto.dart
 lib/src/model/plage_dto.dart
@@ -211,6 +220,7 @@ lib/src/model/resultat_collecte.dart
 lib/src/model/resultat_simulation.dart
 lib/src/model/resultat_verification.dart
 lib/src/model/scission_proposee.dart
+lib/src/model/secrets_remise.dart
 lib/src/model/session_appareil.dart
 lib/src/model/session_ouverte.dart
 lib/src/model/signalement_recu_dto.dart
@@ -243,6 +253,7 @@ test/boutique_vendeur_test.dart
 test/categorie_dto_test.dart
 test/charte_admin_dto_test.dart
 test/commande_proposee_test.dart
+test/commande_test.dart
 test/commandes_api_test.dart
 test/composantes_devis_test.dart
 test/composantes_test.dart
@@ -258,6 +269,7 @@ test/creer_article_dto_test.dart
 test/creer_prestataire_dto_test.dart
 test/decision_role_test.dart
 test/demande_collecte_test.dart
+test/demande_creation_commande_test.dart
 test/demande_devis_panier_test.dart
 test/demande_otp_test.dart
 test/demande_rafraichissement_test.dart
@@ -288,12 +300,14 @@ test/jetons_dto_test.dart
 test/lieu_test.dart
 test/ligne_devis_test.dart
 test/ligne_panier_test.dart
+test/livraison_commande_test.dart
 test/mode_collecte_test.dart
 test/modifier_adresse_test.dart
 test/modifier_article_dto_test.dart
 test/modifier_prestataire_dto_test.dart
 test/moi_api_test.dart
 test/offre_livraison_vendeur_test.dart
+test/paiement_commande_test.dart
 test/paiement_panier_test.dart
 test/photo_admin_dto_test.dart
 test/plage_dto_test.dart
@@ -315,6 +329,7 @@ test/resultat_collecte_test.dart
 test/resultat_simulation_test.dart
 test/resultat_verification_test.dart
 test/scission_proposee_test.dart
+test/secrets_remise_test.dart
 test/session_appareil_test.dart
 test/session_ouverte_test.dart
 test/signalement_recu_dto_test.dart

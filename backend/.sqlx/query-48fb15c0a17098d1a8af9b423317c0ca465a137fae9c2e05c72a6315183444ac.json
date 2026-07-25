@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.ligne_commande\n                         (id, commande_id, prestataire_id, article_id, prix_fige_id,\n                          quantite, preference)\n                     VALUES ($1, $2, $3, $4, $5, $6,\n                             $7::text::commandes.preference_substitution)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "48fb15c0a17098d1a8af9b423317c0ca465a137fae9c2e05c72a6315183444ac"
+}

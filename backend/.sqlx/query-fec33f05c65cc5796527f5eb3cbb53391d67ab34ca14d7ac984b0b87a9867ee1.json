@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lat, lng, repere_texte, repere_vocal_cle_objet\n             FROM comptes.adresse\n             WHERE id = $1 AND compte_id = $2 AND supprimee_le IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lat",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "lat"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "lng",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "lng"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "repere_texte",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_texte"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "repere_vocal_cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_vocal_cle_objet"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "fec33f05c65cc5796527f5eb3cbb53391d67ab34ca14d7ac984b0b87a9867ee1"
+}

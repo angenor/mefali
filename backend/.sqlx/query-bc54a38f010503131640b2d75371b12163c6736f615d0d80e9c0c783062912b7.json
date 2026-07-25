@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.livraison\n                 (id, commande_id, etat, devis_prix_client, devis_part_coursier,\n                  devis_marge, devis_devise, devis_distance_m, devis_eta_s,\n                  devis_degraded, devis_composantes, proposer_scission)\n             VALUES ($1, $2, 'assignee', $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Text",
+        "Int8",
+        "Int8",
+        "Bool",
+        "Jsonb",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bc54a38f010503131640b2d75371b12163c6736f615d0d80e9c0c783062912b7"
+}

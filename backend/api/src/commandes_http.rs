@@ -365,3 +365,206 @@ pub(crate) fn devis_dto(d: &tarification::Devis) -> DevisLivraisonDto {
         ordre_arrets: d.ordre.clone(),
     }
 }
+
+// ── POST /commandes ────────────────────────────────────────────────────────
+
+/// Demande de création de commande.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandeCreationCommande)]
+pub struct DemandeCreationDto {
+    /// Zone de la commande.
+    pub zone_id: Uuid,
+    /// Catégorie de service.
+    pub categorie_slug: String,
+    /// Véhicule demandé.
+    pub transport_slug: String,
+    /// Adresse du carnet (CPT-05) — ou `lieu` + repère fournis en clair.
+    pub adresse_id: Option<Uuid>,
+    /// Pin GPS, si aucune adresse du carnet n'est utilisée.
+    pub lieu: Option<LieuDto>,
+    /// Repère écrit.
+    pub repere_texte: Option<String>,
+    /// Clé S3 du repère vocal.
+    pub repere_vocal_cle: Option<String>,
+    /// Lignes du panier.
+    pub lignes: Vec<LignePanierDto>,
+    /// `cash` | `mobile_money`.
+    pub mode_paiement: String,
+}
+
+/// Secrets de remise — servis au CLIENT PROPRIÉTAIRE seul (research R6).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = SecretsRemise)]
+pub struct SecretsRemiseDto {
+    /// Code à 4 chiffres.
+    pub code_livraison: String,
+    /// Jeton encodé dans le QR de réception.
+    pub jeton_reception: String,
+}
+
+/// État du paiement d'une commande créée.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PaiementCommande)]
+pub struct PaiementCommandeDto {
+    /// Mode retenu.
+    pub mode: String,
+    /// `du` | `en_attente` | `regle` | `rembourse`.
+    pub etat: String,
+    /// Appoint exact à préparer (cash) — le total, en une fois. Aucun chemin
+    /// de règlement fractionné n'existe (constitution III).
+    pub appoint_exact_unites: i64,
+}
+
+/// La livraison créée avec la commande.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = LivraisonCommande)]
+pub struct LivraisonCommandeDto {
+    /// Identifiant.
+    pub id: Uuid,
+    /// État logistique initial.
+    pub etat: String,
+    /// Nombre d'arrêts (collectes + remise).
+    pub nb_arrets: i64,
+    /// Devis FIGÉ copié à la création — jamais recalculé (R11).
+    pub devis: DevisLivraisonDto,
+}
+
+/// Commande créée.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = Commande)]
+pub struct CommandeDto {
+    /// Identifiant (= `Idempotency-Key`).
+    pub id: Uuid,
+    /// État de très haut niveau.
+    pub etat: String,
+    /// Montant des articles.
+    pub montant_articles_unites: i64,
+    /// Total à payer.
+    pub total_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Paiement.
+    pub paiement: PaiementCommandeDto,
+    /// Code et jeton de remise.
+    pub remise: SecretsRemiseDto,
+    /// Livraison.
+    pub livraison: LivraisonCommandeDto,
+}
+
+/// Lit l'en-tête `Idempotency-Key` — **obligatoire** (R7). Il DEVIENT
+/// l'identifiant de la commande : l'idempotence est structurelle (contrainte de
+/// clé primaire), donc vraie même sous concurrence.
+fn idempotency_key(requete: &actix_web::HttpRequest) -> Result<Uuid, ErreurCommandesHttp> {
+    requete
+        .headers()
+        .get("idempotency-key")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse::<Uuid>().ok())
+        .ok_or_else(|| {
+            ErreurCommandesHttp::Domaine(ErreurCommandes::PanierInvalide(
+                "en-tête Idempotency-Key absent ou mal formé".to_owned(),
+            ))
+        })
+}
+
+/// Crée une commande : prix verrouillés, devis figé, code et QR remis
+/// immédiatement (CMD-03).
+///
+/// Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un
+/// corps identique et un `200` — jamais un doublon.
+#[utoipa::path(
+    post,
+    path = "/commandes",
+    tag = "commandes",
+    params(
+        ("Idempotency-Key" = Uuid, Header,
+         description = "UUIDv7 client — DEVIENT l'identifiant de la commande (R7)."),
+    ),
+    request_body = DemandeCreationDto,
+    responses(
+        (status = 201, description = "Commande créée : tronc, livraison, segment, arrêts \
+         (collectes ordonnées + remise), prix verrouillés, devis figé, code et QR.",
+         body = CommandeDto),
+        (status = 200, description = "Rejeu de la même clé — la commande EXISTANTE, corps identique.",
+         body = CommandeDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Compte bloqué, téléphone non vérifié, ou rôle client absent.",
+         body = ErreurApiDto),
+        (status = 409, description = "Catégorie non mixable, vendeur fermé, article indisponible, \
+         ou espèces indisponibles.", body = ErreurApiDto),
+        (status = 422, description = "Repère manquant, panier invalide, clé d'idempotence absente.",
+         body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/commandes")]
+pub async fn creer_commande(
+    auth: Auth,
+    requete: actix_web::HttpRequest,
+    corps: web::Json<DemandeCreationDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Client)?;
+    let id = idempotency_key(&requete)?;
+    let corps = corps.into_inner();
+
+    let lignes = corps
+        .lignes
+        .iter()
+        .map(LignePanierDto::vers_domaine)
+        .collect::<Result<Vec<_>, _>>()?;
+    let mode_paiement: commandes::ModePaiement = corps.mode_paiement.parse()?;
+
+    let creee = depot
+        .creer_commande(commandes::creation::DemandeCreation {
+            id,
+            client_id: auth.compte_id,
+            zone_id: corps.zone_id,
+            categorie_slug: corps.categorie_slug,
+            transport_slug: corps.transport_slug,
+            adresse_id: corps.adresse_id,
+            lieu: corps.lieu.map(|l| (l.lat, l.lon)),
+            repere_texte: corps.repere_texte,
+            repere_vocal_cle: corps.repere_vocal_cle,
+            lignes,
+            mode_paiement,
+        })
+        .await?;
+
+    let dto = CommandeDto {
+        id: creee.id,
+        etat: creee.etat.comme_str().to_owned(),
+        montant_articles_unites: creee.montant_articles_unites,
+        total_unites: creee.total_unites,
+        devise: creee.devise.clone(),
+        paiement: PaiementCommandeDto {
+            mode: creee.mode_paiement.comme_str().to_owned(),
+            etat: if creee.mode_paiement == commandes::ModePaiement::Cash {
+                "du".to_owned()
+            } else {
+                "en_attente".to_owned()
+            },
+            // Le SEUL montant encaissable est le total : il n'existe aucune
+            // surface qui accepte une fraction (SC-005).
+            appoint_exact_unites: creee.total_unites,
+        },
+        remise: SecretsRemiseDto {
+            code_livraison: creee.secrets.code_livraison.clone(),
+            jeton_reception: creee.secrets.jeton_reception.clone(),
+        },
+        livraison: LivraisonCommandeDto {
+            id: creee.livraison_id,
+            etat: "assignee".to_owned(),
+            nb_arrets: creee.nb_arrets,
+            devis: devis_dto(&creee.devis),
+        },
+    };
+
+    // 200 au rejeu, 201 à la création : le client distingue « c'était déjà
+    // fait » de « je viens de le faire », sans corps différent.
+    Ok(if creee.rejeu {
+        HttpResponse::Ok().json(dto)
+    } else {
+        HttpResponse::Created().json(dto)
+    })
+}

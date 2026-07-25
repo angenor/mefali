@@ -1,0 +1,217 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.etat::text AS \"etat!\", c.montant_articles_unites, c.total_unites,\n                      c.devise, c.mode_paiement::text AS \"mode_paiement!\",\n                      c.code_livraison, c.jeton_reception,\n                      l.id AS \"livraison_id?\", l.devis_prix_client AS \"devis_prix_client?\",\n                      l.devis_part_coursier AS \"devis_part_coursier?\",\n                      l.devis_marge AS \"devis_marge?\", l.devis_devise AS \"devis_devise?\",\n                      l.devis_distance_m AS \"devis_distance_m?\", l.devis_eta_s AS \"devis_eta_s?\",\n                      l.devis_degraded AS \"devis_degraded?\",\n                      l.devis_composantes AS \"devis_composantes?\",\n                      l.proposer_scission AS \"proposer_scission?\",\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                         WHERE s.livraison_id = l.id) AS \"nb_arrets?\"\n               FROM commandes.commande c\n               LEFT JOIN commandes.livraison l ON l.commande_id = c.id\n               WHERE c.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "montant_articles_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "montant_articles_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "mode_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "code_livraison",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "code_livraison"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "jeton_reception",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "jeton_reception"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "livraison_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "devis_prix_client?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_prix_client"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "devis_part_coursier?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_part_coursier"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "devis_marge?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_marge"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "devis_devise?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_devise"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "devis_distance_m?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_distance_m"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "devis_eta_s?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_eta_s"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "devis_degraded?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_degraded"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "devis_composantes?",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_composantes"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "proposer_scission?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "proposer_scission"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "nb_arrets?",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "adc21dbdc47700924adc59564ff366db887f338e30bafd61843071eb8e39064a"
+}

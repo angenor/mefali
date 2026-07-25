@@ -95,6 +95,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*CommandesApi*](doc/CommandesApi.md) | [**creerCommande**](doc/CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [*CommandesApi*](doc/CommandesApi.md) | [**devisPanier**](doc/CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
@@ -151,6 +152,7 @@ Class | Method | HTTP request | Description
  - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
+ - [Commande](doc/Commande.md)
  - [CommandeProposee](doc/CommandeProposee.md)
  - [Composantes](doc/Composantes.md)
  - [ComposantesDevis](doc/ComposantesDevis.md)
@@ -165,6 +167,7 @@ Class | Method | HTTP request | Description
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
+ - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
@@ -195,11 +198,13 @@ Class | Method | HTTP request | Description
  - [Lieu](doc/Lieu.md)
  - [LigneDevis](doc/LigneDevis.md)
  - [LignePanier](doc/LignePanier.md)
+ - [LivraisonCommande](doc/LivraisonCommande.md)
  - [ModeCollecte](doc/ModeCollecte.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
+ - [PaiementCommande](doc/PaiementCommande.md)
  - [PaiementPanier](doc/PaiementPanier.md)
  - [PhotoAdminDto](doc/PhotoAdminDto.md)
  - [PlageDto](doc/PlageDto.md)
@@ -219,6 +224,7 @@ Class | Method | HTTP request | Description
  - [ResultatSimulation](doc/ResultatSimulation.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [ScissionProposee](doc/ScissionProposee.md)
+ - [SecretsRemise](doc/SecretsRemise.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
  - [SignalementRecuDto](doc/SignalementRecuDto.md)

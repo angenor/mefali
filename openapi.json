@@ -2842,6 +2842,105 @@
         }
       }
     },
+    "/commandes": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "Crée une commande : prix verrouillés, devis figé, code et QR remis\nimmédiatement (CMD-03).",
+        "description": "Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un\ncorps identique et un `200` — jamais un doublon.",
+        "operationId": "creer_commande",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 client — DEVIENT l'identifiant de la commande (R7).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeCreationCommande"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu de la même clé — la commande EXISTANTE, corps identique.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commande"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Commande créée : tronc, livraison, segment, arrêts (collectes ordonnées + remise), prix verrouillés, devis figé, code et QR.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commande"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Compte bloqué, téléphone non vérifié, ou rôle client absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Catégorie non mixable, vendeur fermé, article indisponible, ou espèces indisponibles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Repère manquant, panier invalide, clé d'idempotence absente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/config": {
       "get": {
         "tags": [
@@ -5291,6 +5390,57 @@
           }
         }
       },
+      "Commande": {
+        "type": "object",
+        "description": "Commande créée.",
+        "required": [
+          "id",
+          "etat",
+          "montant_articles_unites",
+          "total_unites",
+          "devise",
+          "paiement",
+          "remise",
+          "livraison"
+        ],
+        "properties": {
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État de très haut niveau."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant (= `Idempotency-Key`)."
+          },
+          "livraison": {
+            "$ref": "#/components/schemas/LivraisonCommande",
+            "description": "Livraison."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des articles."
+          },
+          "paiement": {
+            "$ref": "#/components/schemas/PaiementCommande",
+            "description": "Paiement."
+          },
+          "remise": {
+            "$ref": "#/components/schemas/SecretsRemise",
+            "description": "Code et jeton de remise."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer."
+          }
+        }
+      },
       "CommandeProposee": {
         "type": "object",
         "description": "Une commande telle qu'elle sortirait de la scission.",
@@ -5795,6 +5945,76 @@
             "type": "string",
             "format": "uuid",
             "description": "Clé d'idempotence (UUIDv7 client, V)."
+          }
+        }
+      },
+      "DemandeCreationCommande": {
+        "type": "object",
+        "description": "Demande de création de commande.",
+        "required": [
+          "zone_id",
+          "categorie_slug",
+          "transport_slug",
+          "lignes",
+          "mode_paiement"
+        ],
+        "properties": {
+          "adresse_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Adresse du carnet (CPT-05) — ou `lieu` + repère fournis en clair."
+          },
+          "categorie_slug": {
+            "type": "string",
+            "description": "Catégorie de service."
+          },
+          "lieu": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Lieu",
+                "description": "Pin GPS, si aucune adresse du carnet n'est utilisée."
+              }
+            ]
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LignePanier"
+            },
+            "description": "Lignes du panier."
+          },
+          "mode_paiement": {
+            "type": "string",
+            "description": "`cash` | `mobile_money`."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit."
+          },
+          "repere_vocal_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé S3 du repère vocal."
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule demandé."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
           }
         }
       },
@@ -6830,6 +7050,36 @@
           }
         }
       },
+      "LivraisonCommande": {
+        "type": "object",
+        "description": "La livraison créée avec la commande.",
+        "required": [
+          "id",
+          "etat",
+          "nb_arrets",
+          "devis"
+        ],
+        "properties": {
+          "devis": {
+            "$ref": "#/components/schemas/DevisLivraison",
+            "description": "Devis FIGÉ copié à la création — jamais recalculé (R11)."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État logistique initial."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nb_arrets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre d'arrêts (collectes + remise)."
+          }
+        }
+      },
       "ModeCollecte": {
         "type": "string",
         "description": "Mode de collecte (contrat).",
@@ -7013,6 +7263,30 @@
           "toujours": {
             "type": "boolean",
             "description": "Le vendeur prend la livraison en charge quel que soit le panier."
+          }
+        }
+      },
+      "PaiementCommande": {
+        "type": "object",
+        "description": "État du paiement d'une commande créée.",
+        "required": [
+          "mode",
+          "etat",
+          "appoint_exact_unites"
+        ],
+        "properties": {
+          "appoint_exact_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appoint exact à préparer (cash) — le total, en une fois. Aucun chemin\nde règlement fractionné n'existe (constitution III)."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`du` | `en_attente` | `regle` | `rembourse`."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Mode retenu."
           }
         }
       },
@@ -7738,6 +8012,24 @@
           "message_cle": {
             "type": "string",
             "description": "Clé i18n du message affiché."
+          }
+        }
+      },
+      "SecretsRemise": {
+        "type": "object",
+        "description": "Secrets de remise — servis au CLIENT PROPRIÉTAIRE seul (research R6).",
+        "required": [
+          "code_livraison",
+          "jeton_reception"
+        ],
+        "properties": {
+          "code_livraison": {
+            "type": "string",
+            "description": "Code à 4 chiffres."
+          },
+          "jeton_reception": {
+            "type": "string",
+            "description": "Jeton encodé dans le QR de réception."
           }
         }
       },

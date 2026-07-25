@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.resto_details (commande_id, delai_preparation_min)\n                 VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4a8e5b1d730942af08f97bc835b02c099a67de510a5cb11a85f3bca22263a397"
+}

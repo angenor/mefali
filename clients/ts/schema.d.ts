@@ -615,6 +615,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/commandes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crée une commande : prix verrouillés, devis figé, code et QR remis
+         *     immédiatement (CMD-03).
+         * @description Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un
+         *     corps identique et un `200` — jamais un doublon.
+         */
+        post: operations["creer_commande"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -1344,6 +1366,34 @@ export interface components {
              */
             photo?: string | null;
         };
+        /** @description Commande créée. */
+        Commande: {
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de très haut niveau. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Identifiant (= `Idempotency-Key`).
+             */
+            id: string;
+            /** @description Livraison. */
+            livraison: components["schemas"]["LivraisonCommande"];
+            /**
+             * Format: int64
+             * @description Montant des articles.
+             */
+            montant_articles_unites: number;
+            /** @description Paiement. */
+            paiement: components["schemas"]["PaiementCommande"];
+            /** @description Code et jeton de remise. */
+            remise: components["schemas"]["SecretsRemise"];
+            /**
+             * Format: int64
+             * @description Total à payer.
+             */
+            total_unites: number;
+        };
         /** @description Une commande telle qu'elle sortirait de la scission. */
         CommandeProposee: {
             /** @description Articles qui la composeraient. */
@@ -1619,6 +1669,32 @@ export interface components {
              * @description Clé d'idempotence (UUIDv7 client, V).
              */
             uuid_client: string;
+        };
+        /** @description Demande de création de commande. */
+        DemandeCreationCommande: {
+            /**
+             * Format: uuid
+             * @description Adresse du carnet (CPT-05) — ou `lieu` + repère fournis en clair.
+             */
+            adresse_id?: string | null;
+            /** @description Catégorie de service. */
+            categorie_slug: string;
+            lieu?: null | components["schemas"]["Lieu"];
+            /** @description Lignes du panier. */
+            lignes: components["schemas"]["LignePanier"][];
+            /** @description `cash` | `mobile_money`. */
+            mode_paiement: string;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+            /** @description Clé S3 du repère vocal. */
+            repere_vocal_cle?: string | null;
+            /** @description Véhicule demandé. */
+            transport_slug: string;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
         };
         /** @description Demande de devis de panier — **aucun effet de bord** (P4). */
         DemandeDevisPanier: {
@@ -2153,6 +2229,23 @@ export interface components {
              */
             quantite: number;
         };
+        /** @description La livraison créée avec la commande. */
+        LivraisonCommande: {
+            /** @description Devis FIGÉ copié à la création — jamais recalculé (R11). */
+            devis: components["schemas"]["DevisLivraison"];
+            /** @description État logistique initial. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Nombre d'arrêts (collectes + remise).
+             */
+            nb_arrets: number;
+        };
         /**
          * @description Mode de collecte (contrat).
          * @enum {string}
@@ -2255,6 +2348,19 @@ export interface components {
             au_dela?: number | null;
             /** @description Le vendeur prend la livraison en charge quel que soit le panier. */
             toujours: boolean;
+        };
+        /** @description État du paiement d'une commande créée. */
+        PaiementCommande: {
+            /**
+             * Format: int64
+             * @description Appoint exact à préparer (cash) — le total, en une fois. Aucun chemin
+             *     de règlement fractionné n'existe (constitution III).
+             */
+            appoint_exact_unites: number;
+            /** @description `du` | `en_attente` | `regle` | `rembourse`. */
+            etat: string;
+            /** @description Mode retenu. */
+            mode: string;
         };
         /** @description Décision d'encaissement (maquette C3-3b). */
         PaiementPanier: {
@@ -2647,6 +2753,13 @@ export interface components {
             commandes_proposees: components["schemas"]["CommandeProposee"][];
             /** @description Clé i18n du message affiché. */
             message_cle: string;
+        };
+        /** @description Secrets de remise — servis au CLIENT PROPRIÉTAIRE seul (research R6). */
+        SecretsRemise: {
+            /** @description Code à 4 chiffres. */
+            code_livraison: string;
+            /** @description Jeton encodé dans le QR de réception. */
+            jeton_reception: string;
         };
         /** @description Session/appareil du compte (contrat `SessionAppareil`). */
         SessionAppareil: {
@@ -4859,6 +4972,78 @@ export interface operations {
             };
             /** @description Refresh inconnu, session révoquée, OU réutilisation d'un jeton déjà tourné —                                       dans ce dernier cas la session est RÉVOQUÉE (détection de vol, R2). */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    creer_commande: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUIDv7 client — DEVIENT l'identifiant de la commande (R7). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeCreationCommande"];
+            };
+        };
+        responses: {
+            /** @description Rejeu de la même clé — la commande EXISTANTE, corps identique. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Commande"];
+                };
+            };
+            /** @description Commande créée : tronc, livraison, segment, arrêts (collectes ordonnées + remise), prix verrouillés, devis figé, code et QR. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Commande"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Compte bloqué, téléphone non vérifié, ou rôle client absent. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Catégorie non mixable, vendeur fermé, article indisponible, ou espèces indisponibles. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Repère manquant, panier invalide, clé d'idempotence absente. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

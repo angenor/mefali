@@ -453,7 +453,8 @@ impl Bac {
             cfg.app_data(web::Data::new(pool))
                 .app_data(web::Data::new(comptes))
                 .app_data(web::Data::new(commandes))
-                .service(cmd::devis_panier);
+                .service(cmd::devis_panier)
+                .service(cmd::creer_commande);
         }
     }
 

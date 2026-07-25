@@ -9,8 +9,54 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**creerCommande**](CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [**devisPanier**](CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
 
+
+# **creerCommande**
+> Commande creerCommande(idempotencyKey, demandeCreationCommande)
+
+Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
+
+Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un corps identique et un `200` — jamais un doublon.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesApi();
+final String idempotencyKey = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | UUIDv7 client — DEVIENT l'identifiant de la commande (R7).
+final DemandeCreationCommande demandeCreationCommande = ; // DemandeCreationCommande | 
+
+try {
+    final response = api.creerCommande(idempotencyKey, demandeCreationCommande);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CommandesApi->creerCommande: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **idempotencyKey** | **String**| UUIDv7 client — DEVIENT l'identifiant de la commande (R7). | 
+ **demandeCreationCommande** | [**DemandeCreationCommande**](DemandeCreationCommande.md)|  | 
+
+### Return type
+
+[**Commande**](Commande.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **devisPanier**
 > DevisPanier devisPanier(demandeDevisPanier)
