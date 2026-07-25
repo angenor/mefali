@@ -6,8 +6,12 @@
 //! commande n'existe pas. Ce module ne porte donc que des types et des règles
 //! pures ; les écritures vivent dans [`crate::creation`].
 
-use uuid::Uuid;
+use std::collections::HashMap;
 
+use uuid::Uuid;
+use zones::ConfigurationZones;
+
+use crate::depot::PgCommandes;
 use crate::modele::{ErreurCommandes, PreferenceSubstitution};
 
 /// Une ligne telle que le client la soumet.
@@ -151,6 +155,32 @@ impl CauseScission {
     }
 }
 
+/// Une commande telle qu'elle sortirait de la scission : ses lignes et son
+/// total d'articles ESTIMÉ (les frais de chaque commande résultante ne sont
+/// connus qu'après un nouveau devis — le client en verra deux).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandeProposee {
+    /// Clé i18n du libellé (« Le repas », « Les courses »).
+    pub libelle_cle: String,
+    /// Lignes qui composeraient cette commande.
+    pub lignes: Vec<LignePanier>,
+    /// Total des ARTICLES de cette commande (unités mineures).
+    pub total_articles_unites: i64,
+}
+
+/// Proposition de scission — **une seule surface pour les deux causes**
+/// (research R9). Le serveur ne scinde JAMAIS d'office (FR-010) : il propose,
+/// le client renvoie N créations indépendantes s'il accepte.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropositionScission {
+    /// Ce qui a déclenché la proposition.
+    pub cause: CauseScission,
+    /// Clé i18n du message affiché.
+    pub message_cle: String,
+    /// Prévisualisation CHIFFRÉE des commandes résultantes.
+    pub commandes_proposees: Vec<CommandeProposee>,
+}
+
 /// Valide la FORME d'un panier soumis, avant toute résolution de catalogue.
 ///
 /// Ne regarde ni les prix, ni la disponibilité : uniquement ce qui rend le
@@ -165,6 +195,176 @@ pub fn valider_forme(lignes: &[LignePanier]) -> Result<(), ErreurCommandes> {
         ));
     }
     Ok(())
+}
+
+/// Construit la proposition de scission d'un panier, ou `None` s'il n'y a rien
+/// à proposer.
+///
+/// Les **deux causes** produisent la même action utilisateur et le même écran
+/// (C3-3d) : les fusionner évite deux chemins d'UI divergents, et évite surtout
+/// qu'un panier à la fois mixte ET dispersé affiche deux bandeaux
+/// contradictoires (research R9).
+///
+/// - `categorie_non_mixable` : le panier porte plusieurs vendeurs alors que la
+///   catégorie refuse d'être mêlée → un vendeur par commande ;
+/// - `plafond_eclatement` : le détour dépasse le plafond de zone (drapeau
+///   `proposer_scission` du devis, décidé par TRF) → le panier est coupé en
+///   deux moitiés de vendeurs.
+///
+/// La cause « non mixable » l'emporte : c'est un REFUS de création, l'autre
+/// n'est qu'un conseil.
+pub fn proposer_scission(
+    panier: &PanierValide,
+    proposer_pour_eclatement: bool,
+) -> Option<PropositionScission> {
+    let cause = if !panier.mixable && !panier.mono_vendeur() {
+        CauseScission::CategorieNonMixable
+    } else if proposer_pour_eclatement && !panier.mono_vendeur() {
+        CauseScission::PlafondEclatement
+    } else {
+        return None;
+    };
+
+    let commandes_proposees = match cause {
+        // Un vendeur = une commande : c'est la seule découpe qui lève le refus.
+        CauseScission::CategorieNonMixable => panier
+            .groupes
+            .iter()
+            .map(|g| CommandeProposee {
+                libelle_cle: "panier.scission.par_vendeur".to_owned(),
+                lignes: g.lignes.iter().map(|l| l.ligne.clone()).collect(),
+                total_articles_unites: g.sous_total_unites(),
+            })
+            .collect(),
+        // Deux tournées plus courtes : la coupe se fait sur les vendeurs, dans
+        // l'ordre où le client les a composés — le serveur ne réorganise rien.
+        CauseScission::PlafondEclatement => {
+            let milieu = panier.groupes.len().div_ceil(2);
+            panier
+                .groupes
+                .chunks(milieu)
+                .map(|part| CommandeProposee {
+                    libelle_cle: "panier.scission.par_tournee".to_owned(),
+                    lignes: part
+                        .iter()
+                        .flat_map(|g| g.lignes.iter().map(|l| l.ligne.clone()))
+                        .collect(),
+                    total_articles_unites: part.iter().map(|g| g.sous_total_unites()).sum(),
+                })
+                .collect()
+        }
+    };
+
+    Some(PropositionScission {
+        cause,
+        message_cle: cause.message_cle().to_owned(),
+        commandes_proposees,
+    })
+}
+
+impl PgCommandes {
+    /// Résout un panier soumis contre la base : catégorie, règle de mixage,
+    /// catalogue de chaque vendeur, position de son site.
+    ///
+    /// **Aucune écriture, aucun événement** (P4) : c'est une lecture pure, que
+    /// le devis de panier ET la création partagent — le prix annoncé au panier
+    /// et le prix verrouillé à la confirmation sortent donc du même code.
+    ///
+    /// Refuse (`vendeur_indisponible` / `article_indisponible`) dès qu'un
+    /// vendeur n'est pas commandable ou qu'un article a disparu du catalogue :
+    /// mieux vaut un refus au panier qu'un coursier devant un rideau fermé.
+    pub async fn resoudre_panier(
+        &self,
+        zone_id: Uuid,
+        categorie_slug: &str,
+        lignes: &[LignePanier],
+    ) -> Result<PanierValide, ErreurCommandes> {
+        valider_forme(lignes)?;
+
+        // Catégorie ACTIVE dans la zone + son `mixable` résolu par héritage
+        // (constitution I : jamais en dur).
+        let categories = self.zones.categories_actives(zone_id).await?;
+        let categorie = categories
+            .iter()
+            .find(|c| c.slug == categorie_slug)
+            .ok_or_else(|| {
+                ErreurCommandes::PanierInvalide(format!(
+                    "catégorie « {categorie_slug} » inactive dans cette zone"
+                ))
+            })?;
+        let categorie_id = self.categorie_id(categorie_slug).await?;
+        let devise = self.zones.devise(zone_id).await?.code;
+
+        // Ordre de PREMIÈRE APPARITION des vendeurs : le regroupement suit la
+        // composition du client, il ne la réorganise pas (maquette C3-3a).
+        let mut ordre_vendeurs: Vec<Uuid> = Vec::new();
+        for l in lignes {
+            if !ordre_vendeurs.contains(&l.prestataire_id) {
+                ordre_vendeurs.push(l.prestataire_id);
+            }
+        }
+
+        let mut groupes = Vec::with_capacity(ordre_vendeurs.len());
+        for prestataire_id in ordre_vendeurs {
+            let point = self
+                .prestataires
+                .point_de_retrait(prestataire_id)
+                .await?
+                .ok_or(ErreurCommandes::VendeurIndisponible(prestataire_id))?;
+            // `articles_commandables_de` rend une liste VIDE si le vendeur n'est
+            // pas commandable (agréé ∧ catégorie active ∧ boutique ouverte).
+            let catalogue: HashMap<Uuid, prestataires::ArticleCommandable> = self
+                .prestataires
+                .articles_commandables_de(prestataire_id)
+                .await?
+                .into_iter()
+                .map(|a| (a.id, a))
+                .collect();
+            if catalogue.is_empty() {
+                return Err(ErreurCommandes::VendeurIndisponible(prestataire_id));
+            }
+
+            let mut lignes_du_vendeur = Vec::new();
+            for l in lignes.iter().filter(|l| l.prestataire_id == prestataire_id) {
+                let article = catalogue
+                    .get(&l.article_id)
+                    .ok_or(ErreurCommandes::ArticleIndisponible(l.article_id))?;
+                lignes_du_vendeur.push(LigneValidee {
+                    ligne: l.clone(),
+                    nom: article.nom.clone(),
+                    prix_unites: article.prix_unites,
+                    devise: article.devise.clone(),
+                });
+            }
+
+            groupes.push(GroupeVendeur {
+                prestataire_id,
+                nom: point.nom,
+                site_lat: point.lat,
+                site_lon: point.lon,
+                lignes: lignes_du_vendeur,
+            });
+        }
+
+        Ok(PanierValide {
+            zone_id,
+            categorie_id,
+            categorie_slug: categorie_slug.to_owned(),
+            mixable: categorie.mixable,
+            groupes,
+            devise,
+        })
+    }
+
+    /// Identifiant de la catégorie de service par son slug.
+    pub(crate) async fn categorie_id(&self, slug: &str) -> Result<Uuid, ErreurCommandes> {
+        sqlx::query_scalar!("SELECT id FROM zones.categorie WHERE slug = $1", slug)
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| {
+                ErreurCommandes::PanierInvalide(format!("catégorie inconnue : {slug}"))
+            })
+    }
 }
 
 #[cfg(test)]
@@ -228,6 +428,79 @@ mod tests {
             preference: PreferenceSubstitution::default(),
         };
         assert!(valider_forme(&[l]).is_err());
+    }
+
+    fn panier_de(nb_vendeurs: usize, mixable: bool) -> PanierValide {
+        let groupes = (0..nb_vendeurs)
+            .map(|i| {
+                let p = Uuid::now_v7();
+                groupe(p, vec![ligne(p, 1_000 * (i as i64 + 1), 1)])
+            })
+            .collect();
+        PanierValide {
+            zone_id: Uuid::now_v7(),
+            categorie_id: Uuid::now_v7(),
+            categorie_slug: if mixable { "marche" } else { "restauration" }.to_owned(),
+            mixable,
+            groupes,
+            devise: "XOF".to_owned(),
+        }
+    }
+
+    #[test]
+    fn categorie_non_mixable_propose_une_commande_par_vendeur() {
+        let panier = panier_de(3, false);
+        let scission = proposer_scission(&panier, false).expect("proposition attendue");
+        assert_eq!(scission.cause, CauseScission::CategorieNonMixable);
+        assert_eq!(scission.commandes_proposees.len(), 3);
+        // La prévisualisation est CHIFFRÉE : la somme des commandes proposées
+        // vaut le panier d'origine, au FCFA près.
+        let somme: i64 = scission
+            .commandes_proposees
+            .iter()
+            .map(|c| c.total_articles_unites)
+            .sum();
+        assert_eq!(somme, panier.montant_articles_unites());
+    }
+
+    #[test]
+    fn plafond_eclatement_propose_deux_tournees() {
+        let panier = panier_de(4, true);
+        let scission = proposer_scission(&panier, true).expect("proposition attendue");
+        assert_eq!(scission.cause, CauseScission::PlafondEclatement);
+        assert_eq!(
+            scission.commandes_proposees.len(),
+            2,
+            "deux tournées plus courtes, pas une commande par vendeur",
+        );
+        let somme: i64 = scission
+            .commandes_proposees
+            .iter()
+            .map(|c| c.total_articles_unites)
+            .sum();
+        assert_eq!(somme, panier.montant_articles_unites());
+    }
+
+    #[test]
+    fn une_seule_proposition_meme_quand_les_deux_causes_tiennent() {
+        // Panier à la fois NON MIXABLE et dispersé : une seule proposition, et
+        // c'est le REFUS qui l'emporte — l'autre cause n'est qu'un conseil.
+        let panier = panier_de(3, false);
+        let scission = proposer_scission(&panier, true).expect("proposition attendue");
+        assert_eq!(
+            scission.cause,
+            CauseScission::CategorieNonMixable,
+            "jamais deux bandeaux contradictoires (research R9)",
+        );
+    }
+
+    #[test]
+    fn aucune_proposition_quand_rien_ne_la_justifie() {
+        // Mono-vendeur : ni le mixage ni l'éclatement n'ont de sens.
+        assert!(proposer_scission(&panier_de(1, false), true).is_none());
+        assert!(proposer_scission(&panier_de(1, true), true).is_none());
+        // Multi-vendeurs mixable et compact : rien à proposer.
+        assert!(proposer_scission(&panier_de(3, true), false).is_none());
     }
 
     #[test]

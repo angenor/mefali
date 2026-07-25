@@ -43,6 +43,20 @@ pub struct Site {
     pub statut_change_le: Option<DateTime<Utc>>,
 }
 
+/// Point de retrait d'une course : le nom d'un vendeur et la position de son
+/// site. Consommé par CMD (géométrie de la course) — jamais servi en public.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PointRetrait {
+    /// Vendeur.
+    pub prestataire_id: Uuid,
+    /// Nom affiché sur la carte vendeur du panier.
+    pub nom: String,
+    /// Latitude du site.
+    pub lat: f64,
+    /// Longitude du site.
+    pub lon: f64,
+}
+
 impl PgPrestataires {
     // ── Site unique : upsert admin (FR-019) ────────────────────────────────
 
@@ -202,6 +216,37 @@ impl PgPrestataires {
 
     /// LE site du prestataire, dans la transaction (SiteInconnu s'il n'existe
     /// pas encore — l'agrément l'exige, FR-005).
+    /// **Point de retrait** d'un vendeur : son nom et la position de son site.
+    ///
+    /// Consommé par le cycle CMD 008 pour construire la GÉOMÉTRIE de la course
+    /// (un point de retrait par vendeur du panier) avant d'appeler le moteur
+    /// tarifaire. `None` = prestataire inconnu, ou sans site défini.
+    ///
+    /// ⚠ Surface INTERNE : la position d'un site n'est jamais servie en public
+    /// (SC-013 du cycle 005) — `fiche_publique` ne la porte pas et ne la portera
+    /// pas. Ce lecteur existe pour les modules qui calculent un itinéraire, pas
+    /// pour l'afficher.
+    pub async fn point_de_retrait(
+        &self,
+        prestataire: Uuid,
+    ) -> Result<Option<PointRetrait>, ErreurPrestataires> {
+        let ligne = sqlx::query!(
+            "SELECT p.nom, s.position_lat, s.position_lng
+             FROM prestataires.prestataire p
+             JOIN prestataires.site s ON s.prestataire_id = p.id
+             WHERE p.id = $1",
+            prestataire,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(ligne.map(|l| PointRetrait {
+            prestataire_id: prestataire,
+            nom: l.nom,
+            lat: l.position_lat,
+            lon: l.position_lng,
+        }))
+    }
+
     pub(crate) async fn site_dans_tx(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
