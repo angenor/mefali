@@ -4,6 +4,28 @@
  */
 
 export interface paths {
+    "/admin/commandes/attente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CMD-10 — file FIFO des commandes sans coursier d'une zone.
+         * @description L'ordre est l'âge, du plus ancien au plus récent : c'est la promesse
+         *     produite au client qui attend (« la plus ancienne repart en premier »), et
+         *     c'est le contrat que **DSP** consommera tel quel.
+         */
+        get: operations["file_attente"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/comptes/dossiers-coursier": {
         parameters: {
             query?: never;
@@ -1478,6 +1500,47 @@ export interface components {
              */
             total_unites: number;
         };
+        /** @description Une commande en attente de coursier, telle que DSP la lira. */
+        CommandeEnAttente: {
+            /**
+             * Format: int64
+             * @description Ancienneté dans la file, en secondes — **c'est elle qui ordonne**.
+             */
+            age_s: number;
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Montant total que le coursier devra avancer (unités mineures).
+             */
+            montant_a_avancer: number;
+            /**
+             * Format: int64
+             * @description Nombre d'arrêts de collecte à desservir.
+             */
+            nb_collectes: number;
+            /**
+             * Format: double
+             * @description Latitude du premier site VENDEUR — donnée professionnelle. Aucune
+             *     coordonnée du client n'est exposée ici (minimisation ARTCI).
+             */
+            premiere_collecte_lat?: number | null;
+            /**
+             * Format: double
+             * @description Longitude du premier site vendeur.
+             */
+            premiere_collecte_lon?: number | null;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
+        };
         /** @description Une commande telle qu'elle sortirait de la scission. */
         CommandeProposee: {
             /** @description Articles qui la composeraient. */
@@ -2162,6 +2225,11 @@ export interface components {
             nom: string;
             /** @description URLs présignées des photos de fiche. */
             photos: string[];
+        };
+        /** @description La file d'attente d'une zone. */
+        FileAttenteCoursier: {
+            /** @description Commandes en attente, **la plus ancienne d'abord** (FIFO par âge). */
+            commandes: components["schemas"]["CommandeEnAttente"][];
         };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
@@ -3070,6 +3138,47 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    file_attente: {
+        parameters: {
+            query: {
+                /** @description Zone (ville) dont on veut la file d'attente. */
+                zone_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File d'attente de la zone, la plus ancienne d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileAttenteCoursier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     lister_dossiers_coursier: {
         parameters: {
             query?: {

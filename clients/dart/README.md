@@ -97,6 +97,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
 [*CommandesApi*](doc/CommandesApi.md) | [**creerCommande**](doc/CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [*CommandesApi*](doc/CommandesApi.md) | [**devisPanier**](doc/CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
+[*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**fileAttente**](doc/CommandesAdminApi.md#fileattente) | **GET** /admin/commandes/attente | CMD-10 — file FIFO des commandes sans coursier d&#39;une zone.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretArrive**](doc/CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretEnRoute**](doc/CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretIndisponible**](doc/CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
@@ -157,6 +158,7 @@ Class | Method | HTTP request | Description
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
  - [Commande](doc/Commande.md)
+ - [CommandeEnAttente](doc/CommandeEnAttente.md)
  - [CommandeProposee](doc/CommandeProposee.md)
  - [Composantes](doc/Composantes.md)
  - [ComposantesDevis](doc/ComposantesDevis.md)
@@ -191,6 +193,7 @@ Class | Method | HTTP request | Description
  - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
  - [FichePublique](doc/FichePublique.md)
+ - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [Grille](doc/Grille.md)
  - [GrillesZone](doc/GrillesZone.md)

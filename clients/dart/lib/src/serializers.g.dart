@@ -23,6 +23,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CategorieDto.serializer)
       ..add(CharteAdminDto.serializer)
       ..add(Commande.serializer)
+      ..add(CommandeEnAttente.serializer)
       ..add(CommandeProposee.serializer)
       ..add(Composantes.serializer)
       ..add(ComposantesDevis.serializer)
@@ -57,6 +58,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(EtatEffectifBoutique.serializer)
       ..add(EtatRoleDto.serializer)
       ..add(FichePublique.serializer)
+      ..add(FileAttenteCoursier.serializer)
       ..add(ForcageDto.serializer)
       ..add(Grille.serializer)
       ..add(GrillesZone.serializer)
@@ -153,6 +155,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RattachementDto)]),
           () => ListBuilder<RattachementDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommandeEnAttente)]),
+          () => ListBuilder<CommandeEnAttente>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CommandeProposee)]),
           () => ListBuilder<CommandeProposee>())

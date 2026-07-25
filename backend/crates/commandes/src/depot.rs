@@ -28,7 +28,16 @@ use crate::modele::{
     ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, ModeCollecte,
     ProgressionCollecte, StatutArret,
 };
-use crate::ports::{ArretsDeCollecte, RestrictionsCompte};
+use crate::ports::{
+    ArretsDeCollecte, CommandeADispatcher, CommandesADispatcher, RestrictionsCompte,
+};
+
+/// Clés de configuration de zone lues par la file d'attente (constitution I —
+/// aucun seuil en dur).
+mod cles_attente {
+    /// Ancienneté au-delà de laquelle une attente est ESCALADÉE (FR-038).
+    pub const ESCALADE_ATTENTE_S: &str = "commande.escalade_attente_coursier_s";
+}
 
 /// Handle de dépôt du domaine commandes. Clone bon marché (pool et ports
 /// partagés).
@@ -268,6 +277,118 @@ impl PgCommandes {
         .await?;
 
         Ok(livraison.id)
+    }
+
+    // ── File d'attente coursier (CMD-10, T038) ─────────────────────────────
+    //
+    // **Aucune table dédiée** : la file EST la table `commande`, filtrée par son
+    // état et ordonnée par `cree_le` — l'index partiel `commande_attente_fifo`
+    // la sert. Une table de file séparée serait un second lieu de vérité à tenir
+    // synchronisé, et le premier désaccord entre les deux perdrait une commande.
+
+    /// Aucun coursier éligible : la commande entre dans la file FIFO (FR-037).
+    ///
+    /// C'est un état ANNONCÉ, pas un échec silencieux : le client voit « on
+    /// cherche un coursier », avec son délai allongé et son annulation **sans
+    /// frais** (maquette C4-4b). Sans cet état, la commande resterait
+    /// `nouvelle` et nul ne saurait qu'elle attend.
+    pub async fn mettre_en_attente_coursier(
+        &self,
+        commande_id: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<EtatCommande, ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        let commande = sqlx::query!(
+            "SELECT zone_id, cree_le FROM commandes.commande WHERE id = $1",
+            commande_id,
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande_id))?;
+
+        let etat = self
+            .transition_commande(
+                &mut tx,
+                commande_id,
+                EtatCommande::EnAttenteCoursier,
+                Acteur::Systeme,
+                horodatage,
+                Some(NouvelEvenement {
+                    type_evenement: "commande.mise_en_attente_coursier",
+                    entite_type: "commande",
+                    entite_id: commande_id,
+                    payload: json!({
+                        "zone": commande.zone_id,
+                        "motif": "aucun_coursier_eligible",
+                        "age_s": (horodatage - commande.cree_le).num_seconds().max(0),
+                    }),
+                    survenu_le: horodatage,
+                }),
+            )
+            .await?;
+        tx.commit().await?;
+        Ok(etat)
+    }
+
+    /// Escalade les attentes qui ont franchi `commande.escalade_attente_coursier_s`
+    /// dans une zone (FR-038). Renvoie les commandes escaladées.
+    ///
+    /// **Une seule fois par commande** : le balayage est périodique, et
+    /// ré-émettre à chaque passage noierait l'alerte qu'elle est censée être.
+    /// L'idempotence s'appuie sur l'outbox lui-même — l'événement déjà écrit
+    /// EST la trace de l'escalade, donc aucune colonne supplémentaire n'est
+    /// nécessaire, et aucune ne peut se désynchroniser de lui.
+    pub async fn escalader_attentes(
+        &self,
+        zone_id: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<Vec<Uuid>, ErreurCommandes> {
+        let seuil_s = self
+            .parametre_i64(zone_id, cles_attente::ESCALADE_ATTENTE_S)
+            .await?;
+
+        let candidates = sqlx::query!(
+            r#"SELECT c.id,
+                      EXTRACT(EPOCH FROM ($2::timestamptz - c.cree_le))::bigint AS "age_s!"
+               FROM commandes.commande c
+               WHERE c.etat = 'en_attente_coursier'
+                 AND c.zone_id = $1
+                 AND EXTRACT(EPOCH FROM ($2::timestamptz - c.cree_le)) >= $3::bigint
+                 AND NOT EXISTS (
+                     SELECT 1 FROM outbox.evenement e
+                     WHERE e.type_evenement = 'commande.attente_coursier_escaladee'
+                       AND e.entite_id = c.id
+                 )
+               ORDER BY c.cree_le"#,
+            zone_id,
+            horodatage,
+            seuil_s,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut escaladees = Vec::new();
+        for candidate in candidates {
+            let mut tx = self.pool.begin().await?;
+            ecrire_evenement(
+                &mut tx,
+                NouvelEvenement {
+                    type_evenement: "commande.attente_coursier_escaladee",
+                    entite_type: "commande",
+                    entite_id: candidate.id,
+                    payload: json!({
+                        "zone": zone_id,
+                        "age_s": candidate.age_s,
+                        "seuil_s": seuil_s,
+                    }),
+                    survenu_le: horodatage,
+                },
+            )
+            .await?;
+            tx.commit().await?;
+            escaladees.push(candidate.id);
+        }
+        Ok(escaladees)
     }
 
     /// Prépaiement confirmé (PAY **simulé** ce cycle, research R16) : le tronc
@@ -631,6 +752,81 @@ impl PgCommandes {
             nb_arrets: comptes.total as i16,
             en_livraison,
         })
+    }
+}
+
+/// Contrat OFFERT à **DSP** (T039) — que le cycle dispatch consommera sans
+/// modification. Ce cycle l'exerce par le double [`crate::AffectationSimulee`],
+/// qui décide QUEL coursier prendre et délègue l'écriture ici (research R16).
+#[async_trait]
+impl CommandesADispatcher for PgCommandes {
+    /// File **FIFO par âge** des commandes sans coursier d'une zone.
+    ///
+    /// L'ordre est `cree_le` croissant, servi par l'index partiel
+    /// `commande_attente_fifo` — la plus ancienne d'abord, toujours. Trier par
+    /// autre chose (montant, proximité) serait une politique de dispatch : elle
+    /// appartient à DSP, pas au stockage de la file.
+    ///
+    /// ARTCI : aucune coordonnée du CLIENT n'est exposée — seule la position du
+    /// premier site VENDEUR, qui est une donnée professionnelle et ce qui
+    /// décide de l'éligibilité géographique d'un coursier.
+    async fn en_attente_coursier(
+        &self,
+        zone: Uuid,
+    ) -> Result<Vec<CommandeADispatcher>, ErreurCommandes> {
+        let lignes = sqlx::query!(
+            r#"SELECT c.id, c.zone_id, c.devise,
+                      EXTRACT(EPOCH FROM (now() - c.cree_le))::bigint AS "age_s!",
+                      (SELECT count(*) FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                         JOIN commandes.livraison l ON l.id = s.livraison_id
+                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte')
+                          AS "nb_collectes!",
+                      (SELECT COALESCE(SUM(a.montant_avance), 0)::bigint FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                         JOIN commandes.livraison l ON l.id = s.livraison_id
+                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte')
+                          AS "montant_a_avancer!",
+                      (SELECT a.site_lat FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                         JOIN commandes.livraison l ON l.id = s.livraison_id
+                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte'
+                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premiere_collecte_lat,
+                      (SELECT a.site_lon FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                         JOIN commandes.livraison l ON l.id = s.livraison_id
+                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte'
+                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premiere_collecte_lon
+               FROM commandes.commande c
+               WHERE c.etat = 'en_attente_coursier' AND c.zone_id = $1
+               ORDER BY c.cree_le"#,
+            zone,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(lignes
+            .into_iter()
+            .map(|l| CommandeADispatcher {
+                commande_id: l.id,
+                zone_id: l.zone_id,
+                age_s: l.age_s,
+                nb_collectes: l.nb_collectes,
+                montant_a_avancer: l.montant_a_avancer,
+                devise: l.devise,
+                premiere_collecte_lat: l.premiere_collecte_lat,
+                premiere_collecte_lon: l.premiere_collecte_lon,
+            })
+            .collect())
+    }
+
+    /// Affecte un coursier. **Reprend une commande en attente exactement comme
+    /// une commande neuve** : c'est la table de transitions qui autorise les
+    /// deux origines (`nouvelle` et `en_attente_coursier`), pas une branche —
+    /// il n'existe donc aucun chemin de reprise qui pourrait diverger du chemin
+    /// nominal.
+    async fn affecter(&self, commande: Uuid, coursier: Uuid) -> Result<Uuid, ErreurCommandes> {
+        self.assigner_coursier(commande, coursier, Utc::now()).await
     }
 }
 

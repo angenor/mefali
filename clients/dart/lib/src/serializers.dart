@@ -30,6 +30,7 @@ import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
+import 'package:mefali_api_client/src/model/commande_en_attente.dart';
 import 'package:mefali_api_client/src/model/commande_proposee.dart';
 import 'package:mefali_api_client/src/model/composantes.dart';
 import 'package:mefali_api_client/src/model/composantes_devis.dart';
@@ -64,6 +65,7 @@ import 'package:mefali_api_client/src/model/etat_categorie.dart';
 import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
+import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/grille.dart';
 import 'package:mefali_api_client/src/model/grilles_zone.dart';
@@ -136,6 +138,7 @@ part 'serializers.g.dart';
   CategorieDto,
   CharteAdminDto,
   Commande,
+  CommandeEnAttente,
   CommandeProposee,
   Composantes,
   ComposantesDevis,
@@ -170,6 +173,7 @@ part 'serializers.g.dart';
   EtatEffectifBoutique,
   EtatRoleDto,
   FichePublique,
+  FileAttenteCoursier,
   ForcageDto,
   Grille,
   GrillesZone,

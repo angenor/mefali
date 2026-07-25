@@ -458,6 +458,7 @@ impl Bac {
 
     /// Configure une `App` Actix avec les MÊMES handlers que la production.
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
+        use api::admin_commandes_http as adm;
         use api::commandes_http as cmd;
         use api::course_http as crs;
         let pool = self.pool.clone();
@@ -471,7 +472,8 @@ impl Bac {
                 .service(cmd::creer_commande)
                 .service(crs::arret_en_route)
                 .service(crs::arret_arrive)
-                .service(crs::arret_indisponible);
+                .service(crs::arret_indisponible)
+                .service(adm::file_attente);
         }
     }
 

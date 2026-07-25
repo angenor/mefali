@@ -4,6 +4,8 @@
 //! `/health`, Swagger UI en dev (absente en production, constitution VIII),
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
+/// Surface HTTP admin du cycle CMD (file d'attente, annulation, issues).
+pub mod admin_commandes_http;
 pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
@@ -110,6 +112,7 @@ pub fn api_openapi() -> OpenApi {
         .service(course_http::arret_en_route)
         .service(course_http::arret_arrive)
         .service(course_http::arret_indisponible)
+        .service(admin_commandes_http::file_attente)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -486,6 +489,7 @@ pub async fn run() -> std::io::Result<()> {
             .service(course_http::arret_en_route)
             .service(course_http::arret_arrive)
             .service(course_http::arret_indisponible)
+            .service(admin_commandes_http::file_attente)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

@@ -5,6 +5,65 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/commandes/attente": {
+      "get": {
+        "tags": [
+          "commandes-admin"
+        ],
+        "summary": "CMD-10 — file FIFO des commandes sans coursier d'une zone.",
+        "description": "L'ordre est l'âge, du plus ancien au plus récent : c'est la promesse\nproduite au client qui attend (« la plus ancienne repart en premier »), et\nc'est le contrat que **DSP** consommera tel quel.",
+        "operationId": "file_attente",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "description": "Zone (ville) dont on veut la file d'attente.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File d'attente de la zone, la plus ancienne d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileAttenteCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/comptes/dossiers-coursier": {
       "get": {
         "tags": [
@@ -5765,6 +5824,65 @@
           }
         }
       },
+      "CommandeEnAttente": {
+        "type": "object",
+        "description": "Une commande en attente de coursier, telle que DSP la lira.",
+        "required": [
+          "commande_id",
+          "zone_id",
+          "age_s",
+          "nb_collectes",
+          "montant_a_avancer",
+          "devise"
+        ],
+        "properties": {
+          "age_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ancienneté dans la file, en secondes — **c'est elle qui ordonne**."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "montant_a_avancer": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant total que le coursier devra avancer (unités mineures)."
+          },
+          "nb_collectes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre d'arrêts de collecte à desservir."
+          },
+          "premiere_collecte_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Latitude du premier site VENDEUR — donnée professionnelle. Aucune\ncoordonnée du client n'est exposée ici (minimisation ARTCI)."
+          },
+          "premiere_collecte_lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Longitude du premier site vendeur."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
+          }
+        }
+      },
       "CommandeProposee": {
         "type": "object",
         "description": "Une commande telle qu'elle sortirait de la scission.",
@@ -7083,6 +7201,22 @@
               "type": "string"
             },
             "description": "URLs présignées des photos de fiche."
+          }
+        }
+      },
+      "FileAttenteCoursier": {
+        "type": "object",
+        "description": "La file d'attente d'une zone.",
+        "required": [
+          "commandes"
+        ],
+        "properties": {
+          "commandes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandeEnAttente"
+            },
+            "description": "Commandes en attente, **la plus ancienne d'abord** (FIFO par âge)."
           }
         }
       },

@@ -20,7 +20,9 @@ doc/BoutiqueVendeur.md
 doc/CategorieDto.md
 doc/CharteAdminDto.md
 doc/Commande.md
+doc/CommandeEnAttente.md
 doc/CommandeProposee.md
+doc/CommandesAdminApi.md
 doc/CommandesApi.md
 doc/Composantes.md
 doc/ComposantesDevis.md
@@ -57,6 +59,7 @@ doc/EtatCategorie.md
 doc/EtatEffectifBoutique.md
 doc/EtatRoleDto.md
 doc/FichePublique.md
+doc/FileAttenteCoursier.md
 doc/ForcageDto.md
 doc/Grille.md
 doc/GrillesZone.md
@@ -120,6 +123,7 @@ lib/mefali_api_client.dart
 lib/src/api.dart
 lib/src/api/admin_api.dart
 lib/src/api/auth_api.dart
+lib/src/api/commandes_admin_api.dart
 lib/src/api/commandes_api.dart
 lib/src/api/courses_api.dart
 lib/src/api/coursier_api.dart
@@ -153,6 +157,7 @@ lib/src/model/boutique_vendeur.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/charte_admin_dto.dart
 lib/src/model/commande.dart
+lib/src/model/commande_en_attente.dart
 lib/src/model/commande_proposee.dart
 lib/src/model/composantes.dart
 lib/src/model/composantes_devis.dart
@@ -188,6 +193,7 @@ lib/src/model/etat_categorie.dart
 lib/src/model/etat_effectif_boutique.dart
 lib/src/model/etat_role_dto.dart
 lib/src/model/fiche_publique.dart
+lib/src/model/file_attente_coursier.dart
 lib/src/model/forcage_dto.dart
 lib/src/model/grille.dart
 lib/src/model/grilles_zone.dart
@@ -259,8 +265,10 @@ test/bascule_disponibilite_dto_test.dart
 test/boutique_vendeur_test.dart
 test/categorie_dto_test.dart
 test/charte_admin_dto_test.dart
+test/commande_en_attente_test.dart
 test/commande_proposee_test.dart
 test/commande_test.dart
+test/commandes_admin_api_test.dart
 test/commandes_api_test.dart
 test/composantes_devis_test.dart
 test/composantes_test.dart
@@ -297,6 +305,7 @@ test/etat_categorie_test.dart
 test/etat_effectif_boutique_test.dart
 test/etat_role_dto_test.dart
 test/fiche_publique_test.dart
+test/file_attente_coursier_test.dart
 test/forcage_dto_test.dart
 test/grille_test.dart
 test/grilles_zone_test.dart
