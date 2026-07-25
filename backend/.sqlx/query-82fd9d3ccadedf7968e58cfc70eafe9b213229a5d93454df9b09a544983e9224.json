@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,\n                      l.commande_id, a.prestataire_id, a.site_lat, a.site_lon,\n                      a.montant_avance, a.devise\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE l.coursier_id = $1\n                 AND l.etat = 'en_collecte'\n                 AND a.prestataire_id = $2\n                 AND a.statut = 'a_collecter'\n               ORDER BY s.ordre, a.ordre\n               LIMIT 1",
+  "query": "SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,\n                      l.commande_id, a.prestataire_id AS \"prestataire_id!\", a.site_lat, a.site_lon,\n                      a.montant_avance, a.devise\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE l.coursier_id = $1\n                 AND l.etat = 'en_collecte'\n                 AND a.statut = 'a_collecter'\n                 AND a.type_arret = 'collecte'\n               ORDER BY s.ordre, a.ordre",
   "describe": {
     "columns": [
       {
@@ -49,7 +49,7 @@
       },
       {
         "ordinal": 4,
-        "name": "prestataire_id",
+        "name": "prestataire_id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -105,7 +105,6 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -114,12 +113,12 @@
       false,
       false,
       false,
-      false,
+      true,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "ce257dd505550f9dd8174c2cdf27ad93e02260c6ff22ef42b7d9cde00de24b42"
+  "hash": "82fd9d3ccadedf7968e58cfc70eafe9b213229a5d93454df9b09a544983e9224"
 }

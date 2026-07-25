@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.etat::text AS \"etat!\",\n                      (SELECT count(*) FROM commandes.arret a2\n                         JOIN commandes.segment s2 ON s2.id = a2.segment_id\n                         WHERE s2.livraison_id = l.id\n                           AND a2.type_arret = 'collecte') AS \"total!\",\n                      (SELECT count(*) FROM commandes.arret a2\n                         JOIN commandes.segment s2 ON s2.id = a2.segment_id\n                         WHERE s2.livraison_id = l.id AND a2.statut = 'collecte'\n                           AND a2.type_arret = 'collecte') AS \"collectes!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE a.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "collectes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "5f8bce5fe7ac83c60f9d2252e01c6781a92d6a89040114207be0213c288aa84d"
+}

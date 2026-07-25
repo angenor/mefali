@@ -143,8 +143,16 @@ impl PgCommandes {
         .await
     }
 
-    /// Bascule la livraison EN_LIVRAISON si tous ses arrêts sont résolus (et
-    /// qu'elle est encore `en_collecte`). Renvoie la progression.
+    /// Bascule la livraison EN_LIVRAISON si toutes ses COLLECTES sont résolues
+    /// (et qu'elle est encore `en_collecte`). Renvoie la progression.
+    ///
+    /// ⚠ **Ne compte que les arrêts de type `collecte`** (cycle CMD 008, P1 /
+    /// research R4). Le cycle 006 comptait `count(*)` sur TOUS les arrêts du
+    /// segment ; depuis que la remise est elle aussi un arrêt (cadrage §7.2),
+    /// `resolus = total` ne serait JAMAIS vrai — l'arrêt de remise n'est jamais
+    /// `collecte`, et la livraison resterait bloquée en collecte pour toujours.
+    /// Régression silencieuse : aucun test du cycle 006 ne la signalait, faute
+    /// d'arrêt de remise dans ses fixtures.
     async fn gating_livraison(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
@@ -160,7 +168,8 @@ impl PgCommandes {
                       count(*) FILTER (WHERE a.statut IN ('collecte','indisponible')) AS "resolus!"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
-               WHERE s.livraison_id = $1"#,
+               WHERE s.livraison_id = $1
+                 AND a.type_arret = 'collecte'"#,
             livraison_id,
         )
         .fetch_one(&mut **tx)
@@ -217,7 +226,7 @@ impl PgCommandes {
     ) -> Result<Vec<ArretACollecter>, ErreurCommandes> {
         let lignes = sqlx::query!(
             r#"SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,
-                      l.commande_id, a.prestataire_id, a.site_lat, a.site_lon,
+                      l.commande_id, a.prestataire_id AS "prestataire_id!", a.site_lat, a.site_lon,
                       a.montant_avance, a.devise
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
@@ -225,6 +234,7 @@ impl PgCommandes {
                WHERE l.coursier_id = $1
                  AND l.etat = 'en_collecte'
                  AND a.statut = 'a_collecter'
+                 AND a.type_arret = 'collecte'
                ORDER BY s.ordre, a.ordre"#,
             coursier,
         )
@@ -258,12 +268,13 @@ impl PgCommandes {
     ) -> Result<Option<ArretACollecter>, ErreurCommandes> {
         let ligne = sqlx::query!(
             r#"SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,
-                      l.commande_id, a.prestataire_id, a.site_lat, a.site_lon,
+                      l.commande_id, a.prestataire_id AS "prestataire_id!", a.site_lat, a.site_lon,
                       a.montant_avance, a.devise
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
                JOIN commandes.livraison l ON l.id = s.livraison_id
-               WHERE a.id = $1 AND l.coursier_id = $2 AND l.etat = 'en_collecte'"#,
+               WHERE a.id = $1 AND l.coursier_id = $2 AND l.etat = 'en_collecte'
+                 AND a.type_arret = 'collecte'"#,
             arret_id,
             coursier,
         )
@@ -284,6 +295,10 @@ impl PgCommandes {
     }
 
     /// Progression courante d'une livraison (chemin idempotent — aucune écriture).
+    ///
+    /// ⚠ Compte les seules COLLECTES (P1 / research R4) : l'arrêt de remise
+    /// n'est pas une collecte, une livraison à 2 collectes + 1 remise annonce
+    /// « 2 sur 2 », jamais « 2 sur 3 ».
     async fn progression(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
@@ -295,7 +310,8 @@ impl PgCommandes {
                       count(*) FILTER (WHERE a.statut = 'collecte') AS "collectes!"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
-               WHERE s.livraison_id = $1"#,
+               WHERE s.livraison_id = $1
+                 AND a.type_arret = 'collecte'"#,
             livraison_id,
         )
         .fetch_one(&mut **tx)
@@ -319,7 +335,7 @@ impl ArretsDeCollecte for PgCommandes {
         // visant ce prestataire (livraison en_collecte assignée au coursier).
         let ligne = sqlx::query!(
             r#"SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,
-                      l.commande_id, a.prestataire_id, a.site_lat, a.site_lon,
+                      l.commande_id, a.prestataire_id AS "prestataire_id!", a.site_lat, a.site_lon,
                       a.montant_avance, a.devise
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
@@ -328,6 +344,7 @@ impl ArretsDeCollecte for PgCommandes {
                  AND l.etat = 'en_collecte'
                  AND a.prestataire_id = $2
                  AND a.statut = 'a_collecter'
+                 AND a.type_arret = 'collecte'
                ORDER BY s.ordre, a.ordre
                LIMIT 1"#,
             coursier,

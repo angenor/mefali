@@ -125,11 +125,16 @@ pub struct ArretACollecter {
 }
 
 /// Progression renvoyée après une collecte réussie.
+///
+/// ⚠ Les deux compteurs ne portent que sur les arrêts de type `collecte`
+/// (cycle CMD 008, P1 / research R4) : l'arrêt de REMISE est un arrêt du
+/// segment, mais ce n'est pas une collecte — une course de 2 collectes + 1
+/// remise annonce « 2 sur 2 », jamais « 2 sur 3 ».
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProgressionCollecte {
-    /// Nombre d'arrêts déjà collectés (statut `collecte`).
+    /// Nombre de COLLECTES déjà faites (statut `collecte`).
     pub nb_collectes: i16,
-    /// Nombre total d'arrêts de la livraison.
+    /// Nombre total de COLLECTES de la livraison (la remise n'en est pas une).
     pub nb_arrets: i16,
     /// Vrai si cette collecte a fait basculer la livraison EN_LIVRAISON.
     pub en_livraison: bool,

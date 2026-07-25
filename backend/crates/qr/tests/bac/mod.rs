@@ -245,11 +245,27 @@ impl Bac {
         let livraison = Uuid::now_v7();
         let segment = Uuid::now_v7();
         let mut tx = self.pool.begin().await.unwrap();
-        sqlx::query("INSERT INTO commandes.commande (id) VALUES ($1)")
-            .bind(commande)
-            .execute(&mut *tx)
-            .await
-            .unwrap();
+        // Le tronc a reçu ses colonnes métier en migration `0009` (cycle CMD
+        // 008) : la fixture les renseigne. Le client de la course est l'admin du
+        // bac — le seul compte dont ce harnais dispose ; QRC ne regarde jamais
+        // le client, seulement le coursier assigné.
+        let total: i64 = arrets.iter().map(|(_, m)| m).sum();
+        sqlx::query(
+            "INSERT INTO commandes.commande
+                (id, client_id, zone_id, categorie_id, lieu_lat, lieu_lon,
+                 montant_articles_unites, total_unites, devise, mode_paiement,
+                 code_livraison, code_livraison_hash, jeton_reception, jeton_reception_hash)
+             VALUES ($1, $2, $3, $4, 5.900, -4.820, $5, $5, 'XOF', 'cash',
+                     '7341', 'h-code', 'jeton', 'h-jeton')",
+        )
+        .bind(commande)
+        .bind(self.admin)
+        .bind(self.ville)
+        .bind(self.categorie_restauration)
+        .bind(total)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
         sqlx::query(
             "INSERT INTO commandes.livraison (id, commande_id, coursier_id) VALUES ($1, $2, $3)",
         )

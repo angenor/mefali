@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT count(*) AS \"total!\",\n                      count(*) FILTER (WHERE a.statut = 'collecte') AS \"collectes!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               WHERE s.livraison_id = $1",
+  "query": "SELECT count(*) AS \"total!\",\n                      count(*) FILTER (WHERE a.statut = 'collecte') AS \"collectes!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               WHERE s.livraison_id = $1\n                 AND a.type_arret = 'collecte'",
   "describe": {
     "columns": [
       {
@@ -26,5 +26,5 @@
       null
     ]
   },
-  "hash": "07565a3c28787ef81d695eb75e7b0a44cf145e7e2cf5fda729ebb0da91fb386e"
+  "hash": "00175effcedc69124e656130ec3293b4e939ccbccf4502bfb6086c490d6cf821"
 }
