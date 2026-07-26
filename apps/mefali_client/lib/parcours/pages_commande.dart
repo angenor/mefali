@@ -35,14 +35,18 @@ void ouvrirPanier(BuildContext context) {
   );
 }
 
-/// Ouvre le suivi d'une commande (C4-4a). `replace` depuis la confirmation :
-/// revenir en arrière sur un écran de panier vidé n'aurait aucun sens.
+/// Ouvre le suivi d'une commande (C4-4a).
+///
+/// `remplacer` depuis la confirmation : la pile panier → adresse → confirmation
+/// est VIDÉE jusqu'à l'accueil. Un simple `pushReplacement` laissait le retour
+/// tomber sur un panier vide — constaté à la validation T067 sur émulateur, et
+/// c'est un écran qui ne veut plus rien dire une fois la commande passée.
 void ouvrirSuivi(BuildContext context, String commandeId, {bool remplacer = false}) {
   final route = MaterialPageRoute<void>(
     builder: (_) => PageSuivi(commandeId: commandeId),
   );
   if (remplacer) {
-    Navigator.of(context).pushReplacement(route);
+    Navigator.of(context).pushAndRemoveUntil(route, (r) => r.isFirst);
   } else {
     Navigator.of(context).push(route);
   }

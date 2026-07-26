@@ -218,17 +218,24 @@ class _LigneArticle extends StatelessWidget {
             ],
           ),
           const SizedBox(height: MefaliTokens.space2),
-          Row(
+          // Titre AU-DESSUS des segments, et non à côté : sur un téléphone de
+          // 1080 px, la place restante à droite du libellé ne suffit pas aux
+          // trois choix — le texte se cassait une LETTRE PAR LIGNE (constaté à
+          // la validation T067 sur émulateur). `showSelectedIcon: false` pour
+          // la même raison : la coche prend la largeur d'un mot.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 libelles.titre,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: MefaliTokens.textMuted),
               ),
-              const SizedBox(width: MefaliTokens.space2),
-              Expanded(
+              const SizedBox(height: MefaliTokens.space1),
+              SizedBox(
+                width: double.infinity,
                 child: SegmentedButton<String>(
-                  showSelectedIcon: true,
+                  showSelectedIcon: false,
                   segments: [
                     ButtonSegment(
                       value: 'remplacer',
