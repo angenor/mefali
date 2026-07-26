@@ -222,6 +222,69 @@ async fn idempotence_de_creation(pool: sqlx::PgPool) {
     );
 }
 
+/// **R6** — le rejeu ne sert ses SECRETS qu'au propriétaire.
+///
+/// L'`Idempotency-Key` EST l'identifiant de la commande : un compte `Client` qui
+/// en connaît un peut le rejouer. Sans contrôle de propriété, il recevait un
+/// `200` portant `code_livraison` et `jeton_reception` — les deux valeurs qui
+/// font remettre la marchandise, réservées au client propriétaire.
+///
+/// **404, jamais 403** : dire « ce n'est pas la vôtre » confirmerait que la
+/// commande existe, ce qui est déjà une fuite. Même règle que
+/// `GET /commandes/{id}` (`commandes_suivi.rs`).
+#[sqlx::test(migrations = "../migrations")]
+async fn le_rejeu_ne_sert_ses_secrets_qu_au_proprietaire(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let cle = Uuid::now_v7();
+
+    let (statut, corps) = creer(
+        &bac,
+        &bac.jeton_client,
+        cle,
+        demande(&bac, vec![bac.vendeurs[0].ligne(1)]),
+    )
+    .await;
+    assert_eq!(statut, 201);
+    let code = corps["remise"]["code_livraison"].as_str().unwrap().to_owned();
+    let jeton = corps["remise"]["jeton_reception"].as_str().unwrap().to_owned();
+
+    // L'intrus rejoue la clé de la commande d'autrui, avec son propre panier.
+    let (statut, corps) = creer(
+        &bac,
+        &bac.jeton_intrus,
+        cle,
+        demande(&bac, vec![bac.vendeurs[0].ligne(1)]),
+    )
+    .await;
+
+    assert_eq!(statut, 404, "{corps}");
+    assert_eq!(corps["code"], "commande_inconnue");
+    assert!(
+        !corps.to_string().contains(&code),
+        "le CODE de remise ne doit pas fuiter : {corps}",
+    );
+    assert!(
+        !corps.to_string().contains(&jeton),
+        "le JETON de réception ne doit pas fuiter : {corps}",
+    );
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM commandes.commande").await,
+        1,
+        "le refus ne crée rien non plus",
+    );
+
+    // Et le propriétaire, lui, rejoue toujours : le contrôle n'a pas cassé R7.
+    let (statut, corps) = creer(
+        &bac,
+        &bac.jeton_client,
+        cle,
+        demande(&bac, vec![bac.vendeurs[0].ligne(1)]),
+    )
+    .await;
+    assert_eq!(statut, 200, "{corps}");
+    assert_eq!(corps["remise"]["code_livraison"], code);
+}
+
 /// La clé d'idempotence est OBLIGATOIRE : sans elle, pas de création.
 #[sqlx::test(migrations = "../migrations")]
 async fn cle_idempotence_obligatoire(pool: sqlx::PgPool) {

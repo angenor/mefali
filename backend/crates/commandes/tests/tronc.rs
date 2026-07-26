@@ -52,8 +52,9 @@ fn depot(pool: &sqlx::PgPool) -> PgCommandes {
     )
 }
 
-/// Sème les FK minimales et une commande SANS livraison. Renvoie son id.
-async fn commande_sans_livraison(pool: &sqlx::PgPool) -> Uuid {
+/// Sème les FK minimales et une commande SANS livraison.
+/// Renvoie `(commande, client propriétaire)`.
+async fn commande_sans_livraison(pool: &sqlx::PgPool) -> (Uuid, Uuid) {
     let pays = Uuid::now_v7();
     let ville = Uuid::now_v7();
     let categorie = Uuid::now_v7();
@@ -86,14 +87,14 @@ async fn commande_sans_livraison(pool: &sqlx::PgPool) -> Uuid {
     ).bind(commande).bind(client).bind(ville).bind(categorie)
         .execute(pool).await.unwrap();
 
-    commande
+    (commande, client)
 }
 
 /// Une commande **sans aucune livraison** existe, se relit, et porte un total
 /// cohérent : la livraison est un composant optionnel (0..n).
 #[sqlx::test(migrations = "../../migrations")]
 async fn une_commande_sans_livraison_est_valide(pool: sqlx::PgPool) {
-    let commande = commande_sans_livraison(&pool).await;
+    let (commande, _) = commande_sans_livraison(&pool).await;
 
     let (etat, total, devise): (String, i64, String) = sqlx::query_as(
         "SELECT etat::text, total_unites, devise FROM commandes.commande WHERE id = $1",
@@ -127,14 +128,14 @@ async fn une_commande_sans_livraison_est_valide(pool: sqlx::PgPool) {
 async fn le_rejeu_d_une_commande_sans_livraison_ne_fabrique_aucun_identifiant(
     pool: sqlx::PgPool,
 ) {
-    let commande = commande_sans_livraison(&pool).await;
+    let (commande, client) = commande_sans_livraison(&pool).await;
 
     // Rejeu : la clé d'idempotence EST l'identifiant, et la commande existe
     // déjà — `creer_commande` rend la main sur la relecture, sans rien créer.
     let creee = depot(&pool)
         .creer_commande(commandes::creation::DemandeCreation {
             id: commande,
-            client_id: Uuid::now_v7(),
+            client_id: client,
             zone_id: Uuid::now_v7(),
             categorie_slug: "artisanat".to_owned(),
             transport_slug: "moto".to_owned(),
@@ -157,6 +158,29 @@ async fn le_rejeu_d_une_commande_sans_livraison_ne_fabrique_aucun_identifiant(
     assert_eq!(creee.total_unites, 12_000);
     assert_eq!(creee.devise, "XOF");
     assert_eq!(creee.secrets.code_livraison, "4821");
+
+    // Et le rejeu par UN AUTRE compte ne rend rien : une commande qu'on ne
+    // possède pas est une commande qui n'existe pas (R6 — le corps porterait
+    // sinon le code de remise et le jeton de réception d'autrui).
+    let refus = depot(&pool)
+        .creer_commande(commandes::creation::DemandeCreation {
+            id: commande,
+            client_id: Uuid::now_v7(),
+            zone_id: Uuid::now_v7(),
+            categorie_slug: "artisanat".to_owned(),
+            transport_slug: "moto".to_owned(),
+            adresse_id: None,
+            lieu: None,
+            repere_texte: None,
+            repere_vocal_cle: None,
+            lignes: Vec::new(),
+            mode_paiement: commandes::ModePaiement::Cash,
+        })
+        .await;
+    assert!(
+        matches!(refus, Err(commandes::ErreurCommandes::CommandeInconnue(_))),
+        "l'usurpation rend CommandeInconnue — donc un 404, jamais un 403",
+    );
 }
 
 /// Le tronc ne porte **AUCUNE** colonne logistique. La liste est lue dans le

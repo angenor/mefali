@@ -438,7 +438,13 @@ impl PgCommandes {
         // Rejeu ? La contrainte de clé primaire rend l'idempotence STRUCTURELLE
         // (vraie même sous concurrence) ; cette lecture ne fait qu'éviter le
         // travail inutile du chemin nominal.
-        if let Some(existante) = self.relire_commande_creee(demande.id).await? {
+        // Cette lecture refuse aussi l'USURPATION : un identifiant qui existe
+        // chez un autre client rend `CommandeInconnue`, donc un 404, avant
+        // toute validation et tout appel de routage.
+        if let Some(existante) = self
+            .relire_commande_creee(demande.id, demande.client_id)
+            .await?
+        {
             return Ok(existante);
         }
 
@@ -569,7 +575,7 @@ impl PgCommandes {
             // Course perdue contre un rejeu concurrent : la contrainte a tenu.
             tx.rollback().await?;
             return self
-                .relire_commande_creee(demande.id)
+                .relire_commande_creee(demande.id, demande.client_id)
                 .await?
                 .ok_or(ErreurCommandes::CommandeInconnue(demande.id));
         }
@@ -856,7 +862,19 @@ impl PgCommandes {
         Ok(())
     }
 
-    /// Relit une commande déjà créée, pour le REJEU idempotent (R7).
+    /// Relit une commande déjà créée, pour le REJEU idempotent (R7) — **et
+    /// seulement si elle appartient au demandeur**.
+    ///
+    /// **Le rejeu sert des SECRETS.** Le corps porte `code_livraison` et
+    /// `jeton_reception`, que R6 réserve au client propriétaire : ce sont eux
+    /// qui font remettre la marchandise. Sans ce contrôle, un compte `Client`
+    /// qui connaît l'identifiant d'une commande d'autrui — l'`Idempotency-Key`
+    /// EST cet identifiant — se les faisait servir en `200`.
+    ///
+    /// **`404`, jamais `403`.** Répondre « ce n'est pas la vôtre » confirmerait
+    /// l'existence de la commande visée, ce qui est déjà une fuite : une
+    /// commande qu'on ne possède pas est une commande qui n'existe pas. Même
+    /// règle que `GET /commandes/{id}`.
     ///
     /// **Deux lectures, pas une jointure.** Un `LEFT JOIN` rend toutes les
     /// colonnes de la livraison nullables pour sqlx, alors qu'elles sont
@@ -869,10 +887,14 @@ impl PgCommandes {
     async fn relire_commande_creee(
         &self,
         id: Uuid,
+        client_id: Uuid,
     ) -> Result<Option<CommandeCreee>, ErreurCommandes> {
+        // `client_id` est LU, pas filtré dans le `WHERE` : la même lecture sert
+        // de sonde d'existence, et l'usurpation est refusée AVANT les
+        // validations et l'appel de routage — au lieu de les payer pour rien.
         let Some(c) = sqlx::query!(
-            r#"SELECT c.etat::text AS "etat!", c.montant_articles_unites, c.total_unites,
-                      c.devise, c.mode_paiement::text AS "mode_paiement!",
+            r#"SELECT c.client_id, c.etat::text AS "etat!", c.montant_articles_unites,
+                      c.total_unites, c.devise, c.mode_paiement::text AS "mode_paiement!",
                       c.code_livraison, c.jeton_reception
                FROM commandes.commande c
                WHERE c.id = $1"#,
@@ -883,6 +905,10 @@ impl PgCommandes {
         else {
             return Ok(None);
         };
+
+        if c.client_id != client_id {
+            return Err(ErreurCommandes::CommandeInconnue(id));
+        }
 
         // `ORDER BY` explicite : la table ne porte aucune unicité sur
         // `commande_id`, et le tronc admet 0..n livraisons. Avec 0 ou 1 ligne —
