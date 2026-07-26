@@ -2,9 +2,10 @@
 
 **Branche** `008-commandes-cycle-de-vie` · **2026-07-26** · non fusionnée dans `main`
 
-**68 tâches sur 68 livrées.** `cargo test --workspace` **488 verts**, Flutter
-**57 (client) + 95 (core)**, `dart analyze` propre sur les trois paquets,
-`cargo sqlx prepare` vert, clients Dart/TS régénérés **sans diff**.
+**68 tâches sur 68 livrées.** `cargo test --workspace` **491 verts**,
+`cargo clippy --all-targets -- -D warnings` **vert**, Flutter **57 (client) +
+95 (core)**, `dart analyze` propre sur les trois paquets, `cargo sqlx prepare`
+vert, clients Dart/TS régénérés **sans diff**.
 
 > **Reprise du 2026-07-26**, en trois temps :
 > 1. le dernier geste manquant — accepter la scission — est livré
@@ -14,7 +15,10 @@
 >    ([section](#la-livraison-devient-optionnelle-au-contrat)) ; l'ancien point
 >    ouvert sur `Commande.livraison` a disparu ;
 > 3. la scission est **passée sur émulateur** à deux et trois vendeurs, échec
->    partiel compris ([section](#passe-émulateur-de-la-scission)).
+>    partiel compris ([section](#passe-émulateur-de-la-scission)) ;
+> 4. les trois suites de cette passe sont traitées
+>    ([section](#suites-de-la-passe-émulateur)) : **fuite de secrets au rejeu**
+>    fermée, clippy redevenu vert, et le 500 tarifaire devenu un refus lisible.
 
 ---
 
@@ -222,9 +226,55 @@ Deux constats d'environnement sont devenus des points ouverts (n° 8 et n° 9) :
 l'absence de contrôle de propriété au rejeu, et le choix du transport par
 « premier actif de la zone » qui fait échouer toute tournée de plus de 800 m.
 
+## Suites de la passe émulateur
+
+### La fuite de secrets au rejeu est fermée (bloquant)
+
+L'`Idempotency-Key` **EST** l'identifiant de la commande, et
+`relire_commande_creee` filtrait sur `WHERE c.id = $1` seul : un compte `Client`
+qui connaissait l'identifiant d'une commande d'autrui recevait un `200` portant
+son `code_livraison` et son `jeton_reception` — les deux valeurs qui font
+remettre la marchandise, que R6 réserve au propriétaire.
+
+Le `client_id` est **lu, pas ajouté au `WHERE`** : la même lecture sert de sonde
+d'existence, et l'usurpation est refusée AVANT les validations et l'appel de
+routage. **404, jamais 403** — dire « ce n'est pas la vôtre » confirmerait que
+la commande existe, ce qui est déjà une fuite ; c'est la règle que tient déjà
+`GET /commandes/{id}`.
+
+Le test a été **vérifié en neutralisant le contrôle** : sans lui, l'intrus reçoit
+un `200` avec le code `8836` et le jeton en clair. Il asserte le 404, l'absence
+des DEUX secrets dans le corps, qu'aucune commande n'est créée, et que le
+propriétaire rejoue toujours (R7 intact). Un second test couvre le refus au
+niveau du domaine.
+
+### Clippy redevient vert
+
+Ils étaient **neuf, pas cinq** : clippy s'arrête au premier crate en échec, et
+`prestataires` cachait `commandes`. Six `too_many_arguments` (`#[allow]`
+justifié au cas par cas, comme `PgCommandes::new` l'avait déjà tranché), deux
+`items after a test module` (bloc déplacé), deux `doc_lazy_continuation` (une
+ligne de doc commençant par `+` était lue comme une puce Markdown). Que des
+attributs, des commentaires et un déplacement de bloc.
+
+### Un trajet sans tarif est un refus, pas une panne
+
+`ErreurTarif::AucuneRegle` tombait dans `Dependance`, donc en 500, donc en
+« Une erreur est survenue ». La grille d'une zone est **bornée** en distance et
+en véhicule : un trajet hors bornes n'a pas de prix, et TRF a raison de ne
+jamais en inventer un. Variante `TarifIndisponible`, **409** (la demande est
+bien formée, c'est l'état qui s'y oppose et le client peut agir dessus), clé
+`tarif_indisponible`, et une phrase qui dit son LEVIER : « Retirez un vendeur
+éloigné ». Les autres erreurs de TRF restent techniques, un test le fige. Le
+**choix du véhicule** reste un point ouvert pour TRF (n° 9).
+
 ## Commits
 
 ```
+37809a5  feat(commandes): CMD-01 un trajet sans tarif est un refus, pas une panne
+6d83271  chore(backend): clippy --all-targets -D warnings redevient vert
+0b12bf6  fix(commandes): CMD-03 le rejeu ne sert ses secrets qu'au propriétaire
+766de2c  docs(commandes): rapport et tasks à jour
 4db60dd  fix(commandes): CMD-01 le titre de confirmation compte les commandes
 ad7df7f  feat(commandes): CMD-03 la livraison devient un composant optionnel
 dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
@@ -276,26 +326,33 @@ dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
 7. **Trois ajouts dépassent la lettre des tâches** : accueil, fiche vendeur et
    `AdressesApi`. Sans eux le parcours n'existe pas, mais aucune tâche ne les
    demandait.
-8. **Le rejeu idempotent ne vérifie PAS la propriété de la commande.**
-   `relire_commande_creee` filtre sur `WHERE c.id = $1`, sans `client_id`
-   (`creation.rs`) : un compte porteur du rôle `Client` qui poste
-   `POST /commandes` avec `Idempotency-Key` = l'identifiant d'une commande
-   **d'autrui** reçoit un `200` portant son `code_livraison` et son
-   `jeton_reception` — précisément les deux secrets que R6 réserve au client
-   propriétaire. Il faut connaître l'identifiant (UUIDv7, 74 bits aléatoires),
-   ce qui limite la portée, mais le contrôle manque. **PRÉEXISTANT** — trouvé en
-   relisant ce chemin, pas introduit par le regroupement, et non corrigé ici :
-   ajouter le filtre ferait retomber la relecture sur la création, qui buterait
-   sur la clé primaire. Demande son propre arbitrage.
+8. ~~**Le rejeu idempotent ne vérifie pas la propriété de la commande**~~ —
+   **RÉSOLU** le 2026-07-26 (commit `0b12bf6`), voir
+   [la section](#la-fuite-de-secrets-au-rejeu-est-fermée-bloquant). Le contrôle
+   ne coûte aucune requête de plus et refuse l'usurpation avant les validations.
 9. **L'app demande TOUJOURS le premier transport actif de la zone**
    (`ActionsCommande.transportDemande`), sans regarder la distance. Constaté à
    la passe émulateur : `a_pied` en tête, dont la règle plafonne à 800 m, fait
    répondre `500 « aucune règle tarifaire applicable »` dès que la tournée est
    plus longue — et l'app n'affiche qu'« Une erreur est survenue ». Contourné en
-   local en mettant `moto` en tête. Le choix du véhicule selon distance et
-   charge appartient à **TRF/produit** ; à défaut, ce refus mérite au moins un
-   message qui dise ce qui se passe.
-10. **La liste d'accueil n'est pas rafraîchie après création.**
+   local en mettant `moto` en tête. Le refus, lui, est désormais **lisible**
+   (409 `tarif_indisponible`, commit `37809a5`) ; c'est le **choix du véhicule**
+   selon distance et charge qui reste ouvert, et il appartient à **TRF/produit**.
+10. **Le corps du `200` de rejeu diffère de celui du `201`** sur deux champs —
+    écarts **préexistants**, reconduits à l'identique par le regroupement de la
+    livraison plutôt que corrigés en passant, parce que les corriger changerait
+    ce corps :
+    - `livraison.etat` est la **constante `"assignee"`** (`commandes_http.rs`),
+      jamais l'état réel : le rejeu d'une course déjà partie annonce donc un
+      état faux. Le lire en base serait plus juste, mais c'est un changement de
+      comportement à décider ;
+    - `devis.ordre_arrets` vaut `[]` au rejeu contre l'ordre optimisé au `201`
+      (`ordre: Vec::new()`, `creation.rs`) : l'ordre n'est stocké nulle part sur
+      la livraison. Le contrat annonce pourtant « même corps ».
+
+    **À trancher**, pas à oublier : ni l'un ni l'autre n'est couvert par un test
+    comparant les deux corps — celui-là échouerait aujourd'hui.
+11. **La liste d'accueil n'est pas rafraîchie après création.**
     `mesCommandesProvider` garde sa valeur en cache tant que l'accueil reste
     monté : revenir dessus après avoir commandé montre la liste d'avant jusqu'au
     tirer-pour-rafraîchir. Antérieur à cette reprise, mais plus visible avec N
