@@ -159,7 +159,7 @@ commandes, deux frais de déplacement.} …}`).
 ## Commits
 
 ```
-ee27f0c  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
+dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
 26ad6ee  feat(commandes): T067 alerte outbox du code de remise épuisé + clôture
 9449df1  test(commandes): T067 câblage du parcours couvert, deux défauts d'UI corrigés
 8a1b4ce  feat(commandes): T067 parcours client — accueil, vendeur, panier, suivi
