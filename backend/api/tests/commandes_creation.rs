@@ -1,6 +1,10 @@
-//! US2 + US3 (CMD-02, CMD-03) — adresse trouvable, création de commande :
-//! structure imposée, prix verrouillés, devis figé, code et QR, idempotence,
-//! plafonds cash, et **SC-005** (aucun règlement fractionné possible).
+//! US3 (CMD-03) — création de commande : structure imposée, prix verrouillés,
+//! devis figé, code et QR, idempotence, plafonds cash, et **SC-005** (aucun
+//! règlement fractionné possible).
+//!
+//! L'adresse et son repère (US2) ont leur propre suite,
+//! `commandes_adresse.rs` : ce sont deux critères d'acceptation distincts, et
+//! les mélanger rendait la suite de création illisible.
 
 mod bac_commandes;
 
@@ -234,124 +238,6 @@ async fn cle_idempotence_obligatoire(pool: sqlx::PgPool) {
         bac.compter("SELECT count(*) FROM commandes.commande").await,
         0,
     );
-}
-
-/// **US2** — les cinq cas du repère (FR-018) : texte assez long accepté, texte
-/// trop court refusé, vocal seul accepté, aucun repère refusé, et un repère
-/// vocal PURGÉ sans texte fait redemander le repère.
-#[sqlx::test(migrations = "../migrations")]
-async fn repere_obligatoire_texte_ou_vocal(pool: sqlx::PgPool) {
-    let bac = Bac::nouveau(pool).await;
-    let lignes = vec![bac.vendeurs[0].ligne(1)];
-
-    // 1. Repère écrit de 10 caractères minimum → accepté.
-    let mut corps = demande(&bac, lignes.clone());
-    corps["repere_texte"] = json!("Face au marché");
-    let (statut, _) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 201);
-
-    // 2. Repère écrit TROP COURT (< 10) et sans vocal → refusé.
-    let mut corps = demande(&bac, lignes.clone());
-    corps["repere_texte"] = json!("là-bas");
-    let (statut, refus) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 422);
-    assert_eq!(refus["code"], "repere_manquant");
-    assert_eq!(refus["message_cle"], "commande.erreur.repere_manquant");
-
-    // 3. Repère VOCAL seul → accepté (sa durée est bornée au cycle 003).
-    let mut corps = demande(&bac, lignes.clone());
-    corps["repere_texte"] = Value::Null;
-    corps["repere_vocal_cle"] = json!("comptes/reperes/abc.m4a");
-    let (statut, _) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 201);
-
-    // 4. AUCUN repère → refusé.
-    let mut corps = demande(&bac, lignes.clone());
-    corps["repere_texte"] = Value::Null;
-    let (statut, refus) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 422);
-    assert_eq!(refus["code"], "repere_manquant");
-
-    // 5. Un repère vocal PURGÉ (rétention écoulée) sans texte : le repère est
-    // REDEMANDÉ avant confirmation, pas découvert manquant devant la porte.
-    let mut corps = demande(&bac, lignes);
-    corps["repere_texte"] = json!("court");
-    corps["repere_vocal_cle"] = Value::Null;
-    let (statut, refus) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 422);
-    assert_eq!(refus["code"], "repere_manquant");
-}
-
-/// L'adresse du carnet est DÉNORMALISÉE sur le tronc, et son usage est marqué
-/// (la rétention du repère vocal repart de là — FR-022).
-#[sqlx::test(migrations = "../migrations")]
-async fn adresse_du_carnet_denormalisee_et_usage_marque(pool: sqlx::PgPool) {
-    let bac = Bac::nouveau(pool).await;
-    let adresse_id = Uuid::now_v7();
-    sqlx::query(
-        "INSERT INTO comptes.adresse
-             (id, compte_id, libelle, lat, lng, repere_texte, zone_id,
-              derniere_utilisation_le)
-         VALUES ($1, $2, 'Maison', 5.9051, -4.8301, 'Près de la pharmacie', $3,
-                 now() - interval '200 days')",
-    )
-    .bind(adresse_id)
-    .bind(bac.client)
-    .bind(bac.ville)
-    .execute(&bac.pool)
-    .await
-    .unwrap();
-
-    let mut corps = demande(&bac, vec![bac.vendeurs[0].ligne(1)]);
-    corps["adresse_id"] = json!(adresse_id);
-    corps["lieu"] = Value::Null;
-    corps["repere_texte"] = Value::Null;
-    let (statut, _) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 201);
-
-    let (lat, repere, adresse): (f64, Option<String>, Option<Uuid>) = sqlx::query_as(
-        "SELECT lieu_lat, repere_texte, adresse_id FROM commandes.commande",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
-    assert!((lat - 5.9051).abs() < 1e-9, "pin COPIÉ sur le tronc");
-    assert_eq!(repere.as_deref(), Some("Près de la pharmacie"));
-    assert_eq!(adresse, Some(adresse_id));
-
-    // FR-022 — la rétention repart de cette utilisation.
-    let recent: bool = sqlx::query_scalar(
-        "SELECT derniere_utilisation_le > now() - interval '1 minute'
-         FROM comptes.adresse WHERE id = $1",
-    )
-    .bind(adresse_id)
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
-    assert!(recent, "l'usage de l'adresse est marqué à la commande");
-}
-
-/// L'adresse d'AUTRUI n'est pas utilisable : la propriété est dans le `WHERE`.
-#[sqlx::test(migrations = "../migrations")]
-async fn adresse_d_autrui_refusee(pool: sqlx::PgPool) {
-    let bac = Bac::nouveau(pool).await;
-    let adresse_id = Uuid::now_v7();
-    sqlx::query(
-        "INSERT INTO comptes.adresse (id, compte_id, libelle, lat, lng, repere_texte, zone_id)
-         VALUES ($1, $2, 'Maison', 5.9, -4.8, 'Près de la pharmacie', $3)",
-    )
-    .bind(adresse_id)
-    .bind(bac.intrus)
-    .bind(bac.ville)
-    .execute(&bac.pool)
-    .await
-    .unwrap();
-
-    let mut corps = demande(&bac, vec![bac.vendeurs[0].ligne(1)]);
-    corps["adresse_id"] = json!(adresse_id);
-    let (statut, refus) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
-    assert_eq!(statut, 403);
-    assert_eq!(refus["code"], "non_proprietaire");
 }
 
 /// Compte BLOQUÉ (FR-026) : refus AVANT tout verrouillage de prix.

@@ -208,7 +208,7 @@ Backend Rust : crate `backend/crates/commandes/` (**étendu**, pas de nouveau cr
 - [X] T065 [P] Vérifier que **tous les paramètres** du cycle sont résolus par configuration de zone (aucune constante en dur) : les 11 clés de [data-model.md §6](./data-model.md), plus `mixable` (déjà seedé au cycle 002) ; test de résolution par héritage.
 - [X] T066 **Vérifier les cinq points obligatoires** du [plan §Points obligatoires](./plan.md) : **P1** — les trois critères du gating (test 006 vert sans modification, bascule avec arrêt de remise, progression « 2 sur 2 ») ; **P2** — `cargo sqlx migrate run` vert sur base vierge **et** sur base déjà migrée à `0007` ; **P3** — aucune requête de `commandes` n'écrit dans `comptes.compte` ; **P4** — le devis de panier n'écrit rien et n'émet rien ; **P5** — `backend/crates/` contient toujours 13 crates.
 - [ ] T067 Dérouler [quickstart.md](./quickstart.md) de bout en bout : suite backend complète, puis validation **sur émulateur Android** des parcours SC-001 (panier 12 articles / 3 vendeurs en < 3 min), SC-004 et SC-009 (suivi puis **mode avion** — QR et code affichés, dernier état connu, âge de la position), SC-011 (création → affectation simulée → 3 collectes → remise → terminée). Consigner les écarts constatés.
-- [ ] T068 **Revue Definition of Done** (`docs/user-stories-v2.md` §0.4) — les six points, un par un : (1) critères d'acceptation couverts par des tests, **transitions incluses** ; (2) annotations utoipa à jour et **clients Dart/TS régénérés sans diff manuel** ; (3) migrations SQL versionnées (`0008`, `0009`) et **seeds à jour** (`60_commandes_parametres.sql`) ; (4) **événement outbox pour tout changement d'état** + événements de métriques du parcours déclarés dans la taxonomie ; (5) **clés i18n fr externalisées** ; (6) **paramètres exposés en configuration de zone** partout où la story dit « paramétrable ». Puis `cargo test` + `cargo sqlx prepare` + `dart analyze` verts, et message de commit conventionnel référençant les stories (`feat(commandes): CMD-01..08,10 …`).
+- [X] T068 **Revue Definition of Done** (`docs/user-stories-v2.md` §0.4) — les six points, un par un : (1) critères d'acceptation couverts par des tests, **transitions incluses** ; (2) annotations utoipa à jour et **clients Dart/TS régénérés sans diff manuel** ; (3) migrations SQL versionnées (`0008`, `0009`) et **seeds à jour** (`60_commandes_parametres.sql`) ; (4) **événement outbox pour tout changement d'état** + événements de métriques du parcours déclarés dans la taxonomie ; (5) **clés i18n fr externalisées** ; (6) **paramètres exposés en configuration de zone** partout où la story dit « paramétrable ». Puis `cargo test` + `cargo sqlx prepare` + `dart analyze` verts, et message de commit conventionnel référençant les stories (`feat(commandes): CMD-01..08,10 …`).
 
 ---
 
@@ -291,76 +291,79 @@ Task: "T014 i18n : module d'erreurs API + entrées ARB"
 
 ---
 
-## État d'avancement — session du 2026-07-26
+## État d'avancement — session du 2026-07-26 (reprise après panne poste)
 
-**53 tâches sur 68 cochées**, 28 commits. Les tâches T033..T053, T024 et T032
-sont livrées, testées et commitées ; T006 a été cochée (elle était livrée mais
-la case n'avait pas été faite).
+**67 tâches sur 68 livrées**, `cargo test --workspace` **484 verts**, Flutter
+**33 + 78** verts, `dart analyze` propre, `cargo sqlx prepare` vert, clients
+Dart/TS régénérés **sans diff**.
 
 | Phase | État |
 |---|---|
-| 1 — Setup (T001–T003) | ✅ |
-| 2 — Foundational (T004–T014) | ✅ — **P1 et P2 vérifiés** |
-| 3 — US1 panier (T015–T020) | ✅ |
-| 4 — US2 adresse (T021–T024) | ✅ |
-| 5 — US3 création (T025–T032) | ✅ |
-| 6 — US4 états (T033–T037) | ✅ |
-| 7 — US5 file d'attente (T038–T040) | ✅ |
-| 8 — US6 suivi (T041–T046) | ✅ |
-| 9 — US7 substitutions (T047–T053) | ✅ |
-| 10 — US8 annulations (T054–T056) | ⚠️ **partiel, NON TESTÉ** |
-| 11 — US9 échecs (T057–T062) | ⚠️ **partiel, NON COMPILÉ** |
-| 12 — Polish (T063–T068) | ⬜ |
+| 1 à 11 — T001 à T062 | ✅ complètes |
+| 12 — Polish (T063–T066, T068) | ✅ |
+| 12 — T067 quickstart | ⚠️ **backend ✅, émulateur IMPOSSIBLE** — voir ci-dessous |
 
-### ⚠️ Interruption : poste hors service en cours de cycle
+### ⚠️ T067 — la validation sur émulateur ne peut pas être déroulée
 
-Le disque du poste a atteint **0 octet libre** pendant une édition de lien,
-emportant Docker Desktop et la base Postgres. 15 Gio ont été libérés
-(`backend/target/debug/incremental`, cache de recompilation régénérable), mais
-**le démon Docker n'est pas remonté** malgré un redémarrage propre de
-l'application. Tout le travail backend est bloqué depuis : les macros `sqlx`
-vérifient les requêtes à la compilation contre une base vivante, et
-`SQLX_OFFLINE=true` ne peut pas aider sur des requêtes NEUVES.
+La suite backend du quickstart passe **telle qu'elle est écrite** (les tests
+d'adresse US2 ont été sortis de `commandes_creation.rs` vers
+`commandes_adresse.rs`, que la commande documentée référençait sans qu'il
+existe). `flutter test` et `dart analyze` sont verts sur les deux paquets.
 
-**Ce qui est dans l'arbre mais N'A PAS été vérifié :**
+En revanche **SC-001, SC-004, SC-009 et SC-011 ne sont pas jouables sur
+émulateur**, et ce n'est pas un problème d'environnement :
 
-| Fichier | État réel |
-|---|---|
-| `commandes/src/annulation.rs` (T054) | type-checké contre la base, jamais lié ni testé — **commité** dans `3ec43c5` |
-| `commandes_http::annuler_commande`, `admin_commandes_http::annuler_commande_admin` (T055) | idem — **commités** |
-| `commandes/src/echec.rs` (T057/T059) | écrit, **jamais compilé** — non commité |
-| `commandes/src/collecte.rs` — `valider_remise` (T058) | écrit, **jamais compilé** — non commité |
-| Port `PreuvesEchec` en 8ᵉ collaborateur de `PgCommandes` | 5 sites de composition modifiés, **jamais compilés** — non commité |
+- l'accueil de `mefali_client` est toujours `AccueilProvisoire` — **aucune
+  navigation** ne mène aux écrans du cycle ;
+- **aucun appel API** n'est câblé côté client : `grep CommandesApi` ne rend
+  rien. Les écrans sont alimentés par leurs providers, que rien ne remplit
+  depuis le serveur.
 
-**Reprise, dans cet ordre :**
+Ce n'est l'oubli d'aucune tâche : T019, T020, T024, T032, T045, T046 et T053
+demandent des **écrans**, jamais un routeur ni une couche d'appel. T067 suppose
+un parcours que le découpage du cycle ne produit pas. Les six écrans sont
+livrés, thémés, testés en widget — mais un utilisateur ne peut pas les
+atteindre.
 
-1. relancer Docker (`docker compose -f infra/docker-compose.yml up -d`) ;
-2. `cargo build --workspace --all-targets` — attendre des erreurs sur
-   `echec.rs`, `collecte.rs` et les 5 sites de composition ;
-3. `cargo sqlx prepare --workspace -- --all-targets` (le cache `.sqlx` ne
-   contient PAS les requêtes d'annulation ni d'échec) ;
-4. T056, T060, T061, T062 (tests US8/US9) ;
-5. `./scripts/generate-clients.sh` — `openapi.json` n'est PAS à jour des deux
-   endpoints d'annulation ;
-6. phase 12 (T063–T068).
+**Décision à prendre** (hors périmètre de ce cycle, à arbitrer) : ajouter au
+cycle CMD un routeur client + une couche `CommandesApi`, ou les porter au cycle
+suivant et clore T067 sur sa seule moitié backend.
+
+### Revue Definition of Done (T068) — les six points
+
+| # | Point | État |
+|---|---|---|
+| 1 | Critères d'acceptation couverts, **transitions incluses** | ✅ une assertion par ligne des 3 tables + parcours réel |
+| 2 | utoipa à jour, clients régénérés **sans diff** | ✅ vérifié par régénération |
+| 3 | Migrations versionnées (`0008`, `0009`), seeds à jour | ✅ + P2 rejoué sur base vierge ET incrémentale |
+| 4 | Événement outbox pour **tout** changement d'état | ✅ 27 événements émis, **0 non déclaré** |
+| 5 | Clés i18n fr externalisées | ✅ boucle fermée par `messageErreurCommande` |
+| 6 | Paramètres en configuration de zone | ✅ 14 clés résolues par héritage (T065) |
 
 ### Écarts de conception tranchés ce cycle
 
 1. `commandes` ne peut pas dépendre de `qr` — empreintes remontées dans `socle`.
-2. `RestrictionsCompte` implémenté côté `commandes` pour `PgComptes` (P3 tenu).
+2. `RestrictionsCompte` implémenté côté `commandes` pour `PgComptes` (P3 tenu,
+   désormais gardé par un test qui lit le source).
 3. `panier.scission_proposee` seule écriture du chemin de devis (P4 vs SC-006).
-4. `en_route → collecte` refusé (data-model §3.3) — **à signaler au produit**.
-5. **Deux événements ajoutés à la taxonomie** (`livraison.mise_en_collecte`,
+4. `en_route → collecte` refusé (data-model §3.3) — **à signaler au produit** :
+   un coursier qui a tapé « je pars » doit taper « je suis arrivé » avant de
+   scanner, sinon `arrive_le` manque et la prime d'attente TRF-06 est perdue.
+5. **Deux événements ajoutés** (`livraison.mise_en_collecte`,
    `commande.paiement_confirme`) : deux transitions de data-model §3 n'en
    avaient aucun, alors que la constitution VI en exige un par transition.
-   25 → 27 événements du cycle.
-6. **`qr_flutter` 4.1.0 ajoutée** à `mefali_core`, figée au lockfile — arbitrée
+   25 → 27 événements.
+6. **`qr_flutter` 4.1.0** ajoutée à `mefali_core`, figée au lockfile — arbitrée
    avec l'utilisateur : le bloc « À la livraison » doit se rendre SANS RÉSEAU
    (SC-009), ce qu'un QR servi en image par l'API interdirait.
 7. **Bug trouvé et corrigé** : un scan direct (chemin du cycle 006) laissait la
    livraison en `assignee`, donc hors du gating EN_LIVRAISON — course bloquée
    pour toujours. Même classe de panne que P1, par l'autre bout.
 8. `coursier.prenom` et `coursier.note` du suivi restent `null` : `comptes` ne
-   stocke aucun nom et le cycle AVI n'existe pas. À combler par CPT et AVI.
+   stocke aucun nom et le cycle AVI n'existe pas. **À combler par CPT et AVI.**
 9. L'**alerte admin** du code de remise épuisé est un `tracing::warn!`, pas un
-   événement outbox : la taxonomie n'en déclare aucun pour ce cas.
+   événement outbox : la taxonomie n'en déclare aucun pour ce cas. À trancher
+   si l'exploitation doit pouvoir s'y abonner.
+10. **`ProgressionCollecte` distingue `nb_collectes` et `nb_resolues`** :
+    « collecté » et « résolu » ne sont pas le même compte, et les confondre
+    donnait soit une barre bloquée, soit un compteur d'achats faux.
