@@ -438,6 +438,10 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
       'Un article n\'est plus disponible. Mettez votre panier à jour.';
 
   @override
+  String get commandeErreurTarifIndisponible =>
+      'Aucun tarif ne couvre ce trajet. Retirez un vendeur éloigné, ou réessayez plus tard.';
+
+  @override
   String get commandeErreurCashIndisponible =>
       'Le paiement en espèces n\'est pas possible pour cette commande.';
 

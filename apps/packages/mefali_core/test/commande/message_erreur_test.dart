@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_core/mefali_core.dart';
 
-/// Les 18 codes de refus que l'API peut rendre sur ses trois surfaces.
+/// Les 19 codes de refus que l'API peut rendre sur ses trois surfaces.
 const _codes = [
   'compte_bloque',
   'categorie_non_mixable',
@@ -18,6 +18,9 @@ const _codes = [
   'vendeur_indisponible',
   'article_indisponible',
   'cash_indisponible',
+  // Refus 409 de TRF relayé par CMD : la grille de la zone ne couvre pas ce
+  // trajet. C'était un 500 muet avant la passe émulateur du 2026-07-26.
+  'tarif_indisponible',
   'transition_refusee',
   'non_proprietaire',
   'commande_inconnue',

@@ -781,6 +781,12 @@ abstract class MefaliCoreLocalizations {
   /// **'Un article n\'est plus disponible. Mettez votre panier à jour.'**
   String get commandeErreurArticleIndisponible;
 
+  /// Refus 409 tarif_indisponible — la grille de la zone est bornée en distance et en véhicule. Le levier du client est son panier : c'est ce que la phrase lui dit
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun tarif ne couvre ce trajet. Retirez un vendeur éloigné, ou réessayez plus tard.'**
+  String get commandeErreurTarifIndisponible;
+
   /// Refus 409 cash_indisponible (FR-024/025)
   ///
   /// In fr, this message translates to:

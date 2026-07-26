@@ -72,6 +72,10 @@ pub fn statut(e: &ErreurCommandes) -> StatusCode {
         | ErreurCommandes::TelephoneNonVerifie => StatusCode::FORBIDDEN,
 
         ErreurCommandes::CategorieNonMixable
+        // La grille de la zone ne couvre pas ce trajet : l'état s'y oppose, et
+        // le client peut agir dessus en retirant un vendeur éloigné — même
+        // famille qu'un vendeur fermé, pas une demande mal formée.
+        | ErreurCommandes::TarifIndisponible
         | ErreurCommandes::VendeurIndisponible(_)
         | ErreurCommandes::ArticleIndisponible(_)
         | ErreurCommandes::CashIndisponible
@@ -149,6 +153,7 @@ mod tests {
             ErreurCommandes::PreuvesIncompletes,
             ErreurCommandes::MotifRequis,
             ErreurCommandes::NonProprietaire,
+            ErreurCommandes::TarifIndisponible,
         ] {
             let corps = corps(&erreur);
             assert_ne!(
@@ -161,6 +166,31 @@ mod tests {
                 "clé i18n mal préfixée : {cle}",
             );
         }
+    }
+
+    /// `AucuneRegle` de TRF est un REFUS, pas une panne : il traverse la
+    /// conversion en gardant sa clé, et rend 409 — pas 500.
+    ///
+    /// Sans ce chemin, un panier trop dispersé pour la grille de la zone (le
+    /// véhicule demandé plafonne à 800 m) répondait « une erreur est survenue »,
+    /// qui n'apprend rien à personne. Constaté sur émulateur.
+    #[test]
+    fn aucune_regle_tarifaire_est_un_refus_lisible_pas_un_500() {
+        let e = ErreurCommandes::from(tarification::ErreurTarif::AucuneRegle);
+        assert!(matches!(e, ErreurCommandes::TarifIndisponible));
+        assert_eq!(statut(&e), StatusCode::CONFLICT);
+        let corps = corps(&e);
+        assert_eq!(corps["code"], "tarif_indisponible");
+        assert_eq!(corps["message_cle"], "commande.erreur.tarif_indisponible");
+    }
+
+    /// Les AUTRES erreurs de TRF restent techniques : seule `AucuneRegle` est
+    /// une situation que le client peut lever.
+    #[test]
+    fn les_autres_erreurs_tarifaires_restent_techniques() {
+        let e = ErreurCommandes::from(tarification::ErreurTarif::SimulationRequise);
+        assert_eq!(statut(&e), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(corps(&e)["code"], "erreur_interne");
     }
 
     #[test]

@@ -736,6 +736,15 @@ pub enum ErreurCommandes {
     /// Motif d'annulation admin absent (FR-054).
     #[error("motif d'annulation obligatoire")]
     MotifRequis,
+    /// Aucune règle tarifaire ne couvre ce trajet avec ce véhicule.
+    ///
+    /// **Situation MÉTIER, pas panne serveur** : la grille de la zone est
+    /// bornée (distance, véhicule), et un trajet hors bornes n'a simplement pas
+    /// de prix — jamais un prix arbitraire (`ErreurTarif::AucuneRegle`). Le
+    /// client peut agir : retirer un vendeur éloigné. D'où un refus lisible,
+    /// là où un 500 disait « une erreur est survenue » et n'aidait personne.
+    #[error("aucune règle tarifaire ne couvre ce trajet")]
+    TarifIndisponible,
     /// Un crate consommé a refusé (zones, prestataires, tarification, comptes).
     #[error("dépendance du domaine : {0}")]
     Dependance(String),
@@ -758,6 +767,7 @@ impl ErreurCommandes {
             ErreurCommandes::NonProprietaire => "non_proprietaire",
             ErreurCommandes::CompteBloque => "compte_bloque",
             ErreurCommandes::CategorieNonMixable => "categorie_non_mixable",
+            ErreurCommandes::TarifIndisponible => "tarif_indisponible",
             ErreurCommandes::PanierInvalide(_) => "panier_invalide",
             ErreurCommandes::RepereManquant => "repere_manquant",
             ErreurCommandes::TelephoneNonVerifie => "telephone_non_verifie",
@@ -800,6 +810,10 @@ impl From<tarification::ErreurTarif> for ErreurCommandes {
     fn from(e: tarification::ErreurTarif) -> Self {
         match e {
             tarification::ErreurTarif::Sql(sql) => ErreurCommandes::Sql(sql),
+            // Le seul refus de TRF que le CLIENT peut lever lui-même : son
+            // panier est trop dispersé pour la grille de la zone. Le laisser
+            // tomber dans `Dependance` en faisait un 500 muet.
+            tarification::ErreurTarif::AucuneRegle => ErreurCommandes::TarifIndisponible,
             autre => ErreurCommandes::Dependance(autre.to_string()),
         }
     }

@@ -27,6 +27,7 @@ String messageErreurCommande(MefaliCoreLocalizations l10n, String? cleOuCode) {
     'vendeur_indisponible' => l10n.commandeErreurVendeurIndisponible,
     'article_indisponible' => l10n.commandeErreurArticleIndisponible,
     'cash_indisponible' => l10n.commandeErreurCashIndisponible,
+    'tarif_indisponible' => l10n.commandeErreurTarifIndisponible,
     'transition_refusee' => l10n.commandeErreurTransitionRefusee,
     'non_proprietaire' => l10n.commandeErreurNonProprietaire,
     'commande_inconnue' => l10n.commandeErreurCommandeInconnue,

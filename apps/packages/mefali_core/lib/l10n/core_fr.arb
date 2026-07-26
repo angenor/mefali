@@ -554,6 +554,10 @@
   "@commandeErreurArticleIndisponible": {
     "description": "Refus 409 article_indisponible (FR-029)"
   },
+  "commandeErreurTarifIndisponible": "Aucun tarif ne couvre ce trajet. Retirez un vendeur éloigné, ou réessayez plus tard.",
+  "@commandeErreurTarifIndisponible": {
+    "description": "Refus 409 tarif_indisponible — la grille de la zone est bornée en distance et en véhicule. Le levier du client est son panier : c'est ce que la phrase lui dit"
+  },
   "commandeErreurCashIndisponible": "Le paiement en espèces n'est pas possible pour cette commande.",
   "@commandeErreurCashIndisponible": {
     "description": "Refus 409 cash_indisponible (FR-024/025)"
