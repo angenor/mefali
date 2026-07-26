@@ -80,7 +80,10 @@ class EcranAdressePaiement extends ConsumerWidget {
     final creees = saisie.commandesCreees;
     if (creees.isNotEmpty) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.commandeConfirmee)),
+        // Le titre COMPTE : une scission acceptée en crée N, et « Commande
+        // confirmée » au singulier au-dessus de deux codes de remise dit le
+        // contraire de ce que l'écran montre (constaté sur appareil).
+        appBar: AppBar(title: Text(l10n.commandeConfirmee(creees.length))),
         body: ListView(
           padding: const EdgeInsets.all(MefaliTokens.screenMargin),
           children: [

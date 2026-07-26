@@ -397,7 +397,15 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
   }
 
   @override
-  String get commandeConfirmee => 'Commande confirmée';
+  String commandeConfirmee(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commandes confirmées',
+      one: 'Commande confirmée',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get commandeCodeRemise => 'Code de remise';

@@ -406,6 +406,11 @@ void main() {
       // Les deux codes de remise sont rendus, chacun sous son rang.
       expect(blocRemise('5311'), findsOneWidget);
       expect(blocRemise('5312'), findsOneWidget);
+      // Le titre COMPTE les commandes : « Commande confirmée » au singulier
+      // au-dessus de deux codes disait le contraire de l'écran (vu sur
+      // appareil, passe émulateur du 2026-07-26).
+      expect(find.text('2 commandes confirmées'), findsOneWidget);
+      expect(find.text('Commande confirmée'), findsNothing);
       expect(m.container.read(confirmationProvider).commandesCreees,
           hasLength(2));
       expect(m.container.read(panierProvider).estVide, isTrue);

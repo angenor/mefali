@@ -513,9 +513,14 @@
       }
     }
   },
-  "commandeConfirmee": "Commande confirmée",
+  "commandeConfirmee": "{n, plural, =1{Commande confirmée} other{{n} commandes confirmées}}",
   "@commandeConfirmee": {
-    "description": "Titre de l'écran de confirmation"
+    "description": "Titre de l'écran de confirmation. Une scission acceptée en crée N : le singulier mentirait sur ce que l'écran montre (constaté sur appareil)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "commandeCodeRemise": "Code de remise",
   "@commandeCodeRemise": {

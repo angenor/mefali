@@ -727,11 +727,11 @@ abstract class MefaliCoreLocalizations {
   /// **'Espèces indisponibles au-dessus de {plafond}.'**
   String commandePaiementCashIndisponible(String plafond);
 
-  /// Titre de l'écran de confirmation
+  /// Titre de l'écran de confirmation. Une scission acceptée en crée N : le singulier mentirait sur ce que l'écran montre (constaté sur appareil)
   ///
   /// In fr, this message translates to:
-  /// **'Commande confirmée'**
-  String get commandeConfirmee;
+  /// **'{n, plural, =1{Commande confirmée} other{{n} commandes confirmées}}'**
+  String commandeConfirmee(int n);
 
   /// Libellé du code à 4 chiffres remis au client
   ///
