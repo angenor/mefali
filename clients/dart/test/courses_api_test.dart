@@ -34,12 +34,30 @@ void main() {
       // TODO
     });
 
+    // CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.
+    //
+    // **Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier ne perd jamais » suppose une trace — appels via l'app espacés, présence géolocalisée, photo sur place. Sans elle, la promesse deviendrait une invitation.
+    //
+    //Future<IssueEchec> declarerEchec(String livraisonId, DemandeEchec demandeEchec) async
+    test('test declarerEchec', () async {
+      // TODO
+    });
+
     // CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
     //
     // Trois chemins, deux invariants : le **devis de livraison ne bouge jamais** (FR-050) et le total reste payé **en une fois** (FR-049). La proposition de remplacement est refusée si l'article vient d'un **autre vendeur** (FR-048) ou si l'écart de prix dépasse le plafond de zone (FR-047).
     //
     //Future<IssueRupture> declarerRupture(String livraisonId, DemandeRupture demande, { MultipartFile photo }) async
     test('test declarerRupture', () async {
+      // TODO
+    });
+
+    // CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+    //
+    // ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond.
+    //
+    //Future<ResultatRemise> remise(String livraisonId, DemandeRemise demandeRemise) async
+    test('test remise', () async {
       // TODO
     });
 

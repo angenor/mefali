@@ -113,6 +113,8 @@ pub fn api_openapi() -> OpenApi {
         .service(course_http::arret_arrive)
         .service(course_http::arret_indisponible)
         .service(course_http::declarer_rupture)
+        .service(course_http::remise)
+        .service(course_http::declarer_echec)
         .service(commandes_http::decider_substitution)
         .service(commandes_http::mes_commandes)
         .service(commandes_http::suivre_commande)
@@ -120,6 +122,7 @@ pub fn api_openapi() -> OpenApi {
         .service(commandes_http::annuler_commande)
         .service(admin_commandes_http::file_attente)
         .service(admin_commandes_http::annuler_commande_admin)
+        .service(admin_commandes_http::enregistrer_issue)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -542,6 +545,8 @@ pub async fn run() -> std::io::Result<()> {
             .service(course_http::arret_arrive)
             .service(course_http::arret_indisponible)
             .service(course_http::declarer_rupture)
+            .service(course_http::remise)
+            .service(course_http::declarer_echec)
             .service(commandes_http::decider_substitution)
             .service(commandes_http::mes_commandes)
             .service(commandes_http::suivre_commande)
@@ -549,6 +554,7 @@ pub async fn run() -> std::io::Result<()> {
             .service(commandes_http::annuler_commande)
             .service(admin_commandes_http::file_attente)
             .service(admin_commandes_http::annuler_commande_admin)
+            .service(admin_commandes_http::enregistrer_issue)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

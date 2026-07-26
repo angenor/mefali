@@ -10,6 +10,7 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**annulerCommandeAdmin**](CommandesAdminApi.md#annulercommandeadmin) | **POST** /admin/commandes/{id}/annuler | CMD-07 — un administrateur annule une commande, **motif obligatoire**.
+[**enregistrerIssue**](CommandesAdminApi.md#enregistrerissue) | **POST** /admin/commandes/{id}/issues | CMD-08 — un administrateur enregistre une issue de l&#39;arbre §7.5.
 [**fileAttente**](CommandesAdminApi.md#fileattente) | **GET** /admin/commandes/attente | CMD-10 — file FIFO des commandes sans coursier d&#39;une zone.
 
 
@@ -46,6 +47,51 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**ResultatAnnulation**](ResultatAnnulation.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **enregistrerIssue**
+> IssueEchec enregistrerIssue(id, demandeEchec)
+
+CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.
+
+La même table de décision que la surface coursier, par une autre porte : ce que le support tranche au téléphone doit produire exactement les mêmes deux détenteurs, le même litige et la même sanction qu'une déclaration terrain. Deux chemins qui divergeraient seraient deux vérités sur le même incident.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande concernée.
+final DemandeEchec demandeEchec = ; // DemandeEchec | 
+
+try {
+    final response = api.enregistrerIssue(id, demandeEchec);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CommandesAdminApi->enregistrerIssue: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Commande concernée. | 
+ **demandeEchec** | [**DemandeEchec**](DemandeEchec.md)|  | 
+
+### Return type
+
+[**IssueEchec**](IssueEchec.md)
 
 ### Authorization
 

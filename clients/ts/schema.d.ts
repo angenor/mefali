@@ -49,6 +49,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/commandes/{id}/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.
+         * @description La même table de décision que la surface coursier, par une autre porte : ce
+         *     que le support tranche au téléphone doit produire exactement les mêmes deux
+         *     détenteurs, le même litige et la même sanction qu'une déclaration terrain.
+         *     Deux chemins qui divergeraient seraient deux vérités sur le même incident.
+         */
+        post: operations["enregistrer_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/comptes/dossiers-coursier": {
         parameters: {
             query?: never;
@@ -886,6 +909,54 @@ export interface paths {
          *     bougent pas (FR-050).
          */
         post: operations["arret_indisponible"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/echec": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.
+         * @description **Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier
+         *     ne perd jamais » suppose une trace — appels via l'app espacés, présence
+         *     géolocalisée, photo sur place. Sans elle, la promesse deviendrait une
+         *     invitation.
+         */
+        post: operations["declarer_echec"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/remise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+         * @description ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a
+         *     l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu
+         *     côté serveur, sur la valeur stockée.
+         *
+         *     Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention
+         *     admin : quatre chiffres se devinent en quelques minutes sans plafond.
+         */
+        post: operations["remise"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2096,6 +2167,18 @@ export interface components {
              */
             zone_id: string;
         };
+        /** @description Déclaration d'un échec (arbre §7.5). */
+        DemandeEchec: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné — absent = à la remise.
+             */
+            arret_id?: string | null;
+            /** @description Clé i18n du motif — jamais du texte libre. */
+            motif_cle: string;
+            /** @description Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…). */
+            type_issue: string;
+        };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
             /** @description Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4). */
@@ -2110,6 +2193,17 @@ export interface components {
         DemandeRafraichissement: {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
+        };
+        /** @description Preuve de remise présentée par le coursier. */
+        DemandeRemise: {
+            /** @description Code à 4 chiffres dicté par le client (mode `code`). */
+            code?: string | null;
+            /** @description Jeton lu dans le QR de réception (mode `qr`). */
+            jeton?: string | null;
+            /** @description `qr` | `code` | `depot`. */
+            mode: string;
+            /** @description Clé de la photo déposée sur place (mode `depot`). */
+            photo_cle?: string | null;
         };
         /** @description Partie JSON `demande` du multipart de rupture. */
         DemandeRupture: {
@@ -2604,6 +2698,41 @@ export interface components {
         IntentionAppel: {
             /** @description `suivi` (défaut) | `substitution` | `expiration`. */
             motif?: string | null;
+        };
+        /** @description Une issue de l'arbre §7.5, telle qu'elle est enregistrée. */
+        IssueEchec: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Qui détient l'ARGENT. */
+            detenteur_argent: string;
+            /** @description Qui détient la MARCHANDISE — axe indépendant du précédent (R14). */
+            detenteur_marchandise: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Le coursier doit être indemnisé (contrat CRS-06). */
+            indemnisation_due: boolean;
+            /**
+             * Format: uuid
+             * @description Identifiant de l'issue.
+             */
+            issue_id: string;
+            /** @description Un litige est ouvert (contrat AVI-04). */
+            litige_ouvert: boolean;
+            /**
+             * Format: int64
+             * @description Montant en jeu (unités mineures).
+             */
+            montant_en_jeu_unites: number;
+            /**
+             * Format: uuid
+             * @description Commande de re-livraison créée (§7.5-10 seulement).
+             */
+            relivraison_id?: string | null;
+            /** @description Sanction effectivement posée sur le compte client. */
+            sanction: string;
         };
         /** @description Issue immédiate d'une rupture déclarée. */
         IssueRupture: {
@@ -3308,6 +3437,26 @@ export interface components {
              */
             total_unites: number;
         };
+        /** @description Résultat d'une remise validée. */
+        ResultatRemise: {
+            /**
+             * Format: uuid
+             * @description Commande close.
+             */
+            commande_id: string;
+            /**
+             * Format: int32
+             * @description Essais de code consommés.
+             */
+            essais_code: number;
+            /**
+             * Format: uuid
+             * @description Livraison close.
+             */
+            livraison_id: string;
+            /** @description Mode retenu. */
+            mode_remise: string;
+        };
         /** @description Résultat COMPLET d'une simulation (FR-020). */
         ResultatSimulation: {
             /** @description Détail des composantes. */
@@ -3726,6 +3875,69 @@ export interface operations {
             };
             /** @description Motif absent — un admin doit motiver son geste (FR-054). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    enregistrer_issue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande concernée. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeEchec"];
+            };
+        };
+        responses: {
+            /** @description Issue enregistrée avec ses deux détenteurs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueEchec"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande sans livraison, ou inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Preuves incomplètes (FR-056). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6419,6 +6631,150 @@ export interface operations {
             };
             /** @description Arrêt déjà résolu : transition absente de la table. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    declarer_echec: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeEchec"];
+            };
+        };
+        responses: {
+            /** @description Issue enregistrée avec ses DEUX détenteurs, son litige éventuel, son indemnisation et sa sanction. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueEchec"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Livraison inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Preuves incomplètes (FR-056), ou état incompatible. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeRemise"];
+            };
+        };
+        responses: {
+            /** @description Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatRemise"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Livraison inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Code ou jeton incorrect, ou course pas encore en livraison. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Demande mal formée (jeton, code ou photo manquant). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Code de remise ÉPUISÉ — intervention admin requise. */
+            423: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -890,3 +890,21 @@ impl ArretsDeCollecte for PgCommandes {
         }))
     }
 }
+
+impl PgCommandes {
+    /// Livraison d'une commande, s'il y en a une (composant 0..n).
+    ///
+    /// Sert les surfaces qui nomment la COMMANDE là où le domaine travaille sur
+    /// la livraison — l'admin, notamment, ne connaît que le numéro de commande.
+    pub async fn livraison_de_commande(
+        &self,
+        commande_id: Uuid,
+    ) -> Result<Option<Uuid>, ErreurCommandes> {
+        Ok(sqlx::query_scalar!(
+            "SELECT id FROM commandes.livraison WHERE commande_id = $1",
+            commande_id,
+        )
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+}

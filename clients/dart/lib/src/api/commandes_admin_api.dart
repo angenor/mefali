@@ -10,8 +10,10 @@ import 'package:dio/dio.dart';
 
 import 'package:mefali_api_client/src/api_util.dart';
 import 'package:mefali_api_client/src/model/demande_annulation.dart';
+import 'package:mefali_api_client/src/model/demande_echec.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
+import 'package:mefali_api_client/src/model/issue_echec.dart';
 import 'package:mefali_api_client/src/model/resultat_annulation.dart';
 
 class CommandesAdminApi {
@@ -114,6 +116,109 @@ class CommandesAdminApi {
     }
 
     return Response<ResultatAnnulation>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// CMD-08 — un administrateur enregistre une issue de l&#39;arbre §7.5.
+  /// La même table de décision que la surface coursier, par une autre porte : ce que le support tranche au téléphone doit produire exactement les mêmes deux détenteurs, le même litige et la même sanction qu&#39;une déclaration terrain. Deux chemins qui divergeraient seraient deux vérités sur le même incident.
+  ///
+  /// Parameters:
+  /// * [id] - Commande concernée.
+  /// * [demandeEchec] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [IssueEchec] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<IssueEchec>> enregistrerIssue({ 
+    required String id,
+    required DemandeEchec demandeEchec,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/admin/commandes/{id}/issues'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(DemandeEchec);
+      _bodyData = _serializers.serialize(demandeEchec, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    IssueEchec? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(IssueEchec),
+      ) as IssueEchec;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<IssueEchec>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

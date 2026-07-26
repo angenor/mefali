@@ -103,11 +103,14 @@ Class | Method | HTTP request | Description
 [*CommandesApi*](doc/CommandesApi.md) | [**mesCommandes**](doc/CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
 [*CommandesApi*](doc/CommandesApi.md) | [**suivreCommande**](doc/CommandesApi.md#suivrecommande) | **GET** /commandes/{id} | CMD-05 — suivi complet d&#39;une commande, pour son **propriétaire**.
 [*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**annulerCommandeAdmin**](doc/CommandesAdminApi.md#annulercommandeadmin) | **POST** /admin/commandes/{id}/annuler | CMD-07 — un administrateur annule une commande, **motif obligatoire**.
+[*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**enregistrerIssue**](doc/CommandesAdminApi.md#enregistrerissue) | **POST** /admin/commandes/{id}/issues | CMD-08 — un administrateur enregistre une issue de l&#39;arbre §7.5.
 [*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**fileAttente**](doc/CommandesAdminApi.md#fileattente) | **GET** /admin/commandes/attente | CMD-10 — file FIFO des commandes sans coursier d&#39;une zone.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretArrive**](doc/CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretEnRoute**](doc/CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretIndisponible**](doc/CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+[*CoursesApi*](doc/CoursesApi.md) | [**declarerEchec**](doc/CoursesApi.md#declarerechec) | **POST** /courses/{livraison_id}/echec | CMD-08 — le coursier déclare l&#39;échec ; le serveur déroule l&#39;arbre §7.5.
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
+[*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
@@ -187,8 +190,10 @@ Class | Method | HTTP request | Description
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
+ - [DemandeEchec](doc/DemandeEchec.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
+ - [DemandeRemise](doc/DemandeRemise.md)
  - [DemandeRupture](doc/DemandeRupture.md)
  - [DemandeSimulation](doc/DemandeSimulation.md)
  - [Devis](doc/Devis.md)
@@ -215,6 +220,7 @@ Class | Method | HTTP request | Description
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
  - [IntentionAppel](doc/IntentionAppel.md)
+ - [IssueEchec](doc/IssueEchec.md)
  - [IssueRupture](doc/IssueRupture.md)
  - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
@@ -249,6 +255,7 @@ Class | Method | HTTP request | Description
  - [ResultatAnnulation](doc/ResultatAnnulation.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
  - [ResultatDecisionSubstitution](doc/ResultatDecisionSubstitution.md)
+ - [ResultatRemise](doc/ResultatRemise.md)
  - [ResultatSimulation](doc/ResultatSimulation.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [ScissionProposee](doc/ScissionProposee.md)

@@ -155,3 +155,63 @@ pub async fn annuler_commande_admin(
         .await?;
     Ok(HttpResponse::Ok().json(ResultatAnnulationDto::from(faite)))
 }
+
+/// CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.
+///
+/// La même table de décision que la surface coursier, par une autre porte : ce
+/// que le support tranche au téléphone doit produire exactement les mêmes deux
+/// détenteurs, le même litige et la même sanction qu'une déclaration terrain.
+/// Deux chemins qui divergeraient seraient deux vérités sur le même incident.
+#[utoipa::path(
+    post,
+    path = "/admin/commandes/{id}/issues",
+    tag = "commandes-admin",
+    params(("id" = Uuid, Path, description = "Commande concernée.")),
+    request_body = crate::course_http::DemandeEchecDto,
+    responses(
+        (status = 200, description = "Issue enregistrée avec ses deux détenteurs.",
+         body = crate::course_http::IssueEchecDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 404, description = "Commande sans livraison, ou inconnue.", body = ErreurApiDto),
+        (status = 409, description = "Preuves incomplètes (FR-056).", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/commandes/{id}/issues")]
+pub async fn enregistrer_issue(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<crate::course_http::DemandeEchecDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Admin)?;
+    let commande_id = chemin.into_inner();
+    let corps = corps.into_inner();
+    tracing::info!(
+        admin = %auth.compte_id,
+        commande = %commande_id,
+        type_issue = %corps.type_issue,
+        "issue §7.5 enregistrée par l'admin",
+    );
+
+    // L'admin nomme la COMMANDE ; l'arbre travaille sur la livraison.
+    let livraison_id = depot
+        .livraison_de_commande(commande_id)
+        .await?
+        .ok_or(commandes::ErreurCommandes::CommandeInconnue(commande_id))?;
+
+    let issue = depot
+        .declarer_echec(
+            auth.compte_id,
+            commandes::DemandeEchec {
+                livraison_id,
+                arret_id: corps.arret_id,
+                type_issue: corps.type_issue.parse()?,
+                motif_cle: corps.motif_cle,
+            },
+            chrono::Utc::now(),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(crate::course_http::IssueEchecDto::from(issue)))
+}

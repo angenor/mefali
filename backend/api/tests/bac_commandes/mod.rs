@@ -478,13 +478,16 @@ impl Bac {
                 .service(crs::arret_arrive)
                 .service(crs::arret_indisponible)
                 .service(crs::declarer_rupture)
+                .service(crs::remise)
+                .service(crs::declarer_echec)
                 .service(cmd::decider_substitution)
                 .service(cmd::mes_commandes)
                 .service(cmd::suivre_commande)
                 .service(cmd::intention_appel)
                 .service(cmd::annuler_commande)
                 .service(adm::file_attente)
-                .service(adm::annuler_commande_admin);
+                .service(adm::annuler_commande_admin)
+                .service(adm::enregistrer_issue);
         }
     }
 
@@ -519,6 +522,21 @@ impl Bac {
         lignes: Vec<Value>,
         mode_paiement: &str,
     ) -> Uuid {
+        let (statut, corps) = self
+            .post_creation(categorie_slug, lignes, mode_paiement)
+            .await;
+        assert_eq!(statut, 201, "création de commande du bac : {corps}");
+        corps["id"].as_str().unwrap().parse().unwrap()
+    }
+
+    /// Création BRUTE : rend `(statut, corps)` sans rien exiger. Sert les tests
+    /// qui attendent un REFUS (compte sanctionné, plafond cash…).
+    pub async fn post_creation(
+        &self,
+        categorie_slug: &str,
+        lignes: Vec<Value>,
+        mode_paiement: &str,
+    ) -> (u16, Value) {
         let app = actix_web::test::init_service(
             actix_web::App::new().configure(self.configurer()),
         )
@@ -534,9 +552,8 @@ impl Bac {
             })
             .to_request();
         let resp = actix_web::test::call_service(&app, req).await;
-        assert_eq!(resp.status().as_u16(), 201, "création de commande du bac");
-        let corps: Value = actix_web::test::read_body_json(resp).await;
-        corps["id"].as_str().unwrap().parse().unwrap()
+        let statut = resp.status().as_u16();
+        (statut, actix_web::test::read_body_json(resp).await)
     }
 
     /// Une commande de 3 vendeurs `marche` (3 collectes + 1 remise), affectée au

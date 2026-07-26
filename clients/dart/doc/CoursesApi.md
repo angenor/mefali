@@ -12,7 +12,9 @@ Method | HTTP request | Description
 [**arretArrive**](CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
 [**arretEnRoute**](CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
 [**arretIndisponible**](CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+[**declarerEchec**](CoursesApi.md#declarerechec) | **POST** /courses/{livraison_id}/echec | CMD-08 — le coursier déclare l&#39;échec ; le serveur déroule l&#39;arbre §7.5.
 [**declarerRupture**](CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
+[**remise**](CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 
 
 # **arretArrive**
@@ -156,6 +158,51 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **declarerEchec**
+> IssueEchec declarerEchec(livraisonId, demandeEchec)
+
+CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.
+
+**Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier ne perd jamais » suppose une trace — appels via l'app espacés, présence géolocalisée, photo sur place. Sans elle, la promesse deviendrait une invitation.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCoursesApi();
+final String livraisonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Course assignée à l'appelant.
+final DemandeEchec demandeEchec = ; // DemandeEchec | 
+
+try {
+    final response = api.declarerEchec(livraisonId, demandeEchec);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CoursesApi->declarerEchec: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **livraisonId** | **String**| Course assignée à l'appelant. | 
+ **demandeEchec** | [**DemandeEchec**](DemandeEchec.md)|  | 
+
+### Return type
+
+[**IssueEchec**](IssueEchec.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **declarerRupture**
 > IssueRupture declarerRupture(livraisonId, demande, photo)
 
@@ -199,6 +246,51 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: multipart/form-data
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **remise**
+> ResultatRemise remise(livraisonId, demandeRemise)
+
+CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+
+⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCoursesApi();
+final String livraisonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Course assignée à l'appelant.
+final DemandeRemise demandeRemise = ; // DemandeRemise | 
+
+try {
+    final response = api.remise(livraisonId, demandeRemise);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CoursesApi->remise: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **livraisonId** | **String**| Course assignée à l'appelant. | 
+ **demandeRemise** | [**DemandeRemise**](DemandeRemise.md)|  | 
+
+### Return type
+
+[**ResultatRemise**](ResultatRemise.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

@@ -16,6 +16,15 @@ void main() {
       // TODO
     });
 
+    // CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.
+    //
+    // La même table de décision que la surface coursier, par une autre porte : ce que le support tranche au téléphone doit produire exactement les mêmes deux détenteurs, le même litige et la même sanction qu'une déclaration terrain. Deux chemins qui divergeraient seraient deux vérités sur le même incident.
+    //
+    //Future<IssueEchec> enregistrerIssue(String id, DemandeEchec demandeEchec) async
+    test('test enregistrerIssue', () async {
+      // TODO
+    });
+
     // CMD-10 — file FIFO des commandes sans coursier d'une zone.
     //
     // L'ordre est l'âge, du plus ancien au plus récent : c'est la promesse produite au client qui attend (« la plus ancienne repart en premier »), et c'est le contrat que **DSP** consommera tel quel.

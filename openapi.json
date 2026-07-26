@@ -163,6 +163,95 @@
         ]
       }
     },
+    "/admin/commandes/{id}/issues": {
+      "post": {
+        "tags": [
+          "commandes-admin"
+        ],
+        "summary": "CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.",
+        "description": "La même table de décision que la surface coursier, par une autre porte : ce\nque le support tranche au téléphone doit produire exactement les mêmes deux\ndétenteurs, le même litige et la même sanction qu'une déclaration terrain.\nDeux chemins qui divergeraient seraient deux vérités sur le même incident.",
+        "operationId": "enregistrer_issue",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeEchec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Issue enregistrée avec ses deux détenteurs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueEchec"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande sans livraison, ou inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Preuves incomplètes (FR-056).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/comptes/dossiers-coursier": {
       "get": {
         "tags": [
@@ -3915,6 +4004,204 @@
         ]
       }
     },
+    "/courses/{livraison_id}/echec": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.",
+        "description": "**Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier\nne perd jamais » suppose une trace — appels via l'app espacés, présence\ngéolocalisée, photo sur place. Sans elle, la promesse deviendrait une\ninvitation.",
+        "operationId": "declarer_echec",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeEchec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Issue enregistrée avec ses DEUX détenteurs, son litige éventuel, son indemnisation et sa sanction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueEchec"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Livraison inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Preuves incomplètes (FR-056), ou état incompatible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/remise": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.",
+        "description": "⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a\nl'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu\ncôté serveur, sur la valeur stockée.\n\nTrois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention\nadmin : quatre chiffres se devinent en quelques minutes sans plafond.",
+        "operationId": "remise",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeRemise"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatRemise"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Livraison inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Code ou jeton incorrect, ou course pas encore en livraison.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Demande mal formée (jeton, code ou photo manquant).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Code de remise ÉPUISÉ — intervention admin requise.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/courses/{livraison_id}/substitutions": {
       "post": {
         "tags": [
@@ -7200,6 +7487,32 @@
           }
         }
       },
+      "DemandeEchec": {
+        "type": "object",
+        "description": "Déclaration d'un échec (arbre §7.5).",
+        "required": [
+          "type_issue",
+          "motif_cle"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt concerné — absent = à la remise."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif — jamais du texte libre."
+          },
+          "type_issue": {
+            "type": "string",
+            "description": "Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…)."
+          }
+        }
+      },
       "DemandeOtp": {
         "type": "object",
         "description": "Corps de `POST /auth/otp/demander`.",
@@ -7229,6 +7542,40 @@
           "rafraichissement": {
             "type": "string",
             "description": "Jeton de renouvellement opaque courant."
+          }
+        }
+      },
+      "DemandeRemise": {
+        "type": "object",
+        "description": "Preuve de remise présentée par le coursier.",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Code à 4 chiffres dicté par le client (mode `code`)."
+          },
+          "jeton": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Jeton lu dans le QR de réception (mode `qr`)."
+          },
+          "mode": {
+            "type": "string",
+            "description": "`qr` | `code` | `depot`."
+          },
+          "photo_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé de la photo déposée sur place (mode `depot`)."
           }
         }
       },
@@ -8176,6 +8523,70 @@
               "null"
             ],
             "description": "`suivi` (défaut) | `substitution` | `expiration`."
+          }
+        }
+      },
+      "IssueEchec": {
+        "type": "object",
+        "description": "Une issue de l'arbre §7.5, telle qu'elle est enregistrée.",
+        "required": [
+          "issue_id",
+          "commande_id",
+          "detenteur_argent",
+          "detenteur_marchandise",
+          "litige_ouvert",
+          "indemnisation_due",
+          "sanction",
+          "montant_en_jeu_unites",
+          "devise"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "detenteur_argent": {
+            "type": "string",
+            "description": "Qui détient l'ARGENT."
+          },
+          "detenteur_marchandise": {
+            "type": "string",
+            "description": "Qui détient la MARCHANDISE — axe indépendant du précédent (R14)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "indemnisation_due": {
+            "type": "boolean",
+            "description": "Le coursier doit être indemnisé (contrat CRS-06)."
+          },
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant de l'issue."
+          },
+          "litige_ouvert": {
+            "type": "boolean",
+            "description": "Un litige est ouvert (contrat AVI-04)."
+          },
+          "montant_en_jeu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant en jeu (unités mineures)."
+          },
+          "relivraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Commande de re-livraison créée (§7.5-10 seulement)."
+          },
+          "sanction": {
+            "type": "string",
+            "description": "Sanction effectivement posée sur le compte client."
           }
         }
       },
@@ -9422,6 +9833,37 @@
             "type": "integer",
             "format": "int64",
             "description": "Total à payer après révision."
+          }
+        }
+      },
+      "ResultatRemise": {
+        "type": "object",
+        "description": "Résultat d'une remise validée.",
+        "required": [
+          "commande_id",
+          "livraison_id",
+          "mode_remise",
+          "essais_code"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande close."
+          },
+          "essais_code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais de code consommés."
+          },
+          "livraison_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Livraison close."
+          },
+          "mode_remise": {
+            "type": "string",
+            "description": "Mode retenu."
           }
         }
       },

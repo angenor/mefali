@@ -21,7 +21,7 @@ use actix_web::{post, web, HttpResponse};
 use chrono::{DateTime, Utc};
 use commandes::{
     ActionArret, DemandeRupture, DemandeTransitionArret, MotifIndisponible, PgCommandes,
-    ResolutionRupture, TransitionArret,
+    PreuveRemise, ResolutionRupture, TransitionArret,
 };
 use comptes::Role;
 use serde::{Deserialize, Serialize};
@@ -436,4 +436,199 @@ pub async fn declarer_rupture(
         )
         .await?;
     Ok(HttpResponse::Ok().json(IssueRuptureDto::from(issue)))
+}
+
+// ── Remise et échec (US9 / T060) ───────────────────────────────────────────
+
+/// Preuve de remise présentée par le coursier.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandeRemise)]
+pub struct DemandeRemiseDto {
+    /// `qr` | `code` | `depot`.
+    pub mode: String,
+    /// Jeton lu dans le QR de réception (mode `qr`).
+    pub jeton: Option<String>,
+    /// Code à 4 chiffres dicté par le client (mode `code`).
+    pub code: Option<String>,
+    /// Clé de la photo déposée sur place (mode `depot`).
+    pub photo_cle: Option<String>,
+}
+
+/// Résultat d'une remise validée.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ResultatRemise)]
+pub struct ResultatRemiseDto {
+    /// Commande close.
+    pub commande_id: Uuid,
+    /// Livraison close.
+    pub livraison_id: Uuid,
+    /// Mode retenu.
+    pub mode_remise: String,
+    /// Essais de code consommés.
+    pub essais_code: i16,
+}
+
+/// CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+///
+/// ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a
+/// l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu
+/// côté serveur, sur la valeur stockée.
+///
+/// Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention
+/// admin : quatre chiffres se devinent en quelques minutes sans plafond.
+#[utoipa::path(
+    post,
+    path = "/courses/{livraison_id}/remise",
+    tag = "courses",
+    params(("livraison_id" = Uuid, Path, description = "Course assignée à l'appelant.")),
+    request_body = DemandeRemiseDto,
+    responses(
+        (status = 200, description = "Remise validée : livraison LIVRÉE, commande TERMINÉE, \
+         paiement réglé.", body = ResultatRemiseDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle coursier requis, ou course assignée à un autre.",
+         body = ErreurApiDto),
+        (status = 404, description = "Livraison inconnue.", body = ErreurApiDto),
+        (status = 409, description = "Code ou jeton incorrect, ou course pas encore en livraison.",
+         body = ErreurApiDto),
+        (status = 422, description = "Demande mal formée (jeton, code ou photo manquant).",
+         body = ErreurApiDto),
+        (status = 423, description = "Code de remise ÉPUISÉ — intervention admin requise.",
+         body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/{livraison_id}/remise")]
+pub async fn remise(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DemandeRemiseDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let corps = corps.into_inner();
+    let preuve = match (corps.mode.as_str(), corps.jeton, corps.code, corps.photo_cle) {
+        ("qr", Some(jeton), _, _) => PreuveRemise::Qr(jeton),
+        ("code", _, Some(code), _) => PreuveRemise::Code(code),
+        ("depot", _, _, Some(photo_cle)) => PreuveRemise::Depot { photo_cle },
+        _ => {
+            return Err(ErreurCommandesHttp::Domaine(
+                commandes::ErreurCommandes::PanierInvalide(
+                    "mode de remise inconnu, ou preuve manquante".to_owned(),
+                ),
+            ))
+        }
+    };
+
+    let faite = depot
+        .valider_remise(chemin.into_inner(), auth.compte_id, preuve, Utc::now())
+        .await?;
+    Ok(HttpResponse::Ok().json(ResultatRemiseDto {
+        commande_id: faite.commande_id,
+        livraison_id: faite.livraison_id,
+        mode_remise: faite.mode_remise,
+        essais_code: faite.essais_code,
+    }))
+}
+
+/// Déclaration d'un échec (arbre §7.5).
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandeEchec)]
+pub struct DemandeEchecDto {
+    /// Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…).
+    pub type_issue: String,
+    /// Arrêt concerné — absent = à la remise.
+    pub arret_id: Option<Uuid>,
+    /// Clé i18n du motif — jamais du texte libre.
+    pub motif_cle: String,
+}
+
+/// Une issue de l'arbre §7.5, telle qu'elle est enregistrée.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = IssueEchec)]
+pub struct IssueEchecDto {
+    /// Identifiant de l'issue.
+    pub issue_id: Uuid,
+    /// Commande concernée.
+    pub commande_id: Uuid,
+    /// Qui détient l'ARGENT.
+    pub detenteur_argent: String,
+    /// Qui détient la MARCHANDISE — axe indépendant du précédent (R14).
+    pub detenteur_marchandise: String,
+    /// Un litige est ouvert (contrat AVI-04).
+    pub litige_ouvert: bool,
+    /// Le coursier doit être indemnisé (contrat CRS-06).
+    pub indemnisation_due: bool,
+    /// Sanction effectivement posée sur le compte client.
+    pub sanction: String,
+    /// Montant en jeu (unités mineures).
+    pub montant_en_jeu_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Commande de re-livraison créée (§7.5-10 seulement).
+    pub relivraison_id: Option<Uuid>,
+}
+
+impl From<commandes::IssueEnregistree> for IssueEchecDto {
+    fn from(i: commandes::IssueEnregistree) -> Self {
+        Self {
+            issue_id: i.issue_id,
+            commande_id: i.commande_id,
+            detenteur_argent: i.resolution.detenteur_argent.comme_str().to_owned(),
+            detenteur_marchandise: i.resolution.detenteur_marchandise.comme_str().to_owned(),
+            litige_ouvert: i.resolution.litige_ouvert,
+            indemnisation_due: i.resolution.indemnisation_due,
+            sanction: i.sanction_posee.comme_str().to_owned(),
+            montant_en_jeu_unites: i.montant_en_jeu_unites,
+            devise: i.devise,
+            relivraison_id: i.relivraison_id,
+        }
+    }
+}
+
+/// CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.
+///
+/// **Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier
+/// ne perd jamais » suppose une trace — appels via l'app espacés, présence
+/// géolocalisée, photo sur place. Sans elle, la promesse deviendrait une
+/// invitation.
+#[utoipa::path(
+    post,
+    path = "/courses/{livraison_id}/echec",
+    tag = "courses",
+    params(("livraison_id" = Uuid, Path, description = "Course assignée à l'appelant.")),
+    request_body = DemandeEchecDto,
+    responses(
+        (status = 200, description = "Issue enregistrée avec ses DEUX détenteurs, son litige \
+         éventuel, son indemnisation et sa sanction.", body = IssueEchecDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
+        (status = 404, description = "Livraison inconnue.", body = ErreurApiDto),
+        (status = 409, description = "Preuves incomplètes (FR-056), ou état incompatible.",
+         body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/{livraison_id}/echec")]
+pub async fn declarer_echec(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DemandeEchecDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let corps = corps.into_inner();
+    let issue = depot
+        .declarer_echec(
+            auth.compte_id,
+            commandes::DemandeEchec {
+                livraison_id: chemin.into_inner(),
+                arret_id: corps.arret_id,
+                type_issue: corps.type_issue.parse()?,
+                motif_cle: corps.motif_cle,
+            },
+            Utc::now(),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(IssueEchecDto::from(issue)))
 }
