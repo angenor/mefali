@@ -53,6 +53,12 @@ dependencies:
   # Chemin du fichier de base drift (répertoire application).
   path_provider: ^2.1.5
   path: ^1.9.1
+  # QR de RÉCEPTION du client (CMD-05, maquettes C4-4a et C4-4d). Rendu
+  # 100 % local : le bloc « À la livraison » doit se dessiner SANS RÉSEAU
+  # (SC-009) — un QR servi en image par l'API serait indisponible hors ligne,
+  # c'est-à-dire précisément au moment où on en a besoin. Version figée
+  # (constitution X).
+  qr_flutter: 4.1.0
 
 dev_dependencies:
   flutter_test:
