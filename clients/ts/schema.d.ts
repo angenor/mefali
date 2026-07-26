@@ -1725,8 +1725,7 @@ export interface components {
              * @description Identifiant (= `Idempotency-Key`).
              */
             id: string;
-            /** @description Livraison. */
-            livraison: components["schemas"]["LivraisonCommande"];
+            livraison?: null | components["schemas"]["LivraisonCommande"];
             /**
              * Format: int64
              * @description Montant des articles.

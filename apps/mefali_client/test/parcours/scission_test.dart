@@ -146,9 +146,10 @@ Map<String, Object?> devisTroncon(String article) {
 /// Corps de `POST /commandes`. Le code de remise est PROPRE à chaque commande
 /// (R6) : c'est ce qui interdit de n'en afficher qu'un pour deux livraisons.
 ///
-/// `livraison` est présente parce que le CONTRAT la rend obligatoire sur
-/// `Commande` : l'omettre ferait échouer la désérialisation du client généré, et
-/// le test vérifierait alors le comportement d'un refus, pas d'une création.
+/// `livraison` est présente parce que le serveur en crée une pour tous les
+/// verticaux du MVP — elle est OPTIONNELLE au contrat depuis que le tronc dit
+/// ce qu'il est (composant 0..n). Le cas de son absence est couvert par
+/// `mefali_core/test/commande/api_commandes_test.dart`.
 Map<String, Object?> commandeCreee(String id, int total, String code) => {
       'id': id,
       'etat': 'nouvelle',

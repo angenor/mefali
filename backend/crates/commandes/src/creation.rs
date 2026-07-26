@@ -380,6 +380,23 @@ pub struct SecretsRemise {
     pub jeton_reception: String,
 }
 
+/// La livraison d'une commande — **composant optionnel du tronc** (0..n).
+///
+/// Les trois valeurs sont groupées parce qu'elles vivent ou meurent ENSEMBLE :
+/// une commande sans livraison n'a ni identifiant de livraison, ni arrêts, ni
+/// devis figé. Trois champs plats laissaient le type dire des choses fausses —
+/// un identifiant nul avec deux arrêts, un devis à zéro sans livraison — et
+/// c'est exactement ce que le rejeu produisait (`unwrap_or_default`).
+#[derive(Debug, Clone)]
+pub struct LivraisonCreee {
+    /// Identifiant de la livraison.
+    pub id: Uuid,
+    /// Nombre d'arrêts (collectes + remise).
+    pub nb_arrets: i64,
+    /// Devis figé copié sur la livraison.
+    pub devis: tarification::Devis,
+}
+
 /// Commande créée, telle que l'API la rend au client propriétaire.
 #[derive(Debug, Clone)]
 pub struct CommandeCreee {
@@ -397,12 +414,13 @@ pub struct CommandeCreee {
     pub mode_paiement: ModePaiement,
     /// Secrets de remise — servis au CLIENT PROPRIÉTAIRE seul.
     pub secrets: SecretsRemise,
-    /// Livraison créée.
-    pub livraison_id: Uuid,
-    /// Nombre d'arrêts (collectes + remise).
-    pub nb_arrets: i64,
-    /// Devis figé copié sur la livraison.
-    pub devis: tarification::Devis,
+    /// Livraison créée, s'il y en a une.
+    ///
+    /// `None` est atteignable : `creer_relivraison` (`echec.rs`) crée une
+    /// commande SANS livraison, et le schéma n'en exige aucune (test T037).
+    /// Tous les verticaux du MVP en créent exactement une — le `None` décrit
+    /// le tronc, il ne décrit pas le vertical.
+    pub livraison: Option<LivraisonCreee>,
     /// Vrai si la commande existait déjà (rejeu idempotent — `200`, pas `201`).
     pub rejeu: bool,
 }
@@ -792,9 +810,11 @@ impl PgCommandes {
             devise: panier.devise,
             mode_paiement: demande.mode_paiement,
             secrets,
-            livraison_id,
-            nb_arrets,
-            devis,
+            livraison: Some(LivraisonCreee {
+                id: livraison_id,
+                nb_arrets,
+                devis,
+            }),
             rejeu: false,
         })
     }
@@ -837,6 +857,15 @@ impl PgCommandes {
     }
 
     /// Relit une commande déjà créée, pour le REJEU idempotent (R7).
+    ///
+    /// **Deux lectures, pas une jointure.** Un `LEFT JOIN` rend toutes les
+    /// colonnes de la livraison nullables pour sqlx, alors qu'elles sont
+    /// `NOT NULL` en base (migration 0009) : leur seule nullité venait de la
+    /// jointure. Il fallait donc dix valeurs par défaut pour recomposer un
+    /// devis — dont un `Uuid::nil()` qui a l'air d'un identifiant et ne désigne
+    /// rien. Lire la livraison à part rend l'absence là où elle est vraie, dans
+    /// le `fetch_optional`, et le type porte alors exactement ce que la base
+    /// contient. Le coût est un aller-retour SQL sur le seul chemin de rejeu.
     async fn relire_commande_creee(
         &self,
         id: Uuid,
@@ -844,19 +873,8 @@ impl PgCommandes {
         let Some(c) = sqlx::query!(
             r#"SELECT c.etat::text AS "etat!", c.montant_articles_unites, c.total_unites,
                       c.devise, c.mode_paiement::text AS "mode_paiement!",
-                      c.code_livraison, c.jeton_reception,
-                      l.id AS "livraison_id?", l.devis_prix_client AS "devis_prix_client?",
-                      l.devis_part_coursier AS "devis_part_coursier?",
-                      l.devis_marge AS "devis_marge?", l.devis_devise AS "devis_devise?",
-                      l.devis_distance_m AS "devis_distance_m?", l.devis_eta_s AS "devis_eta_s?",
-                      l.devis_degraded AS "devis_degraded?",
-                      l.devis_composantes AS "devis_composantes?",
-                      l.proposer_scission AS "proposer_scission?",
-                      (SELECT count(*) FROM commandes.arret a
-                         JOIN commandes.segment s ON s.id = a.segment_id
-                         WHERE s.livraison_id = l.id) AS "nb_arrets?"
+                      c.code_livraison, c.jeton_reception
                FROM commandes.commande c
-               LEFT JOIN commandes.livraison l ON l.commande_id = c.id
                WHERE c.id = $1"#,
             id,
         )
@@ -865,6 +883,47 @@ impl PgCommandes {
         else {
             return Ok(None);
         };
+
+        // `ORDER BY` explicite : la table ne porte aucune unicité sur
+        // `commande_id`, et le tronc admet 0..n livraisons. Avec 0 ou 1 ligne —
+        // tout ce que le MVP produit — le résultat est identique à celui de la
+        // jointure d'avant ; le jour où il y en aura deux, le rejeu rendra la
+        // PREMIÈRE, pas une au hasard.
+        let livraison = sqlx::query!(
+            r#"SELECT l.id, l.devis_prix_client, l.devis_part_coursier, l.devis_marge,
+                      l.devis_devise, l.devis_distance_m, l.devis_eta_s, l.devis_degraded,
+                      l.devis_composantes, l.proposer_scission,
+                      (SELECT count(*) FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                         WHERE s.livraison_id = l.id) AS "nb_arrets!"
+               FROM commandes.livraison l
+               WHERE l.commande_id = $1
+               ORDER BY l.cree_le, l.id
+               LIMIT 1"#,
+            id,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .map(|l| LivraisonCreee {
+            id: l.id,
+            nb_arrets: l.nb_arrets,
+            devis: tarification::Devis {
+                prix_client: l.devis_prix_client,
+                part_coursier: l.devis_part_coursier,
+                marge: l.devis_marge,
+                devise: l.devis_devise,
+                distance_m: l.devis_distance_m,
+                eta_s: l.devis_eta_s,
+                degraded: l.devis_degraded,
+                proposer_scission: l.proposer_scission,
+                // L'ordre optimisé des arrêts n'est pas rejoué : il n'est
+                // stocké nulle part sur la livraison. Écart PRÉEXISTANT au
+                // regroupement, laissé tel quel — le corriger changerait le
+                // corps du 200.
+                ordre: Vec::new(),
+                composantes: composantes_depuis_json(l.devis_composantes),
+            },
+        });
 
         Ok(Some(CommandeCreee {
             id,
@@ -877,23 +936,7 @@ impl PgCommandes {
                 code_livraison: c.code_livraison,
                 jeton_reception: c.jeton_reception,
             },
-            livraison_id: c.livraison_id.unwrap_or_default(),
-            nb_arrets: c.nb_arrets.unwrap_or(0),
-            devis: tarification::Devis {
-                prix_client: c.devis_prix_client.unwrap_or(0),
-                part_coursier: c.devis_part_coursier.unwrap_or(0),
-                marge: c.devis_marge.unwrap_or(0),
-                devise: c.devis_devise.unwrap_or_else(|| "XOF".to_owned()),
-                distance_m: c.devis_distance_m.unwrap_or(0),
-                eta_s: c.devis_eta_s.unwrap_or(0),
-                degraded: c.devis_degraded.unwrap_or(false),
-                proposer_scission: c.proposer_scission.unwrap_or(false),
-                ordre: Vec::new(),
-                composantes: c
-                    .devis_composantes
-                    .map(composantes_depuis_json)
-                    .unwrap_or_default(),
-            },
+            livraison,
             rejeu: true,
         }))
     }

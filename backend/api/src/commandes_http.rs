@@ -447,8 +447,14 @@ pub struct CommandeDto {
     pub paiement: PaiementCommandeDto,
     /// Code et jeton de remise.
     pub remise: SecretsRemiseDto,
-    /// Livraison.
-    pub livraison: LivraisonCommandeDto,
+    /// Livraison, si la commande en a une — **composant 0..n du tronc**.
+    ///
+    /// Optionnel comme `SuiviCommande.livraison_id` l'est déjà : le tronc ne
+    /// porte aucun champ logistique, et `creer_relivraison` crée bel et bien
+    /// une commande sans livraison. L'exiger ici était un oubli, pas un choix.
+    /// Tous les verticaux du MVP en créent exactement une : la valeur reste
+    /// donc toujours renseignée aujourd'hui.
+    pub livraison: Option<LivraisonCommandeDto>,
 }
 
 /// Lit l'en-tête `Idempotency-Key` — **obligatoire** (R7). Il DEVIENT
@@ -552,12 +558,15 @@ pub async fn creer_commande(
             code_livraison: creee.secrets.code_livraison.clone(),
             jeton_reception: creee.secrets.jeton_reception.clone(),
         },
-        livraison: LivraisonCommandeDto {
-            id: creee.livraison_id,
+        // `etat` reste la constante d'origine : la lire sur la livraison
+        // changerait le corps du REJEU d'une course déjà avancée, ce que ce
+        // changement de type n'a pas à faire.
+        livraison: creee.livraison.as_ref().map(|l| LivraisonCommandeDto {
+            id: l.id,
             etat: "assignee".to_owned(),
-            nb_arrets: creee.nb_arrets,
-            devis: devis_dto(&creee.devis),
-        },
+            nb_arrets: l.nb_arrets,
+            devis: devis_dto(&l.devis),
+        }),
     };
 
     // 200 au rejeu, 201 à la création : le client distingue « c'était déjà
@@ -1037,4 +1046,96 @@ pub async fn annuler_commande(
         )
         .await?;
     Ok(HttpResponse::Ok().json(ResultatAnnulationDto::from(faite)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Une commande sans livraison se rend en `"livraison": null`.
+    ///
+    /// Ce test couvre la SÉRIALISATION seule : la clé reste, elle vaut `null`,
+    /// et rien ne vient la combler. Que le DOMAINE rende bien `None` sur une
+    /// commande réellement sans livraison — l'ancien `Uuid::nil()` — est prouvé
+    /// ailleurs, sur une vraie base : `crates/commandes/tests/tronc.rs`.
+    #[test]
+    fn une_commande_sans_livraison_rend_null() {
+        let dto = CommandeDto {
+            id: Uuid::now_v7(),
+            etat: "nouvelle".to_owned(),
+            montant_articles_unites: 12_000,
+            total_unites: 12_000,
+            devise: "XOF".to_owned(),
+            paiement: PaiementCommandeDto {
+                mode: "cash".to_owned(),
+                etat: "du".to_owned(),
+                appoint_exact_unites: 12_000,
+            },
+            remise: SecretsRemiseDto {
+                code_livraison: "4821".to_owned(),
+                jeton_reception: "jeton".to_owned(),
+            },
+            livraison: None,
+        };
+
+        let json = serde_json::to_value(&dto).expect("le DTO se sérialise");
+        // Le patron de la maison est `Option<T>` nu, sans `skip_serializing_if` :
+        // la clé RESTE, avec la valeur nulle. Un consommateur qui teste la
+        // présence de la clé lit donc la même chose que le contrat annonce.
+        assert!(
+            json.get("livraison").is_some(),
+            "la clé reste présente : {json}"
+        );
+        assert!(json["livraison"].is_null(), "et vaut null : {json}");
+    }
+
+    /// Sous `Option`, la livraison garde EXACTEMENT sa forme sur le fil.
+    ///
+    /// C'est le seul risque propre au passage `T` → `Option<T>` à cette couche :
+    /// une enveloppe `{"Some": …}`, une clé renommée, un objet aplati. Le
+    /// MAPPING du handler, lui, est couvert en HTTP par
+    /// `api/tests/commandes_creation.rs` (création et rejeu).
+    #[test]
+    fn sous_option_la_livraison_garde_sa_forme_sur_le_fil() {
+        let livraison = Uuid::now_v7();
+        let dto = CommandeDto {
+            id: Uuid::now_v7(),
+            etat: "nouvelle".to_owned(),
+            montant_articles_unites: 9_000,
+            total_unites: 9_800,
+            devise: "XOF".to_owned(),
+            paiement: PaiementCommandeDto {
+                mode: "cash".to_owned(),
+                etat: "du".to_owned(),
+                appoint_exact_unites: 9_800,
+            },
+            remise: SecretsRemiseDto {
+                code_livraison: "5319".to_owned(),
+                jeton_reception: "jeton".to_owned(),
+            },
+            livraison: Some(LivraisonCommandeDto {
+                id: livraison,
+                etat: "assignee".to_owned(),
+                nb_arrets: 2,
+                devis: devis_dto(&tarification::Devis {
+                    prix_client: 800,
+                    part_coursier: 800,
+                    marge: 0,
+                    devise: "XOF".to_owned(),
+                    distance_m: 536,
+                    eta_s: 96,
+                    degraded: true,
+                    proposer_scission: false,
+                    ordre: vec![0, 1],
+                    composantes: tarification::Composantes::default(),
+                }),
+            }),
+        };
+
+        let json = serde_json::to_value(&dto).expect("le DTO se sérialise");
+        assert_eq!(json["livraison"]["id"], livraison.to_string());
+        assert_eq!(json["livraison"]["etat"], "assignee");
+        assert_eq!(json["livraison"]["nb_arrets"], 2);
+        assert!(json["livraison"]["devis"].is_object());
+    }
 }

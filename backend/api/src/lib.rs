@@ -649,6 +649,48 @@ mod tests {
         assert!(openapi.paths.paths.contains_key("/health"));
     }
 
+    /// Le CONTRAT n'exige pas de livraison sur une commande.
+    ///
+    /// La livraison est un composant 0..n du tronc (constitution II) et
+    /// `SuiviCommande` la rend déjà optionnelle : l'exiger sur `Commande` était
+    /// une contradiction du contrat avec lui-même. Ce test la ferme des deux
+    /// côtés — la propriété reste DÉCRITE (optionnel n'est pas absent), et le
+    /// reste du tronc reste obligatoire.
+    #[test]
+    fn le_contrat_n_exige_pas_de_livraison_sur_une_commande() {
+        let spec = serde_json::to_value(api_openapi()).expect("la spec se sérialise");
+        let commande = &spec["components"]["schemas"]["Commande"];
+        let requis: Vec<&str> = commande["required"]
+            .as_array()
+            .expect("le schéma Commande porte une liste required")
+            .iter()
+            .map(|v| v.as_str().expect("une clé requise est textuelle"))
+            .collect();
+
+        assert!(
+            !requis.contains(&"livraison"),
+            "livraison ne doit plus être requise — required = {requis:?}"
+        );
+        assert!(
+            commande["properties"].get("livraison").is_some(),
+            "optionnel ne veut pas dire absent : la propriété reste décrite"
+        );
+        for cle in [
+            "id",
+            "etat",
+            "montant_articles_unites",
+            "total_unites",
+            "devise",
+            "paiement",
+            "remise",
+        ] {
+            assert!(
+                requis.contains(&cle),
+                "{cle} appartient au tronc et doit rester requis"
+            );
+        }
+    }
+
     #[actix_web::test]
     async fn health_repond_ok() {
         let app = atest::init_service({

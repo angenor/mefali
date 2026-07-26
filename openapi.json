@@ -6666,8 +6666,7 @@
           "total_unites",
           "devise",
           "paiement",
-          "remise",
-          "livraison"
+          "remise"
         ],
         "properties": {
           "devise": {
@@ -6684,8 +6683,15 @@
             "description": "Identifiant (= `Idempotency-Key`)."
           },
           "livraison": {
-            "$ref": "#/components/schemas/LivraisonCommande",
-            "description": "Livraison."
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LivraisonCommande",
+                "description": "Livraison, si la commande en a une — **composant 0..n du tronc**.\n\nOptionnel comme `SuiviCommande.livraison_id` l'est déjà : le tronc ne\nporte aucun champ logistique, et `creer_relivraison` crée bel et bien\nune commande sans livraison. L'exiger ici était un oubli, pas un choix.\nTous les verticaux du MVP en créent exactement une : la valeur reste\ndonc toujours renseignée aujourd'hui."
+              }
+            ]
           },
           "montant_articles_unites": {
             "type": "integer",

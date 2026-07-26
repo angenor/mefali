@@ -15,7 +15,42 @@
 //!    du catalogue Postgres, pas d'une relecture humaine du fichier de
 //!    migration.
 
+use std::sync::Arc;
+
+use commandes::{PgCommandes, RestrictionsSimulees, TarifFixe};
 use uuid::Uuid;
+
+/// Compose le dépôt du domaine. Le chemin exercé ici — le REJEU idempotent —
+/// rend la main avant tout appel à un collaborateur : les doubles ne servent
+/// qu'à construire le dépôt, aucun n'est sollicité.
+fn depot(pool: &sqlx::PgPool) -> PgCommandes {
+    let objets: Arc<dyn socle::DepotObjets> = Arc::new(socle::MemoireObjets::new());
+    let comptes = comptes::PgComptes::new(
+        pool.clone(),
+        Arc::new(comptes::MemoireEphemere::new()),
+        Arc::new(comptes::SmsTraces::new()),
+        objets.clone(),
+        Arc::from(&b"secret-de-test-de-32-octets-mini"[..]),
+    );
+    let presta = prestataires::PgPrestataires::new(
+        pool.clone(),
+        comptes,
+        objets.clone(),
+        Arc::new(prestataires::AucuneCommandeActive),
+        Arc::from(&b"secret-plaque-de-test-32-octets!"[..]),
+    );
+    let tarif = Arc::new(TarifFixe::simple(2_500, 2_500, 0));
+    PgCommandes::new(
+        pool.clone(),
+        presta,
+        tarif.clone(),
+        tarif,
+        Arc::new(RestrictionsSimulees::nouveau()),
+        objets,
+        Arc::new(commandes::PositionFixe::nouveau()),
+        Arc::new(commandes::PreuvesFixes::nouveau()),
+    )
+}
 
 /// Sème les FK minimales et une commande SANS livraison. Renvoie son id.
 async fn commande_sans_livraison(pool: &sqlx::PgPool) -> Uuid {
@@ -78,6 +113,50 @@ async fn une_commande_sans_livraison_est_valide(pool: sqlx::PgPool) {
             .await
             .unwrap();
     assert_eq!(livraisons, 0, "0..n — et 0 est une valeur légitime");
+}
+
+/// Le REJEU d'une commande sans livraison rend `None` — **jamais** un
+/// identifiant nul.
+///
+/// C'est la moitié manquante du test précédent : celui-ci prouvait que la base
+/// accepte l'absence, pas que le domaine sait la dire. Il ne le savait pas —
+/// `relire_commande_creee` recomposait un `Uuid::nil()`, deux arrêts à zéro et
+/// un devis vide, qu'aucune assertion n'attrapait et que l'API servait tels
+/// quels. Un identifiant nul a la forme d'un identifiant : il traverse tout.
+#[sqlx::test(migrations = "../../migrations")]
+async fn le_rejeu_d_une_commande_sans_livraison_ne_fabrique_aucun_identifiant(
+    pool: sqlx::PgPool,
+) {
+    let commande = commande_sans_livraison(&pool).await;
+
+    // Rejeu : la clé d'idempotence EST l'identifiant, et la commande existe
+    // déjà — `creer_commande` rend la main sur la relecture, sans rien créer.
+    let creee = depot(&pool)
+        .creer_commande(commandes::creation::DemandeCreation {
+            id: commande,
+            client_id: Uuid::now_v7(),
+            zone_id: Uuid::now_v7(),
+            categorie_slug: "artisanat".to_owned(),
+            transport_slug: "moto".to_owned(),
+            adresse_id: None,
+            lieu: None,
+            repere_texte: None,
+            repere_vocal_cle: None,
+            lignes: Vec::new(),
+            mode_paiement: commandes::ModePaiement::Cash,
+        })
+        .await
+        .expect("le rejeu relit la commande existante");
+
+    assert!(creee.rejeu, "la commande existait : 200, pas 201");
+    assert!(
+        creee.livraison.is_none(),
+        "aucune livraison en base — le type doit le DIRE, pas le combler"
+    );
+    // Le tronc, lui, est bien relu : l'absence porte sur la livraison seule.
+    assert_eq!(creee.total_unites, 12_000);
+    assert_eq!(creee.devise, "XOF");
+    assert_eq!(creee.secrets.code_livraison, "4821");
 }
 
 /// Le tronc ne porte **AUCUNE** colonne logistique. La liste est lue dans le

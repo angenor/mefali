@@ -278,6 +278,42 @@ void main() {
       expect((json['remise']! as Map)['code_livraison'], '7341');
       expect((json['remise']! as Map)['jeton_reception'], 'jeton-de-reception');
     });
+
+    test('une commande SANS livraison se lit — le tronc n\'en exige pas',
+        () async {
+      // La livraison est un composant 0..n du tronc : le contrat la rend
+      // optionnelle, et `creer_relivraison` en produit déjà côté serveur. Ce
+      // que ce test ferme, c'est que le client GÉNÉRÉ ne bronche pas — sans
+      // lui, l'app découvrirait l'absence au premier vertical sans course.
+      final sansLivraison = Map<String, Object?>.from(_commandeCreee())
+        ..remove('livraison');
+      final m = monter((_) => sansLivraison);
+
+      final json = await m.api.creer(
+        idempotencyKey: _commande,
+        zoneId: _zone,
+        categorieSlug: 'artisanat',
+        transportSlug: 'moto',
+        modePaiement: 'cash',
+        lignes: const [
+          {
+            'prestataire_id': _vendeur,
+            'article_id': _article,
+            'quantite': 1,
+            'preference': 'appeler',
+          },
+        ],
+        lat: 5.898,
+        lon: -4.822,
+        repereTexte: 'Portail bleu, après la pharmacie',
+      );
+
+      // Le code et le QR — ce que la cliente est venue chercher — restent là.
+      expect((json['remise']! as Map)['code_livraison'], '7341');
+      expect(json['total_unites'], 4050);
+      // Et aucun identifiant de livraison n'a été inventé pour combler le vide.
+      expect(json['livraison'], isNull);
+    });
   });
 
   group('suivi, annulation, appel, substitution', () {

@@ -25,7 +25,7 @@ void main() {
       // TODO
     });
 
-    // Livraison.
+    // Livraison, si la commande en a une — **composant 0..n du tronc**.  Optionnel comme `SuiviCommande.livraison_id` l'est déjà : le tronc ne porte aucun champ logistique, et `creer_relivraison` crée bel et bien une commande sans livraison. L'exiger ici était un oubli, pas un choix. Tous les verticaux du MVP en créent exactement une : la valeur reste donc toujours renseignée aujourd'hui.
     // LivraisonCommande livraison
     test('to test the property `livraison`', () async {
       // TODO

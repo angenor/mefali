@@ -14,7 +14,7 @@ class _$Commande extends Commande {
   @override
   final String id;
   @override
-  final LivraisonCommande livraison;
+  final LivraisonCommande? livraison;
   @override
   final int montantArticlesUnites;
   @override
@@ -31,7 +31,7 @@ class _$Commande extends Commande {
       {required this.devise,
       required this.etat,
       required this.id,
-      required this.livraison,
+      this.livraison,
       required this.montantArticlesUnites,
       required this.paiement,
       required this.remise,
@@ -138,7 +138,7 @@ class CommandeBuilder implements Builder<Commande, CommandeBuilder> {
       _devise = $v.devise;
       _etat = $v.etat;
       _id = $v.id;
-      _livraison = $v.livraison.toBuilder();
+      _livraison = $v.livraison?.toBuilder();
       _montantArticlesUnites = $v.montantArticlesUnites;
       _paiement = $v.paiement.toBuilder();
       _remise = $v.remise.toBuilder();
@@ -171,7 +171,7 @@ class CommandeBuilder implements Builder<Commande, CommandeBuilder> {
             etat: BuiltValueNullFieldError.checkNotNull(
                 etat, r'Commande', 'etat'),
             id: BuiltValueNullFieldError.checkNotNull(id, r'Commande', 'id'),
-            livraison: livraison.build(),
+            livraison: _livraison?.build(),
             montantArticlesUnites: BuiltValueNullFieldError.checkNotNull(
                 montantArticlesUnites, r'Commande', 'montantArticlesUnites'),
             paiement: paiement.build(),
@@ -183,7 +183,7 @@ class CommandeBuilder implements Builder<Commande, CommandeBuilder> {
       late String _$failedField;
       try {
         _$failedField = 'livraison';
-        livraison.build();
+        _livraison?.build();
 
         _$failedField = 'paiement';
         paiement.build();

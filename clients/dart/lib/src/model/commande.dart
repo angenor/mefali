@@ -17,7 +17,7 @@ part 'commande.g.dart';
 /// * [devise] - Devise ISO 4217.
 /// * [etat] - État de très haut niveau.
 /// * [id] - Identifiant (= `Idempotency-Key`).
-/// * [livraison] - Livraison.
+/// * [livraison] - Livraison, si la commande en a une — **composant 0..n du tronc**.  Optionnel comme `SuiviCommande.livraison_id` l'est déjà : le tronc ne porte aucun champ logistique, et `creer_relivraison` crée bel et bien une commande sans livraison. L'exiger ici était un oubli, pas un choix. Tous les verticaux du MVP en créent exactement une : la valeur reste donc toujours renseignée aujourd'hui.
 /// * [montantArticlesUnites] - Montant des articles.
 /// * [paiement] - Paiement.
 /// * [remise] - Code et jeton de remise.
@@ -36,9 +36,9 @@ abstract class Commande implements Built<Commande, CommandeBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
-  /// Livraison.
+  /// Livraison, si la commande en a une — **composant 0..n du tronc**.  Optionnel comme `SuiviCommande.livraison_id` l'est déjà : le tronc ne porte aucun champ logistique, et `creer_relivraison` crée bel et bien une commande sans livraison. L'exiger ici était un oubli, pas un choix. Tous les verticaux du MVP en créent exactement une : la valeur reste donc toujours renseignée aujourd'hui.
   @BuiltValueField(wireName: r'livraison')
-  LivraisonCommande get livraison;
+  LivraisonCommande? get livraison;
 
   /// Montant des articles.
   @BuiltValueField(wireName: r'montant_articles_unites')
@@ -94,11 +94,13 @@ class _$CommandeSerializer implements PrimitiveSerializer<Commande> {
       object.id,
       specifiedType: const FullType(String),
     );
-    yield r'livraison';
-    yield serializers.serialize(
-      object.livraison,
-      specifiedType: const FullType(LivraisonCommande),
-    );
+    if (object.livraison != null) {
+      yield r'livraison';
+      yield serializers.serialize(
+        object.livraison,
+        specifiedType: const FullType.nullable(LivraisonCommande),
+      );
+    }
     yield r'montant_articles_unites';
     yield serializers.serialize(
       object.montantArticlesUnites,
@@ -166,8 +168,9 @@ class _$CommandeSerializer implements PrimitiveSerializer<Commande> {
         case r'livraison':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(LivraisonCommande),
-          ) as LivraisonCommande;
+            specifiedType: const FullType.nullable(LivraisonCommande),
+          ) as LivraisonCommande?;
+          if (valueDes == null) continue;
           result.livraison.replace(valueDes);
           break;
         case r'montant_articles_unites':
