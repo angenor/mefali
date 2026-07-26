@@ -134,7 +134,7 @@ class CommandesApi {
   }
 
   /// Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
-  /// Un rejeu de la même &#x60;Idempotency-Key&#x60; rend la commande EXISTANTE avec un corps identique et un &#x60;200&#x60; — jamais un doublon.
+  /// Un rejeu de la même &#x60;Idempotency-Key&#x60; rend la commande EXISTANTE et un &#x60;200&#x60; — jamais un doublon : mêmes identifiants, mêmes montants, mêmes secrets de remise, même devis figé.  **Une exception, assumée** : &#x60;devis.ordre_arrets&#x60; revient vide. L&#39;ordre de passage n&#39;est pas stocké sur la livraison — il est FIGÉ sur les arrêts eux-mêmes, dans leur colonne &#x60;ordre&#x60;. Le reconstituer coûterait une lecture de plus sur le chemin qui doit rester le plus léger, pour une valeur que l&#39;appelant a déjà reçue au &#x60;201&#x60;. Promesse exacte plutôt que promesse tenue à contrecœur.
   ///
   /// Parameters:
   /// * [idempotencyKey] - UUIDv7 client — DEVIENT l'identifiant de la commande (R7).

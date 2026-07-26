@@ -338,20 +338,17 @@ dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
    local en mettant `moto` en tête. Le refus, lui, est désormais **lisible**
    (409 `tarif_indisponible`, commit `37809a5`) ; c'est le **choix du véhicule**
    selon distance et charge qui reste ouvert, et il appartient à **TRF/produit**.
-10. **Le corps du `200` de rejeu diffère de celui du `201`** sur deux champs —
-    écarts **préexistants**, reconduits à l'identique par le regroupement de la
-    livraison plutôt que corrigés en passant, parce que les corriger changerait
-    ce corps :
-    - `livraison.etat` est la **constante `"assignee"`** (`commandes_http.rs`),
-      jamais l'état réel : le rejeu d'une course déjà partie annonce donc un
-      état faux. Le lire en base serait plus juste, mais c'est un changement de
-      comportement à décider ;
-    - `devis.ordre_arrets` vaut `[]` au rejeu contre l'ordre optimisé au `201`
-      (`ordre: Vec::new()`, `creation.rs`) : l'ordre n'est stocké nulle part sur
-      la livraison. Le contrat annonce pourtant « même corps ».
+10. **`livraison.etat` du corps de création est la constante `"assignee"`**
+    (`commandes_http.rs`), jamais l'état réel lu en base : le rejeu d'une course
+    déjà partie annonce donc un état faux. Écart **préexistant**, reconduit à
+    l'identique par le regroupement de la livraison plutôt que corrigé en
+    passant — le lire changerait le corps du `200`. **À trancher** : aucun test
+    ne compare le corps du `201` et celui du `200`.
 
-    **À trancher**, pas à oublier : ni l'un ni l'autre n'est couvert par un test
-    comparant les deux corps — celui-là échouerait aujourd'hui.
+    *(L'autre écart de ce couple, `devis.ordre_arrets` vide au rejeu, n'en est
+    plus un : le contrat le DIT désormais — l'ordre est figé sur les arrêts, pas
+    sur la livraison, et le rejeu ne paie pas une lecture de plus pour une
+    valeur déjà servie au `201`.)*
 11. **La liste d'accueil n'est pas rafraîchie après création.**
     `mesCommandesProvider` garde sa valeur en cache tant que l'accueil reste
     monté : revenir dessus après avoir commandé montre la liste d'avant jusqu'au

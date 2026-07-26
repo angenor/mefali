@@ -695,8 +695,16 @@ export interface paths {
         /**
          * Crée une commande : prix verrouillés, devis figé, code et QR remis
          *     immédiatement (CMD-03).
-         * @description Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un
-         *     corps identique et un `200` — jamais un doublon.
+         * @description Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE et un
+         *     `200` — jamais un doublon : mêmes identifiants, mêmes montants, mêmes
+         *     secrets de remise, même devis figé.
+         *
+         *     **Une exception, assumée** : `devis.ordre_arrets` revient vide. L'ordre de
+         *     passage n'est pas stocké sur la livraison — il est FIGÉ sur les arrêts
+         *     eux-mêmes, dans leur colonne `ordre`. Le reconstituer coûterait une lecture
+         *     de plus sur le chemin qui doit rester le plus léger, pour une valeur que
+         *     l'appelant a déjà reçue au `201`. Promesse exacte plutôt que promesse tenue
+         *     à contrecœur.
          */
         post: operations["creer_commande"];
         delete?: never;
@@ -5996,7 +6004,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Rejeu de la même clé — la commande EXISTANTE, corps identique. */
+            /** @description Rejeu de la même clé — la commande EXISTANTE : mêmes identifiants, mêmes montants, mêmes secrets de remise, même devis figé. Seul `devis.ordre_arrets` revient vide : l'ordre de passage est figé sur les arrêts, pas sur la livraison, et le rejeu ne paie pas une lecture de plus pour le reconstituer. */
             200: {
                 headers: {
                     [name: string]: unknown;

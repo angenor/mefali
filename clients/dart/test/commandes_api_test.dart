@@ -18,7 +18,7 @@ void main() {
 
     // Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
     //
-    // Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un corps identique et un `200` — jamais un doublon.
+    // Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE et un `200` — jamais un doublon : mêmes identifiants, mêmes montants, mêmes secrets de remise, même devis figé.  **Une exception, assumée** : `devis.ordre_arrets` revient vide. L'ordre de passage n'est pas stocké sur la livraison — il est FIGÉ sur les arrêts eux-mêmes, dans leur colonne `ordre`. Le reconstituer coûterait une lecture de plus sur le chemin qui doit rester le plus léger, pour une valeur que l'appelant a déjà reçue au `201`. Promesse exacte plutôt que promesse tenue à contrecœur.
     //
     //Future<Commande> creerCommande(String idempotencyKey, DemandeCreationCommande demandeCreationCommande) async
     test('test creerCommande', () async {

@@ -58,7 +58,7 @@ Aucune écriture, **aucun événement** (patron du simulateur admin du cycle 007
 
 ### 1.2 `POST /commandes`
 
-En-tête `Idempotency-Key: <uuidv7>` — **devient l'identifiant** de la commande (research R7). Rejeu → `200` avec le corps identique ; création → `201`.
+En-tête `Idempotency-Key: <uuidv7>` — **devient l'identifiant** de la commande (research R7). Création → `201` ; rejeu → `200` avec la commande EXISTANTE : mêmes identifiants, mêmes montants, mêmes secrets de remise, même devis figé. Seul `devis.ordre_arrets` revient vide au rejeu — l'ordre de passage est figé sur les **arrêts**, pas sur la livraison, et le reconstituer coûterait une lecture de plus sur le chemin le plus léger.
 
 ```jsonc
 // Requête : le panier validé + l'adresse + le mode de paiement

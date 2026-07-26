@@ -942,10 +942,11 @@ impl PgCommandes {
                 eta_s: l.devis_eta_s,
                 degraded: l.devis_degraded,
                 proposer_scission: l.proposer_scission,
-                // L'ordre optimisé des arrêts n'est pas rejoué : il n'est
-                // stocké nulle part sur la livraison. Écart PRÉEXISTANT au
-                // regroupement, laissé tel quel — le corriger changerait le
-                // corps du 200.
+                // L'ordre optimisé n'est PAS rejoué, et le contrat le dit
+                // (description du `200` sur `POST /commandes`) : il est figé
+                // sur les ARRÊTS, pas sur la livraison, et le relire coûterait
+                // une jointure de plus sur le chemin qui doit rester le plus
+                // léger — pour une valeur déjà servie au `201`.
                 ordre: Vec::new(),
                 composantes: composantes_depuis_json(l.devis_composantes),
             },
