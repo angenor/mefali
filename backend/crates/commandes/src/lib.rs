@@ -43,6 +43,7 @@ pub mod substitution;
 pub mod suivi;
 pub mod workflow;
 
+pub use annulation::{AnnulationFaite, AuteurAnnulation};
 pub use collecte::{
     ActionArret, DemandeTransitionArret, MotifIndisponible, TransitionArret,
 };

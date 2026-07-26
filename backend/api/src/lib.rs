@@ -117,7 +117,9 @@ pub fn api_openapi() -> OpenApi {
         .service(commandes_http::mes_commandes)
         .service(commandes_http::suivre_commande)
         .service(commandes_http::intention_appel)
+        .service(commandes_http::annuler_commande)
         .service(admin_commandes_http::file_attente)
+        .service(admin_commandes_http::annuler_commande_admin)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -540,7 +542,9 @@ pub async fn run() -> std::io::Result<()> {
             .service(commandes_http::mes_commandes)
             .service(commandes_http::suivre_commande)
             .service(commandes_http::intention_appel)
+            .service(commandes_http::annuler_commande)
             .service(admin_commandes_http::file_attente)
+            .service(admin_commandes_http::annuler_commande_admin)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))

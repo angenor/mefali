@@ -953,3 +953,88 @@ pub async fn decider_substitution(
         devis_prix_client_unites: montants.devis_prix_client,
     }))
 }
+
+// ── Annulation (US8 / CMD-07) ──────────────────────────────────────────────
+
+/// Demande d'annulation.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandeAnnulation)]
+pub struct DemandeAnnulationDto {
+    /// Clé i18n du motif. **Obligatoire pour un admin** (FR-054), facultative
+    /// pour le client — il n'a pas à se justifier.
+    pub motif_cle: Option<String>,
+}
+
+/// Ce qu'une annulation a produit.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ResultatAnnulation)]
+pub struct ResultatAnnulationDto {
+    /// Commande annulée.
+    pub commande_id: Uuid,
+    /// Vrai si rien n'avait encore été acheté : annulation SANS FRAIS.
+    pub sans_frais: bool,
+    /// Part due au coursier (unités mineures) — 0 si sans frais.
+    pub part_coursier_due: i64,
+    /// Montant déjà avancé chez les vendeurs.
+    pub montant_avance: i64,
+    /// Vrai si la commande était prépayée : un remboursement est dû.
+    pub remboursement_du: bool,
+    /// Devise ISO 4217.
+    pub devise: String,
+}
+
+impl From<commandes::AnnulationFaite> for ResultatAnnulationDto {
+    fn from(a: commandes::AnnulationFaite) -> Self {
+        Self {
+            commande_id: a.commande_id,
+            sans_frais: a.sans_frais,
+            part_coursier_due: a.part_coursier_due,
+            montant_avance: a.montant_avance,
+            remboursement_du: a.remboursement_du,
+            devise: a.devise,
+        }
+    }
+}
+
+/// CMD-07 — le client annule sa commande.
+///
+/// **Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière
+/// est un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à
+/// facturer. Dès le premier achat, la part du coursier est due.
+#[utoipa::path(
+    post,
+    path = "/commandes/{id}/annuler",
+    tag = "commandes",
+    params(("id" = Uuid, Path, description = "Commande du compte appelant.")),
+    request_body = DemandeAnnulationDto,
+    responses(
+        (status = 200, description = "Commande annulée ; `sans_frais` dit si quelque chose est dû.",
+         body = ResultatAnnulationDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle client requis.", body = ErreurApiDto),
+        (status = 404, description = "Commande inconnue ou appartenant à un autre compte.",
+         body = ErreurApiDto),
+        (status = 409, description = "État terminal : une commande livrée, annulée ou échouée ne \
+         s'annule pas.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/commandes/{id}/annuler")]
+pub async fn annuler_commande(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DemandeAnnulationDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Client)?;
+    let faite = depot
+        .annuler_commande(
+            chemin.into_inner(),
+            commandes::AuteurAnnulation::Client,
+            auth.compte_id,
+            corps.into_inner().motif_cle.as_deref(),
+            chrono::Utc::now(),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(ResultatAnnulationDto::from(faite)))
+}

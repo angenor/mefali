@@ -480,7 +480,9 @@ impl Bac {
                 .service(cmd::mes_commandes)
                 .service(cmd::suivre_commande)
                 .service(cmd::intention_appel)
-                .service(adm::file_attente);
+                .service(cmd::annuler_commande)
+                .service(adm::file_attente)
+                .service(adm::annuler_commande_admin);
         }
     }
 
