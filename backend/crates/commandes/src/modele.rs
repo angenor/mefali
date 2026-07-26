@@ -627,8 +627,16 @@ pub struct ArretACollecter {
 /// remise annonce « 2 sur 2 », jamais « 2 sur 3 ».
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProgressionCollecte {
-    /// Nombre de COLLECTES déjà faites (statut `collecte`).
+    /// Nombre d'arrêts effectivement COLLECTÉS (statut `collecte`).
     pub nb_collectes: i16,
+    /// Nombre d'arrêts RÉSOLUS — collectés **ou** indisponibles.
+    ///
+    /// Distinct de [`Self::nb_collectes`], et il faut les deux : le coursier a
+    /// fini un arrêt dont l'étal a fermé (rien à y prendre), mais il n'y a rien
+    /// collecté. Confondre les deux ferait soit une barre de progression
+    /// bloquée, soit un compteur d'achats faux — et c'est ce dernier qui sert
+    /// à la caisse.
+    pub nb_resolues: i16,
     /// Nombre total de COLLECTES de la livraison (la remise n'en est pas une).
     pub nb_arrets: i16,
     /// Vrai si cette collecte a fait basculer la livraison EN_LIVRAISON.

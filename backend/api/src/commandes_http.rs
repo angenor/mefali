@@ -873,3 +873,83 @@ pub async fn intention_appel(
         .await?;
     Ok(HttpResponse::NoContent().finish())
 }
+
+// ── Décision de substitution (US7 / CMD-06) ────────────────────────────────
+
+/// Décision du client sur une proposition de remplacement.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DecisionSubstitution)]
+pub struct DecisionSubstitutionDto {
+    /// `true` = accepter le remplacement, `false` = le refuser (l'article est
+    /// alors retiré, et rien n'est payé pour lui).
+    pub accepte: bool,
+}
+
+/// Résultat d'une décision de substitution.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ResultatDecisionSubstitution)]
+pub struct ResultatDecisionDto {
+    /// `acceptee` | `refusee`.
+    pub issue: String,
+    /// Montant des articles après révision.
+    pub montant_articles_unites: i64,
+    /// Total à payer après révision.
+    pub total_unites: i64,
+    /// Prix client du devis de livraison — **inchangé** (FR-050). Servi pour
+    /// que le client le VOIE ne pas bouger, pas seulement pour l'affichage.
+    pub devis_prix_client_unites: i64,
+}
+
+/// CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+///
+/// Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée
+/// et n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge
+/// pas** (FR-050) et le total reste payé **en une fois** (FR-049).
+///
+/// Passé l'échéance, la décision est refusée (`409`) : la fenêtre est une
+/// promesse faite au coursier autant qu'au client — au-delà, il a déjà agi.
+#[utoipa::path(
+    post,
+    path = "/commandes/{id}/substitutions/{sub}/decision",
+    tag = "commandes",
+    params(
+        ("id" = Uuid, Path, description = "Commande du compte appelant."),
+        ("sub" = Uuid, Path, description = "Proposition de remplacement ouverte."),
+    ),
+    request_body = DecisionSubstitutionDto,
+    responses(
+        (status = 200, description = "Décision appliquée ; montants révisés, devis inchangé.",
+         body = ResultatDecisionDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle client requis, ou proposition d'un autre compte.",
+         body = ErreurApiDto),
+        (status = 404, description = "Proposition inconnue.", body = ErreurApiDto),
+        (status = 409, description = "Fenêtre de décision expirée, ou proposition déjà close.",
+         body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/commandes/{id}/substitutions/{sub}/decision")]
+pub async fn decider_substitution(
+    auth: Auth,
+    chemin: web::Path<(Uuid, Uuid)>,
+    corps: web::Json<DecisionSubstitutionDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Client)?;
+    let (_commande_id, substitution_id) = chemin.into_inner();
+    let (issue, montants) = depot
+        .decider_substitution(
+            substitution_id,
+            auth.compte_id,
+            corps.into_inner().accepte,
+            chrono::Utc::now(),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(ResultatDecisionDto {
+        issue: issue.comme_str().to_owned(),
+        montant_articles_unites: montants.montant_articles_unites,
+        total_unites: montants.total_unites,
+        devis_prix_client_unites: montants.devis_prix_client,
+    }))
+}

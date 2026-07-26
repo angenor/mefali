@@ -12,7 +12,8 @@ part 'etat_arret_course.g.dart';
 ///
 /// Properties:
 /// * [arretId] - Arrêt concerné.
-/// * [collectesFaites] - Collectes déjà faites (la remise n'en est pas une).
+/// * [collectesFaites] - Arrêts effectivement COLLECTÉS (la remise n'en est pas une).
+/// * [collectesResolues] - Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui dit au coursier ce qui lui reste à faire : un étal fermé est fini, même s'il n'y a rien pris.
 /// * [collectesTotal] - Nombre total de COLLECTES de la course.
 /// * [commandeId] - Commande ancre.
 /// * [enLivraison] - Vrai si la course vient de basculer EN_LIVRAISON.
@@ -26,9 +27,13 @@ abstract class EtatArretCourse implements Built<EtatArretCourse, EtatArretCourse
   @BuiltValueField(wireName: r'arret_id')
   String get arretId;
 
-  /// Collectes déjà faites (la remise n'en est pas une).
+  /// Arrêts effectivement COLLECTÉS (la remise n'en est pas une).
   @BuiltValueField(wireName: r'collectes_faites')
   int get collectesFaites;
+
+  /// Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui dit au coursier ce qui lui reste à faire : un étal fermé est fini, même s'il n'y a rien pris.
+  @BuiltValueField(wireName: r'collectes_resolues')
+  int get collectesResolues;
 
   /// Nombre total de COLLECTES de la course.
   @BuiltValueField(wireName: r'collectes_total')
@@ -89,6 +94,11 @@ class _$EtatArretCourseSerializer implements PrimitiveSerializer<EtatArretCourse
     yield r'collectes_faites';
     yield serializers.serialize(
       object.collectesFaites,
+      specifiedType: const FullType(int),
+    );
+    yield r'collectes_resolues';
+    yield serializers.serialize(
+      object.collectesResolues,
       specifiedType: const FullType(int),
     );
     yield r'collectes_total';
@@ -162,6 +172,13 @@ class _$EtatArretCourseSerializer implements PrimitiveSerializer<EtatArretCourse
             specifiedType: const FullType(int),
           ) as int;
           result.collectesFaites = valueDes;
+          break;
+        case r'collectes_resolues':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.collectesResolues = valueDes;
           break;
         case r'collectes_total':
           final valueDes = serializers.deserialize(

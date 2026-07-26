@@ -112,6 +112,8 @@ pub fn api_openapi() -> OpenApi {
         .service(course_http::arret_en_route)
         .service(course_http::arret_arrive)
         .service(course_http::arret_indisponible)
+        .service(course_http::declarer_rupture)
+        .service(commandes_http::decider_substitution)
         .service(commandes_http::mes_commandes)
         .service(commandes_http::suivre_commande)
         .service(commandes_http::intention_appel)
@@ -202,6 +204,36 @@ async fn job_purge_reperes(depot: PgComptes) {
             Ok(0) => {}
             Ok(n) => tracing::info!(purgees = n, "repères vocaux purgés (rétention de zone)"),
             Err(e) => tracing::error!(erreur = %e, "purge des repères vocaux échouée"),
+        }
+    }
+}
+
+/// Intervalle de balayage des propositions de remplacement ÉCHUES (R10).
+///
+/// La fenêtre de décision se compte en DIZAINES DE SECONDES (60 s par défaut) :
+/// un balayage horaire laisserait le coursier planté devant un étal pendant une
+/// heure. Dix secondes est le pas qui rend l'échéance vécue conforme à
+/// l'échéance promise, sans transformer la base en horloge.
+///
+/// ⚠ Ce job n'est PAS la source de vérité de l'expiration : l'échéance est
+/// PERSISTÉE et toute lecture la respecte déjà (`suivi`, `decider_substitution`).
+/// Le job ne fait qu'écrire ce que la lecture savait déjà — une décision
+/// d'argent ne dépend pas de la vie d'un processus.
+const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Résolution périodique des propositions de remplacement échues (FR-046).
+///
+/// À l'expiration on APPELLE, puis l'article est retiré et non facturé. Une
+/// erreur est journalisée et le passage suivant retente : un incident de
+/// balayage ne doit jamais faire tomber l'API.
+async fn job_expirer_substitutions(depot: commandes::PgCommandes) {
+    let mut horloge = tokio::time::interval(BALAYAGE_SUBSTITUTIONS);
+    loop {
+        horloge.tick().await;
+        match depot.expirer_substitutions_echues(chrono::Utc::now()).await {
+            Ok(v) if v.is_empty() => {}
+            Ok(v) => tracing::info!(expirees = v.len(), "propositions de remplacement expirées"),
+            Err(e) => tracing::error!(erreur = %e, "balayage des substitutions échoué"),
         }
     }
 }
@@ -395,6 +427,9 @@ pub async fn run() -> std::io::Result<()> {
                 tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
                 eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
 
+                tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
+                eprintln!("job d'expiration des substitutions démarré (toutes les 10 s)");
+
                 commandes_domaine_opt = Some(depot_commandes);
                 tarification_opt = Some(tarification);
                 prestataires_opt = Some(presta);
@@ -500,6 +535,8 @@ pub async fn run() -> std::io::Result<()> {
             .service(course_http::arret_en_route)
             .service(course_http::arret_arrive)
             .service(course_http::arret_indisponible)
+            .service(course_http::declarer_rupture)
+            .service(commandes_http::decider_substitution)
             .service(commandes_http::mes_commandes)
             .service(commandes_http::suivre_commande)
             .service(commandes_http::intention_appel)

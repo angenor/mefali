@@ -702,6 +702,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/commandes/{id}/substitutions/{sub}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+         * @description Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée
+         *     et n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge
+         *     pas** (FR-050) et le total reste payé **en une fois** (FR-049).
+         *
+         *     Passé l'échéance, la décision est refusée (`409`) : la fenêtre est une
+         *     promesse faite au coursier autant qu'au client — au-delà, il a déjà agi.
+         */
+        post: operations["decider_substitution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -816,6 +841,30 @@ export interface paths {
          *     bougent pas (FR-050).
          */
         post: operations["arret_indisponible"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/substitutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-06 — le coursier déclare un article indisponible et applique la
+         *     préférence du client (FR-044/045).
+         * @description Trois chemins, deux invariants : le **devis de livraison ne bouge jamais**
+         *     (FR-050) et le total reste payé **en une fois** (FR-049). La proposition de
+         *     remplacement est refusée si l'article vient d'un **autre vendeur** (FR-048)
+         *     ou si l'écart de prix dépasse le plafond de zone (FR-047).
+         */
+        post: operations["declarer_rupture"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1915,6 +1964,14 @@ export interface components {
             /** @description Motif — REQUIS pour `refuser` et `suspendre` (FR-017). */
             motif?: string | null;
         };
+        /** @description Décision du client sur une proposition de remplacement. */
+        DecisionSubstitution: {
+            /**
+             * @description `true` = accepter le remplacement, `false` = le refuser (l'article est
+             *     alors retiré, et rien n'est payé pour lui).
+             */
+            accepte: boolean;
+        };
         /** @description Corps de la demande de collecte (partie `demande` JSON du multipart). */
         DemandeCollecte: {
             /** @description Code à 4 chiffres saisi (mode `code_secours`). */
@@ -2000,6 +2057,34 @@ export interface components {
         DemandeRafraichissement: {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
+        };
+        /** @description Partie JSON `demande` du multipart de rupture. */
+        DemandeRupture: {
+            /**
+             * Format: uuid
+             * @description Article proposé — obligatoire pour `remplacer`, **du même vendeur**.
+             */
+            article_propose_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Ligne de commande devenue indisponible.
+             */
+            ligne_id: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire proposé (unités mineures) — obligatoire pour `remplacer`.
+             */
+            prix_propose_unites?: number | null;
+            /**
+             * @description `retirer` | `remplacer`. Absent = suivre la préférence du client, dont
+             *     le défaut sûr est le retrait : on ne fait jamais payer par défaut.
+             */
+            resolution?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 client, constitution V).
+             */
+            uuid_client: string;
         };
         /**
          * @description Course simulée — **pas de coursier** : le devis client précède le dispatch
@@ -2253,9 +2338,16 @@ export interface components {
             arret_id: string;
             /**
              * Format: int32
-             * @description Collectes déjà faites (la remise n'en est pas une).
+             * @description Arrêts effectivement COLLECTÉS (la remise n'en est pas une).
              */
             collectes_faites: number;
+            /**
+             * Format: int32
+             * @description Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui
+             *     dit au coursier ce qui lui reste à faire : un étal fermé est fini, même
+             *     s'il n'y a rien pris.
+             */
+            collectes_resolues: number;
             /**
              * Format: int32
              * @description Nombre total de COLLECTES de la course.
@@ -2459,6 +2551,41 @@ export interface components {
         IntentionAppel: {
             /** @description `suivi` (défaut) | `substitution` | `expiration`. */
             motif?: string | null;
+        };
+        /** @description Issue immédiate d'une rupture déclarée. */
+        IssueRupture: {
+            /**
+             * Format: int64
+             * @description Écart de prix en pourcent (signé).
+             */
+            ecart_pourcent?: number | null;
+            /** @description `ligne_retiree` | `proposition_ouverte`. */
+            issue: string;
+            /**
+             * Format: int64
+             * @description Montant des articles après révision.
+             */
+            montant_articles_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Montant sorti du total (`null` si une proposition a été ouverte).
+             */
+            montant_retire?: number | null;
+            /**
+             * Format: int64
+             * @description Secondes dont dispose le client pour décider.
+             */
+            reste_s?: number | null;
+            /**
+             * Format: uuid
+             * @description Proposition créée (`null` si l'article a été retiré).
+             */
+            substitution_id?: string | null;
+            /**
+             * Format: int64
+             * @description Total après révision — **le devis de livraison n'a pas bougé** (FR-050).
+             */
+            total_unites?: number | null;
         };
         /** @description Itinéraire retenu par la simulation. */
         ItineraireSimule: {
@@ -3083,6 +3210,27 @@ export interface components {
              */
             nb_collectes: number;
         };
+        /** @description Résultat d'une décision de substitution. */
+        ResultatDecisionSubstitution: {
+            /**
+             * Format: int64
+             * @description Prix client du devis de livraison — **inchangé** (FR-050). Servi pour
+             *     que le client le VOIE ne pas bouger, pas seulement pour l'affichage.
+             */
+            devis_prix_client_unites: number;
+            /** @description `acceptee` | `refusee`. */
+            issue: string;
+            /**
+             * Format: int64
+             * @description Montant des articles après révision.
+             */
+            montant_articles_unites: number;
+            /**
+             * Format: int64
+             * @description Total à payer après révision.
+             */
+            total_unites: number;
+        };
         /** @description Résultat COMPLET d'une simulation (FR-020). */
         ResultatSimulation: {
             /** @description Détail des composantes. */
@@ -3106,6 +3254,20 @@ export interface components {
          *     deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
          */
         ResultatVerification: components["schemas"]["SessionOuverte"] | components["schemas"]["ConsentementRequis"];
+        /**
+         * @description Schéma OpenAPI du multipart de rupture (contrat honnête : le handler lit un
+         *     `multipart/form-data`, pas un JSON — le client généré produit un vrai
+         *     multipart). Sert UNIQUEMENT à `#[utoipa::path]`.
+         */
+        RuptureMultipart: {
+            /** @description Partie JSON `demande`. */
+            demande: components["schemas"]["DemandeRupture"];
+            /**
+             * Format: binary
+             * @description Photo du remplacement (obligatoire pour `remplacer` — FR-045).
+             */
+            photo?: string | null;
+        };
         /** @description Proposition de scission — une seule surface pour ses deux causes (R9). */
         ScissionProposee: {
             /** @description `categorie_non_mixable` | `plafond_eclatement`. */
@@ -5632,6 +5794,71 @@ export interface operations {
             };
         };
     };
+    decider_substitution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+                /** @description Proposition de remplacement ouverte. */
+                sub: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionSubstitution"];
+            };
+        };
+        responses: {
+            /** @description Décision appliquée ; montants révisés, devis inchangé. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatDecisionSubstitution"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis, ou proposition d'un autre compte. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Proposition inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Fenêtre de décision expirée, ou proposition déjà close. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     config: {
         parameters: {
             query: {
@@ -5980,6 +6207,70 @@ export interface operations {
             };
             /** @description Arrêt déjà résolu : transition absente de la table. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    declarer_rupture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Partie `demande` (JSON) + `photo` binaire du remplacement. */
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RuptureMultipart"];
+            };
+        };
+        responses: {
+            /** @description Article retiré (montants révisés) ou proposition ouverte avec sa fenêtre de décision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueRupture"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Autre vendeur, écart de prix hors plafond, ou ligne déjà résolue. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Demande mal formée (photo ou prix manquant). */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

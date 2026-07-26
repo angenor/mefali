@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.ligne_commande\n                        SET statut = 'remplacee',\n                            remplace_par_article_id = $2,\n                            remplace_prix_unites = $3\n                      WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "efbe840a1576c409a6fc3335372e00959d619ec98390650cd2fd3e511e8f41f3"
+}

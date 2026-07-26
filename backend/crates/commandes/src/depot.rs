@@ -619,6 +619,7 @@ impl PgCommandes {
 
         let nb_arrets = comptes.total as i16;
         let nb_collectes = comptes.collectes as i16;
+        let nb_resolues = comptes.resolus as i16;
         let tous_resolus = comptes.total > 0 && comptes.resolus == comptes.total;
 
         let en_livraison = if tous_resolus && livraison_en_collecte {
@@ -651,6 +652,7 @@ impl PgCommandes {
 
         Ok(ProgressionCollecte {
             nb_collectes,
+            nb_resolues,
             nb_arrets,
             en_livraison,
         })
@@ -746,7 +748,9 @@ impl PgCommandes {
     ) -> Result<ProgressionCollecte, ErreurCommandes> {
         let comptes = sqlx::query!(
             r#"SELECT count(*) AS "total!",
-                      count(*) FILTER (WHERE a.statut = 'collecte') AS "collectes!"
+                      count(*) FILTER (WHERE a.statut = 'collecte') AS "collectes!",
+                      count(*) FILTER (WHERE a.statut IN ('collecte','indisponible'))
+                          AS "resolus!"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
                WHERE s.livraison_id = $1
@@ -757,6 +761,7 @@ impl PgCommandes {
         .await?;
         Ok(ProgressionCollecte {
             nb_collectes: comptes.collectes as i16,
+            nb_resolues: comptes.resolus as i16,
             nb_arrets: comptes.total as i16,
             en_livraison,
         })

@@ -13,9 +13,15 @@ void main() {
       // TODO
     });
 
-    // Collectes déjà faites (la remise n'en est pas une).
+    // Arrêts effectivement COLLECTÉS (la remise n'en est pas une).
     // int collectesFaites
     test('to test the property `collectesFaites`', () async {
+      // TODO
+    });
+
+    // Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui dit au coursier ce qui lui reste à faire : un étal fermé est fini, même s'il n'y a rien pris.
+    // int collectesResolues
+    test('to test the property `collectesResolues`', () async {
       // TODO
     });
 

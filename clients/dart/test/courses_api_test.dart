@@ -34,5 +34,14 @@ void main() {
       // TODO
     });
 
+    // CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
+    //
+    // Trois chemins, deux invariants : le **devis de livraison ne bouge jamais** (FR-050) et le total reste payé **en une fois** (FR-049). La proposition de remplacement est refusée si l'article vient d'un **autre vendeur** (FR-048) ou si l'écart de prix dépasse le plafond de zone (FR-047).
+    //
+    //Future<IssueRupture> declarerRupture(String livraisonId, DemandeRupture demande, { MultipartFile photo }) async
+    test('test declarerRupture', () async {
+      // TODO
+    });
+
   });
 }

@@ -475,6 +475,8 @@ impl Bac {
                 .service(crs::arret_en_route)
                 .service(crs::arret_arrive)
                 .service(crs::arret_indisponible)
+                .service(crs::declarer_rupture)
+                .service(cmd::decider_substitution)
                 .service(cmd::mes_commandes)
                 .service(cmd::suivre_commande)
                 .service(cmd::intention_appel)

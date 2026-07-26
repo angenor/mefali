@@ -1,0 +1,143 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT sub.id, sub.ligne_id, sub.arret_id, sub.article_propose_id,\n                      sub.prix_propose_unites, sub.echeance, sub.proposee_le,\n                      sub.issue::text AS \"issue!\",\n                      lc.commande_id, c.zone_id, c.client_id\n               FROM commandes.substitution sub\n               JOIN commandes.ligne_commande lc ON lc.id = sub.ligne_id\n               JOIN commandes.commande c ON c.id = lc.commande_id\n               WHERE sub.id = $1\n               FOR UPDATE OF sub",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ligne_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "ligne_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "arret_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "arret_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "article_propose_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "article_propose_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "prix_propose_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "prix_propose_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "echeance",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "echeance"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "proposee_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "proposee_le"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "issue!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.ligne_commande",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "client_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5615d0ed8e1cbc5446cfbacb75349f28955fa6e83c9e20bc23e117f597a1c7cd"
+}

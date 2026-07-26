@@ -96,6 +96,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
 [*CommandesApi*](doc/CommandesApi.md) | [**creerCommande**](doc/CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
+[*CommandesApi*](doc/CommandesApi.md) | [**deciderSubstitution**](doc/CommandesApi.md#decidersubstitution) | **POST** /commandes/{id}/substitutions/{sub}/decision | CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
 [*CommandesApi*](doc/CommandesApi.md) | [**devisPanier**](doc/CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
 [*CommandesApi*](doc/CommandesApi.md) | [**intentionAppel**](doc/CommandesApi.md#intentionappel) | **POST** /commandes/{id}/appel | CMD-05 — journalise l&#39;intention d&#39;appeler le coursier (FR-041).
 [*CommandesApi*](doc/CommandesApi.md) | [**mesCommandes**](doc/CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
@@ -104,6 +105,7 @@ Class | Method | HTTP request | Description
 [*CoursesApi*](doc/CoursesApi.md) | [**arretArrive**](doc/CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretEnRoute**](doc/CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretIndisponible**](doc/CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+[*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
@@ -178,11 +180,13 @@ Class | Method | HTTP request | Description
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
+ - [DecisionSubstitution](doc/DecisionSubstitution.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
+ - [DemandeRupture](doc/DemandeRupture.md)
  - [DemandeSimulation](doc/DemandeSimulation.md)
  - [Devis](doc/Devis.md)
  - [DevisLivraison](doc/DevisLivraison.md)
@@ -208,6 +212,7 @@ Class | Method | HTTP request | Description
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
  - [IntentionAppel](doc/IntentionAppel.md)
+ - [IssueRupture](doc/IssueRupture.md)
  - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
  - [Lieu](doc/Lieu.md)
@@ -239,6 +244,7 @@ Class | Method | HTTP request | Description
  - [RegleUpsert](doc/RegleUpsert.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
+ - [ResultatDecisionSubstitution](doc/ResultatDecisionSubstitution.md)
  - [ResultatSimulation](doc/ResultatSimulation.md)
  - [ResultatVerification](doc/ResultatVerification.md)
  - [ScissionProposee](doc/ScissionProposee.md)

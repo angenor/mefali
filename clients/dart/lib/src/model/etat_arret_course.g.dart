@@ -12,6 +12,8 @@ class _$EtatArretCourse extends EtatArretCourse {
   @override
   final int collectesFaites;
   @override
+  final int collectesResolues;
+  @override
   final int collectesTotal;
   @override
   final String commandeId;
@@ -32,6 +34,7 @@ class _$EtatArretCourse extends EtatArretCourse {
   _$EtatArretCourse._(
       {required this.arretId,
       required this.collectesFaites,
+      required this.collectesResolues,
       required this.collectesTotal,
       required this.commandeId,
       required this.enLivraison,
@@ -53,6 +56,7 @@ class _$EtatArretCourse extends EtatArretCourse {
     return other is EtatArretCourse &&
         arretId == other.arretId &&
         collectesFaites == other.collectesFaites &&
+        collectesResolues == other.collectesResolues &&
         collectesTotal == other.collectesTotal &&
         commandeId == other.commandeId &&
         enLivraison == other.enLivraison &&
@@ -67,6 +71,7 @@ class _$EtatArretCourse extends EtatArretCourse {
     var _$hash = 0;
     _$hash = $jc(_$hash, arretId.hashCode);
     _$hash = $jc(_$hash, collectesFaites.hashCode);
+    _$hash = $jc(_$hash, collectesResolues.hashCode);
     _$hash = $jc(_$hash, collectesTotal.hashCode);
     _$hash = $jc(_$hash, commandeId.hashCode);
     _$hash = $jc(_$hash, enLivraison.hashCode);
@@ -83,6 +88,7 @@ class _$EtatArretCourse extends EtatArretCourse {
     return (newBuiltValueToStringHelper(r'EtatArretCourse')
           ..add('arretId', arretId)
           ..add('collectesFaites', collectesFaites)
+          ..add('collectesResolues', collectesResolues)
           ..add('collectesTotal', collectesTotal)
           ..add('commandeId', commandeId)
           ..add('enLivraison', enLivraison)
@@ -106,6 +112,11 @@ class EtatArretCourseBuilder
   int? get collectesFaites => _$this._collectesFaites;
   set collectesFaites(int? collectesFaites) =>
       _$this._collectesFaites = collectesFaites;
+
+  int? _collectesResolues;
+  int? get collectesResolues => _$this._collectesResolues;
+  set collectesResolues(int? collectesResolues) =>
+      _$this._collectesResolues = collectesResolues;
 
   int? _collectesTotal;
   int? get collectesTotal => _$this._collectesTotal;
@@ -146,6 +157,7 @@ class EtatArretCourseBuilder
     if ($v != null) {
       _arretId = $v.arretId;
       _collectesFaites = $v.collectesFaites;
+      _collectesResolues = $v.collectesResolues;
       _collectesTotal = $v.collectesTotal;
       _commandeId = $v.commandeId;
       _enLivraison = $v.enLivraison;
@@ -178,6 +190,8 @@ class EtatArretCourseBuilder
               arretId, r'EtatArretCourse', 'arretId'),
           collectesFaites: BuiltValueNullFieldError.checkNotNull(
               collectesFaites, r'EtatArretCourse', 'collectesFaites'),
+          collectesResolues: BuiltValueNullFieldError.checkNotNull(
+              collectesResolues, r'EtatArretCourse', 'collectesResolues'),
           collectesTotal: BuiltValueNullFieldError.checkNotNull(
               collectesTotal, r'EtatArretCourse', 'collectesTotal'),
           commandeId: BuiltValueNullFieldError.checkNotNull(

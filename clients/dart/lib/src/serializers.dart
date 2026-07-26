@@ -47,11 +47,13 @@ import 'package:mefali_api_client/src/model/coursier_suivi.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
+import 'package:mefali_api_client/src/model/decision_substitution.dart';
 import 'package:mefali_api_client/src/model/demande_collecte.dart';
 import 'package:mefali_api_client/src/model/demande_creation_commande.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
+import 'package:mefali_api_client/src/model/demande_rupture.dart';
 import 'package:mefali_api_client/src/model/demande_simulation.dart';
 import 'package:mefali_api_client/src/model/devis.dart';
 import 'package:mefali_api_client/src/model/devis_livraison.dart';
@@ -77,6 +79,7 @@ import 'package:mefali_api_client/src/model/health_response.dart';
 import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/intention_appel.dart';
+import 'package:mefali_api_client/src/model/issue_rupture.dart';
 import 'package:mefali_api_client/src/model/itineraire_simule.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/lieu.dart';
@@ -108,6 +111,7 @@ import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_collecte.dart';
+import 'package:mefali_api_client/src/model/resultat_decision_substitution.dart';
 import 'package:mefali_api_client/src/model/resultat_simulation.dart';
 import 'package:mefali_api_client/src/model/resultat_verification.dart';
 import 'package:mefali_api_client/src/model/scission_proposee.dart';
@@ -164,11 +168,13 @@ part 'serializers.g.dart';
   CreerArticleDto,
   CreerPrestataireDto,
   DecisionRole,
+  DecisionSubstitution,
   DemandeCollecte,
   DemandeCreationCommande,
   DemandeDevisPanier,
   DemandeOtp,
   DemandeRafraichissement,
+  DemandeRupture,
   DemandeSimulation,
   Devis,
   DevisLivraison,
@@ -194,6 +200,7 @@ part 'serializers.g.dart';
   HorairesSemaineDto,
   Inscription,
   IntentionAppel,
+  IssueRupture,
   ItineraireSimule,
   JetonsDto,
   Lieu,
@@ -225,6 +232,7 @@ part 'serializers.g.dart';
   RegleUpsert,
   ResolutionPlaque,
   ResultatCollecte,
+  ResultatDecisionSubstitution,
   ResultatSimulation,
   ResultatVerification,
   ScissionProposee,

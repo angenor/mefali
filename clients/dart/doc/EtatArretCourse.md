@@ -9,7 +9,8 @@ import 'package:mefali_api_client/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **arretId** | **String** | Arrêt concerné. | 
-**collectesFaites** | **int** | Collectes déjà faites (la remise n'en est pas une). | 
+**collectesFaites** | **int** | Arrêts effectivement COLLECTÉS (la remise n'en est pas une). | 
+**collectesResolues** | **int** | Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui dit au coursier ce qui lui reste à faire : un étal fermé est fini, même s'il n'y a rien pris. | 
 **collectesTotal** | **int** | Nombre total de COLLECTES de la course. | 
 **commandeId** | **String** | Commande ancre. | 
 **enLivraison** | **bool** | Vrai si la course vient de basculer EN_LIVRAISON. | 

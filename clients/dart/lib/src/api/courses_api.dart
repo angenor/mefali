@@ -10,8 +10,10 @@ import 'package:dio/dio.dart';
 
 import 'package:mefali_api_client/src/api_util.dart';
 import 'package:mefali_api_client/src/model/action_arret.dart';
+import 'package:mefali_api_client/src/model/demande_rupture.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_arret_course.dart';
+import 'package:mefali_api_client/src/model/issue_rupture.dart';
 
 class CoursesApi {
 
@@ -325,6 +327,113 @@ class CoursesApi {
     }
 
     return Response<EtatArretCourse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
+  /// Trois chemins, deux invariants : le **devis de livraison ne bouge jamais** (FR-050) et le total reste payé **en une fois** (FR-049). La proposition de remplacement est refusée si l&#39;article vient d&#39;un **autre vendeur** (FR-048) ou si l&#39;écart de prix dépasse le plafond de zone (FR-047).
+  ///
+  /// Parameters:
+  /// * [livraisonId] - Course assignée à l'appelant.
+  /// * [demande] - Partie JSON `demande`.
+  /// * [photo] - Photo du remplacement (obligatoire pour `remplacer` — FR-045).
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [IssueRupture] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<IssueRupture>> declarerRupture({ 
+    required String livraisonId,
+    required DemandeRupture demande,
+    MultipartFile? photo,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/courses/{livraison_id}/substitutions'.replaceAll('{' r'livraison_id' '}', encodeQueryParameter(_serializers, livraisonId, const FullType(String)).toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'multipart/form-data',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      _bodyData = FormData.fromMap(<String, dynamic>{
+        r'demande': encodeFormParameter(_serializers, demande, const FullType(DemandeRupture)),
+        r'photo': photo,
+      });
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    IssueRupture? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(IssueRupture),
+      ) as IssueRupture;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<IssueRupture>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

@@ -3141,6 +3141,105 @@
         ]
       }
     },
+    "/commandes/{id}/substitutions/{sub}/decision": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.",
+        "description": "Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée\net n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge\npas** (FR-050) et le total reste payé **en une fois** (FR-049).\n\nPassé l'échéance, la décision est refusée (`409`) : la fenêtre est une\npromesse faite au coursier autant qu'au client — au-delà, il a déjà agi.",
+        "operationId": "decider_substitution",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sub",
+            "in": "path",
+            "description": "Proposition de remplacement ouverte.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionSubstitution"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Décision appliquée ; montants révisés, devis inchangé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatDecisionSubstitution"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis, ou proposition d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposition inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Fenêtre de décision expirée, ou proposition déjà close.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/config": {
       "get": {
         "tags": [
@@ -3612,6 +3711,96 @@
           },
           "409": {
             "description": "Arrêt déjà résolu : transition absente de la table.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/substitutions": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-06 — le coursier déclare un article indisponible et applique la\npréférence du client (FR-044/045).",
+        "description": "Trois chemins, deux invariants : le **devis de livraison ne bouge jamais**\n(FR-050) et le total reste payé **en une fois** (FR-049). La proposition de\nremplacement est refusée si l'article vient d'un **autre vendeur** (FR-048)\nou si l'écart de prix dépasse le plafond de zone (FR-047).",
+        "operationId": "declarer_rupture",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Partie `demande` (JSON) + `photo` binaire du remplacement.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RuptureMultipart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Article retiré (montants révisés) ou proposition ouverte avec sa fenêtre de décision.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueRupture"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Autre vendeur, écart de prix hors plafond, ou ligne déjà résolue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Demande mal formée (photo ou prix manquant).",
             "content": {
               "application/json": {
                 "schema": {
@@ -6639,6 +6828,19 @@
           }
         }
       },
+      "DecisionSubstitution": {
+        "type": "object",
+        "description": "Décision du client sur une proposition de remplacement.",
+        "required": [
+          "accepte"
+        ],
+        "properties": {
+          "accepte": {
+            "type": "boolean",
+            "description": "`true` = accepter le remplacement, `false` = le refuser (l'article est\nalors retiré, et rien n'est payé pour lui)."
+          }
+        }
+      },
       "DemandeCollecte": {
         "type": "object",
         "description": "Corps de la demande de collecte (partie `demande` JSON du multipart).",
@@ -6826,6 +7028,49 @@
           "rafraichissement": {
             "type": "string",
             "description": "Jeton de renouvellement opaque courant."
+          }
+        }
+      },
+      "DemandeRupture": {
+        "type": "object",
+        "description": "Partie JSON `demande` du multipart de rupture.",
+        "required": [
+          "ligne_id",
+          "uuid_client"
+        ],
+        "properties": {
+          "article_propose_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Article proposé — obligatoire pour `remplacer`, **du même vendeur**."
+          },
+          "ligne_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ligne de commande devenue indisponible."
+          },
+          "prix_propose_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix unitaire proposé (unités mineures) — obligatoire pour `remplacer`."
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`retirer` | `remplacer`. Absent = suivre la préférence du client, dont\nle défaut sûr est le retrait : on ne fait jamais payer par défaut."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 client, constitution V)."
           }
         }
       },
@@ -7307,6 +7552,7 @@
           "commande_id",
           "livraison_etat",
           "collectes_faites",
+          "collectes_resolues",
           "collectes_total",
           "en_livraison",
           "rejeu"
@@ -7320,7 +7566,12 @@
           "collectes_faites": {
             "type": "integer",
             "format": "int32",
-            "description": "Collectes déjà faites (la remise n'en est pas une)."
+            "description": "Arrêts effectivement COLLECTÉS (la remise n'en est pas une)."
+          },
+          "collectes_resolues": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui\ndit au coursier ce qui lui reste à faire : un étal fermé est fini, même\ns'il n'y a rien pris."
           },
           "collectes_total": {
             "type": "integer",
@@ -7724,6 +7975,67 @@
               "null"
             ],
             "description": "`suivi` (défaut) | `substitution` | `expiration`."
+          }
+        }
+      },
+      "IssueRupture": {
+        "type": "object",
+        "description": "Issue immédiate d'une rupture déclarée.",
+        "required": [
+          "issue"
+        ],
+        "properties": {
+          "ecart_pourcent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Écart de prix en pourcent (signé)."
+          },
+          "issue": {
+            "type": "string",
+            "description": "`ligne_retiree` | `proposition_ouverte`."
+          },
+          "montant_articles_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant des articles après révision."
+          },
+          "montant_retire": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant sorti du total (`null` si une proposition a été ouverte)."
+          },
+          "reste_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Secondes dont dispose le client pour décider."
+          },
+          "substitution_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Proposition créée (`null` si l'article a été retiré)."
+          },
+          "total_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Total après révision — **le devis de livraison n'a pas bougé** (FR-050)."
           }
         }
       },
@@ -8840,6 +9152,37 @@
           }
         }
       },
+      "ResultatDecisionSubstitution": {
+        "type": "object",
+        "description": "Résultat d'une décision de substitution.",
+        "required": [
+          "issue",
+          "montant_articles_unites",
+          "total_unites",
+          "devis_prix_client_unites"
+        ],
+        "properties": {
+          "devis_prix_client_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix client du devis de livraison — **inchangé** (FR-050). Servi pour\nque le client le VOIE ne pas bouger, pas seulement pour l'affichage."
+          },
+          "issue": {
+            "type": "string",
+            "description": "`acceptee` | `refusee`."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des articles après révision."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer après révision."
+          }
+        }
+      },
       "ResultatSimulation": {
         "type": "object",
         "description": "Résultat COMPLET d'une simulation (FR-020).",
@@ -8890,6 +9233,27 @@
           }
         ],
         "description": "Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.\n\n`untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du\ncâble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose\ndeux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes."
+      },
+      "RuptureMultipart": {
+        "type": "object",
+        "description": "Schéma OpenAPI du multipart de rupture (contrat honnête : le handler lit un\n`multipart/form-data`, pas un JSON — le client généré produit un vrai\nmultipart). Sert UNIQUEMENT à `#[utoipa::path]`.",
+        "required": [
+          "demande"
+        ],
+        "properties": {
+          "demande": {
+            "$ref": "#/components/schemas/DemandeRupture",
+            "description": "Partie JSON `demande`."
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Photo du remplacement (obligatoire pour `remplacer` — FR-045)."
+          }
+        }
       },
       "ScissionProposee": {
         "type": "object",

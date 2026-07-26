@@ -10,6 +10,7 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**creerCommande**](CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
+[**deciderSubstitution**](CommandesApi.md#decidersubstitution) | **POST** /commandes/{id}/substitutions/{sub}/decision | CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
 [**devisPanier**](CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
 [**intentionAppel**](CommandesApi.md#intentionappel) | **POST** /commandes/{id}/appel | CMD-05 — journalise l&#39;intention d&#39;appeler le coursier (FR-041).
 [**mesCommandes**](CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
@@ -49,6 +50,53 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**Commande**](Commande.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **deciderSubstitution**
+> ResultatDecisionSubstitution deciderSubstitution(id, sub, decisionSubstitution)
+
+CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+
+Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée et n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge pas** (FR-050) et le total reste payé **en une fois** (FR-049).  Passé l'échéance, la décision est refusée (`409`) : la fenêtre est une promesse faite au coursier autant qu'au client — au-delà, il a déjà agi.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande du compte appelant.
+final String sub = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Proposition de remplacement ouverte.
+final DecisionSubstitution decisionSubstitution = ; // DecisionSubstitution | 
+
+try {
+    final response = api.deciderSubstitution(id, sub, decisionSubstitution);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CommandesApi->deciderSubstitution: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Commande du compte appelant. | 
+ **sub** | **String**| Proposition de remplacement ouverte. | 
+ **decisionSubstitution** | [**DecisionSubstitution**](DecisionSubstitution.md)|  | 
+
+### Return type
+
+[**ResultatDecisionSubstitution**](ResultatDecisionSubstitution.md)
 
 ### Authorization
 

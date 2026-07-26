@@ -10,12 +10,14 @@ import 'package:dio/dio.dart';
 
 import 'package:mefali_api_client/src/api_util.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
+import 'package:mefali_api_client/src/model/decision_substitution.dart';
 import 'package:mefali_api_client/src/model/demande_creation_commande.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/devis_panier.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/intention_appel.dart';
 import 'package:mefali_api_client/src/model/mes_commandes.dart';
+import 'package:mefali_api_client/src/model/resultat_decision_substitution.dart';
 import 'package:mefali_api_client/src/model/suivi_commande.dart';
 
 class CommandesApi {
@@ -119,6 +121,111 @@ class CommandesApi {
     }
 
     return Response<Commande>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+  /// Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée et n&#39;est pas facturée. Dans les deux cas le **devis de livraison ne bouge pas** (FR-050) et le total reste payé **en une fois** (FR-049).  Passé l&#39;échéance, la décision est refusée (&#x60;409&#x60;) : la fenêtre est une promesse faite au coursier autant qu&#39;au client — au-delà, il a déjà agi.
+  ///
+  /// Parameters:
+  /// * [id] - Commande du compte appelant.
+  /// * [sub] - Proposition de remplacement ouverte.
+  /// * [decisionSubstitution] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [ResultatDecisionSubstitution] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<ResultatDecisionSubstitution>> deciderSubstitution({ 
+    required String id,
+    required String sub,
+    required DecisionSubstitution decisionSubstitution,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/commandes/{id}/substitutions/{sub}/decision'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString()).replaceAll('{' r'sub' '}', encodeQueryParameter(_serializers, sub, const FullType(String)).toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(DecisionSubstitution);
+      _bodyData = _serializers.serialize(decisionSubstitution, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    ResultatDecisionSubstitution? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(ResultatDecisionSubstitution),
+      ) as ResultatDecisionSubstitution;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<ResultatDecisionSubstitution>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

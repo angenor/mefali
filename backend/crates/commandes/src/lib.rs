@@ -61,4 +61,8 @@ pub use ports::{
     PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
     RestrictionsCompte, RestrictionsSimulees, TarifFixe,
 };
+pub use substitution::{
+    DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,
+};
+pub use suivi::{CommandeResumee, VueSuivi};
 pub use workflow::{CoursesWorkflow, RestaurationWorkflow, ServiceWorkflow};

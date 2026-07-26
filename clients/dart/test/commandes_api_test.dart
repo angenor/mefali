@@ -16,6 +16,15 @@ void main() {
       // TODO
     });
 
+    // CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+    //
+    // Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée et n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge pas** (FR-050) et le total reste payé **en une fois** (FR-049).  Passé l'échéance, la décision est refusée (`409`) : la fenêtre est une promesse faite au coursier autant qu'au client — au-delà, il a déjà agi.
+    //
+    //Future<ResultatDecisionSubstitution> deciderSubstitution(String id, String sub, DecisionSubstitution decisionSubstitution) async
+    test('test deciderSubstitution', () async {
+      // TODO
+    });
+
     // Devis d'un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
     //
     // Regroupe par vendeur, chiffre les frais via le moteur tarifaire, et renvoie les deux déclencheurs de proposition de scission en UNE seule surface. Aucune ligne n'est écrite, aucune commande n'est créée : rien n'est engagé tant que le client n'a pas confirmé (FR-010, research R8).

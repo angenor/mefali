@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**arretArrive**](CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
 [**arretEnRoute**](CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
 [**arretIndisponible**](CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+[**declarerRupture**](CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 
 
 # **arretArrive**
@@ -151,6 +152,53 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **declarerRupture**
+> IssueRupture declarerRupture(livraisonId, demande, photo)
+
+CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
+
+Trois chemins, deux invariants : le **devis de livraison ne bouge jamais** (FR-050) et le total reste payé **en une fois** (FR-049). La proposition de remplacement est refusée si l'article vient d'un **autre vendeur** (FR-048) ou si l'écart de prix dépasse le plafond de zone (FR-047).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCoursesApi();
+final String livraisonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Course assignée à l'appelant.
+final DemandeRupture demande = ; // DemandeRupture | Partie JSON `demande`.
+final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile | Photo du remplacement (obligatoire pour `remplacer` — FR-045).
+
+try {
+    final response = api.declarerRupture(livraisonId, demande, photo);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CoursesApi->declarerRupture: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **livraisonId** | **String**| Course assignée à l'appelant. | 
+ **demande** | [**DemandeRupture**](DemandeRupture.md)| Partie JSON `demande`. | 
+ **photo** | **MultipartFile**| Photo du remplacement (obligatoire pour `remplacer` — FR-045). | [optional] 
+
+### Return type
+
+[**IssueRupture**](IssueRupture.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
