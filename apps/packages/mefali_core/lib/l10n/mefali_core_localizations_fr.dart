@@ -244,4 +244,340 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
 
   @override
   String get atelierRepereSupprimer => 'Supprimer l\'adresse de test';
+
+  @override
+  String get panierTitre => 'Mon panier';
+
+  @override
+  String panierChezVendeur(String vendeur) {
+    return 'Chez $vendeur';
+  }
+
+  @override
+  String get panierSousTotal => 'Sous-total';
+
+  @override
+  String get panierRecapArticles => 'Articles';
+
+  @override
+  String get panierRecapLivraison => 'Livraison';
+
+  @override
+  String get panierRecapEffort => 'Effort de préparation';
+
+  @override
+  String get panierRecapTotal => 'Total';
+
+  @override
+  String get panierTotalEstime => 'Total estimé';
+
+  @override
+  String get panierHorsLigne => 'Hors connexion — panier conservé';
+
+  @override
+  String get panierHorsLigneAide =>
+      'Votre panier est gardé sur cet appareil. Il sera envoyé une seule fois au retour du réseau.';
+
+  @override
+  String get panierPreferenceTitre => 'Si l\'article manque';
+
+  @override
+  String get panierPreferenceAppeler => 'M\'appeler';
+
+  @override
+  String get panierPreferenceRemplacer => 'Remplacer';
+
+  @override
+  String get panierPreferenceRetirer => 'Retirer';
+
+  @override
+  String get panierVide => 'Votre panier est vide.';
+
+  @override
+  String get panierCommander => 'Commander';
+
+  @override
+  String get panierScissionCategorieNonMixable =>
+      'Les plats préparés se commandent séparément des courses.';
+
+  @override
+  String get panierScissionPlafondEclatement =>
+      'Vos vendeurs sont très éloignés les uns des autres.';
+
+  @override
+  String panierScissionAction(int n) {
+    return 'Scinder en $n commandes';
+  }
+
+  @override
+  String panierScissionAvertissement(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commandes, $n frais de déplacement.',
+      two: 'Deux commandes, deux frais de déplacement.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String panierScissionAcceptee(int n) {
+    return '$n commandes séparées';
+  }
+
+  @override
+  String panierScissionCommandeNumero(int n) {
+    return 'Commande $n';
+  }
+
+  @override
+  String get panierScissionAnnuler => 'Revenir à une seule commande';
+
+  @override
+  String commandeScissionCreees(int creees, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      creees,
+      locale: localeName,
+      other: '$creees commandes sur $total ont été créées.',
+      one: '1 commande sur $total a été créée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String commandeScissionReste(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commandes n\'ont pas pu être créées.',
+      one: 'La commande restante n\'a pas pu être créée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commandeScissionReprendre => 'Reprendre le reste';
+
+  @override
+  String get commandeAdresseChanger => 'Changer';
+
+  @override
+  String get commandeAdresseTitre => 'Où livrer ?';
+
+  @override
+  String get commandeAdressePositionActuelle => 'Utiliser ma position actuelle';
+
+  @override
+  String get commandeAdresseRepereTexte => 'Repère écrit';
+
+  @override
+  String get commandeAdresseRepereVocal => 'Repère vocal';
+
+  @override
+  String get commandeAdresseRepereAide =>
+      'Un repère aide le coursier à vous trouver : écrivez-le ou dites-le.';
+
+  @override
+  String get commandePaiementTitre => 'Comment payer ?';
+
+  @override
+  String get commandePaiementCash => 'Espèces à la livraison';
+
+  @override
+  String get commandePaiementMobileMoney => 'Mobile money';
+
+  @override
+  String commandePaiementAppoint(String montant) {
+    return 'Préparez l\'appoint : $montant';
+  }
+
+  @override
+  String commandePaiementCashIndisponible(String plafond) {
+    return 'Espèces indisponibles au-dessus de $plafond.';
+  }
+
+  @override
+  String commandeConfirmee(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commandes confirmées',
+      one: 'Commande confirmée',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commandeCodeRemise => 'Code de remise';
+
+  @override
+  String get commandeQrRemise => 'QR de réception';
+
+  @override
+  String get commandeErreurCompteBloque =>
+      'Votre compte ne peut pas passer commande. Contactez le support.';
+
+  @override
+  String get commandeErreurCategorieNonMixable =>
+      'Les plats préparés se commandent séparément des courses.';
+
+  @override
+  String get commandeErreurRepereManquant =>
+      'Ajoutez un repère écrit ou vocal pour que le coursier vous trouve.';
+
+  @override
+  String get commandeErreurTelephoneNonVerifie =>
+      'Vérifiez votre numéro avant de commander.';
+
+  @override
+  String get commandeErreurVendeurIndisponible =>
+      'Ce vendeur vient de fermer. Retirez ses articles ou réessayez plus tard.';
+
+  @override
+  String get commandeErreurArticleIndisponible =>
+      'Un article n\'est plus disponible. Mettez votre panier à jour.';
+
+  @override
+  String get commandeErreurTarifIndisponible =>
+      'Aucun tarif ne couvre ce trajet. Retirez un vendeur éloigné, ou réessayez plus tard.';
+
+  @override
+  String get commandeErreurCashIndisponible =>
+      'Le paiement en espèces n\'est pas possible pour cette commande.';
+
+  @override
+  String get commandeErreurTransitionRefusee =>
+      'Cette action n\'est plus possible à cette étape.';
+
+  @override
+  String get commandeErreurNonProprietaire =>
+      'Cette commande n\'est pas la vôtre.';
+
+  @override
+  String get commandeErreurCommandeInconnue => 'Commande introuvable.';
+
+  @override
+  String get commandeErreurPanierInvalide => 'Votre panier n\'est pas valide.';
+
+  @override
+  String get commandeErreurMotifRequis => 'Un motif est obligatoire.';
+
+  @override
+  String get commandeErreurCodeEpuise =>
+      'Trop d\'essais. Un conseiller va vous contacter.';
+
+  @override
+  String get commandeErreurRemiseIncorrecte => 'Code ou QR incorrect.';
+
+  @override
+  String get commandeErreurPreuvesIncompletes =>
+      'Les preuves de l\'incident sont incomplètes.';
+
+  @override
+  String get commandeErreurInterne =>
+      'Une erreur est survenue. Réessayez dans un instant.';
+
+  @override
+  String get suiviTitre => 'Suivi de commande';
+
+  @override
+  String get suiviEtatRecue => 'Commande reçue';
+
+  @override
+  String get suiviEtatRechercheCoursier => 'Recherche d\'un coursier';
+
+  @override
+  String suiviEtatCollecteEnCours(int faites, int total) {
+    return 'Collecte en cours $faites/$total';
+  }
+
+  @override
+  String get suiviEtatEnRoute => 'En route vers vous';
+
+  @override
+  String get suiviEtatLivree => 'Livrée';
+
+  @override
+  String get suiviEtatAnnulee => 'Annulée';
+
+  @override
+  String get suiviEtatEchouee => 'Incident en cours de traitement';
+
+  @override
+  String suiviChezVendeur(String vendeur) {
+    return 'Chez $vendeur';
+  }
+
+  @override
+  String get suiviAppelerCoursier => 'Appeler le coursier';
+
+  @override
+  String suiviPositionAge(int secondes) {
+    return 'Position il y a $secondes s';
+  }
+
+  @override
+  String get suiviPositionInconnue => 'Position non disponible';
+
+  @override
+  String get suiviALaLivraison => 'À la livraison';
+
+  @override
+  String get suiviALaLivraisonHorsLigne =>
+      'À la livraison — disponible sans réseau';
+
+  @override
+  String get suiviHorsLigne => 'Hors connexion';
+
+  @override
+  String get suiviDernierEtatConnu => 'Dernier état connu';
+
+  @override
+  String get suiviAnnulerSansFrais => 'Annuler sans frais';
+
+  @override
+  String get suiviAttenteAllongee =>
+      'L\'attente est plus longue que d\'habitude.';
+
+  @override
+  String get substitutionTitre => 'Article manquant';
+
+  @override
+  String substitutionProposition(
+    String propose,
+    String prixPropose,
+    String prixInitial,
+  ) {
+    return '$propose à $prixPropose au lieu de $prixInitial';
+  }
+
+  @override
+  String substitutionCompteARebours(int secondes) {
+    return '$secondes s pour répondre';
+  }
+
+  @override
+  String get substitutionIssueParDefaut =>
+      'Sans réponse, on vous appelle. Injoignable : article retiré, rien à payer.';
+
+  @override
+  String get substitutionAccepter => 'Accepter';
+
+  @override
+  String get substitutionRefuser => 'Refuser';
+
+  @override
+  String get substitutionErreurAutreVendeur =>
+      'Un remplacement doit venir du même vendeur.';
+
+  @override
+  String get substitutionErreurEcartPrix =>
+      'L\'écart de prix est trop important.';
+
+  @override
+  String get substitutionErreurExpiree => 'Le délai de réponse est passé.';
+
+  @override
+  String get substitutionRetireeNonFacturee =>
+      'Article retiré — rien à payer pour lui.';
 }

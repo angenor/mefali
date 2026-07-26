@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.segment (id, livraison_id, ordre) VALUES ($1, $2, 0)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a1d9f1c837c36a5530e47abc9306a6dd4cec38bb98a8e24b1e070f6858bfb8d6"
+}

@@ -114,9 +114,23 @@ impl Bac {
         );
         let essais = Arc::new(CompteurMemoire::nouveau());
         let essais_dyn: Arc<dyn CompteurEssais> = essais.clone();
+        // Le dépôt commandes a gagné ses collaborateurs au cycle CMD 008. QRC
+        // n'exerce que la collecte par arrêt : le tarif et les restrictions
+        // passent par des doubles, le catalogue par le dépôt réel.
+        let tarif = Arc::new(commandes::TarifFixe::simple(2_500, 2_500, 0));
+        let depot_commandes = commandes::PgCommandes::new(
+            pool.clone(),
+            prestataires.clone(),
+            tarif.clone(),
+            tarif,
+            Arc::new(commandes::RestrictionsSimulees::nouveau()),
+            objets_dyn.clone(),
+            Arc::new(commandes::PositionFixe::nouveau()),
+            Arc::new(commandes::PreuvesFixes::nouveau()),
+        );
         let qr = PgQr::new(
             pool.clone(),
-            commandes::PgCommandes::new(pool.clone()),
+            depot_commandes,
             prestataires.clone(),
             objets_dyn,
             essais_dyn,
@@ -245,11 +259,27 @@ impl Bac {
         let livraison = Uuid::now_v7();
         let segment = Uuid::now_v7();
         let mut tx = self.pool.begin().await.unwrap();
-        sqlx::query("INSERT INTO commandes.commande (id) VALUES ($1)")
-            .bind(commande)
-            .execute(&mut *tx)
-            .await
-            .unwrap();
+        // Le tronc a reçu ses colonnes métier en migration `0009` (cycle CMD
+        // 008) : la fixture les renseigne. Le client de la course est l'admin du
+        // bac — le seul compte dont ce harnais dispose ; QRC ne regarde jamais
+        // le client, seulement le coursier assigné.
+        let total: i64 = arrets.iter().map(|(_, m)| m).sum();
+        sqlx::query(
+            "INSERT INTO commandes.commande
+                (id, client_id, zone_id, categorie_id, lieu_lat, lieu_lon,
+                 montant_articles_unites, total_unites, devise, mode_paiement,
+                 code_livraison, code_livraison_hash, jeton_reception, jeton_reception_hash)
+             VALUES ($1, $2, $3, $4, 5.900, -4.820, $5, $5, 'XOF', 'cash',
+                     '7341', 'h-code', 'jeton', 'h-jeton')",
+        )
+        .bind(commande)
+        .bind(self.admin)
+        .bind(self.ville)
+        .bind(self.categorie_restauration)
+        .bind(total)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
         sqlx::query(
             "INSERT INTO commandes.livraison (id, commande_id, coursier_id) VALUES ($1, $2, $3)",
         )

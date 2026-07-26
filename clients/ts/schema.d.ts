@@ -4,6 +4,74 @@
  */
 
 export interface paths {
+    "/admin/commandes/attente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CMD-10 — file FIFO des commandes sans coursier d'une zone.
+         * @description L'ordre est l'âge, du plus ancien au plus récent : c'est la promesse
+         *     produite au client qui attend (« la plus ancienne repart en premier »), et
+         *     c'est le contrat que **DSP** consommera tel quel.
+         */
+        get: operations["file_attente"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commandes/{id}/annuler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-07 — un administrateur annule une commande, **motif obligatoire**.
+         * @description Le motif n'est pas une formalité : il est journalisé, il part dans
+         *     l'événement, et c'est lui que le client lira. C'est une **clé i18n**, jamais
+         *     du texte libre — un motif écrit à la main serait illisible pour la moitié
+         *     des clients et impossible à agréger pour l'exploitation.
+         */
+        post: operations["annuler_commande_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commandes/{id}/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.
+         * @description La même table de décision que la surface coursier, par une autre porte : ce
+         *     que le support tranche au téléphone doit produire exactement les mêmes deux
+         *     détenteurs, le même litige et la même sanction qu'une déclaration terrain.
+         *     Deux chemins qui divergeraient seraient deux vérités sur le même incident.
+         */
+        post: operations["enregistrer_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/comptes/dossiers-coursier": {
         parameters: {
             query?: never;
@@ -615,6 +683,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/commandes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crée une commande : prix verrouillés, devis figé, code et QR remis
+         *     immédiatement (CMD-03).
+         * @description Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE et un
+         *     `200` — jamais un doublon : mêmes identifiants, mêmes montants, mêmes
+         *     secrets de remise, même devis figé.
+         *
+         *     **Une exception, assumée** : `devis.ordre_arrets` revient vide. L'ordre de
+         *     passage n'est pas stocké sur la livraison — il est FIGÉ sur les arrêts
+         *     eux-mêmes, dans leur colonne `ordre`. Le reconstituer coûterait une lecture
+         *     de plus sur le chemin qui doit rester le plus léger, pour une valeur que
+         *     l'appelant a déjà reçue au `201`. Promesse exacte plutôt que promesse tenue
+         *     à contrecœur.
+         */
+        post: operations["creer_commande"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CMD-05 — suivi complet d'une commande, pour son **propriétaire**.
+         * @description Le code et le jeton de remise ne sont servis qu'ici, et qu'au propriétaire :
+         *     le coursier, lui, ne reçoit que des empreintes (research R6).
+         */
+        get: operations["suivre_commande"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/annuler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-07 — le client annule sa commande.
+         * @description **Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière
+         *     est un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à
+         *     facturer. Dès le premier achat, la part du coursier est due.
+         */
+        post: operations["annuler_commande"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/appel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-05 — journalise l'intention d'appeler le coursier (FR-041).
+         * @description L'appel part du téléphone : le serveur n'en voit rien et **ne journalise
+         *     aucun numéro**. Ce qu'il enregistre, c'est qu'un client a eu BESOIN
+         *     d'appeler — une métrique de friction (minimisation ARTCI).
+         */
+        post: operations["intention_appel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/substitutions/{sub}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+         * @description Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée
+         *     et n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge
+         *     pas** (FR-050) et le total reste payé **en une fois** (FR-049).
+         *
+         *     Passé l'échéance, la décision est refusée (`409`) : la fenêtre est une
+         *     promesse faite au coursier autant qu'au client — au-delà, il a déjà agi.
+         */
+        post: operations["decider_substitution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -664,6 +852,143 @@ export interface paths {
         put?: never;
         /** QRC-02/03/04 — collecte un arrêt (multipart : `demande` JSON + `photo`). */
         post: operations["collecter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
+         * @description `arrive_le` est posé par le serveur : c'est la borne de départ de l'attente
+         *     facturable (prime TRF-06). C'est pour cela que `en_route → collecte`
+         *     n'existe pas — on ne saute pas une déclaration qui vaut de l'argent.
+         */
+        post: operations["arret_arrive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/arrets/{arret_id}/en-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-04 — le coursier déclare partir vers un arrêt.
+         * @description Le PREMIER départ d'une course la fait passer EN_COLLECTE (data-model §3.2).
+         */
+        post: operations["arret_en_route"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/arrets/{arret_id}/indisponible": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+         * @description Vendeur fermé, ou plus une seule ligne à collecter. L'arrêt est compté
+         *     **résolu** (la course continue), son montant avancé retombe à zéro, et ses
+         *     lignes sont retirées de la commande — les frais de livraison, eux, ne
+         *     bougent pas (FR-050).
+         */
+        post: operations["arret_indisponible"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/echec": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.
+         * @description **Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier
+         *     ne perd jamais » suppose une trace — appels via l'app espacés, présence
+         *     géolocalisée, photo sur place. Sans elle, la promesse deviendrait une
+         *     invitation.
+         */
+        post: operations["declarer_echec"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/remise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+         * @description ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a
+         *     l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu
+         *     côté serveur, sur la valeur stockée.
+         *
+         *     Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention
+         *     admin : quatre chiffres se devinent en quelques minutes sans plafond.
+         */
+        post: operations["remise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/substitutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-06 — le coursier déclare un article indisponible et applique la
+         *     préférence du client (FR-044/045).
+         * @description Trois chemins, deux invariants : le **devis de livraison ne bouge jamais**
+         *     (FR-050) et le total reste payé **en une fois** (FR-049). La proposition de
+         *     remplacement est refusée si l'article vient d'un **autre vendeur** (FR-048)
+         *     ou si l'écart de prix dépasse le plafond de zone (FR-047).
+         */
+        post: operations["declarer_rupture"];
         delete?: never;
         options?: never;
         head?: never;
@@ -778,6 +1103,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/commandes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CMD-05 — les commandes du compte, les plus récentes d'abord. */
+        get: operations["mes_commandes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/dossier-coursier": {
         parameters: {
             query?: never;
@@ -828,6 +1170,29 @@ export interface paths {
         post?: never;
         /** Déconnexion à distance d'un appareil (SC-004). */
         delete: operations["revoquer_session"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/paniers/devis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Devis d'un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
+         * @description Regroupe par vendeur, chiffre les frais via le moteur tarifaire, et renvoie
+         *     les deux déclencheurs de proposition de scission en UNE seule surface.
+         *     Aucune ligne n'est écrite, aucune commande n'est créée : rien n'est engagé
+         *     tant que le client n'a pas confirmé (FR-010, research R8).
+         */
+        post: operations["devis_panier"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1056,6 +1421,25 @@ export interface components {
              */
             message_cle: string;
         };
+        /** @description Corps commun des actions déclaratives d'arrêt. */
+        ActionArret: {
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil. **Observation seulement** : le serveur écrit
+             *     le sien, parce que `arrive_le` fonde une prime (TRF-06).
+             */
+            horodatage_local: string;
+            /**
+             * @description Pour `indisponible` : `vendeur_ferme` (défaut) ou
+             *     `toutes_lignes_retirees`. Ignoré par les autres actions.
+             */
+            motif?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
+        };
         /**
          * @description Geste de boutique (FR-033) — toujours une DÉCISION.
          * @enum {string}
@@ -1126,6 +1510,23 @@ export interface components {
             nom: string;
             /** @description Plateforme. */
             plateforme: components["schemas"]["PlateformeDto"];
+        };
+        /** @description L'arrêt où en est le coursier. */
+        ArretCourantSuivi: {
+            /**
+             * Format: uuid
+             * @description Arrêt.
+             */
+            arret_id: string;
+            /**
+             * Format: int32
+             * @description Rang dans l'itinéraire.
+             */
+            ordre: number;
+            /** @description Nom du vendeur (`null` sur l'arrêt de remise). */
+            prestataire_nom?: string | null;
+            /** @description Statut de l'arrêt. */
+            statut: string;
         };
         /** @description Arrêt pré-provisionné (empreintes, jamais de secret). */
         ArretPreProvisionne: {
@@ -1321,6 +1722,115 @@ export interface components {
              */
             photo?: string | null;
         };
+        /** @description Commande créée. */
+        Commande: {
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de très haut niveau. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Identifiant (= `Idempotency-Key`).
+             */
+            id: string;
+            livraison?: null | components["schemas"]["LivraisonCommande"];
+            /**
+             * Format: int64
+             * @description Montant des articles.
+             */
+            montant_articles_unites: number;
+            /** @description Paiement. */
+            paiement: components["schemas"]["PaiementCommande"];
+            /** @description Code et jeton de remise. */
+            remise: components["schemas"]["SecretsRemise"];
+            /**
+             * Format: int64
+             * @description Total à payer.
+             */
+            total_unites: number;
+        };
+        /** @description Une commande en attente de coursier, telle que DSP la lira. */
+        CommandeEnAttente: {
+            /**
+             * Format: int64
+             * @description Ancienneté dans la file, en secondes — **c'est elle qui ordonne**.
+             */
+            age_s: number;
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Montant total que le coursier devra avancer (unités mineures).
+             */
+            montant_a_avancer: number;
+            /**
+             * Format: int64
+             * @description Nombre d'arrêts de collecte à desservir.
+             */
+            nb_collectes: number;
+            /**
+             * Format: double
+             * @description Latitude du premier site VENDEUR — donnée professionnelle. Aucune
+             *     coordonnée du client n'est exposée ici (minimisation ARTCI).
+             */
+            premiere_collecte_lat?: number | null;
+            /**
+             * Format: double
+             * @description Longitude du premier site vendeur.
+             */
+            premiere_collecte_lon?: number | null;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
+        };
+        /** @description Une commande telle qu'elle sortirait de la scission. */
+        CommandeProposee: {
+            /** @description Articles qui la composeraient. */
+            articles: string[];
+            /** @description Clé i18n du libellé. */
+            libelle_cle: string;
+            /**
+             * Format: int64
+             * @description Total des ARTICLES de cette commande (unités mineures).
+             */
+            total_articles_unites: number;
+        };
+        /** @description Une commande de la liste `GET /moi/commandes`. */
+        CommandeResumee: {
+            /**
+             * Format: date-time
+             * @description Création.
+             */
+            cree_le: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de très haut niveau. */
+            etat: string;
+            /** @description Clé i18n de l'état affiché. */
+            etat_cle: string;
+            /**
+             * Format: uuid
+             * @description Commande.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Nombre de vendeurs.
+             */
+            nb_vendeurs: number;
+            /**
+             * Format: int64
+             * @description Total à payer.
+             */
+            total_unites: number;
+        };
         /** @description Détail des composantes (unités mineures) — FR-020. */
         Composantes: {
             /**
@@ -1361,6 +1871,49 @@ export interface components {
             /**
              * Format: int64
              * @description Suppléments activés (pluie…).
+             */
+            supplements: number;
+        };
+        /** @description Détail des composantes du devis (affichage du récapitulatif). */
+        ComposantesDevis: {
+            /**
+             * Format: int64
+             * @description Reliquat d'arrondi (abonde la part coursier).
+             */
+            arrondi: number;
+            /**
+             * Format: int64
+             * @description Prix client de base.
+             */
+            base: number;
+            /**
+             * Format: int64
+             * @description Effort — suppléments d'arrêt.
+             */
+            effort_arrets: number;
+            /**
+             * Format: int64
+             * @description Effort — prime d'attente.
+             */
+            effort_attente: number;
+            /**
+             * Format: int64
+             * @description Effort — paliers d'articles.
+             */
+            effort_paliers: number;
+            /**
+             * Format: int64
+             * @description Composante kilométrique.
+             */
+            km: number;
+            /**
+             * Format: int64
+             * @description Retenue vendeur (VND-08).
+             */
+            retenue_vendeur: number;
+            /**
+             * Format: int64
+             * @description Suppléments (pluie, plage horaire…).
              */
             supplements: number;
         };
@@ -1469,6 +2022,27 @@ export interface components {
              */
             livraison_id?: string | null;
         };
+        /** @description Le coursier affecté, tel que l'écran de suivi le montre. */
+        CoursierSuivi: {
+            /** @description Vrai si l'app peut proposer d'appeler. */
+            appel_possible: boolean;
+            /**
+             * Format: uuid
+             * @description Identifiant du coursier.
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description Note moyenne — **toujours `null` ce cycle** : les avis appartiennent au
+             *     cycle AVI, qui n'existe pas encore.
+             */
+            note?: number | null;
+            /**
+             * @description Prénom — **toujours `null` ce cycle** : `comptes.compte` ne porte aucun
+             *     nom (cycle CPT), et rien ne sera inventé pour remplir un champ.
+             */
+            prenom?: string | null;
+        };
         /** @description Création d'un article (disponible par défaut — FR-020). */
         CreerArticleDto: {
             /** @description Étiquette libre de regroupement. */
@@ -1513,6 +2087,22 @@ export interface components {
             /** @description Motif — REQUIS pour `refuser` et `suspendre` (FR-017). */
             motif?: string | null;
         };
+        /** @description Décision du client sur une proposition de remplacement. */
+        DecisionSubstitution: {
+            /**
+             * @description `true` = accepter le remplacement, `false` = le refuser (l'article est
+             *     alors retiré, et rien n'est payé pour lui).
+             */
+            accepte: boolean;
+        };
+        /** @description Demande d'annulation. */
+        DemandeAnnulation: {
+            /**
+             * @description Clé i18n du motif. **Obligatoire pour un admin** (FR-054), facultative
+             *     pour le client — il n'a pas à se justifier.
+             */
+            motif_cle?: string | null;
+        };
         /** @description Corps de la demande de collecte (partie `demande` JSON du multipart). */
         DemandeCollecte: {
             /** @description Code à 4 chiffres saisi (mode `code_secours`). */
@@ -1542,6 +2132,60 @@ export interface components {
              */
             uuid_client: string;
         };
+        /** @description Demande de création de commande. */
+        DemandeCreationCommande: {
+            /**
+             * Format: uuid
+             * @description Adresse du carnet (CPT-05) — ou `lieu` + repère fournis en clair.
+             */
+            adresse_id?: string | null;
+            /** @description Catégorie de service. */
+            categorie_slug: string;
+            lieu?: null | components["schemas"]["Lieu"];
+            /** @description Lignes du panier. */
+            lignes: components["schemas"]["LignePanier"][];
+            /** @description `cash` | `mobile_money`. */
+            mode_paiement: string;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+            /** @description Clé S3 du repère vocal. */
+            repere_vocal_cle?: string | null;
+            /** @description Véhicule demandé. */
+            transport_slug: string;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
+        };
+        /** @description Demande de devis de panier — **aucun effet de bord** (P4). */
+        DemandeDevisPanier: {
+            /** @description Catégorie de service (`marche`, `restauration`…). */
+            categorie_slug: string;
+            /** @description Lieu de prestation — destination de la course. */
+            lieu: components["schemas"]["Lieu"];
+            /** @description Lignes du panier, dans l'ordre de composition. */
+            lignes: components["schemas"]["LignePanier"][];
+            /** @description Véhicule demandé (`moto`, `velo`…). */
+            transport_slug: string;
+            /**
+             * Format: uuid
+             * @description Zone de la commande (résout mixage, plafonds, devise).
+             */
+            zone_id: string;
+        };
+        /** @description Déclaration d'un échec (arbre §7.5). */
+        DemandeEchec: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné — absent = à la remise.
+             */
+            arret_id?: string | null;
+            /** @description Clé i18n du motif — jamais du texte libre. */
+            motif_cle: string;
+            /** @description Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…). */
+            type_issue: string;
+        };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
             /** @description Saisie locale ou E.164 — normalisée avec l'indicatif de la zone (R4). */
@@ -1556,6 +2200,45 @@ export interface components {
         DemandeRafraichissement: {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
+        };
+        /** @description Preuve de remise présentée par le coursier. */
+        DemandeRemise: {
+            /** @description Code à 4 chiffres dicté par le client (mode `code`). */
+            code?: string | null;
+            /** @description Jeton lu dans le QR de réception (mode `qr`). */
+            jeton?: string | null;
+            /** @description `qr` | `code` | `depot`. */
+            mode: string;
+            /** @description Clé de la photo déposée sur place (mode `depot`). */
+            photo_cle?: string | null;
+        };
+        /** @description Partie JSON `demande` du multipart de rupture. */
+        DemandeRupture: {
+            /**
+             * Format: uuid
+             * @description Article proposé — obligatoire pour `remplacer`, **du même vendeur**.
+             */
+            article_propose_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Ligne de commande devenue indisponible.
+             */
+            ligne_id: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire proposé (unités mineures) — obligatoire pour `remplacer`.
+             */
+            prix_propose_unites?: number | null;
+            /**
+             * @description `retirer` | `remplacer`. Absent = suivre la préférence du client, dont
+             *     le défaut sûr est le retrait : on ne fait jamais payer par défaut.
+             */
+            resolution?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 client, constitution V).
+             */
+            uuid_client: string;
         };
         /**
          * @description Course simulée — **pas de coursier** : le devis client précède le dispatch
@@ -1647,6 +2330,64 @@ export interface components {
             prix_client: number;
             /** @description Le détour dépasse le plafond de zone : CMD proposera de scinder. */
             proposer_scission: boolean;
+        };
+        /** @description Devis de livraison figé (cycle 007). */
+        DevisLivraison: {
+            /** @description Détail des composantes. */
+            composantes: components["schemas"]["ComposantesDevis"];
+            /** @description Vrai si la distance vient du repli vol d'oiseau (constitution IV). */
+            degraded: boolean;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Distance routière totale (m).
+             */
+            distance_m: number;
+            /**
+             * Format: int64
+             * @description Durée estimée (s).
+             */
+            eta_s: number;
+            /**
+             * Format: int64
+             * @description Marge Mefali.
+             */
+            marge_unites: number;
+            /** @description Ordre de passage retenu pour les retraits. */
+            ordre_arrets: number[];
+            /**
+             * Format: int64
+             * @description Part reversée au coursier.
+             */
+            part_coursier_unites: number;
+            /**
+             * Format: int64
+             * @description Prix payé par le client (unités mineures).
+             */
+            prix_client_unites: number;
+        };
+        /** @description Réponse du devis de panier. */
+        DevisPanier: {
+            /** @description Devis de livraison. */
+            devis: components["schemas"]["DevisLivraison"];
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Regroupement par vendeur. */
+            groupes: components["schemas"]["GroupeVendeur"][];
+            /**
+             * Format: int64
+             * @description Montant des ARTICLES seuls (unités mineures).
+             */
+            montant_articles_unites: number;
+            /** @description Décision d'encaissement. */
+            paiement: components["schemas"]["PaiementPanier"];
+            scission?: null | components["schemas"]["ScissionProposee"];
+            /**
+             * Format: int64
+             * @description Total à payer = articles + prix client du devis.
+             */
+            total_unites: number;
         };
         /** @description Devise (contrat) — montants entiers en unités mineures (principe III). */
         DeviseDto: {
@@ -1742,6 +2483,52 @@ export interface components {
             /** @description Clé i18n fr — aucune chaîne UI en dur (constitution VII). */
             message_cle: string;
         };
+        /** @description État de l'arrêt et de sa course après la transition. */
+        EtatArretCourse: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné.
+             */
+            arret_id: string;
+            /**
+             * Format: int32
+             * @description Arrêts effectivement COLLECTÉS (la remise n'en est pas une).
+             */
+            collectes_faites: number;
+            /**
+             * Format: int32
+             * @description Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui
+             *     dit au coursier ce qui lui reste à faire : un étal fermé est fini, même
+             *     s'il n'y a rien pris.
+             */
+            collectes_resolues: number;
+            /**
+             * Format: int32
+             * @description Nombre total de COLLECTES de la course.
+             */
+            collectes_total: number;
+            /**
+             * Format: uuid
+             * @description Commande ancre.
+             */
+            commande_id: string;
+            /** @description Vrai si la course vient de basculer EN_LIVRAISON. */
+            en_livraison: boolean;
+            /** @description État de la livraison : `assignee` | `en_collecte` | `en_livraison`. */
+            livraison_etat: string;
+            /**
+             * Format: uuid
+             * @description Livraison porteuse.
+             */
+            livraison_id: string;
+            /**
+             * @description Vrai si l'appel était un rejeu du même `uuid_client` : rien n'a été
+             *     réécrit, aucun événement n'a été ré-émis.
+             */
+            rejeu: boolean;
+            /** @description Statut de l'arrêt : `en_route` | `arrive` | `indisponible`. */
+            statut: string;
+        };
         /** @description État effectif d'une catégorie renvoyé après forçage (contrat). */
         EtatCategorie: {
             /** @description État EFFECTIF après application. */
@@ -1812,6 +2599,11 @@ export interface components {
             /** @description URLs présignées des photos de fiche. */
             photos: string[];
         };
+        /** @description La file d'attente d'une zone. */
+        FileAttenteCoursier: {
+            /** @description Commandes en attente, **la plus ancienne d'abord** (FIFO par âge). */
+            commandes: components["schemas"]["CommandeEnAttente"][];
+        };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
          * @enum {string}
@@ -1859,6 +2651,28 @@ export interface components {
             brouillon?: null | components["schemas"]["Grille"];
             en_vigueur?: null | components["schemas"]["Grille"];
         };
+        /** @description Les lignes d'un vendeur, regroupées (maquette C3-3a). */
+        GroupeVendeur: {
+            /** @description Lignes du vendeur. */
+            lignes: components["schemas"]["LigneDevis"][];
+            /**
+             * Format: int32
+             * @description Nombre d'articles du groupe.
+             */
+            nb_articles: number;
+            /** @description Nom affiché sur la carte vendeur. */
+            nom: string;
+            /**
+             * Format: uuid
+             * @description Vendeur.
+             */
+            prestataire_id: string;
+            /**
+             * Format: int64
+             * @description Sous-total du vendeur (unités mineures).
+             */
+            sous_total_unites: number;
+        };
         /**
          * @description Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde
          *     mesure la disponibilité du processus (non authentifiée, constitution VIII).
@@ -1886,6 +2700,81 @@ export interface components {
             consentement_version: string;
             /** @description Émis par `/auth/otp/verifier`, usage unique, TTL 10 min. */
             jeton_inscription: string;
+        };
+        /** @description Motif d'une intention d'appel. */
+        IntentionAppel: {
+            /** @description `suivi` (défaut) | `substitution` | `expiration`. */
+            motif?: string | null;
+        };
+        /** @description Une issue de l'arbre §7.5, telle qu'elle est enregistrée. */
+        IssueEchec: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Qui détient l'ARGENT. */
+            detenteur_argent: string;
+            /** @description Qui détient la MARCHANDISE — axe indépendant du précédent (R14). */
+            detenteur_marchandise: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Le coursier doit être indemnisé (contrat CRS-06). */
+            indemnisation_due: boolean;
+            /**
+             * Format: uuid
+             * @description Identifiant de l'issue.
+             */
+            issue_id: string;
+            /** @description Un litige est ouvert (contrat AVI-04). */
+            litige_ouvert: boolean;
+            /**
+             * Format: int64
+             * @description Montant en jeu (unités mineures).
+             */
+            montant_en_jeu_unites: number;
+            /**
+             * Format: uuid
+             * @description Commande de re-livraison créée (§7.5-10 seulement).
+             */
+            relivraison_id?: string | null;
+            /** @description Sanction effectivement posée sur le compte client. */
+            sanction: string;
+        };
+        /** @description Issue immédiate d'une rupture déclarée. */
+        IssueRupture: {
+            /**
+             * Format: int64
+             * @description Écart de prix en pourcent (signé).
+             */
+            ecart_pourcent?: number | null;
+            /** @description `ligne_retiree` | `proposition_ouverte`. */
+            issue: string;
+            /**
+             * Format: int64
+             * @description Montant des articles après révision.
+             */
+            montant_articles_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Montant sorti du total (`null` si une proposition a été ouverte).
+             */
+            montant_retire?: number | null;
+            /**
+             * Format: int64
+             * @description Secondes dont dispose le client pour décider.
+             */
+            reste_s?: number | null;
+            /**
+             * Format: uuid
+             * @description Proposition créée (`null` si l'article a été retiré).
+             */
+            substitution_id?: string | null;
+            /**
+             * Format: int64
+             * @description Total après révision — **le devis de livraison n'a pas bougé** (FR-050).
+             */
+            total_unites?: number | null;
         };
         /** @description Itinéraire retenu par la simulation. */
         ItineraireSimule: {
@@ -1915,6 +2804,91 @@ export interface components {
             acces: string;
             /** @description Opaque 256 bits — tourne à chaque usage. */
             rafraichissement: string;
+        };
+        /** @description Position d'un lieu (pin GPS). */
+        Lieu: {
+            /**
+             * Format: double
+             * @description Latitude.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            lon: number;
+        };
+        /** @description Une ligne résolue contre le catalogue. */
+        LigneDevis: {
+            /**
+             * Format: uuid
+             * @description Article.
+             */
+            article_id: string;
+            /** @description Nom de l'article. */
+            nom: string;
+            /** @description Préférence de substitution retenue. */
+            preference: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire courant (unités mineures).
+             */
+            prix_unites: number;
+            /**
+             * Format: int32
+             * @description Quantité.
+             */
+            quantite: number;
+            /**
+             * Format: int64
+             * @description Sous-total de la ligne (unités mineures).
+             */
+            sous_total_unites: number;
+        };
+        /** @description Une ligne de panier soumise. */
+        LignePanier: {
+            /**
+             * Format: uuid
+             * @description Article demandé.
+             */
+            article_id: string;
+            /**
+             * @description Que faire si l'article manque : `remplacer` | `appeler` | `retirer`.
+             *     Absent = `appeler`, le défaut produit (CMD-01).
+             */
+            preference?: string | null;
+            /**
+             * Format: uuid
+             * @description Vendeur chez qui l'article est pris.
+             */
+            prestataire_id: string;
+            /**
+             * Format: int32
+             * @description Quantité (> 0).
+             */
+            quantite: number;
+        };
+        /** @description La livraison créée avec la commande. */
+        LivraisonCommande: {
+            /** @description Devis FIGÉ copié à la création — jamais recalculé (R11). */
+            devis: components["schemas"]["DevisLivraison"];
+            /** @description État logistique initial. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Nombre d'arrêts (collectes + remise).
+             */
+            nb_arrets: number;
+        };
+        /** @description La liste des commandes du compte. */
+        MesCommandes: {
+            /** @description Commandes, les plus récentes d'abord. */
+            commandes: components["schemas"]["CommandeResumee"][];
         };
         /**
          * @description Mode de collecte (contrat).
@@ -2019,6 +2993,34 @@ export interface components {
             /** @description Le vendeur prend la livraison en charge quel que soit le panier. */
             toujours: boolean;
         };
+        /** @description État du paiement d'une commande créée. */
+        PaiementCommande: {
+            /**
+             * Format: int64
+             * @description Appoint exact à préparer (cash) — le total, en une fois. Aucun chemin
+             *     de règlement fractionné n'existe (constitution III).
+             */
+            appoint_exact_unites: number;
+            /** @description `du` | `en_attente` | `regle` | `rembourse`. */
+            etat: string;
+            /** @description Mode retenu. */
+            mode: string;
+        };
+        /** @description Décision d'encaissement (maquette C3-3b). */
+        PaiementPanier: {
+            /** @description Le paiement en espèces est possible. */
+            cash_autorise: boolean;
+            /**
+             * @description Clé i18n de la RAISON du refus (`null` si autorisé) — le client voit
+             *     pourquoi le cash est grisé, jamais un bouton mort.
+             */
+            motif_cle?: string | null;
+            /**
+             * Format: int64
+             * @description Plafond appliqué (unités mineures).
+             */
+            plafond_unites: number;
+        };
         /** @description Photo de fiche, présignée pour l'admin. */
         PhotoAdminDto: {
             /**
@@ -2072,6 +3074,25 @@ export interface components {
             /**
              * Format: double
              * @description Longitude en degrés décimaux.
+             */
+            lon: number;
+        };
+        /** @description Position du coursier, **toujours accompagnée de son âge**. */
+        PositionSuivi: {
+            /**
+             * Format: int64
+             * @description Ancienneté du relevé, en secondes. L'app affiche « il y a 12 s » et
+             *     n'invente JAMAIS une position (FR-040, maquette C4-4d).
+             */
+            age_s: number;
+            /**
+             * Format: double
+             * @description Latitude.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
              */
             lon: number;
         };
@@ -2142,6 +3163,20 @@ export interface components {
             nom: string;
             /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
             statut: components["schemas"]["StatutPrestataire"];
+        };
+        /** @description Progression de la course, en ARRÊTS DE COLLECTE. */
+        ProgressionSuivi: {
+            arret_courant?: null | components["schemas"]["ArretCourantSuivi"];
+            /**
+             * Format: int64
+             * @description Collectes résolues (collectées ou indisponibles).
+             */
+            collectes_faites: number;
+            /**
+             * Format: int64
+             * @description Nombre total de collectes — **la remise n'en est pas une** (P1).
+             */
+            collectes_total: number;
         };
         /** @description Rattachement compte ↔ prestataire. */
         RattachementDto: {
@@ -2345,6 +3380,30 @@ export interface components {
             /** @description Validité courante — DÉRIVÉE de l'état d'agrément (FR-015). */
             valide: boolean;
         };
+        /** @description Ce qu'une annulation a produit. */
+        ResultatAnnulation: {
+            /**
+             * Format: uuid
+             * @description Commande annulée.
+             */
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Montant déjà avancé chez les vendeurs.
+             */
+            montant_avance: number;
+            /**
+             * Format: int64
+             * @description Part due au coursier (unités mineures) — 0 si sans frais.
+             */
+            part_coursier_due: number;
+            /** @description Vrai si la commande était prépayée : un remboursement est dû. */
+            remboursement_du: boolean;
+            /** @description Vrai si rien n'avait encore été acheté : annulation SANS FRAIS. */
+            sans_frais: boolean;
+        };
         /** @description Résultat d'une collecte. */
         ResultatCollecte: {
             /** @description Statut de l'arrêt (`collecte`). */
@@ -2363,6 +3422,47 @@ export interface components {
              * @description Arrêts collectés.
              */
             nb_collectes: number;
+        };
+        /** @description Résultat d'une décision de substitution. */
+        ResultatDecisionSubstitution: {
+            /**
+             * Format: int64
+             * @description Prix client du devis de livraison — **inchangé** (FR-050). Servi pour
+             *     que le client le VOIE ne pas bouger, pas seulement pour l'affichage.
+             */
+            devis_prix_client_unites: number;
+            /** @description `acceptee` | `refusee`. */
+            issue: string;
+            /**
+             * Format: int64
+             * @description Montant des articles après révision.
+             */
+            montant_articles_unites: number;
+            /**
+             * Format: int64
+             * @description Total à payer après révision.
+             */
+            total_unites: number;
+        };
+        /** @description Résultat d'une remise validée. */
+        ResultatRemise: {
+            /**
+             * Format: uuid
+             * @description Commande close.
+             */
+            commande_id: string;
+            /**
+             * Format: int32
+             * @description Essais de code consommés.
+             */
+            essais_code: number;
+            /**
+             * Format: uuid
+             * @description Livraison close.
+             */
+            livraison_id: string;
+            /** @description Mode retenu. */
+            mode_remise: string;
         };
         /** @description Résultat COMPLET d'une simulation (FR-020). */
         ResultatSimulation: {
@@ -2387,6 +3487,36 @@ export interface components {
          *     deux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes.
          */
         ResultatVerification: components["schemas"]["SessionOuverte"] | components["schemas"]["ConsentementRequis"];
+        /**
+         * @description Schéma OpenAPI du multipart de rupture (contrat honnête : le handler lit un
+         *     `multipart/form-data`, pas un JSON — le client généré produit un vrai
+         *     multipart). Sert UNIQUEMENT à `#[utoipa::path]`.
+         */
+        RuptureMultipart: {
+            /** @description Partie JSON `demande`. */
+            demande: components["schemas"]["DemandeRupture"];
+            /**
+             * Format: binary
+             * @description Photo du remplacement (obligatoire pour `remplacer` — FR-045).
+             */
+            photo?: string | null;
+        };
+        /** @description Proposition de scission — une seule surface pour ses deux causes (R9). */
+        ScissionProposee: {
+            /** @description `categorie_non_mixable` | `plafond_eclatement`. */
+            cause: string;
+            /** @description Prévisualisation CHIFFRÉE des commandes résultantes. */
+            commandes_proposees: components["schemas"]["CommandeProposee"][];
+            /** @description Clé i18n du message affiché. */
+            message_cle: string;
+        };
+        /** @description Secrets de remise — servis au CLIENT PROPRIÉTAIRE seul (research R6). */
+        SecretsRemise: {
+            /** @description Code à 4 chiffres. */
+            code_livraison: string;
+            /** @description Jeton encodé dans le QR de réception. */
+            jeton_reception: string;
+        };
         /** @description Session/appareil du compte (contrat `SessionAppareil`). */
         SessionAppareil: {
             /** @description Nom déclaré par l'app. */
@@ -2523,6 +3653,81 @@ export interface components {
          * @enum {string}
          */
         StatutPrestataire: "prospect" | "agree" | "suspendu";
+        /** @description Proposition de remplacement en attente de décision (maquette C4-4c). */
+        SubstitutionSuivi: {
+            /**
+             * Format: int64
+             * @description Prix de la ligne d'origine (unités mineures).
+             */
+            ancien_prix_unites: number;
+            /** @description Nom de l'article proposé. */
+            article_nom: string;
+            /**
+             * Format: uuid
+             * @description Proposition.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Ligne concernée.
+             */
+            ligne_id: string;
+            /** @description Clé de la photo déposée par le coursier. */
+            photo_cle: string;
+            /**
+             * Format: int64
+             * @description Prix proposé (unités mineures).
+             */
+            prix_unites: number;
+            /**
+             * Format: int64
+             * @description Secondes restantes pour décider.
+             */
+            reste_s: number;
+        };
+        /** @description Vue de suivi complète (contrat §1.3). */
+        SuiviCommande: {
+            coursier?: null | components["schemas"]["CoursierSuivi"];
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de très haut niveau. */
+            etat: string;
+            /** @description **Clé i18n** de l'état affiché — jamais une phrase (constitution VII). */
+            etat_cle: string;
+            /**
+             * Format: date-time
+             * @description Instant du dernier changement d'état.
+             */
+            etat_le: string;
+            /**
+             * Format: uuid
+             * @description Commande.
+             */
+            id: string;
+            /** @description État logistique. */
+            livraison_etat?: string | null;
+            /**
+             * Format: uuid
+             * @description Livraison, si la commande en a une (composant 0..n).
+             */
+            livraison_id?: string | null;
+            /**
+             * Format: int64
+             * @description Montant des articles (révisé si des articles ont sauté).
+             */
+            montant_articles_unites: number;
+            position?: null | components["schemas"]["PositionSuivi"];
+            /** @description Progression par arrêt. */
+            progression: components["schemas"]["ProgressionSuivi"];
+            /** @description Code et QR de remise — **propriétaire seul** (R6). */
+            remise: components["schemas"]["SecretsRemise"];
+            substitution_en_attente?: null | components["schemas"]["SubstitutionSuivi"];
+            /**
+             * Format: int64
+             * @description Total à payer.
+             */
+            total_unites: number;
+        };
         /** @description Corps de la suspension (motif REQUIS — FR-010). */
         SuspendreDto: {
             /** @description Motif de la décision, journalisé. */
@@ -2573,6 +3778,182 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    file_attente: {
+        parameters: {
+            query: {
+                /** @description Zone (ville) dont on veut la file d'attente. */
+                zone_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File d'attente de la zone, la plus ancienne d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileAttenteCoursier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    annuler_commande_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande à annuler. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeAnnulation"];
+            };
+        };
+        responses: {
+            /** @description Commande annulée ; `sans_frais` dit si quelque chose est dû. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatAnnulation"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État terminal. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent — un admin doit motiver son geste (FR-054). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    enregistrer_issue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande concernée. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeEchec"];
+            };
+        };
+        responses: {
+            /** @description Issue enregistrée avec ses deux détenteurs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueEchec"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande sans livraison, ou inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Preuves incomplètes (FR-056). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     lister_dossiers_coursier: {
         parameters: {
             query?: {
@@ -4607,6 +5988,308 @@ export interface operations {
             };
         };
     };
+    creer_commande: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUIDv7 client — DEVIENT l'identifiant de la commande (R7). */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeCreationCommande"];
+            };
+        };
+        responses: {
+            /** @description Rejeu de la même clé — la commande EXISTANTE : mêmes identifiants, mêmes montants, mêmes secrets de remise, même devis figé. Seul `devis.ordre_arrets` revient vide : l'ordre de passage est figé sur les arrêts, pas sur la livraison, et le rejeu ne paie pas une lecture de plus pour le reconstituer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Commande"];
+                };
+            };
+            /** @description Commande créée : tronc, livraison, segment, arrêts (collectes ordonnées + remise), prix verrouillés, devis figé, code et QR. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Commande"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Compte bloqué, téléphone non vérifié, ou rôle client absent. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Catégorie non mixable, vendeur fermé, article indisponible, ou espèces indisponibles. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Repère manquant, panier invalide, clé d'idempotence absente. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    suivre_commande: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suivi : état en clé i18n, progression par arrêt, position AVEC son âge, code et QR de remise. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviCommande"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue — ou appartenant à un autre compte : les deux sont indiscernables, et c'est voulu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    annuler_commande: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeAnnulation"];
+            };
+        };
+        responses: {
+            /** @description Commande annulée ; `sans_frais` dit si quelque chose est dû. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatAnnulation"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État terminal : une commande livrée, annulée ou échouée ne s'annule pas. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    intention_appel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntentionAppel"];
+            };
+        };
+        responses: {
+            /** @description Intention journalisée — aucun numéro n'est enregistré. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    decider_substitution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+                /** @description Proposition de remplacement ouverte. */
+                sub: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionSubstitution"];
+            };
+        };
+        responses: {
+            /** @description Décision appliquée ; montants révisés, devis inchangé. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatDecisionSubstitution"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis, ou proposition d'un autre compte. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Proposition inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Fenêtre de décision expirée, ou proposition déjà close. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     config: {
         parameters: {
             query: {
@@ -4759,6 +6442,409 @@ export interface operations {
                 };
             };
             /** @description Refus métier : hors zone, jeton révoqué, plaque invalide, photo requise, code incorrect/épuisé. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    arret_arrive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+                /** @description Arrêt de cette course, déjà EN ROUTE. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionArret"];
+            };
+        };
+        responses: {
+            /** @description Arrêt ARRIVÉ, `arrive_le` posé par le serveur. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatArretCourse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou hors de la livraison indiquée. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arriver sans être parti : transition absente de la table. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    arret_en_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+                /** @description Arrêt de cette course. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionArret"];
+            };
+        };
+        responses: {
+            /** @description Arrêt EN ROUTE (idempotent au rejeu du même uuid_client). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatArretCourse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou hors de la livraison indiquée. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Transition absente de la table fermée (data-model §3.3). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    arret_indisponible: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+                /** @description Arrêt de cette course. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionArret"];
+            };
+        };
+        responses: {
+            /** @description Arrêt INDISPONIBLE, compté résolu ; avance nulle, lignes retirées, montants révisés. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatArretCourse"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou hors de la livraison indiquée. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt déjà résolu : transition absente de la table. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    declarer_echec: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeEchec"];
+            };
+        };
+        responses: {
+            /** @description Issue enregistrée avec ses DEUX détenteurs, son litige éventuel, son indemnisation et sa sanction. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueEchec"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Livraison inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Preuves incomplètes (FR-056), ou état incompatible. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeRemise"];
+            };
+        };
+        responses: {
+            /** @description Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatRemise"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Livraison inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Code ou jeton incorrect, ou course pas encore en livraison. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Demande mal formée (jeton, code ou photo manquant). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Code de remise ÉPUISÉ — intervention admin requise. */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    declarer_rupture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course assignée à l'appelant. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Partie `demande` (JSON) + `photo` binaire du remplacement. */
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RuptureMultipart"];
+            };
+        };
+        responses: {
+            /** @description Article retiré (montants révisés) ou proposition ouverte avec sa fenêtre de décision. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueRupture"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis, ou course assignée à un autre. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Autre vendeur, écart de prix hors plafond, ou ligne déjà résolue. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Demande mal formée (photo ou prix manquant). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5143,6 +7229,44 @@ export interface operations {
             };
         };
     };
+    mes_commandes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Commandes du compte, les plus récentes d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesCommandes"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     mon_dossier_coursier: {
         parameters: {
             query?: never;
@@ -5303,6 +7427,66 @@ export interface operations {
             };
             /** @description Session inconnue ou n'appartenant pas au compte. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    devis_panier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeDevisPanier"];
+            };
+        };
+        responses: {
+            /** @description Panier chiffré : groupes, sous-totaux, devis détaillé, drapeau de paiement et bloc de scission. AUCUNE écriture, aucune commande créée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevisPanier"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Vendeur fermé ou article indisponible. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Panier vide, quantité nulle, catégorie inactive. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

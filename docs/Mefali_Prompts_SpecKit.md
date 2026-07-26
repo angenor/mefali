@@ -375,7 +375,7 @@ Points d'attention : les jetons sont révocables côté serveur sans changer la
 plaque physique ; maquette de référence : docs/design/png/K3.
 ```
 
-### Cycle 6 — TRF(en cours)
+### Cycle 6 — TRF
 
 ```
 /speckit-specify
@@ -408,7 +408,7 @@ Points d'attention : l'optimisation de l'ordre des arrêts (permutations ≤ 4)
 vit ici et est exposée au dispatch et aux commandes ; maquette : docs/design/png/A3.
 ```
 
-### Cycle 7 — CMD
+### Cycle 7 — CMD(en cours)
 
 ```
 /speckit-specify

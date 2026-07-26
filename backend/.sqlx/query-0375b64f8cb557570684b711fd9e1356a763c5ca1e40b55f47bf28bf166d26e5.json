@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.substitution SET photo_cle = '' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0375b64f8cb557570684b711fd9e1356a763c5ca1e40b55f47bf28bf166d26e5"
+}

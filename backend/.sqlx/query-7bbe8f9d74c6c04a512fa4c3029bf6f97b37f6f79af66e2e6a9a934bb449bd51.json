@@ -1,0 +1,87 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.zone_id, c.devise,\n                      EXTRACT(EPOCH FROM (now() - c.cree_le))::bigint AS \"age_s!\",\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                         JOIN commandes.livraison l ON l.id = s.livraison_id\n                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte')\n                          AS \"nb_collectes!\",\n                      (SELECT COALESCE(SUM(a.montant_avance), 0)::bigint FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                         JOIN commandes.livraison l ON l.id = s.livraison_id\n                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte')\n                          AS \"montant_a_avancer!\",\n                      (SELECT a.site_lat FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                         JOIN commandes.livraison l ON l.id = s.livraison_id\n                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte'\n                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premiere_collecte_lat,\n                      (SELECT a.site_lon FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                         JOIN commandes.livraison l ON l.id = s.livraison_id\n                        WHERE l.commande_id = c.id AND a.type_arret = 'collecte'\n                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premiere_collecte_lon\n               FROM commandes.commande c\n               WHERE c.etat = 'en_attente_coursier' AND c.zone_id = $1\n               ORDER BY c.cree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "age_s!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "nb_collectes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "montant_a_avancer!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "premiere_collecte_lat",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "premiere_collecte_lon",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7bbe8f9d74c6c04a512fa4c3029bf6f97b37f6f79af66e2e6a9a934bb449bd51"
+}

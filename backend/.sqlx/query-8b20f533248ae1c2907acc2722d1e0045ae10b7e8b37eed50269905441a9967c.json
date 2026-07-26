@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT vendeur_id FROM prestataires.article WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "vendeur_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "prestataires.article",
+            "name": "vendeur_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8b20f533248ae1c2907acc2722d1e0045ae10b7e8b37eed50269905441a9967c"
+}

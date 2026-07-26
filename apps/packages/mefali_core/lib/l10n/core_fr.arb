@@ -316,5 +316,432 @@
   "atelierRepereSupprimer": "Supprimer l'adresse de test",
   "@atelierRepereSupprimer": {
     "description": "Action : nettoyer l'adresse créée par l'atelier (DELETE)"
+  },
+  "panierTitre": "Mon panier",
+  "@panierTitre": {
+    "description": "Titre de l'écran panier (C3-3a)"
+  },
+  "panierChezVendeur": "Chez {vendeur}",
+  "@panierChezVendeur": {
+    "description": "En-tête de la carte d'un vendeur du panier",
+    "placeholders": {
+      "vendeur": {
+        "type": "String"
+      }
+    }
+  },
+  "panierSousTotal": "Sous-total",
+  "@panierSousTotal": {
+    "description": "Libellé du sous-total d'un vendeur"
+  },
+  "panierRecapArticles": "Articles",
+  "@panierRecapArticles": {
+    "description": "Ligne « Articles » du récapitulatif"
+  },
+  "panierRecapLivraison": "Livraison",
+  "@panierRecapLivraison": {
+    "description": "Ligne « Livraison » du récapitulatif"
+  },
+  "panierRecapEffort": "Effort de préparation",
+  "@panierRecapEffort": {
+    "description": "Ligne d'effort du récapitulatif (TRF-06)"
+  },
+  "panierRecapTotal": "Total",
+  "@panierRecapTotal": {
+    "description": "Total à payer du récapitulatif"
+  },
+  "panierTotalEstime": "Total estimé",
+  "@panierTotalEstime": {
+    "description": "Total affiché HORS LIGNE — les frais réels viennent du serveur (C3-3c)"
+  },
+  "panierHorsLigne": "Hors connexion — panier conservé",
+  "@panierHorsLigne": {
+    "description": "Bandeau du panier composé sans réseau (C3-3c)"
+  },
+  "panierHorsLigneAide": "Votre panier est gardé sur cet appareil. Il sera envoyé une seule fois au retour du réseau.",
+  "@panierHorsLigneAide": {
+    "description": "Explication du brouillon hors ligne"
+  },
+  "panierPreferenceTitre": "Si l'article manque",
+  "@panierPreferenceTitre": {
+    "description": "Titre du sélecteur de préférence de substitution"
+  },
+  "panierPreferenceAppeler": "M'appeler",
+  "@panierPreferenceAppeler": {
+    "description": "Préférence par défaut (CMD-01)"
+  },
+  "panierPreferenceRemplacer": "Remplacer",
+  "@panierPreferenceRemplacer": {
+    "description": "Préférence : accepter un remplacement proposé"
+  },
+  "panierPreferenceRetirer": "Retirer",
+  "@panierPreferenceRetirer": {
+    "description": "Préférence : retirer l'article sans appeler"
+  },
+  "panierVide": "Votre panier est vide.",
+  "@panierVide": {
+    "description": "État vide du panier"
+  },
+  "panierCommander": "Commander",
+  "@panierCommander": {
+    "description": "Action principale du panier"
+  },
+  "panierScissionCategorieNonMixable": "Les plats préparés se commandent séparément des courses.",
+  "@panierScissionCategorieNonMixable": {
+    "description": "Cause « catégorie non mixable » d'une proposition de scission (FR-009)"
+  },
+  "panierScissionPlafondEclatement": "Vos vendeurs sont très éloignés les uns des autres.",
+  "@panierScissionPlafondEclatement": {
+    "description": "Cause « plafond d'éclatement » d'une proposition de scission"
+  },
+  "panierScissionAction": "Scinder en {n} commandes",
+  "@panierScissionAction": {
+    "description": "Bouton de la proposition de scission (C3-3d). Le nombre vient du SERVEUR : une catégorie non mixable à trois vendeurs propose trois commandes, pas deux",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionAvertissement": "{n, plural, =2{Deux commandes, deux frais de déplacement.} other{{n} commandes, {n} frais de déplacement.}}",
+  "@panierScissionAvertissement": {
+    "description": "Avertissement chiffré de la scission — jamais scindée d'office (FR-010). Le cas à deux garde la lettre de la maquette C3-3d",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionAcceptee": "{n} commandes séparées",
+  "@panierScissionAcceptee": {
+    "description": "Titre du bloc de scission ACCEPTÉE, avant confirmation",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionCommandeNumero": "Commande {n}",
+  "@panierScissionCommandeNumero": {
+    "description": "Numéro d'une des commandes d'une scission, dans la prévisualisation et sur les codes de remise",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionAnnuler": "Revenir à une seule commande",
+  "@panierScissionAnnuler": {
+    "description": "Annule une scission acceptée — refuser doit rester aussi simple qu'accepter (FR-010)"
+  },
+  "commandeScissionCreees": "{creees, plural, =1{1 commande sur {total} a été créée.} other{{creees} commandes sur {total} ont été créées.}}",
+  "@commandeScissionCreees": {
+    "description": "Échec partiel d'une scission : ce qui a bien été créé",
+    "placeholders": {
+      "creees": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "commandeScissionReste": "{n, plural, =1{La commande restante n'a pas pu être créée.} other{{n} commandes n'ont pas pu être créées.}}",
+  "@commandeScissionReste": {
+    "description": "Échec partiel d'une scission : ce qui n'a PAS été créé. Ce qui l'est reste dû",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "commandeScissionReprendre": "Reprendre le reste",
+  "@commandeScissionReprendre": {
+    "description": "Relance les seules commandes non créées, avec leurs clés d'idempotence inchangées (R7)"
+  },
+  "commandeAdresseChanger": "Changer",
+  "@commandeAdresseChanger": {
+    "description": "Ouvre le carnet d'adresses depuis le bloc adresse (CPT-05)"
+  },
+  "commandeAdresseTitre": "Où livrer ?",
+  "@commandeAdresseTitre": {
+    "description": "Titre du bloc adresse de commande"
+  },
+  "commandeAdressePositionActuelle": "Utiliser ma position actuelle",
+  "@commandeAdressePositionActuelle": {
+    "description": "Action de centrage sur le GPS"
+  },
+  "commandeAdresseRepereTexte": "Repère écrit",
+  "@commandeAdresseRepereTexte": {
+    "description": "Onglet du repère texte"
+  },
+  "commandeAdresseRepereVocal": "Repère vocal",
+  "@commandeAdresseRepereVocal": {
+    "description": "Onglet du repère vocal"
+  },
+  "commandeAdresseRepereAide": "Un repère aide le coursier à vous trouver : écrivez-le ou dites-le.",
+  "@commandeAdresseRepereAide": {
+    "description": "Explication de l'obligation de repère (FR-018)"
+  },
+  "commandePaiementTitre": "Comment payer ?",
+  "@commandePaiementTitre": {
+    "description": "Titre du bloc paiement"
+  },
+  "commandePaiementCash": "Espèces à la livraison",
+  "@commandePaiementCash": {
+    "description": "Option de paiement en espèces"
+  },
+  "commandePaiementMobileMoney": "Mobile money",
+  "@commandePaiementMobileMoney": {
+    "description": "Option de paiement mobile"
+  },
+  "commandePaiementAppoint": "Préparez l'appoint : {montant}",
+  "@commandePaiementAppoint": {
+    "description": "Mention d'appoint exact du paiement cash (C3-3b)",
+    "placeholders": {
+      "montant": {
+        "type": "String"
+      }
+    }
+  },
+  "commandePaiementCashIndisponible": "Espèces indisponibles au-dessus de {plafond}.",
+  "@commandePaiementCashIndisponible": {
+    "description": "Raison affichée quand le cash est grisé (C3-3b, FR-024)",
+    "placeholders": {
+      "plafond": {
+        "type": "String"
+      }
+    }
+  },
+  "commandeConfirmee": "{n, plural, =1{Commande confirmée} other{{n} commandes confirmées}}",
+  "@commandeConfirmee": {
+    "description": "Titre de l'écran de confirmation. Une scission acceptée en crée N : le singulier mentirait sur ce que l'écran montre (constaté sur appareil)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "commandeCodeRemise": "Code de remise",
+  "@commandeCodeRemise": {
+    "description": "Libellé du code à 4 chiffres remis au client"
+  },
+  "commandeQrRemise": "QR de réception",
+  "@commandeQrRemise": {
+    "description": "Libellé du QR de réception"
+  },
+  "commandeErreurCompteBloque": "Votre compte ne peut pas passer commande. Contactez le support.",
+  "@commandeErreurCompteBloque": {
+    "description": "Refus 403 compte_bloque (FR-026)"
+  },
+  "commandeErreurCategorieNonMixable": "Les plats préparés se commandent séparément des courses.",
+  "@commandeErreurCategorieNonMixable": {
+    "description": "Refus 409 categorie_non_mixable (FR-009)"
+  },
+  "commandeErreurRepereManquant": "Ajoutez un repère écrit ou vocal pour que le coursier vous trouve.",
+  "@commandeErreurRepereManquant": {
+    "description": "Refus 422 repere_manquant (FR-018)"
+  },
+  "commandeErreurTelephoneNonVerifie": "Vérifiez votre numéro avant de commander.",
+  "@commandeErreurTelephoneNonVerifie": {
+    "description": "Refus 403 telephone_non_verifie (FR-019)"
+  },
+  "commandeErreurVendeurIndisponible": "Ce vendeur vient de fermer. Retirez ses articles ou réessayez plus tard.",
+  "@commandeErreurVendeurIndisponible": {
+    "description": "Refus 409 vendeur_indisponible (FR-029)"
+  },
+  "commandeErreurArticleIndisponible": "Un article n'est plus disponible. Mettez votre panier à jour.",
+  "@commandeErreurArticleIndisponible": {
+    "description": "Refus 409 article_indisponible (FR-029)"
+  },
+  "commandeErreurTarifIndisponible": "Aucun tarif ne couvre ce trajet. Retirez un vendeur éloigné, ou réessayez plus tard.",
+  "@commandeErreurTarifIndisponible": {
+    "description": "Refus 409 tarif_indisponible — la grille de la zone est bornée en distance et en véhicule. Le levier du client est son panier : c'est ce que la phrase lui dit"
+  },
+  "commandeErreurCashIndisponible": "Le paiement en espèces n'est pas possible pour cette commande.",
+  "@commandeErreurCashIndisponible": {
+    "description": "Refus 409 cash_indisponible (FR-024/025)"
+  },
+  "commandeErreurTransitionRefusee": "Cette action n'est plus possible à cette étape.",
+  "@commandeErreurTransitionRefusee": {
+    "description": "Refus 409 transition_refusee"
+  },
+  "commandeErreurNonProprietaire": "Cette commande n'est pas la vôtre.",
+  "@commandeErreurNonProprietaire": {
+    "description": "Refus 403 non_proprietaire (FR-041)"
+  },
+  "commandeErreurCommandeInconnue": "Commande introuvable.",
+  "@commandeErreurCommandeInconnue": {
+    "description": "Refus 404 commande_inconnue"
+  },
+  "commandeErreurPanierInvalide": "Votre panier n'est pas valide.",
+  "@commandeErreurPanierInvalide": {
+    "description": "Refus 422 panier_invalide"
+  },
+  "commandeErreurMotifRequis": "Un motif est obligatoire.",
+  "@commandeErreurMotifRequis": {
+    "description": "Refus 422 motif_requis (FR-054, admin)"
+  },
+  "commandeErreurCodeEpuise": "Trop d'essais. Un conseiller va vous contacter.",
+  "@commandeErreurCodeEpuise": {
+    "description": "Refus 423 code_epuise (CRS-04)"
+  },
+  "commandeErreurRemiseIncorrecte": "Code ou QR incorrect.",
+  "@commandeErreurRemiseIncorrecte": {
+    "description": "Refus 409 remise_incorrecte"
+  },
+  "commandeErreurPreuvesIncompletes": "Les preuves de l'incident sont incomplètes.",
+  "@commandeErreurPreuvesIncompletes": {
+    "description": "Refus 409 preuves_incompletes (FR-056)"
+  },
+  "commandeErreurInterne": "Une erreur est survenue. Réessayez dans un instant.",
+  "@commandeErreurInterne": {
+    "description": "Erreur technique NEUTRE — aucun détail exposé"
+  },
+  "suiviTitre": "Suivi de commande",
+  "@suiviTitre": {
+    "description": "Titre de l'écran de suivi"
+  },
+  "suiviEtatRecue": "Commande reçue",
+  "@suiviEtatRecue": {
+    "description": "1ᵉʳ pas du stepper (C4-4a)"
+  },
+  "suiviEtatRechercheCoursier": "Recherche d'un coursier",
+  "@suiviEtatRechercheCoursier": {
+    "description": "État d'attente de coursier (C4-4b, CMD-10)"
+  },
+  "suiviEtatCollecteEnCours": "Collecte en cours {faites}/{total}",
+  "@suiviEtatCollecteEnCours": {
+    "description": "2ᵉ pas du stepper — la remise n'est jamais comptée (P1)",
+    "placeholders": {
+      "faites": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "suiviEtatEnRoute": "En route vers vous",
+  "@suiviEtatEnRoute": {
+    "description": "3ᵉ pas du stepper"
+  },
+  "suiviEtatLivree": "Livrée",
+  "@suiviEtatLivree": {
+    "description": "4ᵉ pas du stepper"
+  },
+  "suiviEtatAnnulee": "Annulée",
+  "@suiviEtatAnnulee": {
+    "description": "État terminal — commande annulée"
+  },
+  "suiviEtatEchouee": "Incident en cours de traitement",
+  "@suiviEtatEchouee": {
+    "description": "État terminal — échec déclaré (§7.5)"
+  },
+  "suiviChezVendeur": "Chez {vendeur}",
+  "@suiviChezVendeur": {
+    "description": "Arrêt courant du suivi",
+    "placeholders": {
+      "vendeur": {
+        "type": "String"
+      }
+    }
+  },
+  "suiviAppelerCoursier": "Appeler le coursier",
+  "@suiviAppelerCoursier": {
+    "description": "Bouton d'appel du suivi"
+  },
+  "suiviPositionAge": "Position il y a {secondes} s",
+  "@suiviPositionAge": {
+    "description": "Âge de la dernière position — l'app n'en invente jamais une (FR-040)",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "suiviPositionInconnue": "Position non disponible",
+  "@suiviPositionInconnue": {
+    "description": "Aucune position connue — jamais une position inventée (R13)"
+  },
+  "suiviALaLivraison": "À la livraison",
+  "@suiviALaLivraison": {
+    "description": "Titre du bloc code + QR de remise"
+  },
+  "suiviALaLivraisonHorsLigne": "À la livraison — disponible sans réseau",
+  "@suiviALaLivraisonHorsLigne": {
+    "description": "Titre du bloc de remise en mode hors ligne (C4-4d)"
+  },
+  "suiviHorsLigne": "Hors connexion",
+  "@suiviHorsLigne": {
+    "description": "Bandeau hors ligne du suivi (C4-4d)"
+  },
+  "suiviDernierEtatConnu": "Dernier état connu",
+  "@suiviDernierEtatConnu": {
+    "description": "Mention explicite que l'état affiché peut avoir changé (C4-4d)"
+  },
+  "suiviAnnulerSansFrais": "Annuler sans frais",
+  "@suiviAnnulerSansFrais": {
+    "description": "Annulation avant toute collecte (C4-4b, CMD-07)"
+  },
+  "suiviAttenteAllongee": "L'attente est plus longue que d'habitude.",
+  "@suiviAttenteAllongee": {
+    "description": "Message d'escalade de la file d'attente (FR-038)"
+  },
+  "substitutionTitre": "Article manquant",
+  "@substitutionTitre": {
+    "description": "Titre de la feuille de substitution (C4-4c)"
+  },
+  "substitutionProposition": "{propose} à {prixPropose} au lieu de {prixInitial}",
+  "@substitutionProposition": {
+    "description": "Écart de prix de la proposition",
+    "placeholders": {
+      "propose": {
+        "type": "String"
+      },
+      "prixPropose": {
+        "type": "String"
+      },
+      "prixInitial": {
+        "type": "String"
+      }
+    }
+  },
+  "substitutionCompteARebours": "{secondes} s pour répondre",
+  "@substitutionCompteARebours": {
+    "description": "Compte à rebours de la fenêtre de décision (FR-045)",
+    "placeholders": {
+      "secondes": {
+        "type": "int"
+      }
+    }
+  },
+  "substitutionIssueParDefaut": "Sans réponse, on vous appelle. Injoignable : article retiré, rien à payer.",
+  "@substitutionIssueParDefaut": {
+    "description": "Phrase d'issue par défaut affichée sous la proposition (C4-4c)"
+  },
+  "substitutionAccepter": "Accepter",
+  "@substitutionAccepter": {
+    "description": "Bouton d'acceptation du remplacement"
+  },
+  "substitutionRefuser": "Refuser",
+  "@substitutionRefuser": {
+    "description": "Bouton de refus du remplacement"
+  },
+  "substitutionErreurAutreVendeur": "Un remplacement doit venir du même vendeur.",
+  "@substitutionErreurAutreVendeur": {
+    "description": "Refus 409 substitution_autre_vendeur (FR-048)"
+  },
+  "substitutionErreurEcartPrix": "L'écart de prix est trop important.",
+  "@substitutionErreurEcartPrix": {
+    "description": "Refus 409 substitution_ecart_prix (FR-047)"
+  },
+  "substitutionErreurExpiree": "Le délai de réponse est passé.",
+  "@substitutionErreurExpiree": {
+    "description": "Refus 409 substitution_expiree (R10)"
+  },
+  "substitutionRetireeNonFacturee": "Article retiré — rien à payer pour lui.",
+  "@substitutionRetireeNonFacturee": {
+    "description": "Confirmation d'un retrait : seul le montant des articles bouge (FR-050)"
   }
 }

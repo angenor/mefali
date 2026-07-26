@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.client_id, c.etat::text AS \"etat!\", c.montant_articles_unites,\n                      c.total_unites, c.devise, c.mode_paiement::text AS \"mode_paiement!\",\n                      c.code_livraison, c.jeton_reception\n               FROM commandes.commande c\n               WHERE c.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "montant_articles_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "montant_articles_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "mode_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "code_livraison",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "code_livraison"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "jeton_reception",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "jeton_reception"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "0d2a7d1e6f3fb5baa8c22ecf3a97cb67813aff5f3f60a77d15499952382d2be1"
+}

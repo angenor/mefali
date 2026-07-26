@@ -38,7 +38,7 @@ pub use prestataire::{
     PhotoPrestataire, Prestataire, CHARTE_MIMES, CHARTE_TAILLE_MAX, PHOTO_MIMES, PHOTO_TAILLE_MAX,
 };
 pub use rattachement::Rattachement;
-pub use site::{etat_effectif, ActionBoutique, BoutiqueVendeur, Site};
+pub use site::{etat_effectif, ActionBoutique, BoutiqueVendeur, PointRetrait, Site};
 pub use modele::{
     AffichageRupture, ArticleCommandable, ArticlePublic, Commandabilite, EffectifBoutique,
     ErreurPrestataires, FichePublique, HorairesSemaine, Plage, ResolutionPlaque, SourceBascule,

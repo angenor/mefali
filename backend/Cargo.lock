@@ -1153,14 +1153,18 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "comptes",
+ "prestataires",
  "serde",
  "serde_json",
  "socle",
  "sqlx",
+ "tarification",
  "thiserror",
  "tokio",
  "tracing",
  "uuid",
+ "zones",
 ]
 
 [[package]]
@@ -3794,7 +3798,6 @@ dependencies = [
  "qrcode",
  "serde",
  "serde_json",
- "sha2 0.11.0",
  "socle",
  "sqlx",
  "thiserror",
@@ -4744,6 +4747,7 @@ dependencies = [
  "sentry",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "sqlx",
  "thiserror",
  "tokio",

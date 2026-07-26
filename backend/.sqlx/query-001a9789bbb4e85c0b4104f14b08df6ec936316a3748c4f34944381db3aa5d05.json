@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.substitution\n                 (id, ligne_id, arret_id, article_propose_id, prix_propose_unites,\n                  photo_cle, proposee_le, echeance, uuid_client)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "001a9789bbb4e85c0b4104f14b08df6ec936316a3748c4f34944381db3aa5d05"
+}

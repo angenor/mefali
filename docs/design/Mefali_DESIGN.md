@@ -61,6 +61,19 @@ Normal · chargement (squelettes, jamais de spinner plein écran) · vide (messa
 
 Apps mobiles : Android 360 × 800, une colonne. Console admin : desktop 1440, densité élevée assumée (poste de pilotage), mêmes tokens.
 
+### 8.1 Ce qu'une maquette illustre, et ce qu'elle ne fixe pas
+
+Une capture montre **un cas**, pas la règle. Quand un écran dépend d'un nombre
+que le serveur décide, la maquette en illustre une valeur et l'implémentation
+doit couvrir les autres — le libellé se paramètre, il ne se recopie pas.
+
+Cas connu : **C3-3d, proposition de scission**. La capture montre deux vendeurs,
+donc « Scinder en 2 commandes » et « Deux commandes, deux frais de
+déplacement ». Or une catégorie non mixable découpe **par vendeur** : trois
+vendeurs donnent trois commandes. Les deux libellés prennent donc le nombre en
+paramètre, le cas à deux gardant la lettre de la maquette. Vérifié sur appareil
+à deux et à trois vendeurs (aucun débordement en 360 dp).
+
 ## 9. À ne pas faire
 
 Pas de mode sombre au MVP. Pas d'illustrations décoratives ni d'animations gratuites. Pas de texte < 16 px. Pas d'action principale en haut d'écran mobile. Pas de montant en petit. Pas d'écran qui devient inutilisable hors connexion sans l'indiquer.

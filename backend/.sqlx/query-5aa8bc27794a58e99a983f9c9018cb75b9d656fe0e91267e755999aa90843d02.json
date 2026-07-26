@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.commande\n                SET etat = $2::text::commandes.etat_commande, etat_le = $3\n              WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5aa8bc27794a58e99a983f9c9018cb75b9d656fe0e91267e755999aa90843d02"
+}

@@ -4,13 +4,20 @@
 //! `/health`, Swagger UI en dev (absente en production, constitution VIII),
 //! export de `openapi.json`. Le worker outbox est branché par T019.
 
+/// Surface HTTP admin du cycle CMD (file d'attente, annulation, issues).
+pub mod admin_commandes_http;
 pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
 pub mod auth_http;
+pub mod commandes_http;
 pub mod comptes_http;
+/// Surface HTTP coursier du cycle CMD (boucle d'arrêt, remise, échec).
+pub mod course_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
+/// Mapping HTTP partagé des refus du domaine commandes (T014).
+pub mod erreurs_commandes;
 pub mod health;
 pub mod infra_redis;
 pub mod infra_s3;
@@ -100,6 +107,22 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_tarification_http::supprimer_regle)
         .service(admin_tarification_http::simuler)
         .service(admin_tarification_http::publier)
+        .service(commandes_http::devis_panier)
+        .service(commandes_http::creer_commande)
+        .service(course_http::arret_en_route)
+        .service(course_http::arret_arrive)
+        .service(course_http::arret_indisponible)
+        .service(course_http::declarer_rupture)
+        .service(course_http::remise)
+        .service(course_http::declarer_echec)
+        .service(commandes_http::decider_substitution)
+        .service(commandes_http::mes_commandes)
+        .service(commandes_http::suivre_commande)
+        .service(commandes_http::intention_appel)
+        .service(commandes_http::annuler_commande)
+        .service(admin_commandes_http::file_attente)
+        .service(admin_commandes_http::annuler_commande_admin)
+        .service(admin_commandes_http::enregistrer_issue)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -190,9 +213,53 @@ async fn job_purge_reperes(depot: PgComptes) {
     }
 }
 
+/// Intervalle de balayage des propositions de remplacement ÉCHUES (R10).
+///
+/// La fenêtre de décision se compte en DIZAINES DE SECONDES (60 s par défaut) :
+/// un balayage horaire laisserait le coursier planté devant un étal pendant une
+/// heure. Dix secondes est le pas qui rend l'échéance vécue conforme à
+/// l'échéance promise, sans transformer la base en horloge.
+///
+/// ⚠ Ce job n'est PAS la source de vérité de l'expiration : l'échéance est
+/// PERSISTÉE et toute lecture la respecte déjà (`suivi`, `decider_substitution`).
+/// Le job ne fait qu'écrire ce que la lecture savait déjà — une décision
+/// d'argent ne dépend pas de la vie d'un processus.
+const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Résolution périodique des propositions de remplacement échues (FR-046).
+///
+/// À l'expiration on APPELLE, puis l'article est retiré et non facturé. Une
+/// erreur est journalisée et le passage suivant retente : un incident de
+/// balayage ne doit jamais faire tomber l'API.
+async fn job_expirer_substitutions(depot: commandes::PgCommandes) {
+    let mut horloge = tokio::time::interval(BALAYAGE_SUBSTITUTIONS);
+    loop {
+        horloge.tick().await;
+        match depot.expirer_substitutions_echues(chrono::Utc::now()).await {
+            Ok(v) if v.is_empty() => {}
+            Ok(v) => tracing::info!(expirees = v.len(), "propositions de remplacement expirées"),
+            Err(e) => tracing::error!(erreur = %e, "balayage des substitutions échoué"),
+        }
+    }
+}
+
 /// Purge périodique des photos de récupération expirées (QRC-02, constitution
 /// VIII, research R8). Même patron que [`job_purge_reperes`] : une tâche tokio,
 /// un échec journalisé et retenté au passage suivant.
+async fn job_purge_photos_substitution(depot: commandes::PgCommandes) {
+    let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
+    loop {
+        horloge.tick().await;
+        match depot.purger_photos_substitution().await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(purgees = n, "photos de substitution purgées (rétention de zone)"),
+            Err(e) => tracing::error!(erreur = %e, "purge des photos de substitution échouée"),
+        }
+    }
+}
+
+/// Purge périodique des photos de récupération expirées (QRC-02, constitution
+/// VIII, research R8).
 async fn job_purge_photos_collecte(depot: qr::PgQr) {
     let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
     loop {
@@ -245,6 +312,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut prestataires_opt: Option<prestataires::PgPrestataires> = None;
     let mut qr_opt: Option<qr::PgQr> = None;
     let mut tarification_opt: Option<tarification::PgTarification> = None;
+    let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -308,24 +376,6 @@ pub async fn run() -> std::io::Result<()> {
                     Arc::new(prestataires::AucuneCommandeActive),
                     Arc::from(config.plaque_secret.as_bytes()),
                 );
-                // QRC 006 — socle logistique (PgCommandes) + traçabilité (PgQr).
-                // Réutilise le pool, le domaine prestataires (résolution/identité
-                // de plaque) et le MÊME port objets ; le compteur d'essais du code
-                // dégradé passe par Redis (éphémère, R7).
-                let essais_qr: Arc<dyn qr::CompteurEssais> = Arc::new(
-                    infra_redis::RedisEssais::nouveau(&config.redis_url)
-                        .map_err(|e| std::io::Error::other(format!("Redis essais : {e}")))?,
-                );
-                qr_opt = Some(qr::PgQr::new(
-                    pool.clone(),
-                    commandes::PgCommandes::new(pool.clone()),
-                    presta.clone(),
-                    objets,
-                    essais_qr,
-                ));
-                tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
-                eprintln!("ports QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
-
                 // TRF 007 — moteur de tarification. Client OSRM `/table` et
                 // cache de tronçons Redis (24 h). Si OSRM n'est pas joignable au
                 // DÉMARRAGE, on câble `RoutageIndisponible` : le service tarife
@@ -350,12 +400,62 @@ pub async fn run() -> std::io::Result<()> {
                             Arc::new(tarification::CacheDesactive)
                         }
                     };
-                tarification_opt = Some(tarification::PgTarification::new(
+                let tarification = tarification::PgTarification::new(
                     pool.clone(),
                     routage,
                     cache_routage,
-                ));
+                );
                 eprintln!("moteur de tarification câblé (OSRM {} ; cache Redis)", config.osrm_url);
+
+                // CMD 008 — domaine commandes COMPLET, puis QRC 006 par-dessus.
+                // Le dépôt commandes est câblé APRÈS la tarification : il en
+                // consomme l'évaluation et l'optimisation d'arrêts pour figer
+                // son devis (research R11). Les restrictions CPT-06 passent par
+                // le dépôt comptes, qui satisfait le port (P3, R12) — aucune
+                // requête de `commandes` n'écrit dans `comptes.compte`.
+                let tarification_dyn = Arc::new(tarification.clone());
+                // Position du coursier : LECTURE seule ce cycle — DSP-01
+                // l'écrira. Redis coupé rend `None`, jamais une erreur : un
+                // suivi doit rester lisible sans position (research R13).
+                let positions: Arc<dyn commandes::PositionCoursier> = Arc::new(
+                    infra_redis::RedisPositions::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis positions : {e}")))?,
+                );
+                let depot_commandes = commandes::PgCommandes::new(
+                    pool.clone(),
+                    presta.clone(),
+                    tarification_dyn.clone(),
+                    tarification_dyn,
+                    Arc::new(depot.clone()),
+                    objets.clone(),
+                    positions,
+                    // CRS-05 n'existe pas : aucune preuve n'est réunie en
+                    // production, donc AUCUN échec n'est déclarable — exact et
+                    // voulu, comme l'affectation avant DSP (research R10/R16).
+                    Arc::new(commandes::PreuvesFixes::nouveau()),
+                );
+                // Le compteur d'essais du code dégradé passe par Redis
+                // (éphémère, R7).
+                let essais_qr: Arc<dyn qr::CompteurEssais> = Arc::new(
+                    infra_redis::RedisEssais::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis essais : {e}")))?,
+                );
+                qr_opt = Some(qr::PgQr::new(
+                    pool.clone(),
+                    depot_commandes.clone(),
+                    presta.clone(),
+                    objets,
+                    essais_qr,
+                ));
+                tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
+                eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+
+                tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
+                tokio::spawn(job_purge_photos_substitution(depot_commandes.clone()));
+                eprintln!("job d'expiration des substitutions démarré (toutes les 10 s)");
+
+                commandes_domaine_opt = Some(depot_commandes);
+                tarification_opt = Some(tarification);
                 prestataires_opt = Some(presta);
                 comptes_opt = Some(depot);
                 Some(pool)
@@ -454,6 +554,22 @@ pub async fn run() -> std::io::Result<()> {
             .service(admin_tarification_http::supprimer_regle)
             .service(admin_tarification_http::simuler)
             .service(admin_tarification_http::publier)
+            .service(commandes_http::devis_panier)
+            .service(commandes_http::creer_commande)
+            .service(course_http::arret_en_route)
+            .service(course_http::arret_arrive)
+            .service(course_http::arret_indisponible)
+            .service(course_http::declarer_rupture)
+            .service(course_http::remise)
+            .service(course_http::declarer_echec)
+            .service(commandes_http::decider_substitution)
+            .service(commandes_http::mes_commandes)
+            .service(commandes_http::suivre_commande)
+            .service(commandes_http::intention_appel)
+            .service(commandes_http::annuler_commande)
+            .service(admin_commandes_http::file_attente)
+            .service(admin_commandes_http::annuler_commande_admin)
+            .service(admin_commandes_http::enregistrer_issue)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -477,6 +593,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = tarification_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = commandes_domaine_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
@@ -528,6 +647,48 @@ mod tests {
         let openapi = api_openapi();
         assert_eq!(openapi.info.title, "Mefali API");
         assert!(openapi.paths.paths.contains_key("/health"));
+    }
+
+    /// Le CONTRAT n'exige pas de livraison sur une commande.
+    ///
+    /// La livraison est un composant 0..n du tronc (constitution II) et
+    /// `SuiviCommande` la rend déjà optionnelle : l'exiger sur `Commande` était
+    /// une contradiction du contrat avec lui-même. Ce test la ferme des deux
+    /// côtés — la propriété reste DÉCRITE (optionnel n'est pas absent), et le
+    /// reste du tronc reste obligatoire.
+    #[test]
+    fn le_contrat_n_exige_pas_de_livraison_sur_une_commande() {
+        let spec = serde_json::to_value(api_openapi()).expect("la spec se sérialise");
+        let commande = &spec["components"]["schemas"]["Commande"];
+        let requis: Vec<&str> = commande["required"]
+            .as_array()
+            .expect("le schéma Commande porte une liste required")
+            .iter()
+            .map(|v| v.as_str().expect("une clé requise est textuelle"))
+            .collect();
+
+        assert!(
+            !requis.contains(&"livraison"),
+            "livraison ne doit plus être requise — required = {requis:?}"
+        );
+        assert!(
+            commande["properties"].get("livraison").is_some(),
+            "optionnel ne veut pas dire absent : la propriété reste décrite"
+        );
+        for cle in [
+            "id",
+            "etat",
+            "montant_articles_unites",
+            "total_unites",
+            "devise",
+            "paiement",
+            "remise",
+        ] {
+            assert!(
+                requis.contains(&cle),
+                "{cle} appartient au tronc et doit rester requis"
+            );
+        }
     }
 
     #[actix_web::test]
@@ -726,11 +887,15 @@ mod tests {
         // repère vocal, durée max de note vocale, version ARTCI) + 8 (pays,
         // cycle 005 : fuseau, conservation charte, 6 affichages de rupture)
         // + 3 (pays, cycle 006 : distance de scan, seuil photo, rétention photo
-        // de collecte) + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 :
-        // seuil et fenêtre du masquage automatique) + 12 (ville, cycle 007 :
-        // 2 bornes de marge, arrondi, supplément pluie, 4 knobs de routage,
-        // 4 knobs d'effort — `effort.plafond_eclatement_m` reste DORMANT).
-        assert_eq!(apres_un.4, 47, "23 (pays) + 24 (ville) paramètres");
+        // de collecte) + 13 (pays, cycle 008 : 6 « périssable » de catégorie,
+        // longueur du repère écrit, essais du code, seuil d'historique, délai et
+        // écart de substitution, rétention des photos, période de position)
+        // + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 : seuil et fenêtre
+        // du masquage automatique) + 12 (ville, cycle 007 : 2 bornes de marge,
+        // arrondi, supplément pluie, 4 knobs de routage, 4 knobs d'effort —
+        // `effort.plafond_eclatement_m` reste DORMANT) + 3 (ville, cycle 008 :
+        // 2 plafonds cash et l'escalade d'attente coursier).
+        assert_eq!(apres_un.4, 63, "36 (pays) + 27 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

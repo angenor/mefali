@@ -95,6 +95,22 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*CommandesApi*](doc/CommandesApi.md) | [**annulerCommande**](doc/CommandesApi.md#annulercommande) | **POST** /commandes/{id}/annuler | CMD-07 — le client annule sa commande.
+[*CommandesApi*](doc/CommandesApi.md) | [**creerCommande**](doc/CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
+[*CommandesApi*](doc/CommandesApi.md) | [**deciderSubstitution**](doc/CommandesApi.md#decidersubstitution) | **POST** /commandes/{id}/substitutions/{sub}/decision | CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
+[*CommandesApi*](doc/CommandesApi.md) | [**devisPanier**](doc/CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
+[*CommandesApi*](doc/CommandesApi.md) | [**intentionAppel**](doc/CommandesApi.md#intentionappel) | **POST** /commandes/{id}/appel | CMD-05 — journalise l&#39;intention d&#39;appeler le coursier (FR-041).
+[*CommandesApi*](doc/CommandesApi.md) | [**mesCommandes**](doc/CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
+[*CommandesApi*](doc/CommandesApi.md) | [**suivreCommande**](doc/CommandesApi.md#suivrecommande) | **GET** /commandes/{id} | CMD-05 — suivi complet d&#39;une commande, pour son **propriétaire**.
+[*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**annulerCommandeAdmin**](doc/CommandesAdminApi.md#annulercommandeadmin) | **POST** /admin/commandes/{id}/annuler | CMD-07 — un administrateur annule une commande, **motif obligatoire**.
+[*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**enregistrerIssue**](doc/CommandesAdminApi.md#enregistrerissue) | **POST** /admin/commandes/{id}/issues | CMD-08 — un administrateur enregistre une issue de l&#39;arbre §7.5.
+[*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**fileAttente**](doc/CommandesAdminApi.md#fileattente) | **GET** /admin/commandes/attente | CMD-10 — file FIFO des commandes sans coursier d&#39;une zone.
+[*CoursesApi*](doc/CoursesApi.md) | [**arretArrive**](doc/CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
+[*CoursesApi*](doc/CoursesApi.md) | [**arretEnRoute**](doc/CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
+[*CoursesApi*](doc/CoursesApi.md) | [**arretIndisponible**](doc/CoursesApi.md#arretindisponible) | **POST** /courses/{livraison_id}/arrets/{arret_id}/indisponible | CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).
+[*CoursesApi*](doc/CoursesApi.md) | [**declarerEchec**](doc/CoursesApi.md#declarerechec) | **POST** /courses/{livraison_id}/echec | CMD-08 — le coursier déclare l&#39;échec ; le serveur déroule l&#39;arbre §7.5.
+[*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
+[*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
@@ -137,11 +153,13 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [Accepte](doc/Accepte.md)
+ - [ActionArret](doc/ActionArret.md)
  - [ActionBoutiqueDto](doc/ActionBoutiqueDto.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
  - [Adresse](doc/Adresse.md)
  - [AffichageRupture](doc/AffichageRupture.md)
  - [AppareilDto](doc/AppareilDto.md)
+ - [ArretCourantSuivi](doc/ArretCourantSuivi.md)
  - [ArretPreProvisionne](doc/ArretPreProvisionne.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
@@ -150,7 +168,12 @@ Class | Method | HTTP request | Description
  - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
+ - [Commande](doc/Commande.md)
+ - [CommandeEnAttente](doc/CommandeEnAttente.md)
+ - [CommandeProposee](doc/CommandeProposee.md)
+ - [CommandeResumee](doc/CommandeResumee.md)
  - [Composantes](doc/Composantes.md)
+ - [ComposantesDevis](doc/ComposantesDevis.md)
  - [CompteMoi](doc/CompteMoi.md)
  - [ConfigZone](doc/ConfigZone.md)
  - [ConsentementRequis](doc/ConsentementRequis.md)
@@ -158,14 +181,24 @@ Class | Method | HTTP request | Description
  - [CorpsForcage](doc/CorpsForcage.md)
  - [CorrigerDto](doc/CorrigerDto.md)
  - [CourseActive](doc/CourseActive.md)
+ - [CoursierSuivi](doc/CoursierSuivi.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
+ - [DecisionSubstitution](doc/DecisionSubstitution.md)
+ - [DemandeAnnulation](doc/DemandeAnnulation.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
+ - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
+ - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
+ - [DemandeEchec](doc/DemandeEchec.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
+ - [DemandeRemise](doc/DemandeRemise.md)
+ - [DemandeRupture](doc/DemandeRupture.md)
  - [DemandeSimulation](doc/DemandeSimulation.md)
  - [Devis](doc/Devis.md)
+ - [DevisLivraison](doc/DevisLivraison.md)
+ - [DevisPanier](doc/DevisPanier.md)
  - [DeviseDto](doc/DeviseDto.md)
  - [DiscriminantConsentement](doc/DiscriminantConsentement.md)
  - [DiscriminantSession](doc/DiscriminantSession.md)
@@ -173,40 +206,60 @@ Class | Method | HTTP request | Description
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
  - [DrapeauxZone](doc/DrapeauxZone.md)
  - [ErreurApi](doc/ErreurApi.md)
+ - [EtatArretCourse](doc/EtatArretCourse.md)
  - [EtatCategorie](doc/EtatCategorie.md)
  - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
  - [FichePublique](doc/FichePublique.md)
+ - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [Grille](doc/Grille.md)
  - [GrillesZone](doc/GrillesZone.md)
+ - [GroupeVendeur](doc/GroupeVendeur.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
+ - [IntentionAppel](doc/IntentionAppel.md)
+ - [IssueEchec](doc/IssueEchec.md)
+ - [IssueRupture](doc/IssueRupture.md)
  - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
+ - [Lieu](doc/Lieu.md)
+ - [LigneDevis](doc/LigneDevis.md)
+ - [LignePanier](doc/LignePanier.md)
+ - [LivraisonCommande](doc/LivraisonCommande.md)
+ - [MesCommandes](doc/MesCommandes.md)
  - [ModeCollecte](doc/ModeCollecte.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
+ - [PaiementCommande](doc/PaiementCommande.md)
+ - [PaiementPanier](doc/PaiementPanier.md)
  - [PhotoAdminDto](doc/PhotoAdminDto.md)
  - [PlageDto](doc/PlageDto.md)
  - [PlaqueUrl](doc/PlaqueUrl.md)
  - [PlateformeDto](doc/PlateformeDto.md)
  - [Point](doc/Point.md)
+ - [PositionSuivi](doc/PositionSuivi.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
  - [PrestatairePilotable](doc/PrestatairePilotable.md)
+ - [ProgressionSuivi](doc/ProgressionSuivi.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
+ - [ResultatAnnulation](doc/ResultatAnnulation.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
+ - [ResultatDecisionSubstitution](doc/ResultatDecisionSubstitution.md)
+ - [ResultatRemise](doc/ResultatRemise.md)
  - [ResultatSimulation](doc/ResultatSimulation.md)
  - [ResultatVerification](doc/ResultatVerification.md)
+ - [ScissionProposee](doc/ScissionProposee.md)
+ - [SecretsRemise](doc/SecretsRemise.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
  - [SignalementRecuDto](doc/SignalementRecuDto.md)
@@ -216,6 +269,8 @@ Class | Method | HTTP request | Description
  - [SourceBascule](doc/SourceBascule.md)
  - [StatutBoutique](doc/StatutBoutique.md)
  - [StatutPrestataire](doc/StatutPrestataire.md)
+ - [SubstitutionSuivi](doc/SubstitutionSuivi.md)
+ - [SuiviCommande](doc/SuiviCommande.md)
  - [SuspendreDto](doc/SuspendreDto.md)
  - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)

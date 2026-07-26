@@ -15,6 +15,11 @@
 	     posée trop tard coûte une soumission ; posée maintenant, rien. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mefali utilise le micro pour enregistrer une note vocale expliquant comment vous repérer à une adresse de livraison.</string>
+	<!-- Même raison, pour le pin de livraison (CMD-02) : « Utiliser ma position
+	     actuelle » de l'écran d'adresse. Posée maintenant, avant qu'iOS soit
+	     vérifiable, pour la même économie de soumission. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mefali utilise votre position pour placer le point de livraison de votre commande.</string>
 	<!-- ⚠ À PRÉVOIR quand iOS sera vérifié (Xcode manque sur le poste du cycle
 	     PLT) : l'ATS d'Apple a le MÊME clivage que la NetworkSecurityPolicy
 	     d'Android, corrigé côté Android par src/debug/res/xml/network_security_config.xml

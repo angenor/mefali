@@ -81,6 +81,36 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `livraison.mise_en_livraison` | `livraison` | `PgCommandes::marquer_arret_collecte` (cycle QRC) | **Produit** — tous les arrêts résolus → la livraison passe EN_LIVRAISON |
 | `plaque.remplacement_requis` | `plaque` | `PgQr::collecter` (cycle QRC) | **Produit** — incident « plaque à remplacer » créé au 1er passage en mode dégradé |
 | `arret.collecte_rejetee` | `arret` | `PgQr::collecter` (cycle QRC) | **Produit** — refus métier d'une collecte (hors-ligne réconciliée) ; jamais au rejeu idempotent |
+| `grille.publiee` | `grille` | `PgTarification::publier` (cycle TRF) | **Produit** — publication d'une grille tarifaire (version + effet) |
+| `routage.degrade` | `devis` | `tarification::routage` (cycle TRF) | **Produit** — repli vol d'oiseau × facteur de zone (constitution IV) |
+| `effort.calcule` | `devis` | `tarification::effort` (cycle TRF) | **Produit** — effort calculé mais NON facturé (promo) |
+| `commande.creee` | `commande` | `commandes::creation` (cycle CMD) | **Produit** — commande née avec ses prix verrouillés et son devis figé |
+| `commande.paiement_requis` | `commande` | `commandes::creation` (cycle CMD) | **Produit** — prépaiement imposé (plafond, restriction, restauration sans historique) |
+| `commande.prete_a_dispatcher` | `commande` | `commandes::creation` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par DSP) |
+| `commande.paiement_confirme` | `commande` | `PgCommandes::confirmer_prepaiement` (cycle CMD) | **Produit** — prépaiement confirmé (PAY simulé) ; le tronc repasse NOUVELLE |
+| `commande.mise_en_attente_coursier` | `commande` | `PgCommandes::mettre_en_attente_coursier` (cycle CMD) | **Produit** — aucun coursier éligible ; file FIFO par âge |
+| `commande.attente_coursier_escaladee` | `commande` | `PgCommandes::escalader_attentes` (cycle CMD) | **Produit** — seuil d'attente franchi (FR-038) |
+| `commande.assignee` | `commande` | `PgCommandes::affecter` (cycle CMD) | **Produit** — livraison assignée, le tronc passe EN_COURS |
+| `commande.terminee` | `commande` | `commandes::collecte::remise` (cycle CMD) | **Produit** — remise validée, commande close |
+| `commande.annulee` | `commande` | `commandes::annulation` (cycle CMD) | **Produit** — annulation client ou admin (sans frais ou règles d'échec) |
+| `commande.echec_declare` | `commande` | `commandes::echec` (cycle CMD) | **Produit** — échec déclaré avec preuves réunies |
+| `panier.scission_proposee` | `commande` (virtuel) | `commandes::panier` (cycle CMD) | **Produit** — proposition de scission (métrique SC-006) ; le devis lui-même n'écrit rien |
+| `livraison.creee` | `livraison` | `commandes::creation` (cycle CMD) | **Produit** — composant de livraison avec son devis figé |
+| `livraison.affectee` | `livraison` | `PgCommandes::affecter` (cycle CMD) | **Produit** — coursier affecté à la livraison |
+| `livraison.mise_en_collecte` | `livraison` | `commandes::collecte` (cycle CMD) | **Produit** — premier arrêt passé EN ROUTE → la livraison passe EN_COLLECTE |
+| `livraison.livree` | `livraison` | `commandes::collecte::remise` (cycle CMD) | **Produit** — remise validée (QR, code ou dépôt) |
+| `arret.en_route` | `arret` | `commandes::collecte` (cycle CMD) | **Produit** — le coursier part vers l'arrêt |
+| `arret.arrive` | `arret` | `commandes::collecte` (cycle CMD) | **Produit** — arrivée sur l'arrêt (base de la prime d'attente TRF-06) |
+| `arret.indisponible` | `arret` | `commandes::collecte` (cycle CMD) | **Produit** — arrêt entièrement indisponible ; compté RÉSOLU au gating |
+| `substitution.proposee` | `substitution` | `commandes::substitution` (cycle CMD) | **Produit** — remplacement proposé par le coursier (échéance persistée) |
+| `substitution.decidee` | `substitution` | `commandes::substitution` (cycle CMD) | **Produit** — acceptée, refusée, expirée ou retirée |
+| `ligne.retiree` | `ligne_commande` | `commandes::substitution` (cycle CMD) | **Produit** — ligne retirée, montant des articles révisé (frais inchangés) |
+| `appel.intention` | `commande` | `commandes_http::appeler` / `commandes::substitution` (cycle CMD) | **Produit** — intention d'appel journalisée (aucun numéro dans le payload) |
+| `remise.code_epuise` | `commande` | `commandes::collecte::valider_remise` (cycle CMD) | **Produit** — essais du code de remise épuisés : la commande est bloquée à la porte du client et **exige un humain** (l'app dit « un conseiller va vous contacter »). Un `tracing::warn!` ne s'abonne pas — l'exploitation doit le recevoir comme les autres. |
+| `echec.issue_enregistree` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — issue de l'arbre §7.5 avec ses deux détenteurs |
+| `litige.ouvert` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par AVI-04) |
+| `indemnisation.due` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par CRS-06) |
+| `sanction.posee` | `compte` | `comptes::restriction::poser_restriction` (cycle CMD) | **Produit** — restriction posée sur un compte client (CPT-06) |
 
 ### Événements du cycle ZON (002 — zones & configuration héritée)
 
@@ -278,6 +308,80 @@ admin, jamais un nominatif.
   que le cas « calculé mais non facturé », qui est précisément celui qu'aucune
   ligne de paiement ne tracerait ;
 - les **seeds** — chargement initial, pas une transition (patron 002/003/005/006).
+
+### Événements du cycle CMD (008 — cycle de vie complet d'une commande)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
+(constitution VI ; specs/008 data-model §7). Registre posé AVANT l'implémentation
+(Definition of Done §0.4 point 4). **27 événements** : 25 nouveaux ci-dessous +
+`arret.collecte` et `livraison.mise_en_livraison`, hérités du cycle QRC 006 et
+**inchangés** (leur payload ne bouge pas — le type d'arrêt n'y entre pas).
+
+**Identification des entités.** Le tronc `commande`, la `livraison`, l'`arret`,
+la `substitution` et l'`issue_echec` sont des entités durables portant leur `id`.
+`panier.scission_proposee` fait exception : **aucun panier n'existe côté serveur**
+(research R8) — l'événement porte en `entite_id` l'identifiant du **compte
+client**, la seule entité durable en jeu, et reste une métrique de proposition,
+jamais une transition d'état. `sanction.posee` porte `entite_id` = `compte.id`
+(la restriction vit sur des colonnes de `comptes.compte`, écrites par le crate
+`comptes` — research R12).
+
+**Minimisation (ARTCI).** AUCUN payload ne porte de coordonnée brute : ni le
+lieu de prestation, ni la position du coursier, ni celle d'un site. Les
+distances sont **arrondies** en mètres, les montants sont des **entiers en
+unités mineures** accompagnés de leur devise. Aucun numéro de téléphone
+n'entre dans `appel.intention` — seules l'intention, sa direction et son motif
+sont journalisées. Aucun nom de client, de vendeur ni de coursier : uniquement
+des UUID. Les **codes et jetons de remise** ne sont JAMAIS journalisés, pas même
+sous forme d'empreinte.
+
+**Trois contrats sans consommateur** ce cycle, émis pour que le cycle
+propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
+(DSP), `litige.ouvert` (AVI-04) et `indemnisation.due` (CRS-06).
+
+| Type | `entite_type` | `entite_id` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|---|
+| `commande.creee` | `commande` | `commande.id` | `zone`, `categorie`, `nb_vendeurs`, `nb_articles`, `montant_articles`, `total`, `devise`, `mode_paiement`, `mono_vendeur` (booléen), `acteur` |
+| `commande.paiement_requis` | `commande` | `commande.id` | `motif` (`plafond` \| `prepaiement_impose` \| `restauration_sans_historique`), `total`, `devise`, `plafond` |
+| `commande.prete_a_dispatcher` | `commande` | `commande.id` | `zone`, `nb_arrets`, `montant_a_avancer`, `devise`, `transport_requis` (slug) — **consommé par DSP** |
+| `commande.paiement_confirme` | `commande` | `commande.id` | `mode` (`mobile_money`), `total`, `devise` — le tronc repasse `nouvelle` |
+| `commande.mise_en_attente_coursier` | `commande` | `commande.id` | `zone`, `motif` (`aucun_coursier_eligible`), `age_s` |
+| `commande.attente_coursier_escaladee` | `commande` | `commande.id` | `zone`, `age_s`, `seuil_s` (paramètre de zone franchi) |
+| `commande.assignee` | `commande` | `commande.id` | `livraison`, `coursier`, `depuis_attente` (booléen — reprise FIFO) |
+| `commande.terminee` | `commande` | `commande.id` | `mode_remise` (`qr` \| `code` \| `depot`), `duree_totale_s`, `total_encaisse`, `devise` |
+| `remise.code_epuise` | `commande` | `commande.id` | `livraison`, `essais` (= le plafond de zone atteint), `acteur` (coursier) — **aucun code, jamais** : le publier dans un événement le sortirait du seul canal qui doit le porter (client ↔ coursier, R6) |
+| `commande.annulee` | `commande` | `commande.id` | `par` (`client` \| `admin` \| `systeme`), `motif_cle`, `sans_frais` (booléen), `part_coursier_due` (unités mineures), `remboursement_du` (booléen), `devise` |
+| `commande.echec_declare` | `commande` | `commande.id` | `type_issue`, `preuves_ok` (booléen — toujours `true` : sans preuves, l'écriture est refusée) |
+| `panier.scission_proposee` | `commande` (virtuel) | `compte.id` (client) | `zone`, `categorie`, `cause` (`categorie_non_mixable` \| `plafond_eclatement`), `nb_commandes` — **métrique SC-006** |
+| `livraison.creee` | `livraison` | `livraison.id` | `commande`, `nb_arrets`, `devis_prix_client`, `devis_part_coursier`, `devise`, `degraded` (booléen) |
+| `livraison.affectee` | `livraison` | `livraison.id` | `commande`, `coursier`, `delai_assignation_s` |
+| `livraison.mise_en_collecte` | `livraison` | `livraison.id` | `commande`, `arret` (celui qui a déclenché), `acteur` |
+| `livraison.livree` | `livraison` | `livraison.id` | `commande`, `mode_remise`, `essais_code` (entier) |
+| `arret.en_route` | `arret` | `arret.id` | `commande`, `livraison`, `ordre`, `acteur` |
+| `arret.arrive` | `arret` | `arret.id` | `commande`, `livraison`, `ordre`, `attente_depuis_s` — **base de la prime d'attente TRF-06** |
+| `arret.indisponible` | `arret` | `arret.id` | `commande`, `livraison`, `nb_lignes_retirees`, `motif` (`vendeur_ferme` \| `toutes_lignes_retirees`), `acteur` |
+| `substitution.proposee` | `substitution` | `substitution.id` | `commande`, `ligne`, `arret`, `ecart_pourcent` (entier signé), `echeance_s`, `acteur` |
+| `substitution.decidee` | `substitution` | `substitution.id` | `commande`, `issue` (`acceptee` \| `refusee` \| `expiree_appel` \| `retiree`), `delai_reponse_s`, `acteur` (`null` si expiration automatique) |
+| `ligne.retiree` | `ligne_commande` | `ligne_commande.id` | `commande`, `motif` (`preference` \| `expiration` \| `refus` \| `arret_indisponible`), `montant_retire`, `devise` |
+| `appel.intention` | `commande` | `commande.id` | `de` (`client` \| `coursier` \| `systeme`), `vers` (`client` \| `coursier`), `motif` (`suivi` \| `substitution` \| `expiration`) — **aucun numéro** |
+| `echec.issue_enregistree` | `issue_echec` | `issue_echec.id` | `commande`, `arret` (`null` = à la remise), `type_issue`, `detenteur_argent`, `detenteur_marchandise`, `montant_en_jeu`, `devise`, `motif_cle`, `acteur` |
+| `litige.ouvert` | `issue_echec` | `issue_echec.id` | `commande`, `type_issue`, `arret` — **contrat pour AVI-04** (sans consommateur) |
+| `indemnisation.due` | `issue_echec` | `issue_echec.id` | `commande`, `coursier`, `montant`, `devise` — **contrat pour CRS-06** (sans consommateur) |
+| `sanction.posee` | `compte` | `compte.id` | `sanction` (`prepaiement_impose` \| `bloque`), `motif_cle`, `rang` (1 = 1ᵉʳ refus périssable, 2 = 2ᵉ) |
+
+**Ce qui n'émet PAS d'événement outbox** (specs/008 research R8, R7, R10) :
+
+- le **devis de panier** (`POST /paniers/devis`) — aucune écriture, aucune ligne,
+  aucun événement autre que `panier.scission_proposee` lorsqu'une proposition est
+  effectivement formulée (**P4** du plan) ;
+- les **rejeux idempotents** — même `Idempotency-Key` de création, même
+  `uuid_client` de transition ou de décision : ni double ligne, ni second
+  événement ;
+- la **résolution d'une échéance à la lecture** tant qu'elle ne change rien —
+  seule l'expiration effectivement écrite émet `substitution.decidee` ;
+- les **transitions refusées** (hors séquence, non-propriétaire, état terminal) —
+  un refus n'est pas une transition ;
+- les **seeds** — chargement initial (patron des cycles 002/003/005/006/007).
 
 ## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
 

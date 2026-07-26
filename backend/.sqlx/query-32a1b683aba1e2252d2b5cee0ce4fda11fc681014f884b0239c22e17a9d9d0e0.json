@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, echeance FROM commandes.substitution WHERE uuid_client = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "echeance",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.substitution",
+            "name": "echeance"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "32a1b683aba1e2252d2b5cee0ce4fda11fc681014f884b0239c22e17a9d9d0e0"
+}

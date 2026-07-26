@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT devis_prix_client FROM commandes.livraison WHERE commande_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "devis_prix_client",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_prix_client"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e2cc35adc8cc08dbf8321fdc71544ee7cd111996473dfefa479f3197107bacce"
+}

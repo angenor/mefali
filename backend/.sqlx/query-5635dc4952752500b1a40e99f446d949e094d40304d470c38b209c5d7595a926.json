@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.commande SET etat_paiement = 'rembourse' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5635dc4952752500b1a40e99f446d949e094d40304d470c38b209c5d7595a926"
+}

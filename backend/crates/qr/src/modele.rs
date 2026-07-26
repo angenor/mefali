@@ -38,9 +38,9 @@ pub struct ResultatCollecte {
     pub arret_statut: StatutArret,
     /// État de la livraison après gating.
     pub livraison_etat: EtatLivraison,
-    /// Arrêts collectés / total (progression).
+    /// COLLECTES faites (progression) — la remise n'en est pas une (P1, R4).
     pub nb_collectes: i16,
-    /// Total d'arrêts de la livraison.
+    /// Total de COLLECTES de la livraison (arrêt de remise EXCLU).
     pub nb_arrets: i16,
     /// Vrai si cette collecte a fait basculer la livraison EN_LIVRAISON.
     pub en_livraison: bool,

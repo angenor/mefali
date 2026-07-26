@@ -5,6 +5,253 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/commandes/attente": {
+      "get": {
+        "tags": [
+          "commandes-admin"
+        ],
+        "summary": "CMD-10 — file FIFO des commandes sans coursier d'une zone.",
+        "description": "L'ordre est l'âge, du plus ancien au plus récent : c'est la promesse\nproduite au client qui attend (« la plus ancienne repart en premier »), et\nc'est le contrat que **DSP** consommera tel quel.",
+        "operationId": "file_attente",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "description": "Zone (ville) dont on veut la file d'attente.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File d'attente de la zone, la plus ancienne d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileAttenteCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/commandes/{id}/annuler": {
+      "post": {
+        "tags": [
+          "commandes-admin"
+        ],
+        "summary": "CMD-07 — un administrateur annule une commande, **motif obligatoire**.",
+        "description": "Le motif n'est pas une formalité : il est journalisé, il part dans\nl'événement, et c'est lui que le client lira. C'est une **clé i18n**, jamais\ndu texte libre — un motif écrit à la main serait illisible pour la moitié\ndes clients et impossible à agréger pour l'exploitation.",
+        "operationId": "annuler_commande_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande à annuler.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeAnnulation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Commande annulée ; `sans_frais` dit si quelque chose est dû.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatAnnulation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "État terminal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent — un admin doit motiver son geste (FR-054).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/commandes/{id}/issues": {
+      "post": {
+        "tags": [
+          "commandes-admin"
+        ],
+        "summary": "CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.",
+        "description": "La même table de décision que la surface coursier, par une autre porte : ce\nque le support tranche au téléphone doit produire exactement les mêmes deux\ndétenteurs, le même litige et la même sanction qu'une déclaration terrain.\nDeux chemins qui divergeraient seraient deux vérités sur le même incident.",
+        "operationId": "enregistrer_issue",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeEchec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Issue enregistrée avec ses deux détenteurs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueEchec"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande sans livraison, ou inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Preuves incomplètes (FR-056).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/comptes/dossiers-coursier": {
       "get": {
         "tags": [
@@ -2842,6 +3089,434 @@
         }
       }
     },
+    "/commandes": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "Crée une commande : prix verrouillés, devis figé, code et QR remis\nimmédiatement (CMD-03).",
+        "description": "Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE et un\n`200` — jamais un doublon : mêmes identifiants, mêmes montants, mêmes\nsecrets de remise, même devis figé.\n\n**Une exception, assumée** : `devis.ordre_arrets` revient vide. L'ordre de\npassage n'est pas stocké sur la livraison — il est FIGÉ sur les arrêts\neux-mêmes, dans leur colonne `ordre`. Le reconstituer coûterait une lecture\nde plus sur le chemin qui doit rester le plus léger, pour une valeur que\nl'appelant a déjà reçue au `201`. Promesse exacte plutôt que promesse tenue\nà contrecœur.",
+        "operationId": "creer_commande",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 client — DEVIENT l'identifiant de la commande (R7).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeCreationCommande"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu de la même clé — la commande EXISTANTE : mêmes identifiants, mêmes montants, mêmes secrets de remise, même devis figé. Seul `devis.ordre_arrets` revient vide : l'ordre de passage est figé sur les arrêts, pas sur la livraison, et le rejeu ne paie pas une lecture de plus pour le reconstituer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commande"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Commande créée : tronc, livraison, segment, arrêts (collectes ordonnées + remise), prix verrouillés, devis figé, code et QR.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Commande"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Compte bloqué, téléphone non vérifié, ou rôle client absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Catégorie non mixable, vendeur fermé, article indisponible, ou espèces indisponibles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Repère manquant, panier invalide, clé d'idempotence absente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/commandes/{id}": {
+      "get": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-05 — suivi complet d'une commande, pour son **propriétaire**.",
+        "description": "Le code et le jeton de remise ne sont servis qu'ici, et qu'au propriétaire :\nle coursier, lui, ne reçoit que des empreintes (research R6).",
+        "operationId": "suivre_commande",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suivi : état en clé i18n, progression par arrêt, position AVEC son âge, code et QR de remise.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuiviCommande"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue — ou appartenant à un autre compte : les deux sont indiscernables, et c'est voulu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/commandes/{id}/annuler": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-07 — le client annule sa commande.",
+        "description": "**Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière\nest un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à\nfacturer. Dès le premier achat, la part du coursier est due.",
+        "operationId": "annuler_commande",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeAnnulation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Commande annulée ; `sans_frais` dit si quelque chose est dû.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatAnnulation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue ou appartenant à un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "État terminal : une commande livrée, annulée ou échouée ne s'annule pas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/commandes/{id}/appel": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-05 — journalise l'intention d'appeler le coursier (FR-041).",
+        "description": "L'appel part du téléphone : le serveur n'en voit rien et **ne journalise\naucun numéro**. Ce qu'il enregistre, c'est qu'un client a eu BESOIN\nd'appeler — une métrique de friction (minimisation ARTCI).",
+        "operationId": "intention_appel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntentionAppel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Intention journalisée — aucun numéro n'est enregistré."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue ou appartenant à un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/commandes/{id}/substitutions/{sub}/decision": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.",
+        "description": "Acceptée, la ligne est remplacée au prix proposé ; refusée, elle est retirée\net n'est pas facturée. Dans les deux cas le **devis de livraison ne bouge\npas** (FR-050) et le total reste payé **en une fois** (FR-049).\n\nPassé l'échéance, la décision est refusée (`409`) : la fenêtre est une\npromesse faite au coursier autant qu'au client — au-delà, il a déjà agi.",
+        "operationId": "decider_substitution",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sub",
+            "in": "path",
+            "description": "Proposition de remplacement ouverte.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionSubstitution"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Décision appliquée ; montants révisés, devis inchangé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatDecisionSubstitution"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis, ou proposition d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposition inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Fenêtre de décision expirée, ou proposition déjà close.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/config": {
       "get": {
         "tags": [
@@ -3016,6 +3691,591 @@
           },
           "422": {
             "description": "Refus métier : hors zone, jeton révoqué, plaque invalide, photo requise, code incorrect/épuisé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.",
+        "description": "`arrive_le` est posé par le serveur : c'est la borne de départ de l'attente\nfacturable (prime TRF-06). C'est pour cela que `en_route → collecte`\nn'existe pas — on ne saute pas une déclaration qui vaut de l'argent.",
+        "operationId": "arret_arrive",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt de cette course, déjà EN ROUTE.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionArret"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt ARRIVÉ, `arrive_le` posé par le serveur.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatArretCourse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou hors de la livraison indiquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Arriver sans être parti : transition absente de la table.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/arrets/{arret_id}/en-route": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-04 — le coursier déclare partir vers un arrêt.",
+        "description": "Le PREMIER départ d'une course la fait passer EN_COLLECTE (data-model §3.2).",
+        "operationId": "arret_en_route",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt de cette course.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionArret"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt EN ROUTE (idempotent au rejeu du même uuid_client).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatArretCourse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou hors de la livraison indiquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transition absente de la table fermée (data-model §3.3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/arrets/{arret_id}/indisponible": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-04/CMD-06 — arrêt entièrement indisponible (FR-051).",
+        "description": "Vendeur fermé, ou plus une seule ligne à collecter. L'arrêt est compté\n**résolu** (la course continue), son montant avancé retombe à zéro, et ses\nlignes sont retirées de la commande — les frais de livraison, eux, ne\nbougent pas (FR-050).",
+        "operationId": "arret_indisponible",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt de cette course.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionArret"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Arrêt INDISPONIBLE, compté résolu ; avance nulle, lignes retirées, montants révisés.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatArretCourse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou hors de la livraison indiquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Arrêt déjà résolu : transition absente de la table.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/echec": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-08 — le coursier déclare l'échec ; le serveur déroule l'arbre §7.5.",
+        "description": "**Refusé sans preuves** (`409 preuves_incompletes`, FR-056) : « le coursier\nne perd jamais » suppose une trace — appels via l'app espacés, présence\ngéolocalisée, photo sur place. Sans elle, la promesse deviendrait une\ninvitation.",
+        "operationId": "declarer_echec",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeEchec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Issue enregistrée avec ses DEUX détenteurs, son litige éventuel, son indemnisation et sa sanction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueEchec"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Livraison inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Preuves incomplètes (FR-056), ou état incompatible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/remise": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.",
+        "description": "⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a\nl'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu\ncôté serveur, sur la valeur stockée.\n\nTrois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention\nadmin : quatre chiffres se devinent en quelques minutes sans plafond.",
+        "operationId": "remise",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeRemise"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatRemise"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Livraison inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Code ou jeton incorrect, ou course pas encore en livraison.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Demande mal formée (jeton, code ou photo manquant).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Code de remise ÉPUISÉ — intervention admin requise.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/substitutions": {
+      "post": {
+        "tags": [
+          "courses"
+        ],
+        "summary": "CMD-06 — le coursier déclare un article indisponible et applique la\npréférence du client (FR-044/045).",
+        "description": "Trois chemins, deux invariants : le **devis de livraison ne bouge jamais**\n(FR-050) et le total reste payé **en une fois** (FR-049). La proposition de\nremplacement est refusée si l'article vient d'un **autre vendeur** (FR-048)\nou si l'écart de prix dépasse le plafond de zone (FR-047).",
+        "operationId": "declarer_rupture",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course assignée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Partie `demande` (JSON) + `photo` binaire du remplacement.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RuptureMultipart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Article retiré (montants révisés) ou proposition ouverte avec sa fenêtre de décision.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueRupture"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis, ou course assignée à un autre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Autre vendeur, écart de prix hors plafond, ou ligne déjà résolue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Demande mal formée (photo ou prix manquant).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3543,6 +4803,52 @@
         ]
       }
     },
+    "/moi/commandes": {
+      "get": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-05 — les commandes du compte, les plus récentes d'abord.",
+        "operationId": "mes_commandes",
+        "responses": {
+          "200": {
+            "description": "Commandes du compte, les plus récentes d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesCommandes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/dossier-coursier": {
       "get": {
         "tags": [
@@ -3749,6 +5055,83 @@
           },
           "404": {
             "description": "Session inconnue ou n'appartenant pas au compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/paniers/devis": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "Devis d'un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).",
+        "description": "Regroupe par vendeur, chiffre les frais via le moteur tarifaire, et renvoie\nles deux déclencheurs de proposition de scission en UNE seule surface.\nAucune ligne n'est écrite, aucune commande n'est créée : rien n'est engagé\ntant que le client n'a pas confirmé (FR-010, research R8).",
+        "operationId": "devis_panier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDevisPanier"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Panier chiffré : groupes, sous-totaux, devis détaillé, drapeau de paiement et bloc de scission. AUCUNE écriture, aucune commande créée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevisPanier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Vendeur fermé ou article indisponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Panier vide, quantité nulle, catégorie inactive.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4735,6 +6118,33 @@
           }
         }
       },
+      "ActionArret": {
+        "type": "object",
+        "description": "Corps commun des actions déclaratives d'arrêt.",
+        "required": [
+          "uuid_client",
+          "horodatage_local"
+        ],
+        "properties": {
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil. **Observation seulement** : le serveur écrit\nle sien, parce que `arrive_le` fonde une prime (TRF-06)."
+          },
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pour `indisponible` : `vendeur_ferme` (défaut) ou\n`toutes_lignes_retirees`. Ignoré par les autres actions."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V)."
+          }
+        }
+      },
       "ActionBoutiqueDto": {
         "type": "string",
         "description": "Geste de boutique (FR-033) — toujours une DÉCISION.",
@@ -4850,6 +6260,38 @@
           "plateforme": {
             "$ref": "#/components/schemas/PlateformeDto",
             "description": "Plateforme."
+          }
+        }
+      },
+      "ArretCourantSuivi": {
+        "type": "object",
+        "description": "L'arrêt où en est le coursier.",
+        "required": [
+          "arret_id",
+          "ordre",
+          "statut"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt."
+          },
+          "ordre": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Rang dans l'itinéraire."
+          },
+          "prestataire_nom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nom du vendeur (`null` sur l'arrêt de remise)."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut de l'arrêt."
           }
         }
       },
@@ -5214,6 +6656,197 @@
           }
         }
       },
+      "Commande": {
+        "type": "object",
+        "description": "Commande créée.",
+        "required": [
+          "id",
+          "etat",
+          "montant_articles_unites",
+          "total_unites",
+          "devise",
+          "paiement",
+          "remise"
+        ],
+        "properties": {
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État de très haut niveau."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant (= `Idempotency-Key`)."
+          },
+          "livraison": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LivraisonCommande",
+                "description": "Livraison, si la commande en a une — **composant 0..n du tronc**.\n\nOptionnel comme `SuiviCommande.livraison_id` l'est déjà : le tronc ne\nporte aucun champ logistique, et `creer_relivraison` crée bel et bien\nune commande sans livraison. L'exiger ici était un oubli, pas un choix.\nTous les verticaux du MVP en créent exactement une : la valeur reste\ndonc toujours renseignée aujourd'hui."
+              }
+            ]
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des articles."
+          },
+          "paiement": {
+            "$ref": "#/components/schemas/PaiementCommande",
+            "description": "Paiement."
+          },
+          "remise": {
+            "$ref": "#/components/schemas/SecretsRemise",
+            "description": "Code et jeton de remise."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer."
+          }
+        }
+      },
+      "CommandeEnAttente": {
+        "type": "object",
+        "description": "Une commande en attente de coursier, telle que DSP la lira.",
+        "required": [
+          "commande_id",
+          "zone_id",
+          "age_s",
+          "nb_collectes",
+          "montant_a_avancer",
+          "devise"
+        ],
+        "properties": {
+          "age_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ancienneté dans la file, en secondes — **c'est elle qui ordonne**."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "montant_a_avancer": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant total que le coursier devra avancer (unités mineures)."
+          },
+          "nb_collectes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre d'arrêts de collecte à desservir."
+          },
+          "premiere_collecte_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Latitude du premier site VENDEUR — donnée professionnelle. Aucune\ncoordonnée du client n'est exposée ici (minimisation ARTCI)."
+          },
+          "premiere_collecte_lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Longitude du premier site vendeur."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
+          }
+        }
+      },
+      "CommandeProposee": {
+        "type": "object",
+        "description": "Une commande telle qu'elle sortirait de la scission.",
+        "required": [
+          "libelle_cle",
+          "total_articles_unites",
+          "articles"
+        ],
+        "properties": {
+          "articles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Articles qui la composeraient."
+          },
+          "libelle_cle": {
+            "type": "string",
+            "description": "Clé i18n du libellé."
+          },
+          "total_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total des ARTICLES de cette commande (unités mineures)."
+          }
+        }
+      },
+      "CommandeResumee": {
+        "type": "object",
+        "description": "Une commande de la liste `GET /moi/commandes`.",
+        "required": [
+          "id",
+          "etat",
+          "etat_cle",
+          "cree_le",
+          "total_unites",
+          "devise",
+          "nb_vendeurs"
+        ],
+        "properties": {
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Création."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État de très haut niveau."
+          },
+          "etat_cle": {
+            "type": "string",
+            "description": "Clé i18n de l'état affiché."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande."
+          },
+          "nb_vendeurs": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre de vendeurs."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer."
+          }
+        }
+      },
       "Composantes": {
         "type": "object",
         "description": "Détail des composantes (unités mineures) — FR-020.",
@@ -5267,6 +6900,62 @@
             "type": "integer",
             "format": "int64",
             "description": "Suppléments activés (pluie…)."
+          }
+        }
+      },
+      "ComposantesDevis": {
+        "type": "object",
+        "description": "Détail des composantes du devis (affichage du récapitulatif).",
+        "required": [
+          "base",
+          "km",
+          "supplements",
+          "effort_paliers",
+          "effort_attente",
+          "effort_arrets",
+          "arrondi",
+          "retenue_vendeur"
+        ],
+        "properties": {
+          "arrondi": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Reliquat d'arrondi (abonde la part coursier)."
+          },
+          "base": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix client de base."
+          },
+          "effort_arrets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — suppléments d'arrêt."
+          },
+          "effort_attente": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — prime d'attente."
+          },
+          "effort_paliers": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effort — paliers d'articles."
+          },
+          "km": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Composante kilométrique."
+          },
+          "retenue_vendeur": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Retenue vendeur (VND-08)."
+          },
+          "supplements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Suppléments (pluie, plage horaire…)."
           }
         }
       },
@@ -5490,6 +7179,40 @@
           }
         }
       },
+      "CoursierSuivi": {
+        "type": "object",
+        "description": "Le coursier affecté, tel que l'écran de suivi le montre.",
+        "required": [
+          "id",
+          "appel_possible"
+        ],
+        "properties": {
+          "appel_possible": {
+            "type": "boolean",
+            "description": "Vrai si l'app peut proposer d'appeler."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant du coursier."
+          },
+          "note": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Note moyenne — **toujours `null` ce cycle** : les avis appartiennent au\ncycle AVI, qui n'existe pas encore."
+          },
+          "prenom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Prénom — **toujours `null` ce cycle** : `comptes.compte` ne porte aucun\nnom (cycle CPT), et rien ne sera inventé pour remplir un champ."
+          }
+        }
+      },
       "CreerArticleDto": {
         "type": "object",
         "description": "Création d'un article (disponible par défaut — FR-020).",
@@ -5586,6 +7309,32 @@
           }
         }
       },
+      "DecisionSubstitution": {
+        "type": "object",
+        "description": "Décision du client sur une proposition de remplacement.",
+        "required": [
+          "accepte"
+        ],
+        "properties": {
+          "accepte": {
+            "type": "boolean",
+            "description": "`true` = accepter le remplacement, `false` = le refuser (l'article est\nalors retiré, et rien n'est payé pour lui)."
+          }
+        }
+      },
+      "DemandeAnnulation": {
+        "type": "object",
+        "description": "Demande d'annulation.",
+        "properties": {
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif. **Obligatoire pour un admin** (FR-054), facultative\npour le client — il n'a pas à se justifier."
+          }
+        }
+      },
       "DemandeCollecte": {
         "type": "object",
         "description": "Corps de la demande de collecte (partie `demande` JSON du multipart).",
@@ -5637,6 +7386,139 @@
           }
         }
       },
+      "DemandeCreationCommande": {
+        "type": "object",
+        "description": "Demande de création de commande.",
+        "required": [
+          "zone_id",
+          "categorie_slug",
+          "transport_slug",
+          "lignes",
+          "mode_paiement"
+        ],
+        "properties": {
+          "adresse_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Adresse du carnet (CPT-05) — ou `lieu` + repère fournis en clair."
+          },
+          "categorie_slug": {
+            "type": "string",
+            "description": "Catégorie de service."
+          },
+          "lieu": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Lieu",
+                "description": "Pin GPS, si aucune adresse du carnet n'est utilisée."
+              }
+            ]
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LignePanier"
+            },
+            "description": "Lignes du panier."
+          },
+          "mode_paiement": {
+            "type": "string",
+            "description": "`cash` | `mobile_money`."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit."
+          },
+          "repere_vocal_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé S3 du repère vocal."
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule demandé."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
+          }
+        }
+      },
+      "DemandeDevisPanier": {
+        "type": "object",
+        "description": "Demande de devis de panier — **aucun effet de bord** (P4).",
+        "required": [
+          "zone_id",
+          "categorie_slug",
+          "transport_slug",
+          "lieu",
+          "lignes"
+        ],
+        "properties": {
+          "categorie_slug": {
+            "type": "string",
+            "description": "Catégorie de service (`marche`, `restauration`…)."
+          },
+          "lieu": {
+            "$ref": "#/components/schemas/Lieu",
+            "description": "Lieu de prestation — destination de la course."
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LignePanier"
+            },
+            "description": "Lignes du panier, dans l'ordre de composition."
+          },
+          "transport_slug": {
+            "type": "string",
+            "description": "Véhicule demandé (`moto`, `velo`…)."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande (résout mixage, plafonds, devise)."
+          }
+        }
+      },
+      "DemandeEchec": {
+        "type": "object",
+        "description": "Déclaration d'un échec (arbre §7.5).",
+        "required": [
+          "type_issue",
+          "motif_cle"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt concerné — absent = à la remise."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif — jamais du texte libre."
+          },
+          "type_issue": {
+            "type": "string",
+            "description": "Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…)."
+          }
+        }
+      },
       "DemandeOtp": {
         "type": "object",
         "description": "Corps de `POST /auth/otp/demander`.",
@@ -5666,6 +7548,83 @@
           "rafraichissement": {
             "type": "string",
             "description": "Jeton de renouvellement opaque courant."
+          }
+        }
+      },
+      "DemandeRemise": {
+        "type": "object",
+        "description": "Preuve de remise présentée par le coursier.",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Code à 4 chiffres dicté par le client (mode `code`)."
+          },
+          "jeton": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Jeton lu dans le QR de réception (mode `qr`)."
+          },
+          "mode": {
+            "type": "string",
+            "description": "`qr` | `code` | `depot`."
+          },
+          "photo_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé de la photo déposée sur place (mode `depot`)."
+          }
+        }
+      },
+      "DemandeRupture": {
+        "type": "object",
+        "description": "Partie JSON `demande` du multipart de rupture.",
+        "required": [
+          "ligne_id",
+          "uuid_client"
+        ],
+        "properties": {
+          "article_propose_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Article proposé — obligatoire pour `remplacer`, **du même vendeur**."
+          },
+          "ligne_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ligne de commande devenue indisponible."
+          },
+          "prix_propose_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Prix unitaire proposé (unités mineures) — obligatoire pour `remplacer`."
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`retirer` | `remplacer`. Absent = suivre la préférence du client, dont\nle défaut sûr est le retrait : on ne fait jamais payer par défaut."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 client, constitution V)."
           }
         }
       },
@@ -5837,6 +7796,122 @@
           "proposer_scission": {
             "type": "boolean",
             "description": "Le détour dépasse le plafond de zone : CMD proposera de scinder."
+          }
+        }
+      },
+      "DevisLivraison": {
+        "type": "object",
+        "description": "Devis de livraison figé (cycle 007).",
+        "required": [
+          "prix_client_unites",
+          "part_coursier_unites",
+          "marge_unites",
+          "devise",
+          "distance_m",
+          "eta_s",
+          "degraded",
+          "composantes",
+          "ordre_arrets"
+        ],
+        "properties": {
+          "composantes": {
+            "$ref": "#/components/schemas/ComposantesDevis",
+            "description": "Détail des composantes."
+          },
+          "degraded": {
+            "type": "boolean",
+            "description": "Vrai si la distance vient du repli vol d'oiseau (constitution IV)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distance routière totale (m)."
+          },
+          "eta_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée estimée (s)."
+          },
+          "marge_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Marge Mefali."
+          },
+          "ordre_arrets": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Ordre de passage retenu pour les retraits."
+          },
+          "part_coursier_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part reversée au coursier."
+          },
+          "prix_client_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix payé par le client (unités mineures)."
+          }
+        }
+      },
+      "DevisPanier": {
+        "type": "object",
+        "description": "Réponse du devis de panier.",
+        "required": [
+          "groupes",
+          "montant_articles_unites",
+          "devis",
+          "total_unites",
+          "devise",
+          "paiement"
+        ],
+        "properties": {
+          "devis": {
+            "$ref": "#/components/schemas/DevisLivraison",
+            "description": "Devis de livraison."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "groupes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupeVendeur"
+            },
+            "description": "Regroupement par vendeur."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des ARTICLES seuls (unités mineures)."
+          },
+          "paiement": {
+            "$ref": "#/components/schemas/PaiementPanier",
+            "description": "Décision d'encaissement."
+          },
+          "scission": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScissionProposee",
+                "description": "Proposition de scission, ou `null`."
+              }
+            ]
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer = articles + prix client du devis."
           }
         }
       },
@@ -6021,6 +8096,70 @@
           }
         }
       },
+      "EtatArretCourse": {
+        "type": "object",
+        "description": "État de l'arrêt et de sa course après la transition.",
+        "required": [
+          "arret_id",
+          "statut",
+          "livraison_id",
+          "commande_id",
+          "livraison_etat",
+          "collectes_faites",
+          "collectes_resolues",
+          "collectes_total",
+          "en_livraison",
+          "rejeu"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt concerné."
+          },
+          "collectes_faites": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Arrêts effectivement COLLECTÉS (la remise n'en est pas une)."
+          },
+          "collectes_resolues": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Arrêts RÉSOLUS — collectés **ou** indisponibles. C'est ce compteur qui\ndit au coursier ce qui lui reste à faire : un étal fermé est fini, même\ns'il n'y a rien pris."
+          },
+          "collectes_total": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre total de COLLECTES de la course."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande ancre."
+          },
+          "en_livraison": {
+            "type": "boolean",
+            "description": "Vrai si la course vient de basculer EN_LIVRAISON."
+          },
+          "livraison_etat": {
+            "type": "string",
+            "description": "État de la livraison : `assignee` | `en_collecte` | `en_livraison`."
+          },
+          "livraison_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Livraison porteuse."
+          },
+          "rejeu": {
+            "type": "boolean",
+            "description": "Vrai si l'appel était un rejeu du même `uuid_client` : rien n'a été\nréécrit, aucun événement n'a été ré-émis."
+          },
+          "statut": {
+            "type": "string",
+            "description": "Statut de l'arrêt : `en_route` | `arrive` | `indisponible`."
+          }
+        }
+      },
       "EtatCategorie": {
         "type": "object",
         "description": "État effectif d'une catégorie renvoyé après forçage (contrat).",
@@ -6170,6 +8309,22 @@
           }
         }
       },
+      "FileAttenteCoursier": {
+        "type": "object",
+        "description": "La file d'attente d'une zone.",
+        "required": [
+          "commandes"
+        ],
+        "properties": {
+          "commandes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandeEnAttente"
+            },
+            "description": "Commandes en attente, **la plus ancienne d'abord** (FIFO par âge)."
+          }
+        }
+      },
       "ForcageDto": {
         "type": "string",
         "description": "Mode de forçage (contrat) — mappé sur [`zones::Forcage`].",
@@ -6267,6 +8422,45 @@
           }
         }
       },
+      "GroupeVendeur": {
+        "type": "object",
+        "description": "Les lignes d'un vendeur, regroupées (maquette C3-3a).",
+        "required": [
+          "prestataire_id",
+          "nom",
+          "nb_articles",
+          "sous_total_unites",
+          "lignes"
+        ],
+        "properties": {
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneDevis"
+            },
+            "description": "Lignes du vendeur."
+          },
+          "nb_articles": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nombre d'articles du groupe."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom affiché sur la carte vendeur."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Vendeur."
+          },
+          "sous_total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sous-total du vendeur (unités mineures)."
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "description": "Réponse de la sonde de vie. Ne contient AUCUNE donnée sensible : la sonde\nmesure la disponibilité du processus (non authentifiée, constitution VIII).",
@@ -6325,6 +8519,144 @@
           }
         }
       },
+      "IntentionAppel": {
+        "type": "object",
+        "description": "Motif d'une intention d'appel.",
+        "properties": {
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`suivi` (défaut) | `substitution` | `expiration`."
+          }
+        }
+      },
+      "IssueEchec": {
+        "type": "object",
+        "description": "Une issue de l'arbre §7.5, telle qu'elle est enregistrée.",
+        "required": [
+          "issue_id",
+          "commande_id",
+          "detenteur_argent",
+          "detenteur_marchandise",
+          "litige_ouvert",
+          "indemnisation_due",
+          "sanction",
+          "montant_en_jeu_unites",
+          "devise"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "detenteur_argent": {
+            "type": "string",
+            "description": "Qui détient l'ARGENT."
+          },
+          "detenteur_marchandise": {
+            "type": "string",
+            "description": "Qui détient la MARCHANDISE — axe indépendant du précédent (R14)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "indemnisation_due": {
+            "type": "boolean",
+            "description": "Le coursier doit être indemnisé (contrat CRS-06)."
+          },
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant de l'issue."
+          },
+          "litige_ouvert": {
+            "type": "boolean",
+            "description": "Un litige est ouvert (contrat AVI-04)."
+          },
+          "montant_en_jeu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant en jeu (unités mineures)."
+          },
+          "relivraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Commande de re-livraison créée (§7.5-10 seulement)."
+          },
+          "sanction": {
+            "type": "string",
+            "description": "Sanction effectivement posée sur le compte client."
+          }
+        }
+      },
+      "IssueRupture": {
+        "type": "object",
+        "description": "Issue immédiate d'une rupture déclarée.",
+        "required": [
+          "issue"
+        ],
+        "properties": {
+          "ecart_pourcent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Écart de prix en pourcent (signé)."
+          },
+          "issue": {
+            "type": "string",
+            "description": "`ligne_retiree` | `proposition_ouverte`."
+          },
+          "montant_articles_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant des articles après révision."
+          },
+          "montant_retire": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant sorti du total (`null` si une proposition a été ouverte)."
+          },
+          "reste_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Secondes dont dispose le client pour décider."
+          },
+          "substitution_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Proposition créée (`null` si l'article a été retiré)."
+          },
+          "total_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Total après révision — **le devis de livraison n'a pas bougé** (FR-050)."
+          }
+        }
+      },
       "ItineraireSimule": {
         "type": "object",
         "description": "Itinéraire retenu par la simulation.",
@@ -6379,6 +8711,147 @@
           "rafraichissement": {
             "type": "string",
             "description": "Opaque 256 bits — tourne à chaque usage."
+          }
+        }
+      },
+      "Lieu": {
+        "type": "object",
+        "description": "Position d'un lieu (pin GPS).",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
+          }
+        }
+      },
+      "LigneDevis": {
+        "type": "object",
+        "description": "Une ligne résolue contre le catalogue.",
+        "required": [
+          "article_id",
+          "nom",
+          "quantite",
+          "prix_unites",
+          "sous_total_unites",
+          "preference"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Article."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom de l'article."
+          },
+          "preference": {
+            "type": "string",
+            "description": "Préférence de substitution retenue."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix unitaire courant (unités mineures)."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité."
+          },
+          "sous_total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sous-total de la ligne (unités mineures)."
+          }
+        }
+      },
+      "LignePanier": {
+        "type": "object",
+        "description": "Une ligne de panier soumise.",
+        "required": [
+          "prestataire_id",
+          "article_id",
+          "quantite"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Article demandé."
+          },
+          "preference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Que faire si l'article manque : `remplacer` | `appeler` | `retirer`.\nAbsent = `appeler`, le défaut produit (CMD-01)."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Vendeur chez qui l'article est pris."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité (> 0)."
+          }
+        }
+      },
+      "LivraisonCommande": {
+        "type": "object",
+        "description": "La livraison créée avec la commande.",
+        "required": [
+          "id",
+          "etat",
+          "nb_arrets",
+          "devis"
+        ],
+        "properties": {
+          "devis": {
+            "$ref": "#/components/schemas/DevisLivraison",
+            "description": "Devis FIGÉ copié à la création — jamais recalculé (R11)."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État logistique initial."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "nb_arrets": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre d'arrêts (collectes + remise)."
+          }
+        }
+      },
+      "MesCommandes": {
+        "type": "object",
+        "description": "La liste des commandes du compte.",
+        "required": [
+          "commandes"
+        ],
+        "properties": {
+          "commandes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandeResumee"
+            },
+            "description": "Commandes, les plus récentes d'abord."
           }
         }
       },
@@ -6568,6 +9041,56 @@
           }
         }
       },
+      "PaiementCommande": {
+        "type": "object",
+        "description": "État du paiement d'une commande créée.",
+        "required": [
+          "mode",
+          "etat",
+          "appoint_exact_unites"
+        ],
+        "properties": {
+          "appoint_exact_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appoint exact à préparer (cash) — le total, en une fois. Aucun chemin\nde règlement fractionné n'existe (constitution III)."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`du` | `en_attente` | `regle` | `rembourse`."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Mode retenu."
+          }
+        }
+      },
+      "PaiementPanier": {
+        "type": "object",
+        "description": "Décision d'encaissement (maquette C3-3b).",
+        "required": [
+          "cash_autorise",
+          "plafond_unites"
+        ],
+        "properties": {
+          "cash_autorise": {
+            "type": "boolean",
+            "description": "Le paiement en espèces est possible."
+          },
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n de la RAISON du refus (`null` si autorisé) — le client voit\npourquoi le cash est grisé, jamais un bouton mort."
+          },
+          "plafond_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Plafond appliqué (unités mineures)."
+          }
+        }
+      },
       "PhotoAdminDto": {
         "type": "object",
         "description": "Photo de fiche, présignée pour l'admin.",
@@ -6657,6 +9180,32 @@
             "type": "number",
             "format": "double",
             "description": "Longitude en degrés décimaux."
+          }
+        }
+      },
+      "PositionSuivi": {
+        "type": "object",
+        "description": "Position du coursier, **toujours accompagnée de son âge**.",
+        "required": [
+          "lat",
+          "lon",
+          "age_s"
+        ],
+        "properties": {
+          "age_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ancienneté du relevé, en secondes. L'app affiche « il y a 12 s » et\nn'invente JAMAIS une position (FR-040, maquette C4-4d)."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
           }
         }
       },
@@ -6825,6 +9374,37 @@
           "statut": {
             "$ref": "#/components/schemas/StatutPrestataire",
             "description": "Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact."
+          }
+        }
+      },
+      "ProgressionSuivi": {
+        "type": "object",
+        "description": "Progression de la course, en ARRÊTS DE COLLECTE.",
+        "required": [
+          "collectes_faites",
+          "collectes_total"
+        ],
+        "properties": {
+          "arret_courant": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ArretCourantSuivi",
+                "description": "Arrêt courant."
+              }
+            ]
+          },
+          "collectes_faites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Collectes résolues (collectées ou indisponibles)."
+          },
+          "collectes_total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre total de collectes — **la remise n'en est pas une** (P1)."
           }
         }
       },
@@ -7155,6 +9735,47 @@
           }
         }
       },
+      "ResultatAnnulation": {
+        "type": "object",
+        "description": "Ce qu'une annulation a produit.",
+        "required": [
+          "commande_id",
+          "sans_frais",
+          "part_coursier_due",
+          "montant_avance",
+          "remboursement_du",
+          "devise"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande annulée."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "montant_avance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant déjà avancé chez les vendeurs."
+          },
+          "part_coursier_due": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part due au coursier (unités mineures) — 0 si sans frais."
+          },
+          "remboursement_du": {
+            "type": "boolean",
+            "description": "Vrai si la commande était prépayée : un remboursement est dû."
+          },
+          "sans_frais": {
+            "type": "boolean",
+            "description": "Vrai si rien n'avait encore été acheté : annulation SANS FRAIS."
+          }
+        }
+      },
       "ResultatCollecte": {
         "type": "object",
         "description": "Résultat d'une collecte.",
@@ -7187,6 +9808,68 @@
             "type": "integer",
             "format": "int32",
             "description": "Arrêts collectés."
+          }
+        }
+      },
+      "ResultatDecisionSubstitution": {
+        "type": "object",
+        "description": "Résultat d'une décision de substitution.",
+        "required": [
+          "issue",
+          "montant_articles_unites",
+          "total_unites",
+          "devis_prix_client_unites"
+        ],
+        "properties": {
+          "devis_prix_client_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix client du devis de livraison — **inchangé** (FR-050). Servi pour\nque le client le VOIE ne pas bouger, pas seulement pour l'affichage."
+          },
+          "issue": {
+            "type": "string",
+            "description": "`acceptee` | `refusee`."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des articles après révision."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer après révision."
+          }
+        }
+      },
+      "ResultatRemise": {
+        "type": "object",
+        "description": "Résultat d'une remise validée.",
+        "required": [
+          "commande_id",
+          "livraison_id",
+          "mode_remise",
+          "essais_code"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande close."
+          },
+          "essais_code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais de code consommés."
+          },
+          "livraison_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Livraison close."
+          },
+          "mode_remise": {
+            "type": "string",
+            "description": "Mode retenu."
           }
         }
       },
@@ -7240,6 +9923,71 @@
           }
         ],
         "description": "Issue de `/auth/otp/verifier` — `oneOf` discriminé par `resultat`.\n\n`untagged` : chaque membre porte DÉJÀ son `resultat`, si bien que le JSON du\ncâble est celui d'un `oneOf` discriminé, tandis que le contrat, lui, expose\ndeux schémas NOMMÉS et réutilisables plutôt que deux objets anonymes."
+      },
+      "RuptureMultipart": {
+        "type": "object",
+        "description": "Schéma OpenAPI du multipart de rupture (contrat honnête : le handler lit un\n`multipart/form-data`, pas un JSON — le client généré produit un vrai\nmultipart). Sert UNIQUEMENT à `#[utoipa::path]`.",
+        "required": [
+          "demande"
+        ],
+        "properties": {
+          "demande": {
+            "$ref": "#/components/schemas/DemandeRupture",
+            "description": "Partie JSON `demande`."
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Photo du remplacement (obligatoire pour `remplacer` — FR-045)."
+          }
+        }
+      },
+      "ScissionProposee": {
+        "type": "object",
+        "description": "Proposition de scission — une seule surface pour ses deux causes (R9).",
+        "required": [
+          "cause",
+          "message_cle",
+          "commandes_proposees"
+        ],
+        "properties": {
+          "cause": {
+            "type": "string",
+            "description": "`categorie_non_mixable` | `plafond_eclatement`."
+          },
+          "commandes_proposees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandeProposee"
+            },
+            "description": "Prévisualisation CHIFFRÉE des commandes résultantes."
+          },
+          "message_cle": {
+            "type": "string",
+            "description": "Clé i18n du message affiché."
+          }
+        }
+      },
+      "SecretsRemise": {
+        "type": "object",
+        "description": "Secrets de remise — servis au CLIENT PROPRIÉTAIRE seul (research R6).",
+        "required": [
+          "code_livraison",
+          "jeton_reception"
+        ],
+        "properties": {
+          "code_livraison": {
+            "type": "string",
+            "description": "Code à 4 chiffres."
+          },
+          "jeton_reception": {
+            "type": "string",
+            "description": "Jeton encodé dans le QR de réception."
+          }
+        }
       },
       "SessionAppareil": {
         "type": "object",
@@ -7481,6 +10229,159 @@
           "agree",
           "suspendu"
         ]
+      },
+      "SubstitutionSuivi": {
+        "type": "object",
+        "description": "Proposition de remplacement en attente de décision (maquette C4-4c).",
+        "required": [
+          "id",
+          "ligne_id",
+          "article_nom",
+          "prix_unites",
+          "ancien_prix_unites",
+          "photo_cle",
+          "reste_s"
+        ],
+        "properties": {
+          "ancien_prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix de la ligne d'origine (unités mineures)."
+          },
+          "article_nom": {
+            "type": "string",
+            "description": "Nom de l'article proposé."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Proposition."
+          },
+          "ligne_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ligne concernée."
+          },
+          "photo_cle": {
+            "type": "string",
+            "description": "Clé de la photo déposée par le coursier."
+          },
+          "prix_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix proposé (unités mineures)."
+          },
+          "reste_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Secondes restantes pour décider."
+          }
+        }
+      },
+      "SuiviCommande": {
+        "type": "object",
+        "description": "Vue de suivi complète (contrat §1.3).",
+        "required": [
+          "id",
+          "etat",
+          "etat_cle",
+          "etat_le",
+          "montant_articles_unites",
+          "total_unites",
+          "devise",
+          "progression",
+          "remise"
+        ],
+        "properties": {
+          "coursier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CoursierSuivi",
+                "description": "Coursier affecté."
+              }
+            ]
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État de très haut niveau."
+          },
+          "etat_cle": {
+            "type": "string",
+            "description": "**Clé i18n** de l'état affiché — jamais une phrase (constitution VII)."
+          },
+          "etat_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant du dernier changement d'état."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande."
+          },
+          "livraison_etat": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "État logistique."
+          },
+          "livraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Livraison, si la commande en a une (composant 0..n)."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant des articles (révisé si des articles ont sauté)."
+          },
+          "position": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PositionSuivi",
+                "description": "Dernière position connue — `null` si aucune (research R13)."
+              }
+            ]
+          },
+          "progression": {
+            "$ref": "#/components/schemas/ProgressionSuivi",
+            "description": "Progression par arrêt."
+          },
+          "remise": {
+            "$ref": "#/components/schemas/SecretsRemise",
+            "description": "Code et QR de remise — **propriétaire seul** (R6)."
+          },
+          "substitution_en_attente": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SubstitutionSuivi",
+                "description": "Proposition de remplacement ouverte."
+              }
+            ]
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à payer."
+          }
+        }
       },
       "SuspendreDto": {
         "type": "object",

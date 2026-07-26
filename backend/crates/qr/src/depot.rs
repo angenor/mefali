@@ -405,15 +405,22 @@ impl PgQr {
     }
 
     /// Reconstruit `ResultatCollecte` depuis l'état courant de la livraison.
+    ///
+    /// ⚠ Ne compte que les arrêts de type `collecte` (cycle CMD 008, P1 /
+    /// research R4) : la remise est un arrêt du segment, mais ce n'est pas une
+    /// collecte. Sans ce filtre, l'écran coursier annoncerait « 2 sur 3 » pour
+    /// une course de 2 collectes et ne verrait jamais sa progression complète.
     async fn resultat_arret(&self, arret_id: Uuid) -> Result<ResultatCollecte, ErreurQr> {
         let row = sqlx::query!(
             r#"SELECT l.etat::text AS "etat!",
                       (SELECT count(*) FROM commandes.arret a2
                          JOIN commandes.segment s2 ON s2.id = a2.segment_id
-                         WHERE s2.livraison_id = l.id) AS "total!",
+                         WHERE s2.livraison_id = l.id
+                           AND a2.type_arret = 'collecte') AS "total!",
                       (SELECT count(*) FROM commandes.arret a2
                          JOIN commandes.segment s2 ON s2.id = a2.segment_id
-                         WHERE s2.livraison_id = l.id AND a2.statut = 'collecte') AS "collectes!"
+                         WHERE s2.livraison_id = l.id AND a2.statut = 'collecte'
+                           AND a2.type_arret = 'collecte') AS "collectes!"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
                JOIN commandes.livraison l ON l.id = s.livraison_id

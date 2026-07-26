@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.id, l.etat::text AS \"etat!\", c.cree_le,\n                      c.etat::text AS \"etat_commande!\"\n               FROM commandes.livraison l\n               JOIN commandes.commande c ON c.id = l.commande_id\n               WHERE l.commande_id = $1\n               FOR UPDATE OF l",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "cree_le"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "etat_commande!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      null
+    ]
+  },
+  "hash": "fcb9eb7aa9c397f8323de3db621028057ce333bc2389c1c6104008afcca109de"
+}

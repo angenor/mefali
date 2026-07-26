@@ -1321,6 +1321,1281 @@ class ArretsPreprovisionnesCompanion
   }
 }
 
+class $BrouillonsPanierTable extends BrouillonsPanier
+    with TableInfo<$BrouillonsPanierTable, BrouillonPanier> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BrouillonsPanierTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _zoneIdMeta = const VerificationMeta('zoneId');
+  @override
+  late final GeneratedColumn<String> zoneId = GeneratedColumn<String>(
+    'zone_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categorieSlugMeta = const VerificationMeta(
+    'categorieSlug',
+  );
+  @override
+  late final GeneratedColumn<String> categorieSlug = GeneratedColumn<String>(
+    'categorie_slug',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lignesJsonMeta = const VerificationMeta(
+    'lignesJson',
+  );
+  @override
+  late final GeneratedColumn<String> lignesJson = GeneratedColumn<String>(
+    'lignes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _montantArticlesEstimeUnitesMeta =
+      const VerificationMeta('montantArticlesEstimeUnites');
+  @override
+  late final GeneratedColumn<int> montantArticlesEstimeUnites =
+      GeneratedColumn<int>(
+        'montant_articles_estime_unites',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _deviseMeta = const VerificationMeta('devise');
+  @override
+  late final GeneratedColumn<String> devise = GeneratedColumn<String>(
+    'devise',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('XOF'),
+  );
+  static const VerificationMeta _majLeLocalMeta = const VerificationMeta(
+    'majLeLocal',
+  );
+  @override
+  late final GeneratedColumn<DateTime> majLeLocal = GeneratedColumn<DateTime>(
+    'maj_le_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    zoneId,
+    categorieSlug,
+    lignesJson,
+    montantArticlesEstimeUnites,
+    devise,
+    majLeLocal,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'brouillons_panier';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BrouillonPanier> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('zone_id')) {
+      context.handle(
+        _zoneIdMeta,
+        zoneId.isAcceptableOrUnknown(data['zone_id']!, _zoneIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_zoneIdMeta);
+    }
+    if (data.containsKey('categorie_slug')) {
+      context.handle(
+        _categorieSlugMeta,
+        categorieSlug.isAcceptableOrUnknown(
+          data['categorie_slug']!,
+          _categorieSlugMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_categorieSlugMeta);
+    }
+    if (data.containsKey('lignes_json')) {
+      context.handle(
+        _lignesJsonMeta,
+        lignesJson.isAcceptableOrUnknown(data['lignes_json']!, _lignesJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lignesJsonMeta);
+    }
+    if (data.containsKey('montant_articles_estime_unites')) {
+      context.handle(
+        _montantArticlesEstimeUnitesMeta,
+        montantArticlesEstimeUnites.isAcceptableOrUnknown(
+          data['montant_articles_estime_unites']!,
+          _montantArticlesEstimeUnitesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('devise')) {
+      context.handle(
+        _deviseMeta,
+        devise.isAcceptableOrUnknown(data['devise']!, _deviseMeta),
+      );
+    }
+    if (data.containsKey('maj_le_local')) {
+      context.handle(
+        _majLeLocalMeta,
+        majLeLocal.isAcceptableOrUnknown(
+          data['maj_le_local']!,
+          _majLeLocalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_majLeLocalMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {zoneId};
+  @override
+  BrouillonPanier map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BrouillonPanier(
+      zoneId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}zone_id'],
+      )!,
+      categorieSlug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}categorie_slug'],
+      )!,
+      lignesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lignes_json'],
+      )!,
+      montantArticlesEstimeUnites: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}montant_articles_estime_unites'],
+      )!,
+      devise: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}devise'],
+      )!,
+      majLeLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}maj_le_local'],
+      )!,
+    );
+  }
+
+  @override
+  $BrouillonsPanierTable createAlias(String alias) {
+    return $BrouillonsPanierTable(attachedDatabase, alias);
+  }
+}
+
+class BrouillonPanier extends DataClass implements Insertable<BrouillonPanier> {
+  /// Un seul brouillon à la fois par zone — PK.
+  final String zoneId;
+
+  /// Catégorie de service en cours de composition.
+  final String categorieSlug;
+
+  /// Lignes sérialisées (prestataire, article, quantité, préférence).
+  final String lignesJson;
+
+  /// Total ESTIMÉ des articles, unités mineures (jamais les frais — hors ligne,
+  /// l'app ne connaît pas le devis).
+  final int montantArticlesEstimeUnites;
+
+  /// Devise ISO 4217.
+  final String devise;
+
+  /// Dernière modification locale.
+  final DateTime majLeLocal;
+  const BrouillonPanier({
+    required this.zoneId,
+    required this.categorieSlug,
+    required this.lignesJson,
+    required this.montantArticlesEstimeUnites,
+    required this.devise,
+    required this.majLeLocal,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['zone_id'] = Variable<String>(zoneId);
+    map['categorie_slug'] = Variable<String>(categorieSlug);
+    map['lignes_json'] = Variable<String>(lignesJson);
+    map['montant_articles_estime_unites'] = Variable<int>(
+      montantArticlesEstimeUnites,
+    );
+    map['devise'] = Variable<String>(devise);
+    map['maj_le_local'] = Variable<DateTime>(majLeLocal);
+    return map;
+  }
+
+  BrouillonsPanierCompanion toCompanion(bool nullToAbsent) {
+    return BrouillonsPanierCompanion(
+      zoneId: Value(zoneId),
+      categorieSlug: Value(categorieSlug),
+      lignesJson: Value(lignesJson),
+      montantArticlesEstimeUnites: Value(montantArticlesEstimeUnites),
+      devise: Value(devise),
+      majLeLocal: Value(majLeLocal),
+    );
+  }
+
+  factory BrouillonPanier.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BrouillonPanier(
+      zoneId: serializer.fromJson<String>(json['zoneId']),
+      categorieSlug: serializer.fromJson<String>(json['categorieSlug']),
+      lignesJson: serializer.fromJson<String>(json['lignesJson']),
+      montantArticlesEstimeUnites: serializer.fromJson<int>(
+        json['montantArticlesEstimeUnites'],
+      ),
+      devise: serializer.fromJson<String>(json['devise']),
+      majLeLocal: serializer.fromJson<DateTime>(json['majLeLocal']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'zoneId': serializer.toJson<String>(zoneId),
+      'categorieSlug': serializer.toJson<String>(categorieSlug),
+      'lignesJson': serializer.toJson<String>(lignesJson),
+      'montantArticlesEstimeUnites': serializer.toJson<int>(
+        montantArticlesEstimeUnites,
+      ),
+      'devise': serializer.toJson<String>(devise),
+      'majLeLocal': serializer.toJson<DateTime>(majLeLocal),
+    };
+  }
+
+  BrouillonPanier copyWith({
+    String? zoneId,
+    String? categorieSlug,
+    String? lignesJson,
+    int? montantArticlesEstimeUnites,
+    String? devise,
+    DateTime? majLeLocal,
+  }) => BrouillonPanier(
+    zoneId: zoneId ?? this.zoneId,
+    categorieSlug: categorieSlug ?? this.categorieSlug,
+    lignesJson: lignesJson ?? this.lignesJson,
+    montantArticlesEstimeUnites:
+        montantArticlesEstimeUnites ?? this.montantArticlesEstimeUnites,
+    devise: devise ?? this.devise,
+    majLeLocal: majLeLocal ?? this.majLeLocal,
+  );
+  BrouillonPanier copyWithCompanion(BrouillonsPanierCompanion data) {
+    return BrouillonPanier(
+      zoneId: data.zoneId.present ? data.zoneId.value : this.zoneId,
+      categorieSlug: data.categorieSlug.present
+          ? data.categorieSlug.value
+          : this.categorieSlug,
+      lignesJson: data.lignesJson.present
+          ? data.lignesJson.value
+          : this.lignesJson,
+      montantArticlesEstimeUnites: data.montantArticlesEstimeUnites.present
+          ? data.montantArticlesEstimeUnites.value
+          : this.montantArticlesEstimeUnites,
+      devise: data.devise.present ? data.devise.value : this.devise,
+      majLeLocal: data.majLeLocal.present
+          ? data.majLeLocal.value
+          : this.majLeLocal,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BrouillonPanier(')
+          ..write('zoneId: $zoneId, ')
+          ..write('categorieSlug: $categorieSlug, ')
+          ..write('lignesJson: $lignesJson, ')
+          ..write('montantArticlesEstimeUnites: $montantArticlesEstimeUnites, ')
+          ..write('devise: $devise, ')
+          ..write('majLeLocal: $majLeLocal')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    zoneId,
+    categorieSlug,
+    lignesJson,
+    montantArticlesEstimeUnites,
+    devise,
+    majLeLocal,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BrouillonPanier &&
+          other.zoneId == this.zoneId &&
+          other.categorieSlug == this.categorieSlug &&
+          other.lignesJson == this.lignesJson &&
+          other.montantArticlesEstimeUnites ==
+              this.montantArticlesEstimeUnites &&
+          other.devise == this.devise &&
+          other.majLeLocal == this.majLeLocal);
+}
+
+class BrouillonsPanierCompanion extends UpdateCompanion<BrouillonPanier> {
+  final Value<String> zoneId;
+  final Value<String> categorieSlug;
+  final Value<String> lignesJson;
+  final Value<int> montantArticlesEstimeUnites;
+  final Value<String> devise;
+  final Value<DateTime> majLeLocal;
+  final Value<int> rowid;
+  const BrouillonsPanierCompanion({
+    this.zoneId = const Value.absent(),
+    this.categorieSlug = const Value.absent(),
+    this.lignesJson = const Value.absent(),
+    this.montantArticlesEstimeUnites = const Value.absent(),
+    this.devise = const Value.absent(),
+    this.majLeLocal = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BrouillonsPanierCompanion.insert({
+    required String zoneId,
+    required String categorieSlug,
+    required String lignesJson,
+    this.montantArticlesEstimeUnites = const Value.absent(),
+    this.devise = const Value.absent(),
+    required DateTime majLeLocal,
+    this.rowid = const Value.absent(),
+  }) : zoneId = Value(zoneId),
+       categorieSlug = Value(categorieSlug),
+       lignesJson = Value(lignesJson),
+       majLeLocal = Value(majLeLocal);
+  static Insertable<BrouillonPanier> custom({
+    Expression<String>? zoneId,
+    Expression<String>? categorieSlug,
+    Expression<String>? lignesJson,
+    Expression<int>? montantArticlesEstimeUnites,
+    Expression<String>? devise,
+    Expression<DateTime>? majLeLocal,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (zoneId != null) 'zone_id': zoneId,
+      if (categorieSlug != null) 'categorie_slug': categorieSlug,
+      if (lignesJson != null) 'lignes_json': lignesJson,
+      if (montantArticlesEstimeUnites != null)
+        'montant_articles_estime_unites': montantArticlesEstimeUnites,
+      if (devise != null) 'devise': devise,
+      if (majLeLocal != null) 'maj_le_local': majLeLocal,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BrouillonsPanierCompanion copyWith({
+    Value<String>? zoneId,
+    Value<String>? categorieSlug,
+    Value<String>? lignesJson,
+    Value<int>? montantArticlesEstimeUnites,
+    Value<String>? devise,
+    Value<DateTime>? majLeLocal,
+    Value<int>? rowid,
+  }) {
+    return BrouillonsPanierCompanion(
+      zoneId: zoneId ?? this.zoneId,
+      categorieSlug: categorieSlug ?? this.categorieSlug,
+      lignesJson: lignesJson ?? this.lignesJson,
+      montantArticlesEstimeUnites:
+          montantArticlesEstimeUnites ?? this.montantArticlesEstimeUnites,
+      devise: devise ?? this.devise,
+      majLeLocal: majLeLocal ?? this.majLeLocal,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (zoneId.present) {
+      map['zone_id'] = Variable<String>(zoneId.value);
+    }
+    if (categorieSlug.present) {
+      map['categorie_slug'] = Variable<String>(categorieSlug.value);
+    }
+    if (lignesJson.present) {
+      map['lignes_json'] = Variable<String>(lignesJson.value);
+    }
+    if (montantArticlesEstimeUnites.present) {
+      map['montant_articles_estime_unites'] = Variable<int>(
+        montantArticlesEstimeUnites.value,
+      );
+    }
+    if (devise.present) {
+      map['devise'] = Variable<String>(devise.value);
+    }
+    if (majLeLocal.present) {
+      map['maj_le_local'] = Variable<DateTime>(majLeLocal.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BrouillonsPanierCompanion(')
+          ..write('zoneId: $zoneId, ')
+          ..write('categorieSlug: $categorieSlug, ')
+          ..write('lignesJson: $lignesJson, ')
+          ..write('montantArticlesEstimeUnites: $montantArticlesEstimeUnites, ')
+          ..write('devise: $devise, ')
+          ..write('majLeLocal: $majLeLocal, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CommandesCacheTable extends CommandesCache
+    with TableInfo<$CommandesCacheTable, CommandeCache> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CommandesCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _commandeIdMeta = const VerificationMeta(
+    'commandeId',
+  );
+  @override
+  late final GeneratedColumn<String> commandeId = GeneratedColumn<String>(
+    'commande_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _etatMeta = const VerificationMeta('etat');
+  @override
+  late final GeneratedColumn<String> etat = GeneratedColumn<String>(
+    'etat',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _etatCleMeta = const VerificationMeta(
+    'etatCle',
+  );
+  @override
+  late final GeneratedColumn<String> etatCle = GeneratedColumn<String>(
+    'etat_cle',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _collectesFaitesMeta = const VerificationMeta(
+    'collectesFaites',
+  );
+  @override
+  late final GeneratedColumn<int> collectesFaites = GeneratedColumn<int>(
+    'collectes_faites',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _collectesTotalMeta = const VerificationMeta(
+    'collectesTotal',
+  );
+  @override
+  late final GeneratedColumn<int> collectesTotal = GeneratedColumn<int>(
+    'collectes_total',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _codeLivraisonMeta = const VerificationMeta(
+    'codeLivraison',
+  );
+  @override
+  late final GeneratedColumn<String> codeLivraison = GeneratedColumn<String>(
+    'code_livraison',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jetonReceptionMeta = const VerificationMeta(
+    'jetonReception',
+  );
+  @override
+  late final GeneratedColumn<String> jetonReception = GeneratedColumn<String>(
+    'jeton_reception',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalUnitesMeta = const VerificationMeta(
+    'totalUnites',
+  );
+  @override
+  late final GeneratedColumn<int> totalUnites = GeneratedColumn<int>(
+    'total_unites',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deviseMeta = const VerificationMeta('devise');
+  @override
+  late final GeneratedColumn<String> devise = GeneratedColumn<String>(
+    'devise',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('XOF'),
+  );
+  static const VerificationMeta _positionLatMeta = const VerificationMeta(
+    'positionLat',
+  );
+  @override
+  late final GeneratedColumn<double> positionLat = GeneratedColumn<double>(
+    'position_lat',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _positionLonMeta = const VerificationMeta(
+    'positionLon',
+  );
+  @override
+  late final GeneratedColumn<double> positionLon = GeneratedColumn<double>(
+    'position_lon',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _positionAgeSMeta = const VerificationMeta(
+    'positionAgeS',
+  );
+  @override
+  late final GeneratedColumn<int> positionAgeS = GeneratedColumn<int>(
+    'position_age_s',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _majLeLocalMeta = const VerificationMeta(
+    'majLeLocal',
+  );
+  @override
+  late final GeneratedColumn<DateTime> majLeLocal = GeneratedColumn<DateTime>(
+    'maj_le_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    commandeId,
+    etat,
+    etatCle,
+    collectesFaites,
+    collectesTotal,
+    codeLivraison,
+    jetonReception,
+    totalUnites,
+    devise,
+    positionLat,
+    positionLon,
+    positionAgeS,
+    majLeLocal,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'commandes_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CommandeCache> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('commande_id')) {
+      context.handle(
+        _commandeIdMeta,
+        commandeId.isAcceptableOrUnknown(data['commande_id']!, _commandeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_commandeIdMeta);
+    }
+    if (data.containsKey('etat')) {
+      context.handle(
+        _etatMeta,
+        etat.isAcceptableOrUnknown(data['etat']!, _etatMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_etatMeta);
+    }
+    if (data.containsKey('etat_cle')) {
+      context.handle(
+        _etatCleMeta,
+        etatCle.isAcceptableOrUnknown(data['etat_cle']!, _etatCleMeta),
+      );
+    }
+    if (data.containsKey('collectes_faites')) {
+      context.handle(
+        _collectesFaitesMeta,
+        collectesFaites.isAcceptableOrUnknown(
+          data['collectes_faites']!,
+          _collectesFaitesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('collectes_total')) {
+      context.handle(
+        _collectesTotalMeta,
+        collectesTotal.isAcceptableOrUnknown(
+          data['collectes_total']!,
+          _collectesTotalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('code_livraison')) {
+      context.handle(
+        _codeLivraisonMeta,
+        codeLivraison.isAcceptableOrUnknown(
+          data['code_livraison']!,
+          _codeLivraisonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_codeLivraisonMeta);
+    }
+    if (data.containsKey('jeton_reception')) {
+      context.handle(
+        _jetonReceptionMeta,
+        jetonReception.isAcceptableOrUnknown(
+          data['jeton_reception']!,
+          _jetonReceptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_jetonReceptionMeta);
+    }
+    if (data.containsKey('total_unites')) {
+      context.handle(
+        _totalUnitesMeta,
+        totalUnites.isAcceptableOrUnknown(
+          data['total_unites']!,
+          _totalUnitesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('devise')) {
+      context.handle(
+        _deviseMeta,
+        devise.isAcceptableOrUnknown(data['devise']!, _deviseMeta),
+      );
+    }
+    if (data.containsKey('position_lat')) {
+      context.handle(
+        _positionLatMeta,
+        positionLat.isAcceptableOrUnknown(
+          data['position_lat']!,
+          _positionLatMeta,
+        ),
+      );
+    }
+    if (data.containsKey('position_lon')) {
+      context.handle(
+        _positionLonMeta,
+        positionLon.isAcceptableOrUnknown(
+          data['position_lon']!,
+          _positionLonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('position_age_s')) {
+      context.handle(
+        _positionAgeSMeta,
+        positionAgeS.isAcceptableOrUnknown(
+          data['position_age_s']!,
+          _positionAgeSMeta,
+        ),
+      );
+    }
+    if (data.containsKey('maj_le_local')) {
+      context.handle(
+        _majLeLocalMeta,
+        majLeLocal.isAcceptableOrUnknown(
+          data['maj_le_local']!,
+          _majLeLocalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_majLeLocalMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {commandeId};
+  @override
+  CommandeCache map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CommandeCache(
+      commandeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}commande_id'],
+      )!,
+      etat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}etat'],
+      )!,
+      etatCle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}etat_cle'],
+      )!,
+      collectesFaites: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}collectes_faites'],
+      )!,
+      collectesTotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}collectes_total'],
+      )!,
+      codeLivraison: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code_livraison'],
+      )!,
+      jetonReception: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}jeton_reception'],
+      )!,
+      totalUnites: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_unites'],
+      )!,
+      devise: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}devise'],
+      )!,
+      positionLat: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}position_lat'],
+      ),
+      positionLon: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}position_lon'],
+      ),
+      positionAgeS: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position_age_s'],
+      ),
+      majLeLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}maj_le_local'],
+      )!,
+    );
+  }
+
+  @override
+  $CommandesCacheTable createAlias(String alias) {
+    return $CommandesCacheTable(attachedDatabase, alias);
+  }
+}
+
+class CommandeCache extends DataClass implements Insertable<CommandeCache> {
+  /// Commande — PK.
+  final String commandeId;
+
+  /// Dernier état connu du tronc (`nouvelle`, `en_cours`…). Annoncé COMME TEL
+  /// hors ligne : l'app ne prétend jamais que c'est l'état courant.
+  final String etat;
+
+  /// Clé i18n de l'état, pour l'affichage en langage clair.
+  final String etatCle;
+
+  /// Collectes faites (la remise n'en est pas une — P1).
+  final int collectesFaites;
+
+  /// Total de collectes.
+  final int collectesTotal;
+
+  /// Code de remise à 4 chiffres — lisible par le CLIENT seul.
+  final String codeLivraison;
+
+  /// Jeton encodé dans le QR de réception.
+  final String jetonReception;
+
+  /// Total à régler, unités mineures.
+  final int totalUnites;
+
+  /// Devise ISO 4217.
+  final String devise;
+
+  /// Dernière position connue du coursier (nulle si aucune).
+  final double? positionLat;
+
+  /// Dernière position connue du coursier.
+  final double? positionLon;
+
+  /// Âge de la position AU MOMENT DE LA MISE EN CACHE (secondes). L'app y
+  /// ajoute le temps écoulé depuis [majLeLocal] : elle n'invente jamais une
+  /// position fraîche (FR-040).
+  final int? positionAgeS;
+
+  /// Horodatage local de la mise en cache — base du calcul d'ancienneté.
+  final DateTime majLeLocal;
+  const CommandeCache({
+    required this.commandeId,
+    required this.etat,
+    required this.etatCle,
+    required this.collectesFaites,
+    required this.collectesTotal,
+    required this.codeLivraison,
+    required this.jetonReception,
+    required this.totalUnites,
+    required this.devise,
+    this.positionLat,
+    this.positionLon,
+    this.positionAgeS,
+    required this.majLeLocal,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['commande_id'] = Variable<String>(commandeId);
+    map['etat'] = Variable<String>(etat);
+    map['etat_cle'] = Variable<String>(etatCle);
+    map['collectes_faites'] = Variable<int>(collectesFaites);
+    map['collectes_total'] = Variable<int>(collectesTotal);
+    map['code_livraison'] = Variable<String>(codeLivraison);
+    map['jeton_reception'] = Variable<String>(jetonReception);
+    map['total_unites'] = Variable<int>(totalUnites);
+    map['devise'] = Variable<String>(devise);
+    if (!nullToAbsent || positionLat != null) {
+      map['position_lat'] = Variable<double>(positionLat);
+    }
+    if (!nullToAbsent || positionLon != null) {
+      map['position_lon'] = Variable<double>(positionLon);
+    }
+    if (!nullToAbsent || positionAgeS != null) {
+      map['position_age_s'] = Variable<int>(positionAgeS);
+    }
+    map['maj_le_local'] = Variable<DateTime>(majLeLocal);
+    return map;
+  }
+
+  CommandesCacheCompanion toCompanion(bool nullToAbsent) {
+    return CommandesCacheCompanion(
+      commandeId: Value(commandeId),
+      etat: Value(etat),
+      etatCle: Value(etatCle),
+      collectesFaites: Value(collectesFaites),
+      collectesTotal: Value(collectesTotal),
+      codeLivraison: Value(codeLivraison),
+      jetonReception: Value(jetonReception),
+      totalUnites: Value(totalUnites),
+      devise: Value(devise),
+      positionLat: positionLat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(positionLat),
+      positionLon: positionLon == null && nullToAbsent
+          ? const Value.absent()
+          : Value(positionLon),
+      positionAgeS: positionAgeS == null && nullToAbsent
+          ? const Value.absent()
+          : Value(positionAgeS),
+      majLeLocal: Value(majLeLocal),
+    );
+  }
+
+  factory CommandeCache.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CommandeCache(
+      commandeId: serializer.fromJson<String>(json['commandeId']),
+      etat: serializer.fromJson<String>(json['etat']),
+      etatCle: serializer.fromJson<String>(json['etatCle']),
+      collectesFaites: serializer.fromJson<int>(json['collectesFaites']),
+      collectesTotal: serializer.fromJson<int>(json['collectesTotal']),
+      codeLivraison: serializer.fromJson<String>(json['codeLivraison']),
+      jetonReception: serializer.fromJson<String>(json['jetonReception']),
+      totalUnites: serializer.fromJson<int>(json['totalUnites']),
+      devise: serializer.fromJson<String>(json['devise']),
+      positionLat: serializer.fromJson<double?>(json['positionLat']),
+      positionLon: serializer.fromJson<double?>(json['positionLon']),
+      positionAgeS: serializer.fromJson<int?>(json['positionAgeS']),
+      majLeLocal: serializer.fromJson<DateTime>(json['majLeLocal']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'commandeId': serializer.toJson<String>(commandeId),
+      'etat': serializer.toJson<String>(etat),
+      'etatCle': serializer.toJson<String>(etatCle),
+      'collectesFaites': serializer.toJson<int>(collectesFaites),
+      'collectesTotal': serializer.toJson<int>(collectesTotal),
+      'codeLivraison': serializer.toJson<String>(codeLivraison),
+      'jetonReception': serializer.toJson<String>(jetonReception),
+      'totalUnites': serializer.toJson<int>(totalUnites),
+      'devise': serializer.toJson<String>(devise),
+      'positionLat': serializer.toJson<double?>(positionLat),
+      'positionLon': serializer.toJson<double?>(positionLon),
+      'positionAgeS': serializer.toJson<int?>(positionAgeS),
+      'majLeLocal': serializer.toJson<DateTime>(majLeLocal),
+    };
+  }
+
+  CommandeCache copyWith({
+    String? commandeId,
+    String? etat,
+    String? etatCle,
+    int? collectesFaites,
+    int? collectesTotal,
+    String? codeLivraison,
+    String? jetonReception,
+    int? totalUnites,
+    String? devise,
+    Value<double?> positionLat = const Value.absent(),
+    Value<double?> positionLon = const Value.absent(),
+    Value<int?> positionAgeS = const Value.absent(),
+    DateTime? majLeLocal,
+  }) => CommandeCache(
+    commandeId: commandeId ?? this.commandeId,
+    etat: etat ?? this.etat,
+    etatCle: etatCle ?? this.etatCle,
+    collectesFaites: collectesFaites ?? this.collectesFaites,
+    collectesTotal: collectesTotal ?? this.collectesTotal,
+    codeLivraison: codeLivraison ?? this.codeLivraison,
+    jetonReception: jetonReception ?? this.jetonReception,
+    totalUnites: totalUnites ?? this.totalUnites,
+    devise: devise ?? this.devise,
+    positionLat: positionLat.present ? positionLat.value : this.positionLat,
+    positionLon: positionLon.present ? positionLon.value : this.positionLon,
+    positionAgeS: positionAgeS.present ? positionAgeS.value : this.positionAgeS,
+    majLeLocal: majLeLocal ?? this.majLeLocal,
+  );
+  CommandeCache copyWithCompanion(CommandesCacheCompanion data) {
+    return CommandeCache(
+      commandeId: data.commandeId.present
+          ? data.commandeId.value
+          : this.commandeId,
+      etat: data.etat.present ? data.etat.value : this.etat,
+      etatCle: data.etatCle.present ? data.etatCle.value : this.etatCle,
+      collectesFaites: data.collectesFaites.present
+          ? data.collectesFaites.value
+          : this.collectesFaites,
+      collectesTotal: data.collectesTotal.present
+          ? data.collectesTotal.value
+          : this.collectesTotal,
+      codeLivraison: data.codeLivraison.present
+          ? data.codeLivraison.value
+          : this.codeLivraison,
+      jetonReception: data.jetonReception.present
+          ? data.jetonReception.value
+          : this.jetonReception,
+      totalUnites: data.totalUnites.present
+          ? data.totalUnites.value
+          : this.totalUnites,
+      devise: data.devise.present ? data.devise.value : this.devise,
+      positionLat: data.positionLat.present
+          ? data.positionLat.value
+          : this.positionLat,
+      positionLon: data.positionLon.present
+          ? data.positionLon.value
+          : this.positionLon,
+      positionAgeS: data.positionAgeS.present
+          ? data.positionAgeS.value
+          : this.positionAgeS,
+      majLeLocal: data.majLeLocal.present
+          ? data.majLeLocal.value
+          : this.majLeLocal,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CommandeCache(')
+          ..write('commandeId: $commandeId, ')
+          ..write('etat: $etat, ')
+          ..write('etatCle: $etatCle, ')
+          ..write('collectesFaites: $collectesFaites, ')
+          ..write('collectesTotal: $collectesTotal, ')
+          ..write('codeLivraison: $codeLivraison, ')
+          ..write('jetonReception: $jetonReception, ')
+          ..write('totalUnites: $totalUnites, ')
+          ..write('devise: $devise, ')
+          ..write('positionLat: $positionLat, ')
+          ..write('positionLon: $positionLon, ')
+          ..write('positionAgeS: $positionAgeS, ')
+          ..write('majLeLocal: $majLeLocal')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    commandeId,
+    etat,
+    etatCle,
+    collectesFaites,
+    collectesTotal,
+    codeLivraison,
+    jetonReception,
+    totalUnites,
+    devise,
+    positionLat,
+    positionLon,
+    positionAgeS,
+    majLeLocal,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CommandeCache &&
+          other.commandeId == this.commandeId &&
+          other.etat == this.etat &&
+          other.etatCle == this.etatCle &&
+          other.collectesFaites == this.collectesFaites &&
+          other.collectesTotal == this.collectesTotal &&
+          other.codeLivraison == this.codeLivraison &&
+          other.jetonReception == this.jetonReception &&
+          other.totalUnites == this.totalUnites &&
+          other.devise == this.devise &&
+          other.positionLat == this.positionLat &&
+          other.positionLon == this.positionLon &&
+          other.positionAgeS == this.positionAgeS &&
+          other.majLeLocal == this.majLeLocal);
+}
+
+class CommandesCacheCompanion extends UpdateCompanion<CommandeCache> {
+  final Value<String> commandeId;
+  final Value<String> etat;
+  final Value<String> etatCle;
+  final Value<int> collectesFaites;
+  final Value<int> collectesTotal;
+  final Value<String> codeLivraison;
+  final Value<String> jetonReception;
+  final Value<int> totalUnites;
+  final Value<String> devise;
+  final Value<double?> positionLat;
+  final Value<double?> positionLon;
+  final Value<int?> positionAgeS;
+  final Value<DateTime> majLeLocal;
+  final Value<int> rowid;
+  const CommandesCacheCompanion({
+    this.commandeId = const Value.absent(),
+    this.etat = const Value.absent(),
+    this.etatCle = const Value.absent(),
+    this.collectesFaites = const Value.absent(),
+    this.collectesTotal = const Value.absent(),
+    this.codeLivraison = const Value.absent(),
+    this.jetonReception = const Value.absent(),
+    this.totalUnites = const Value.absent(),
+    this.devise = const Value.absent(),
+    this.positionLat = const Value.absent(),
+    this.positionLon = const Value.absent(),
+    this.positionAgeS = const Value.absent(),
+    this.majLeLocal = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CommandesCacheCompanion.insert({
+    required String commandeId,
+    required String etat,
+    this.etatCle = const Value.absent(),
+    this.collectesFaites = const Value.absent(),
+    this.collectesTotal = const Value.absent(),
+    required String codeLivraison,
+    required String jetonReception,
+    this.totalUnites = const Value.absent(),
+    this.devise = const Value.absent(),
+    this.positionLat = const Value.absent(),
+    this.positionLon = const Value.absent(),
+    this.positionAgeS = const Value.absent(),
+    required DateTime majLeLocal,
+    this.rowid = const Value.absent(),
+  }) : commandeId = Value(commandeId),
+       etat = Value(etat),
+       codeLivraison = Value(codeLivraison),
+       jetonReception = Value(jetonReception),
+       majLeLocal = Value(majLeLocal);
+  static Insertable<CommandeCache> custom({
+    Expression<String>? commandeId,
+    Expression<String>? etat,
+    Expression<String>? etatCle,
+    Expression<int>? collectesFaites,
+    Expression<int>? collectesTotal,
+    Expression<String>? codeLivraison,
+    Expression<String>? jetonReception,
+    Expression<int>? totalUnites,
+    Expression<String>? devise,
+    Expression<double>? positionLat,
+    Expression<double>? positionLon,
+    Expression<int>? positionAgeS,
+    Expression<DateTime>? majLeLocal,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (commandeId != null) 'commande_id': commandeId,
+      if (etat != null) 'etat': etat,
+      if (etatCle != null) 'etat_cle': etatCle,
+      if (collectesFaites != null) 'collectes_faites': collectesFaites,
+      if (collectesTotal != null) 'collectes_total': collectesTotal,
+      if (codeLivraison != null) 'code_livraison': codeLivraison,
+      if (jetonReception != null) 'jeton_reception': jetonReception,
+      if (totalUnites != null) 'total_unites': totalUnites,
+      if (devise != null) 'devise': devise,
+      if (positionLat != null) 'position_lat': positionLat,
+      if (positionLon != null) 'position_lon': positionLon,
+      if (positionAgeS != null) 'position_age_s': positionAgeS,
+      if (majLeLocal != null) 'maj_le_local': majLeLocal,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CommandesCacheCompanion copyWith({
+    Value<String>? commandeId,
+    Value<String>? etat,
+    Value<String>? etatCle,
+    Value<int>? collectesFaites,
+    Value<int>? collectesTotal,
+    Value<String>? codeLivraison,
+    Value<String>? jetonReception,
+    Value<int>? totalUnites,
+    Value<String>? devise,
+    Value<double?>? positionLat,
+    Value<double?>? positionLon,
+    Value<int?>? positionAgeS,
+    Value<DateTime>? majLeLocal,
+    Value<int>? rowid,
+  }) {
+    return CommandesCacheCompanion(
+      commandeId: commandeId ?? this.commandeId,
+      etat: etat ?? this.etat,
+      etatCle: etatCle ?? this.etatCle,
+      collectesFaites: collectesFaites ?? this.collectesFaites,
+      collectesTotal: collectesTotal ?? this.collectesTotal,
+      codeLivraison: codeLivraison ?? this.codeLivraison,
+      jetonReception: jetonReception ?? this.jetonReception,
+      totalUnites: totalUnites ?? this.totalUnites,
+      devise: devise ?? this.devise,
+      positionLat: positionLat ?? this.positionLat,
+      positionLon: positionLon ?? this.positionLon,
+      positionAgeS: positionAgeS ?? this.positionAgeS,
+      majLeLocal: majLeLocal ?? this.majLeLocal,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (commandeId.present) {
+      map['commande_id'] = Variable<String>(commandeId.value);
+    }
+    if (etat.present) {
+      map['etat'] = Variable<String>(etat.value);
+    }
+    if (etatCle.present) {
+      map['etat_cle'] = Variable<String>(etatCle.value);
+    }
+    if (collectesFaites.present) {
+      map['collectes_faites'] = Variable<int>(collectesFaites.value);
+    }
+    if (collectesTotal.present) {
+      map['collectes_total'] = Variable<int>(collectesTotal.value);
+    }
+    if (codeLivraison.present) {
+      map['code_livraison'] = Variable<String>(codeLivraison.value);
+    }
+    if (jetonReception.present) {
+      map['jeton_reception'] = Variable<String>(jetonReception.value);
+    }
+    if (totalUnites.present) {
+      map['total_unites'] = Variable<int>(totalUnites.value);
+    }
+    if (devise.present) {
+      map['devise'] = Variable<String>(devise.value);
+    }
+    if (positionLat.present) {
+      map['position_lat'] = Variable<double>(positionLat.value);
+    }
+    if (positionLon.present) {
+      map['position_lon'] = Variable<double>(positionLon.value);
+    }
+    if (positionAgeS.present) {
+      map['position_age_s'] = Variable<int>(positionAgeS.value);
+    }
+    if (majLeLocal.present) {
+      map['maj_le_local'] = Variable<DateTime>(majLeLocal.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CommandesCacheCompanion(')
+          ..write('commandeId: $commandeId, ')
+          ..write('etat: $etat, ')
+          ..write('etatCle: $etatCle, ')
+          ..write('collectesFaites: $collectesFaites, ')
+          ..write('collectesTotal: $collectesTotal, ')
+          ..write('codeLivraison: $codeLivraison, ')
+          ..write('jetonReception: $jetonReception, ')
+          ..write('totalUnites: $totalUnites, ')
+          ..write('devise: $devise, ')
+          ..write('positionLat: $positionLat, ')
+          ..write('positionLon: $positionLon, ')
+          ..write('positionAgeS: $positionAgeS, ')
+          ..write('majLeLocal: $majLeLocal, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$BaseOffline extends GeneratedDatabase {
   _$BaseOffline(QueryExecutor e) : super(e);
   $BaseOfflineManager get managers => $BaseOfflineManager(this);
@@ -1329,6 +2604,10 @@ abstract class _$BaseOffline extends GeneratedDatabase {
   );
   late final $ArretsPreprovisionnesTable arretsPreprovisionnes =
       $ArretsPreprovisionnesTable(this);
+  late final $BrouillonsPanierTable brouillonsPanier = $BrouillonsPanierTable(
+    this,
+  );
+  late final $CommandesCacheTable commandesCache = $CommandesCacheTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1336,6 +2615,8 @@ abstract class _$BaseOffline extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     actionsEnAttente,
     arretsPreprovisionnes,
+    brouillonsPanier,
+    commandesCache,
   ];
 }
 
@@ -1980,6 +3261,613 @@ typedef $$ArretsPreprovisionnesTableProcessedTableManager =
       ArretPreprovisionne,
       PrefetchHooks Function()
     >;
+typedef $$BrouillonsPanierTableCreateCompanionBuilder =
+    BrouillonsPanierCompanion Function({
+      required String zoneId,
+      required String categorieSlug,
+      required String lignesJson,
+      Value<int> montantArticlesEstimeUnites,
+      Value<String> devise,
+      required DateTime majLeLocal,
+      Value<int> rowid,
+    });
+typedef $$BrouillonsPanierTableUpdateCompanionBuilder =
+    BrouillonsPanierCompanion Function({
+      Value<String> zoneId,
+      Value<String> categorieSlug,
+      Value<String> lignesJson,
+      Value<int> montantArticlesEstimeUnites,
+      Value<String> devise,
+      Value<DateTime> majLeLocal,
+      Value<int> rowid,
+    });
+
+class $$BrouillonsPanierTableFilterComposer
+    extends Composer<_$BaseOffline, $BrouillonsPanierTable> {
+  $$BrouillonsPanierTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get zoneId => $composableBuilder(
+    column: $table.zoneId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categorieSlug => $composableBuilder(
+    column: $table.categorieSlug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lignesJson => $composableBuilder(
+    column: $table.lignesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get montantArticlesEstimeUnites => $composableBuilder(
+    column: $table.montantArticlesEstimeUnites,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get devise => $composableBuilder(
+    column: $table.devise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get majLeLocal => $composableBuilder(
+    column: $table.majLeLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BrouillonsPanierTableOrderingComposer
+    extends Composer<_$BaseOffline, $BrouillonsPanierTable> {
+  $$BrouillonsPanierTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get zoneId => $composableBuilder(
+    column: $table.zoneId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categorieSlug => $composableBuilder(
+    column: $table.categorieSlug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lignesJson => $composableBuilder(
+    column: $table.lignesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get montantArticlesEstimeUnites => $composableBuilder(
+    column: $table.montantArticlesEstimeUnites,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get devise => $composableBuilder(
+    column: $table.devise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get majLeLocal => $composableBuilder(
+    column: $table.majLeLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BrouillonsPanierTableAnnotationComposer
+    extends Composer<_$BaseOffline, $BrouillonsPanierTable> {
+  $$BrouillonsPanierTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get zoneId =>
+      $composableBuilder(column: $table.zoneId, builder: (column) => column);
+
+  GeneratedColumn<String> get categorieSlug => $composableBuilder(
+    column: $table.categorieSlug,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lignesJson => $composableBuilder(
+    column: $table.lignesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get montantArticlesEstimeUnites => $composableBuilder(
+    column: $table.montantArticlesEstimeUnites,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get devise =>
+      $composableBuilder(column: $table.devise, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get majLeLocal => $composableBuilder(
+    column: $table.majLeLocal,
+    builder: (column) => column,
+  );
+}
+
+class $$BrouillonsPanierTableTableManager
+    extends
+        RootTableManager<
+          _$BaseOffline,
+          $BrouillonsPanierTable,
+          BrouillonPanier,
+          $$BrouillonsPanierTableFilterComposer,
+          $$BrouillonsPanierTableOrderingComposer,
+          $$BrouillonsPanierTableAnnotationComposer,
+          $$BrouillonsPanierTableCreateCompanionBuilder,
+          $$BrouillonsPanierTableUpdateCompanionBuilder,
+          (
+            BrouillonPanier,
+            BaseReferences<
+              _$BaseOffline,
+              $BrouillonsPanierTable,
+              BrouillonPanier
+            >,
+          ),
+          BrouillonPanier,
+          PrefetchHooks Function()
+        > {
+  $$BrouillonsPanierTableTableManager(
+    _$BaseOffline db,
+    $BrouillonsPanierTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BrouillonsPanierTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BrouillonsPanierTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BrouillonsPanierTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> zoneId = const Value.absent(),
+                Value<String> categorieSlug = const Value.absent(),
+                Value<String> lignesJson = const Value.absent(),
+                Value<int> montantArticlesEstimeUnites = const Value.absent(),
+                Value<String> devise = const Value.absent(),
+                Value<DateTime> majLeLocal = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BrouillonsPanierCompanion(
+                zoneId: zoneId,
+                categorieSlug: categorieSlug,
+                lignesJson: lignesJson,
+                montantArticlesEstimeUnites: montantArticlesEstimeUnites,
+                devise: devise,
+                majLeLocal: majLeLocal,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String zoneId,
+                required String categorieSlug,
+                required String lignesJson,
+                Value<int> montantArticlesEstimeUnites = const Value.absent(),
+                Value<String> devise = const Value.absent(),
+                required DateTime majLeLocal,
+                Value<int> rowid = const Value.absent(),
+              }) => BrouillonsPanierCompanion.insert(
+                zoneId: zoneId,
+                categorieSlug: categorieSlug,
+                lignesJson: lignesJson,
+                montantArticlesEstimeUnites: montantArticlesEstimeUnites,
+                devise: devise,
+                majLeLocal: majLeLocal,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BrouillonsPanierTableProcessedTableManager =
+    ProcessedTableManager<
+      _$BaseOffline,
+      $BrouillonsPanierTable,
+      BrouillonPanier,
+      $$BrouillonsPanierTableFilterComposer,
+      $$BrouillonsPanierTableOrderingComposer,
+      $$BrouillonsPanierTableAnnotationComposer,
+      $$BrouillonsPanierTableCreateCompanionBuilder,
+      $$BrouillonsPanierTableUpdateCompanionBuilder,
+      (
+        BrouillonPanier,
+        BaseReferences<_$BaseOffline, $BrouillonsPanierTable, BrouillonPanier>,
+      ),
+      BrouillonPanier,
+      PrefetchHooks Function()
+    >;
+typedef $$CommandesCacheTableCreateCompanionBuilder =
+    CommandesCacheCompanion Function({
+      required String commandeId,
+      required String etat,
+      Value<String> etatCle,
+      Value<int> collectesFaites,
+      Value<int> collectesTotal,
+      required String codeLivraison,
+      required String jetonReception,
+      Value<int> totalUnites,
+      Value<String> devise,
+      Value<double?> positionLat,
+      Value<double?> positionLon,
+      Value<int?> positionAgeS,
+      required DateTime majLeLocal,
+      Value<int> rowid,
+    });
+typedef $$CommandesCacheTableUpdateCompanionBuilder =
+    CommandesCacheCompanion Function({
+      Value<String> commandeId,
+      Value<String> etat,
+      Value<String> etatCle,
+      Value<int> collectesFaites,
+      Value<int> collectesTotal,
+      Value<String> codeLivraison,
+      Value<String> jetonReception,
+      Value<int> totalUnites,
+      Value<String> devise,
+      Value<double?> positionLat,
+      Value<double?> positionLon,
+      Value<int?> positionAgeS,
+      Value<DateTime> majLeLocal,
+      Value<int> rowid,
+    });
+
+class $$CommandesCacheTableFilterComposer
+    extends Composer<_$BaseOffline, $CommandesCacheTable> {
+  $$CommandesCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get commandeId => $composableBuilder(
+    column: $table.commandeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get etat => $composableBuilder(
+    column: $table.etat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get etatCle => $composableBuilder(
+    column: $table.etatCle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get collectesFaites => $composableBuilder(
+    column: $table.collectesFaites,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get collectesTotal => $composableBuilder(
+    column: $table.collectesTotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get codeLivraison => $composableBuilder(
+    column: $table.codeLivraison,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jetonReception => $composableBuilder(
+    column: $table.jetonReception,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalUnites => $composableBuilder(
+    column: $table.totalUnites,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get devise => $composableBuilder(
+    column: $table.devise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get positionLat => $composableBuilder(
+    column: $table.positionLat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get positionLon => $composableBuilder(
+    column: $table.positionLon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get positionAgeS => $composableBuilder(
+    column: $table.positionAgeS,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get majLeLocal => $composableBuilder(
+    column: $table.majLeLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CommandesCacheTableOrderingComposer
+    extends Composer<_$BaseOffline, $CommandesCacheTable> {
+  $$CommandesCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get commandeId => $composableBuilder(
+    column: $table.commandeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get etat => $composableBuilder(
+    column: $table.etat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get etatCle => $composableBuilder(
+    column: $table.etatCle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get collectesFaites => $composableBuilder(
+    column: $table.collectesFaites,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get collectesTotal => $composableBuilder(
+    column: $table.collectesTotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get codeLivraison => $composableBuilder(
+    column: $table.codeLivraison,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jetonReception => $composableBuilder(
+    column: $table.jetonReception,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalUnites => $composableBuilder(
+    column: $table.totalUnites,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get devise => $composableBuilder(
+    column: $table.devise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get positionLat => $composableBuilder(
+    column: $table.positionLat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get positionLon => $composableBuilder(
+    column: $table.positionLon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get positionAgeS => $composableBuilder(
+    column: $table.positionAgeS,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get majLeLocal => $composableBuilder(
+    column: $table.majLeLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CommandesCacheTableAnnotationComposer
+    extends Composer<_$BaseOffline, $CommandesCacheTable> {
+  $$CommandesCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get commandeId => $composableBuilder(
+    column: $table.commandeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get etat =>
+      $composableBuilder(column: $table.etat, builder: (column) => column);
+
+  GeneratedColumn<String> get etatCle =>
+      $composableBuilder(column: $table.etatCle, builder: (column) => column);
+
+  GeneratedColumn<int> get collectesFaites => $composableBuilder(
+    column: $table.collectesFaites,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get collectesTotal => $composableBuilder(
+    column: $table.collectesTotal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get codeLivraison => $composableBuilder(
+    column: $table.codeLivraison,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get jetonReception => $composableBuilder(
+    column: $table.jetonReception,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalUnites => $composableBuilder(
+    column: $table.totalUnites,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get devise =>
+      $composableBuilder(column: $table.devise, builder: (column) => column);
+
+  GeneratedColumn<double> get positionLat => $composableBuilder(
+    column: $table.positionLat,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get positionLon => $composableBuilder(
+    column: $table.positionLon,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get positionAgeS => $composableBuilder(
+    column: $table.positionAgeS,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get majLeLocal => $composableBuilder(
+    column: $table.majLeLocal,
+    builder: (column) => column,
+  );
+}
+
+class $$CommandesCacheTableTableManager
+    extends
+        RootTableManager<
+          _$BaseOffline,
+          $CommandesCacheTable,
+          CommandeCache,
+          $$CommandesCacheTableFilterComposer,
+          $$CommandesCacheTableOrderingComposer,
+          $$CommandesCacheTableAnnotationComposer,
+          $$CommandesCacheTableCreateCompanionBuilder,
+          $$CommandesCacheTableUpdateCompanionBuilder,
+          (
+            CommandeCache,
+            BaseReferences<_$BaseOffline, $CommandesCacheTable, CommandeCache>,
+          ),
+          CommandeCache,
+          PrefetchHooks Function()
+        > {
+  $$CommandesCacheTableTableManager(
+    _$BaseOffline db,
+    $CommandesCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CommandesCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CommandesCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CommandesCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> commandeId = const Value.absent(),
+                Value<String> etat = const Value.absent(),
+                Value<String> etatCle = const Value.absent(),
+                Value<int> collectesFaites = const Value.absent(),
+                Value<int> collectesTotal = const Value.absent(),
+                Value<String> codeLivraison = const Value.absent(),
+                Value<String> jetonReception = const Value.absent(),
+                Value<int> totalUnites = const Value.absent(),
+                Value<String> devise = const Value.absent(),
+                Value<double?> positionLat = const Value.absent(),
+                Value<double?> positionLon = const Value.absent(),
+                Value<int?> positionAgeS = const Value.absent(),
+                Value<DateTime> majLeLocal = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CommandesCacheCompanion(
+                commandeId: commandeId,
+                etat: etat,
+                etatCle: etatCle,
+                collectesFaites: collectesFaites,
+                collectesTotal: collectesTotal,
+                codeLivraison: codeLivraison,
+                jetonReception: jetonReception,
+                totalUnites: totalUnites,
+                devise: devise,
+                positionLat: positionLat,
+                positionLon: positionLon,
+                positionAgeS: positionAgeS,
+                majLeLocal: majLeLocal,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String commandeId,
+                required String etat,
+                Value<String> etatCle = const Value.absent(),
+                Value<int> collectesFaites = const Value.absent(),
+                Value<int> collectesTotal = const Value.absent(),
+                required String codeLivraison,
+                required String jetonReception,
+                Value<int> totalUnites = const Value.absent(),
+                Value<String> devise = const Value.absent(),
+                Value<double?> positionLat = const Value.absent(),
+                Value<double?> positionLon = const Value.absent(),
+                Value<int?> positionAgeS = const Value.absent(),
+                required DateTime majLeLocal,
+                Value<int> rowid = const Value.absent(),
+              }) => CommandesCacheCompanion.insert(
+                commandeId: commandeId,
+                etat: etat,
+                etatCle: etatCle,
+                collectesFaites: collectesFaites,
+                collectesTotal: collectesTotal,
+                codeLivraison: codeLivraison,
+                jetonReception: jetonReception,
+                totalUnites: totalUnites,
+                devise: devise,
+                positionLat: positionLat,
+                positionLon: positionLon,
+                positionAgeS: positionAgeS,
+                majLeLocal: majLeLocal,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CommandesCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$BaseOffline,
+      $CommandesCacheTable,
+      CommandeCache,
+      $$CommandesCacheTableFilterComposer,
+      $$CommandesCacheTableOrderingComposer,
+      $$CommandesCacheTableAnnotationComposer,
+      $$CommandesCacheTableCreateCompanionBuilder,
+      $$CommandesCacheTableUpdateCompanionBuilder,
+      (
+        CommandeCache,
+        BaseReferences<_$BaseOffline, $CommandesCacheTable, CommandeCache>,
+      ),
+      CommandeCache,
+      PrefetchHooks Function()
+    >;
 
 class $BaseOfflineManager {
   final _$BaseOffline _db;
@@ -1988,4 +3876,8 @@ class $BaseOfflineManager {
       $$ActionsEnAttenteTableTableManager(_db, _db.actionsEnAttente);
   $$ArretsPreprovisionnesTableTableManager get arretsPreprovisionnes =>
       $$ArretsPreprovisionnesTableTableManager(_db, _db.arretsPreprovisionnes);
+  $$BrouillonsPanierTableTableManager get brouillonsPanier =>
+      $$BrouillonsPanierTableTableManager(_db, _db.brouillonsPanier);
+  $$CommandesCacheTableTableManager get commandesCache =>
+      $$CommandesCacheTableTableManager(_db, _db.commandesCache);
 }

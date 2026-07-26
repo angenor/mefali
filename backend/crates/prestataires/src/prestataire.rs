@@ -334,6 +334,11 @@ impl PgPrestataires {
 
     /// Dépose un scan de charte signée (clé neuve, 0..n par prestataire — une
     /// re-signature n'écrase jamais). Émet `charte.deposee`.
+    // Huit paramètres : `tx` + le prestataire + le média (octets, mime) + ce
+    // que la charte ATTESTE (version, date de signature) + l'acteur. Les
+    // grouper cacherait que la version et la date viennent du document, pas de
+    // l'appelant. Même arbitrage que `PgCommandes::new`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn deposer_charte(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
@@ -934,36 +939,6 @@ fn exiger_transition(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Table de transitions conforme à data-model §4.1 — EXHAUSTIVE (3 × 3).
-    #[test]
-    fn table_de_transitions_conforme_au_data_model() {
-        use ActionPrestataire::*;
-        use StatutPrestataire::*;
-        let cas = [
-            (Prospect, Agreer, Some(Agree)),
-            (Prospect, Suspendre, None),
-            (Prospect, Retablir, None),
-            (Agree, Agreer, None),
-            (Agree, Suspendre, Some(Suspendu)),
-            (Agree, Retablir, None),
-            (Suspendu, Agreer, None),
-            (Suspendu, Suspendre, None),
-            (Suspendu, Retablir, Some(Agree)),
-        ];
-        for (avant, action, attendu) in cas {
-            assert_eq!(
-                transition(avant, action),
-                attendu,
-                "{avant} × {action:?}"
-            );
-        }
-    }
-}
-
 /// Validation commune des champs de fiche (création et modification).
 fn valider_champs(
     nom: &str,
@@ -1006,4 +981,34 @@ pub(crate) fn valider_media(
         return Err(ErreurPrestataires::ObjetTropVolumineux);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Table de transitions conforme à data-model §4.1 — EXHAUSTIVE (3 × 3).
+    #[test]
+    fn table_de_transitions_conforme_au_data_model() {
+        use ActionPrestataire::*;
+        use StatutPrestataire::*;
+        let cas = [
+            (Prospect, Agreer, Some(Agree)),
+            (Prospect, Suspendre, None),
+            (Prospect, Retablir, None),
+            (Agree, Agreer, None),
+            (Agree, Suspendre, Some(Suspendu)),
+            (Agree, Retablir, None),
+            (Suspendu, Agreer, None),
+            (Suspendu, Suspendre, None),
+            (Suspendu, Retablir, Some(Agree)),
+        ];
+        for (avant, action, attendu) in cas {
+            assert_eq!(
+                transition(avant, action),
+                attendu,
+                "{avant} × {action:?}"
+            );
+        }
+    }
 }

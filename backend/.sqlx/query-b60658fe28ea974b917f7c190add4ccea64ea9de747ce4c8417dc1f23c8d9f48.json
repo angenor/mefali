@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT delai_preparation_min FROM prestataires.prestataire WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "delai_preparation_min",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "delai_preparation_min"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b60658fe28ea974b917f7c190add4ccea64ea9de747ce4c8417dc1f23c8d9f48"
+}

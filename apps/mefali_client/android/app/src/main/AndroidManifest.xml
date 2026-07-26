@@ -5,6 +5,14 @@
          partirait donc sans réseau, et échouerait dès l'écran du téléphone. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- « Utiliser ma position actuelle » de l'écran d'adresse (CMD-02) : le pin
+         de livraison part du GPS quand la cliente le demande. GROSSIÈRE aussi,
+         car un pin de portail n'a pas besoin du mètre près et beaucoup
+         d'appareils refusent la précision fine — geolocator demande les deux au
+         runtime et se contente de ce qui est accordé. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
     <!-- RECORD_AUDIO n'est pas listée mais elle EST dans l'apk : le manifest de
          record_android la déclare et le merger la fusionne. C'est le micro de la
          note vocale de repère d'adresse (CPT-05), que `record` demande lui-même

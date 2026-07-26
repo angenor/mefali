@@ -1,122 +1,71 @@
-//! Crate `commandes` — tronc commande générique + trait [`ServiceWorkflow`].
+//! Crate `commandes` — le tronc commande et TOUT son cycle de vie.
 //!
 //! Le tronc commande ne connaît que les états de très haut niveau (cadrage
 //! §11.11) et **aucun champ logistique** : la livraison est un composant
-//! optionnel rattaché ailleurs, un prestataire n'est pas forcément un vendeur
-//! (constitution II). Chaque vertical fournit sa table de détails et son
-//! implémentation de [`ServiceWorkflow`].
+//! optionnel (0..n), un prestataire n'est pas forcément un vendeur
+//! (constitution II). Le devis figé, le coursier, l'ordre des arrêts et tous
+//! les états de collecte vivent sur `livraison`/`segment`/`arret`.
 //!
-//! Le trait `ServiceWorkflow` reste défini sans implémentation (stabilisé au
-//! cycle CMD). Le cycle QRC 006 ajoute le **socle logistique minimal** —
-//! `commande`/`livraison`/`segment`/`arrêt`, la transition
-//! `marquer_arret_collecte` et le port `ArretsDeCollecte` — sans aucune logique
-//! CMD (création, cash, substitution, dispatch).
+//! Histoire du crate : le cycle QRC 006 y a posé le **socle logistique minimal**
+//! (`commande`/`livraison`/`segment`/`arrêt`, `marquer_arret_collecte`, port
+//! `ArretsDeCollecte`). Le cycle CMD 008 l'ÉTEND — sans changer de frontière —
+//! du panier multi-vendeurs à la remise, ou à l'arbre des échecs.
+//!
+//! | Module | Rôle |
+//! |---|---|
+//! | [`modele`] | types du domaine, erreurs et leurs clés i18n |
+//! | [`etats`] | table de transitions FERMÉE (3 niveaux), garde unique |
+//! | [`ports`] | traits offerts (DSP) et consommés (comptes, preuves, position) |
+//! | [`workflow`] | verticaux de service ([`workflow::ServiceWorkflow`]) |
+//! | [`panier`] | devis de panier, regroupement, mixage, scission |
+//! | [`creation`] | prix figés + devis figé + secrets de remise, idempotent |
+//! | [`collecte`] | boucle par arrêt (en route, arrivé, indisponible), remise |
+//! | [`substitution`] | préférences, proposition, échéance, expiration |
+//! | [`annulation`] | sans frais / après collecte / admin |
+//! | [`echec`] | arbre §7.5, détenteurs, sanctions |
+//! | [`suivi`] | progression par arrêt, position et son âge |
+//! | [`depot`] | `PgCommandes` — racine de composition du domaine |
+//!
+//! Conventions du dépôt : **lectures sur pool**, **écritures sur
+//! `&mut PgTransaction`** avec l'événement outbox dans la MÊME transaction
+//! (constitution VI).
 
-use async_trait::async_trait;
-use uuid::Uuid;
-
+pub mod annulation;
+pub mod collecte;
+pub mod creation;
 pub mod depot;
+pub mod echec;
+pub mod etats;
 pub mod modele;
+pub mod panier;
 pub mod ports;
+pub mod substitution;
+pub mod suivi;
+pub mod workflow;
 
-pub use depot::PgCommandes;
-pub use modele::{
-    ArretACollecter, ErreurCommandes, EtatLivraison, ModeCollecte, ProgressionCollecte,
-    StatutArret,
+pub use annulation::{AnnulationFaite, AuteurAnnulation};
+pub use echec::{DemandeEchec, IssueEnregistree, ResolutionIssue};
+pub use collecte::{
+    ActionArret, DemandeTransitionArret, MotifIndisponible, PreuveRemise, RemiseFaite,
+    TransitionArret,
 };
-pub use ports::{ArretsDeCollecte, ArretsFixes};
-
-/// États de très haut niveau du tronc commande — les SEULS que le crate
-/// `commandes` connaît (cadrage §11.11). Aucun champ logistique.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EtatCommande {
-    /// Commande créée, pas encore prise en charge.
-    Creee,
-    /// Prise en charge, parcours du vertical en cours.
-    EnCours,
-    /// Terminée avec succès.
-    Terminee,
-    /// Annulée avant terme.
-    Annulee,
-    /// Litige ouvert (escalade).
-    Litige,
-}
-
-/// Un état intermédiaire propre à un vertical, projeté sur le tronc.
-#[derive(Debug, Clone, Copy)]
-pub struct EtatIntermediaire {
-    /// Clé i18n dérivée, jamais de libellé en dur (constitution VII).
-    pub code: &'static str,
-    /// Projection de cet état sur le tronc commande.
-    pub etat_tronc: EtatCommande,
-}
-
-/// Contexte passé aux hooks du vertical. Squelette ce cycle — enrichi au
-/// cycle CMD (détails de commande, acteur, zone…).
-#[derive(Debug, Clone)]
-pub struct ContexteWorkflow {
-    /// Identifiant de la commande concernée.
-    pub commande_id: Uuid,
-    /// Identifiant du vertical (ex. `"resto_courses"`).
-    pub vertical: String,
-}
-
-/// Ajustement de tarif produit par un vertical.
-///
-/// Montant en **entiers d'unités mineures** + code **ISO 4217** — jamais de
-/// float, jamais de montant sans devise (constitution III). Signé : un montant
-/// négatif exprime une remise.
-#[derive(Debug, Clone)]
-pub struct AjustementTarif {
-    /// Clé i18n du motif d'ajustement, jamais de libellé en dur.
-    pub motif_code: &'static str,
-    /// Montant en unités mineures de la devise (peut être négatif).
-    pub montant_mineur: i64,
-    /// Code devise ISO 4217 (ex. `"XOF"`).
-    pub devise: String,
-}
-
-/// Erreurs des hooks de workflow. Squelette ce cycle.
-#[derive(Debug, thiserror::Error)]
-pub enum WorkflowError {
-    /// Transition d'état intermédiaire refusée par le vertical.
-    #[error("transition invalide de « {de} » vers « {vers} »")]
-    TransitionInvalide {
-        /// État de départ (code du vertical).
-        de: String,
-        /// État cible (code du vertical).
-        vers: String,
-    },
-    /// Erreur interne du vertical.
-    #[error("erreur interne du workflow : {0}")]
-    Interne(String),
-}
-
-/// Implémenté par chaque vertical (resto_courses au MVP ; pressing,
-/// intervention… ensuite). Le vertical possède sa table de détails
-/// (`resto_details`…) et ses états intermédiaires.
-///
-/// Aucune méthode n'expose de notion logistique : le dispatch filtre sur des
-/// capacités requises, la livraison est un composant optionnel (constitution II).
-#[async_trait]
-pub trait ServiceWorkflow: Send + Sync {
-    /// Identifiant du vertical (ex. `"resto_courses"`).
-    fn vertical(&self) -> &'static str;
-
-    /// États intermédiaires du vertical, projetés sur [`EtatCommande`].
-    fn etats_intermediaires(&self) -> &'static [EtatIntermediaire];
-
-    /// Valide une transition d'état intermédiaire (le serveur fait foi).
-    async fn valider_transition(
-        &self,
-        de: &str,
-        vers: &str,
-        ctx: &ContexteWorkflow,
-    ) -> Result<(), WorkflowError>;
-
-    /// Hook de tarification du vertical (appelé par le crate `tarification`).
-    async fn ajustements_tarification(
-        &self,
-        ctx: &ContexteWorkflow,
-    ) -> Result<Vec<AjustementTarif>, WorkflowError>;
-}
+pub use depot::PgCommandes;
+pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};
+pub use modele::{
+    ArretACollecter, Detenteur, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement,
+    IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
+    Restrictions, Sanction, StatutArret, StatutLigne, TypeArret, TypeIssueEchec,
+};
+pub use panier::{
+    CauseScission, DetailsVertical, GroupeVendeur, LignePanier, LigneValidee, PanierValide,
+};
+pub use ports::{
+    AffectationSimulee, ArretsDeCollecte, ArretsFixes, CommandeADispatcher, CommandesADispatcher,
+    PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
+    RestrictionsCompte, RestrictionsSimulees, TarifFixe,
+};
+pub use substitution::{
+    DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,
+};
+pub use suivi::{CommandeResumee, VueSuivi};
+pub use workflow::{CoursesWorkflow, RestaurationWorkflow, ServiceWorkflow};

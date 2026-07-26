@@ -6,12 +6,28 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-# Domaine PUR (constitution II) : socle logistique minimal (commande, livraison,
-# segment, arrêt). Aucune I/O directe — l'outbox passe par `socle::ecrire_evenement`
-# dans la transaction fournie. Le crate `qr` consomme le port `ArretsDeCollecte`
+# Domaine PUR (constitution II) : le tronc commande, son composant de livraison
+# optionnel et TOUT le cycle de vie (panier, création, états, substitutions,
+# annulations, arbre des échecs). Aucune I/O directe — l'outbox passe par
+# `socle::ecrire_evenement` dans la transaction fournie, le routage et le stockage
+# objet passent par des traits. Le crate `qr` consomme le port `ArretsDeCollecte`
 # et la transition `marquer_arret_collecte`.
+#
+# ⚠ Pas de dépendance vers `qr` : c'est LUI qui dépend de `commandes` (socle
+# logistique du cycle 006) — l'inverse serait un cycle que Cargo refuse. Les deux
+# fonctions d'empreinte que le data-model désignait `qr::verification::*` ont été
+# remontées dans `socle::empreintes`, que `qr` ré-exporte : une implémentation,
+# deux consommateurs (voir T003).
 [dependencies]
 socle.workspace = true
+# Configuration héritée : mixable, périssable, plafonds cash, délais, devise.
+zones.workspace = true
+# Carnet d'adresses (marquer_adresse_utilisee) + restrictions de compte (CPT-06).
+comptes.workspace = true
+# figer_prix, Commandabilite, articles commandables, sites vendeurs.
+prestataires.workspace = true
+# EvaluationTarifaire + OptimisationArrets — le devis figé de la livraison.
+tarification.workspace = true
 sqlx.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -25,3 +41,8 @@ tracing.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
+# Harnais : composition réelle du dépôt (prestataires + comptes) et doubles
+# mémoire de socle. Tous déjà dépendances normales du crate.
+socle.workspace = true
+comptes.workspace = true
+prestataires.workspace = true

@@ -2,6 +2,7 @@
 library;
 
 export 'l10n/mefali_core_localizations.dart';
+export 'src/adresses/api_adresses.dart';
 export 'src/adresses/feuille_enregistrer_adresse.dart';
 export 'src/adresses/liste_adresses.dart';
 export 'src/adresses/note_vocale.dart';
@@ -17,6 +18,11 @@ export 'src/auth/parcours_auth.dart';
 export 'src/auth/racine_auth.dart';
 export 'src/auth/session.dart';
 export 'src/auth/stockage_jetons.dart';
+export 'src/commande/api_commandes.dart';
+export 'src/commande/bloc_remise.dart';
+export 'src/commande/carte_vendeur.dart';
+export 'src/commande/message_erreur.dart';
+export 'src/commande/recapitulatif_frais.dart';
 export 'src/config/amorce_config.dart';
 export 'src/config/cache_config.dart';
 export 'src/config/config_distante.dart';
@@ -28,6 +34,7 @@ export 'package:drift/drift.dart' show Value;
 export 'src/coursier/bandeaux.dart';
 export 'src/format/montant.dart';
 export 'src/offline/action_en_attente.dart';
+export 'src/offline/cache_commandes.dart';
 export 'src/offline/file_actions.dart';
 export 'src/portee.dart';
 export 'src/theme/etats.dart';

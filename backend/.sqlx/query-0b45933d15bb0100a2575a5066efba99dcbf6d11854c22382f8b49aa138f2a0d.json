@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.ligne_commande SET statut = 'retiree' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0b45933d15bb0100a2575a5066efba99dcbf6d11854c22382f8b49aa138f2a0d"
+}

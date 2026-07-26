@@ -28,6 +28,12 @@ dependencies:
   # DioException) sans y être ré-exporté : dépendance DIRECTE obligatoire pour
   # poser l'intercepteur d'autorisation. Version alignée sur le client (^5.7.0).
   dio: 5.10.0
+  # Même raison que dio, pour la couche d'appel commandes (cycle CMD) : les DTO
+  # du client généré sont des `built_value`, leurs listes des `BuiltList`, et
+  # `standardSerializers.serializeWith` prend un `Serializer<T>` — trois types
+  # que le barrel généré n'exporte pas. Versions figées à celles déjà résolues.
+  built_value: 8.12.6
+  built_collection: 5.1.1
   # Cache local de la configuration distante (hors-ligne — FR-020). Figée (R7).
   shared_preferences: 2.5.5
   # ── Cycle CPT (003) — plugins NATIFS stabilisés tôt (cadrage §10.1 : Shorebird
@@ -53,6 +59,12 @@ dependencies:
   # Chemin du fichier de base drift (répertoire application).
   path_provider: ^2.1.5
   path: ^1.9.1
+  # QR de RÉCEPTION du client (CMD-05, maquettes C4-4a et C4-4d). Rendu
+  # 100 % local : le bloc « À la livraison » doit se dessiner SANS RÉSEAU
+  # (SC-009) — un QR servi en image par l'API serait indisponible hors ligne,
+  # c'est-à-dire précisément au moment où on en a besoin. Version figée
+  # (constitution X).
+  qr_flutter: 4.1.0
 
 dev_dependencies:
   flutter_test:

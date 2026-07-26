@@ -1,0 +1,143 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.id, l.devis_prix_client, l.devis_part_coursier, l.devis_marge,\n                      l.devis_devise, l.devis_distance_m, l.devis_eta_s, l.devis_degraded,\n                      l.devis_composantes, l.proposer_scission,\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                         WHERE s.livraison_id = l.id) AS \"nb_arrets!\"\n               FROM commandes.livraison l\n               WHERE l.commande_id = $1\n               ORDER BY l.cree_le, l.id\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "devis_prix_client",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_prix_client"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "devis_part_coursier",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_part_coursier"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devis_marge",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_marge"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "devis_devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_devise"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "devis_distance_m",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_distance_m"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "devis_eta_s",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_eta_s"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "devis_degraded",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_degraded"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "devis_composantes",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_composantes"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "proposer_scission",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "proposer_scission"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "nb_arrets!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "2b058aae3002fb3928e3b778068a3abd13772275fad394359aed788be7ecf023"
+}
