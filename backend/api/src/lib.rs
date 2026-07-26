@@ -412,6 +412,10 @@ pub async fn run() -> std::io::Result<()> {
                     Arc::new(depot.clone()),
                     objets.clone(),
                     positions,
+                    // CRS-05 n'existe pas : aucune preuve n'est réunie en
+                    // production, donc AUCUN échec n'est déclarable — exact et
+                    // voulu, comme l'affectation avant DSP (research R10/R16).
+                    Arc::new(commandes::PreuvesFixes::nouveau()),
                 );
                 // Le compteur d'essais du code dégradé passe par Redis
                 // (éphémère, R7).

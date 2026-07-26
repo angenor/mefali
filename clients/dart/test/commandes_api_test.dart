@@ -7,6 +7,15 @@ void main() {
   final instance = MefaliApiClient().getCommandesApi();
 
   group(CommandesApi, () {
+    // CMD-07 — le client annule sa commande.
+    //
+    // **Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière est un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à facturer. Dès le premier achat, la part du coursier est due.
+    //
+    //Future<ResultatAnnulation> annulerCommande(String id, DemandeAnnulation demandeAnnulation) async
+    test('test annulerCommande', () async {
+      // TODO
+    });
+
     // Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
     //
     // Un rejeu de la même `Idempotency-Key` rend la commande EXISTANTE avec un corps identique et un `200` — jamais un doublon.

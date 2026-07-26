@@ -247,6 +247,7 @@ impl Bac {
         ));
         let restrictions = Arc::new(RestrictionsSimulees::nouveau());
         let positions = Arc::new(PositionFixe::nouveau());
+        let preuves = Arc::new(PreuvesFixes::nouveau());
         let commandes = PgCommandes::new(
             pool.clone(),
             prestataires.clone(),
@@ -255,6 +256,7 @@ impl Bac {
             restrictions.clone(),
             objets,
             positions.clone(),
+            preuves.clone(),
         );
 
         let mut bac = Self {
@@ -262,7 +264,7 @@ impl Bac {
             comptes,
             prestataires,
             commandes,
-            preuves: Arc::new(PreuvesFixes::nouveau()),
+            preuves,
             positions,
             restrictions,
             pays,
@@ -505,6 +507,18 @@ impl Bac {
     /// identifiant. Panique si la création échoue : c'est une PRÉCONDITION du
     /// test, pas son objet.
     pub async fn creer_commande_api(&self, categorie_slug: &str, lignes: Vec<Value>) -> Uuid {
+        self.creer_commande_mode(categorie_slug, lignes, "cash").await
+    }
+
+    /// Variante avec le mode de paiement explicite. `mobile_money` fait naître
+    /// la commande `en_attente_paiement` : c'est le seul chemin vers la
+    /// confirmation de prépaiement.
+    pub async fn creer_commande_mode(
+        &self,
+        categorie_slug: &str,
+        lignes: Vec<Value>,
+        mode_paiement: &str,
+    ) -> Uuid {
         let app = actix_web::test::init_service(
             actix_web::App::new().configure(self.configurer()),
         )
@@ -513,7 +527,11 @@ impl Bac {
             .uri("/commandes")
             .insert_header(("authorization", format!("Bearer {}", self.jeton_client)))
             .insert_header(("idempotency-key", Uuid::now_v7().to_string()))
-            .set_json(self.demande_creation(categorie_slug, lignes))
+            .set_json({
+                let mut demande = self.demande_creation(categorie_slug, lignes);
+                demande["mode_paiement"] = json!(mode_paiement);
+                demande
+            })
             .to_request();
         let resp = actix_web::test::call_service(&app, req).await;
         assert_eq!(resp.status().as_u16(), 201, "création de commande du bac");

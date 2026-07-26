@@ -95,12 +95,14 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**inscrire**](doc/AuthApi.md#inscrire) | **POST** /auth/inscription | Crée le compte après consentement ARTCI, puis ouvre sa session.
 [*AuthApi*](doc/AuthApi.md) | [**rafraichir**](doc/AuthApi.md#rafraichir) | **POST** /auth/rafraichir | Échange le refresh contre un nouvel accès (rotation systématique, R2).
 [*AuthApi*](doc/AuthApi.md) | [**verifier**](doc/AuthApi.md#verifier) | **POST** /auth/otp/verifier | Vérifie le code : ouvre une session (numéro connu) ou exige le consentement.
+[*CommandesApi*](doc/CommandesApi.md) | [**annulerCommande**](doc/CommandesApi.md#annulercommande) | **POST** /commandes/{id}/annuler | CMD-07 — le client annule sa commande.
 [*CommandesApi*](doc/CommandesApi.md) | [**creerCommande**](doc/CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [*CommandesApi*](doc/CommandesApi.md) | [**deciderSubstitution**](doc/CommandesApi.md#decidersubstitution) | **POST** /commandes/{id}/substitutions/{sub}/decision | CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
 [*CommandesApi*](doc/CommandesApi.md) | [**devisPanier**](doc/CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
 [*CommandesApi*](doc/CommandesApi.md) | [**intentionAppel**](doc/CommandesApi.md#intentionappel) | **POST** /commandes/{id}/appel | CMD-05 — journalise l&#39;intention d&#39;appeler le coursier (FR-041).
 [*CommandesApi*](doc/CommandesApi.md) | [**mesCommandes**](doc/CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
 [*CommandesApi*](doc/CommandesApi.md) | [**suivreCommande**](doc/CommandesApi.md#suivrecommande) | **GET** /commandes/{id} | CMD-05 — suivi complet d&#39;une commande, pour son **propriétaire**.
+[*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**annulerCommandeAdmin**](doc/CommandesAdminApi.md#annulercommandeadmin) | **POST** /admin/commandes/{id}/annuler | CMD-07 — un administrateur annule une commande, **motif obligatoire**.
 [*CommandesAdminApi*](doc/CommandesAdminApi.md) | [**fileAttente**](doc/CommandesAdminApi.md#fileattente) | **GET** /admin/commandes/attente | CMD-10 — file FIFO des commandes sans coursier d&#39;une zone.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretArrive**](doc/CoursesApi.md#arretarrive) | **POST** /courses/{livraison_id}/arrets/{arret_id}/arrive | CMD-04 — le coursier déclare son ARRIVÉE sur un arrêt.
 [*CoursesApi*](doc/CoursesApi.md) | [**arretEnRoute**](doc/CoursesApi.md#arretenroute) | **POST** /courses/{livraison_id}/arrets/{arret_id}/en-route | CMD-04 — le coursier déclare partir vers un arrêt.
@@ -181,6 +183,7 @@ Class | Method | HTTP request | Description
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DecisionSubstitution](doc/DecisionSubstitution.md)
+ - [DemandeAnnulation](doc/DemandeAnnulation.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
@@ -243,6 +246,7 @@ Class | Method | HTTP request | Description
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
+ - [ResultatAnnulation](doc/ResultatAnnulation.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
  - [ResultatDecisionSubstitution](doc/ResultatDecisionSubstitution.md)
  - [ResultatSimulation](doc/ResultatSimulation.md)

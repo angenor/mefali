@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.commande\n                 (id, client_id, zone_id, categorie_id, lieu_lat, lieu_lon,\n                  repere_texte, repere_vocal_cle, adresse_id,\n                  montant_articles_unites, total_unites, devise,\n                  mode_paiement, etat_paiement, etat,\n                  code_livraison, code_livraison_hash,\n                  jeton_reception, jeton_reception_hash,\n                  relivraison_de)\n             SELECT $1, c.client_id, c.zone_id, c.categorie_id, c.lieu_lat, c.lieu_lon,\n                    c.repere_texte, c.repere_vocal_cle, c.adresse_id,\n                    c.montant_articles_unites, c.montant_articles_unites, c.devise,\n                    c.mode_paiement, 'du'::commandes.etat_paiement,\n                    'nouvelle'::commandes.etat_commande,\n                    $2, $3, $4, $5, c.id\n               FROM commandes.commande c\n              WHERE c.id = $6",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c0ceded277d50ecc2b2769de1941cc4cf8ec967e97abdad818e810d30956cb95"
+}

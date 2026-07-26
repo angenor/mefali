@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"collectes!\",\n                      COALESCE(SUM(a.montant_avance), 0)::bigint AS \"montant!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE l.commande_id = $1 AND a.statut = 'collecte'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "collectes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "montant!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "e28f026d2d7a909c044f151183d4635c9c0d3901a6fabc976f9c1895aeeac71f"
+}

@@ -29,7 +29,7 @@ use crate::modele::{
     ProgressionCollecte, StatutArret,
 };
 use crate::ports::{
-    ArretsDeCollecte, CommandeADispatcher, CommandesADispatcher, PositionCoursier,
+    ArretsDeCollecte, CommandeADispatcher, CommandesADispatcher, PositionCoursier, PreuvesEchec,
     RestrictionsCompte,
 };
 
@@ -61,6 +61,9 @@ pub struct PgCommandes {
     /// position sans âge serait pire que pas de position : l'app la croirait
     /// fraîche (FR-040).
     pub(crate) positions: Arc<dyn PositionCoursier>,
+    /// Preuves d'échec (CRS-05, non construit). Sans elles, un échec est
+    /// REFUSÉ : « le coursier ne perd jamais » suppose une trace (FR-056).
+    pub(crate) preuves: Arc<dyn PreuvesEchec>,
 }
 
 impl PgCommandes {
@@ -76,6 +79,7 @@ impl PgCommandes {
         restrictions: Arc<dyn RestrictionsCompte>,
         objets: Arc<dyn DepotObjets>,
         positions: Arc<dyn PositionCoursier>,
+        preuves: Arc<dyn PreuvesEchec>,
     ) -> Self {
         Self {
             zones: PgZones::new(pool.clone()),
@@ -86,6 +90,7 @@ impl PgCommandes {
             restrictions,
             objets,
             positions,
+            preuves,
         }
     }
 

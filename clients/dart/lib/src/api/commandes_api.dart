@@ -11,12 +11,14 @@ import 'package:dio/dio.dart';
 import 'package:mefali_api_client/src/api_util.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
 import 'package:mefali_api_client/src/model/decision_substitution.dart';
+import 'package:mefali_api_client/src/model/demande_annulation.dart';
 import 'package:mefali_api_client/src/model/demande_creation_commande.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/devis_panier.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/intention_appel.dart';
 import 'package:mefali_api_client/src/model/mes_commandes.dart';
+import 'package:mefali_api_client/src/model/resultat_annulation.dart';
 import 'package:mefali_api_client/src/model/resultat_decision_substitution.dart';
 import 'package:mefali_api_client/src/model/suivi_commande.dart';
 
@@ -27,6 +29,109 @@ class CommandesApi {
   final Serializers _serializers;
 
   const CommandesApi(this._dio, this._serializers);
+
+  /// CMD-07 — le client annule sa commande.
+  /// **Sans frais tant qu&#39;aucun arrêt n&#39;a été collecté** (FR-052) : la frontière est un fait, pas un délai — personne n&#39;a avancé d&#39;argent, il n&#39;y a rien à facturer. Dès le premier achat, la part du coursier est due.
+  ///
+  /// Parameters:
+  /// * [id] - Commande du compte appelant.
+  /// * [demandeAnnulation] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [ResultatAnnulation] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<ResultatAnnulation>> annulerCommande({ 
+    required String id,
+    required DemandeAnnulation demandeAnnulation,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/commandes/{id}/annuler'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(DemandeAnnulation);
+      _bodyData = _serializers.serialize(demandeAnnulation, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    ResultatAnnulation? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(ResultatAnnulation),
+      ) as ResultatAnnulation;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<ResultatAnnulation>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
 
   /// Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
   /// Un rejeu de la même &#x60;Idempotency-Key&#x60; rend la commande EXISTANTE avec un corps identique et un &#x60;200&#x60; — jamais un doublon.

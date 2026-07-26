@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT montant_avance FROM commandes.arret WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "montant_avance",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "montant_avance"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a8a8a0dbec12311e75b7bb5fe3b9f538ebd90bed7db91c1def2c9e97ebcde2d5"
+}

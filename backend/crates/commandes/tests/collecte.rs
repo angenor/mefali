@@ -42,6 +42,7 @@ fn depot(pool: &sqlx::PgPool) -> PgCommandes {
         Arc::new(RestrictionsSimulees::nouveau()),
         objets,
         Arc::new(commandes::PositionFixe::nouveau()),
+        Arc::new(commandes::PreuvesFixes::nouveau()),
     )
 }
 

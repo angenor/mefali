@@ -48,6 +48,7 @@ import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/decision_substitution.dart';
+import 'package:mefali_api_client/src/model/demande_annulation.dart';
 import 'package:mefali_api_client/src/model/demande_collecte.dart';
 import 'package:mefali_api_client/src/model/demande_creation_commande.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
@@ -110,6 +111,7 @@ import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
+import 'package:mefali_api_client/src/model/resultat_annulation.dart';
 import 'package:mefali_api_client/src/model/resultat_collecte.dart';
 import 'package:mefali_api_client/src/model/resultat_decision_substitution.dart';
 import 'package:mefali_api_client/src/model/resultat_simulation.dart';
@@ -169,6 +171,7 @@ part 'serializers.g.dart';
   CreerPrestataireDto,
   DecisionRole,
   DecisionSubstitution,
+  DemandeAnnulation,
   DemandeCollecte,
   DemandeCreationCommande,
   DemandeDevisPanier,
@@ -231,6 +234,7 @@ part 'serializers.g.dart';
   RegleRetenue,
   RegleUpsert,
   ResolutionPlaque,
+  ResultatAnnulation,
   ResultatCollecte,
   ResultatDecisionSubstitution,
   ResultatSimulation,

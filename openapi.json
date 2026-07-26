@@ -64,6 +64,105 @@
         ]
       }
     },
+    "/admin/commandes/{id}/annuler": {
+      "post": {
+        "tags": [
+          "commandes-admin"
+        ],
+        "summary": "CMD-07 — un administrateur annule une commande, **motif obligatoire**.",
+        "description": "Le motif n'est pas une formalité : il est journalisé, il part dans\nl'événement, et c'est lui que le client lira. C'est une **clé i18n**, jamais\ndu texte libre — un motif écrit à la main serait illisible pour la moitié\ndes clients et impossible à agréger pour l'exploitation.",
+        "operationId": "annuler_commande_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande à annuler.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeAnnulation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Commande annulée ; `sans_frais` dit si quelque chose est dû.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatAnnulation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "État terminal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent — un admin doit motiver son geste (FR-054).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/comptes/dossiers-coursier": {
       "get": {
         "tags": [
@@ -3053,6 +3152,95 @@
           },
           "404": {
             "description": "Commande inconnue — ou appartenant à un autre compte : les deux sont indiscernables, et c'est voulu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/commandes/{id}/annuler": {
+      "post": {
+        "tags": [
+          "commandes"
+        ],
+        "summary": "CMD-07 — le client annule sa commande.",
+        "description": "**Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière\nest un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à\nfacturer. Dès le premier achat, la part du coursier est due.",
+        "operationId": "annuler_commande",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeAnnulation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Commande annulée ; `sans_frais` dit si quelque chose est dû.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatAnnulation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue ou appartenant à un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "État terminal : une commande livrée, annulée ou échouée ne s'annule pas.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6841,6 +7029,19 @@
           }
         }
       },
+      "DemandeAnnulation": {
+        "type": "object",
+        "description": "Demande d'annulation.",
+        "properties": {
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif. **Obligatoire pour un admin** (FR-054), facultative\npour le client — il n'a pas à se justifier."
+          }
+        }
+      },
       "DemandeCollecte": {
         "type": "object",
         "description": "Corps de la demande de collecte (partie `demande` JSON du multipart).",
@@ -9114,6 +9315,47 @@
           "valide": {
             "type": "boolean",
             "description": "Validité courante — DÉRIVÉE de l'état d'agrément (FR-015)."
+          }
+        }
+      },
+      "ResultatAnnulation": {
+        "type": "object",
+        "description": "Ce qu'une annulation a produit.",
+        "required": [
+          "commande_id",
+          "sans_frais",
+          "part_coursier_due",
+          "montant_avance",
+          "remboursement_du",
+          "devise"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande annulée."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "montant_avance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant déjà avancé chez les vendeurs."
+          },
+          "part_coursier_due": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part due au coursier (unités mineures) — 0 si sans frais."
+          },
+          "remboursement_du": {
+            "type": "boolean",
+            "description": "Vrai si la commande était prépayée : un remboursement est dû."
+          },
+          "sans_frais": {
+            "type": "boolean",
+            "description": "Vrai si rien n'avait encore été acheté : annulation SANS FRAIS."
           }
         }
       },

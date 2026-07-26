@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**annulerCommande**](CommandesApi.md#annulercommande) | **POST** /commandes/{id}/annuler | CMD-07 — le client annule sa commande.
 [**creerCommande**](CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [**deciderSubstitution**](CommandesApi.md#decidersubstitution) | **POST** /commandes/{id}/substitutions/{sub}/decision | CMD-06 — le client accepte ou refuse un remplacement, dans sa fenêtre.
 [**devisPanier**](CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
@@ -16,6 +17,51 @@ Method | HTTP request | Description
 [**mesCommandes**](CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
 [**suivreCommande**](CommandesApi.md#suivrecommande) | **GET** /commandes/{id} | CMD-05 — suivi complet d&#39;une commande, pour son **propriétaire**.
 
+
+# **annulerCommande**
+> ResultatAnnulation annulerCommande(id, demandeAnnulation)
+
+CMD-07 — le client annule sa commande.
+
+**Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière est un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à facturer. Dès le premier achat, la part du coursier est due.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande du compte appelant.
+final DemandeAnnulation demandeAnnulation = ; // DemandeAnnulation | 
+
+try {
+    final response = api.annulerCommande(id, demandeAnnulation);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CommandesApi->annulerCommande: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Commande du compte appelant. | 
+ **demandeAnnulation** | [**DemandeAnnulation**](DemandeAnnulation.md)|  | 
+
+### Return type
+
+[**ResultatAnnulation**](ResultatAnnulation.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **creerCommande**
 > Commande creerCommande(idempotencyKey, demandeCreationCommande)

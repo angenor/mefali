@@ -176,9 +176,9 @@ Backend Rust : crate `backend/crates/commandes/` (**étendu**, pas de nouveau cr
 
 **Independent Test** : annuler avant toute collecte → sans frais ; annuler après une collecte → règles d'échec, part coursier due ; annuler en admin → motif obligatoire et journalisé.
 
-- [ ] T054 [US8] Annulations dans `backend/crates/commandes/src/annulation.rs` : **sans frais** tant qu'aucun arrêt n'est collecté ; au-delà, bascule sur les règles d'échec avec **part coursier due** (research : au moins un arrêt collecté) ; annulation admin **avec motif obligatoire** journalisé ; refus sur état terminal ; événements `commande.annulee` et remboursement dû si prépayée. Puis `cargo sqlx prepare`.
-- [ ] T055 [US8] Endpoints d'annulation : `POST /commandes/{id}/annuler` (client propriétaire) dans `backend/api/src/commandes_http.rs` et `POST /admin/commandes/{id}/annuler` (admin, motif obligatoire) dans `admin_commandes_http.rs`. **Terminer par** : `#[utoipa::path]` à jour → `openapi.json` régénéré → clients Dart/TS régénérés (sans diff) → **build vert**.
-- [ ] T056 [P] [US8] Tests d'intégration US8 dans `backend/api/tests/commandes_annulation.rs` : sans frais avant collecte ; après collecte → règles d'échec + part due ; admin sans motif → refus ; commande livrée → **409** ; commande prépayée annulée → événement de remboursement dû émis.
+- [X] T054 [US8] Annulations dans `backend/crates/commandes/src/annulation.rs` : **sans frais** tant qu'aucun arrêt n'est collecté ; au-delà, bascule sur les règles d'échec avec **part coursier due** (research : au moins un arrêt collecté) ; annulation admin **avec motif obligatoire** journalisé ; refus sur état terminal ; événements `commande.annulee` et remboursement dû si prépayée. Puis `cargo sqlx prepare`.
+- [X] T055 [US8] Endpoints d'annulation : `POST /commandes/{id}/annuler` (client propriétaire) dans `backend/api/src/commandes_http.rs` et `POST /admin/commandes/{id}/annuler` (admin, motif obligatoire) dans `admin_commandes_http.rs`. **Terminer par** : `#[utoipa::path]` à jour → `openapi.json` régénéré → clients Dart/TS régénérés (sans diff) → **build vert**.
+- [X] T056 [P] [US8] Tests d'intégration US8 dans `backend/api/tests/commandes_annulation.rs` : sans frais avant collecte ; après collecte → règles d'échec + part due ; admin sans motif → refus ; commande livrée → **409** ; commande prépayée annulée → événement de remboursement dû émis.
 
 **Checkpoint** : toutes les sorties de parcours sont propres et tracées.
 

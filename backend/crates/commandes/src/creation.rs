@@ -904,7 +904,7 @@ impl PgCommandes {
 /// Pas de générateur pseudo-aléatoire de confort : ce code protège une remise
 /// de marchandise. L'entropie vient d'un UUIDv4, dont la source est celle du
 /// système — aucune dépendance nouvelle (constitution X).
-fn code_a_4_chiffres() -> String {
+pub(crate) fn code_a_4_chiffres() -> String {
     let octets = *Uuid::now_v7().as_bytes();
     // Les 4 DERNIERS octets d'un UUIDv7 sont aléatoires ; les premiers portent
     // l'horodatage et seraient devinables.
@@ -913,7 +913,7 @@ fn code_a_4_chiffres() -> String {
 }
 
 /// Jeton de réception encodé dans le QR client — aléatoire long.
-fn jeton_aleatoire() -> String {
+pub(crate) fn jeton_aleatoire() -> String {
     format!("{}{}", Uuid::now_v7().simple(), Uuid::now_v7().simple())
 }
 

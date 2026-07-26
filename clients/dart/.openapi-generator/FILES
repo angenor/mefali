@@ -42,6 +42,7 @@ doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionRole.md
 doc/DecisionSubstitution.md
+doc/DemandeAnnulation.md
 doc/DemandeCollecte.md
 doc/DemandeCreationCommande.md
 doc/DemandeDevisPanier.md
@@ -107,6 +108,7 @@ doc/Regle.md
 doc/RegleRetenue.md
 doc/RegleUpsert.md
 doc/ResolutionPlaque.md
+doc/ResultatAnnulation.md
 doc/ResultatCollecte.md
 doc/ResultatDecisionSubstitution.md
 doc/ResultatSimulation.md
@@ -189,6 +191,7 @@ lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
 lib/src/model/decision_role.dart
 lib/src/model/decision_substitution.dart
+lib/src/model/demande_annulation.dart
 lib/src/model/demande_collecte.dart
 lib/src/model/demande_creation_commande.dart
 lib/src/model/demande_devis_panier.dart
@@ -251,6 +254,7 @@ lib/src/model/regle.dart
 lib/src/model/regle_retenue.dart
 lib/src/model/regle_upsert.dart
 lib/src/model/resolution_plaque.dart
+lib/src/model/resultat_annulation.dart
 lib/src/model/resultat_collecte.dart
 lib/src/model/resultat_decision_substitution.dart
 lib/src/model/resultat_simulation.dart
@@ -314,6 +318,7 @@ test/creer_article_dto_test.dart
 test/creer_prestataire_dto_test.dart
 test/decision_role_test.dart
 test/decision_substitution_test.dart
+test/demande_annulation_test.dart
 test/demande_collecte_test.dart
 test/demande_creation_commande_test.dart
 test/demande_devis_panier_test.dart
@@ -379,6 +384,7 @@ test/regle_retenue_test.dart
 test/regle_test.dart
 test/regle_upsert_test.dart
 test/resolution_plaque_test.dart
+test/resultat_annulation_test.dart
 test/resultat_collecte_test.dart
 test/resultat_decision_substitution_test.dart
 test/resultat_simulation_test.dart

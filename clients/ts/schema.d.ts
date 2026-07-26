@@ -26,6 +26,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/commandes/{id}/annuler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-07 — un administrateur annule une commande, **motif obligatoire**.
+         * @description Le motif n'est pas une formalité : il est journalisé, il part dans
+         *     l'événement, et c'est lui que le client lira. C'est une **clé i18n**, jamais
+         *     du texte libre — un motif écrit à la main serait illisible pour la moitié
+         *     des clients et impossible à agréger pour l'exploitation.
+         */
+        post: operations["annuler_commande_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/comptes/dossiers-coursier": {
         parameters: {
             query?: never;
@@ -674,6 +697,28 @@ export interface paths {
         get: operations["suivre_commande"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/annuler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-07 — le client annule sa commande.
+         * @description **Sans frais tant qu'aucun arrêt n'a été collecté** (FR-052) : la frontière
+         *     est un fait, pas un délai — personne n'a avancé d'argent, il n'y a rien à
+         *     facturer. Dès le premier achat, la part du coursier est due.
+         */
+        post: operations["annuler_commande"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1972,6 +2017,14 @@ export interface components {
              */
             accepte: boolean;
         };
+        /** @description Demande d'annulation. */
+        DemandeAnnulation: {
+            /**
+             * @description Clé i18n du motif. **Obligatoire pour un admin** (FR-054), facultative
+             *     pour le client — il n'a pas à se justifier.
+             */
+            motif_cle?: string | null;
+        };
         /** @description Corps de la demande de collecte (partie `demande` JSON du multipart). */
         DemandeCollecte: {
             /** @description Code à 4 chiffres saisi (mode `code_secours`). */
@@ -3191,6 +3244,30 @@ export interface components {
             /** @description Validité courante — DÉRIVÉE de l'état d'agrément (FR-015). */
             valide: boolean;
         };
+        /** @description Ce qu'une annulation a produit. */
+        ResultatAnnulation: {
+            /**
+             * Format: uuid
+             * @description Commande annulée.
+             */
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Montant déjà avancé chez les vendeurs.
+             */
+            montant_avance: number;
+            /**
+             * Format: int64
+             * @description Part due au coursier (unités mineures) — 0 si sans frais.
+             */
+            part_coursier_due: number;
+            /** @description Vrai si la commande était prépayée : un remboursement est dû. */
+            remboursement_du: boolean;
+            /** @description Vrai si rien n'avait encore été acheté : annulation SANS FRAIS. */
+            sans_frais: boolean;
+        };
         /** @description Résultat d'une collecte. */
         ResultatCollecte: {
             /** @description Statut de l'arrêt (`collecte`). */
@@ -3577,6 +3654,78 @@ export interface operations {
             };
             /** @description Rôle admin requis. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    annuler_commande_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande à annuler. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeAnnulation"];
+            };
+        };
+        responses: {
+            /** @description Commande annulée ; `sans_frais` dit si quelque chose est dû. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatAnnulation"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État terminal. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent — un admin doit motiver son geste (FR-054). */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5733,6 +5882,69 @@ export interface operations {
             };
             /** @description Commande inconnue — ou appartenant à un autre compte : les deux sont indiscernables, et c'est voulu. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    annuler_commande: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeAnnulation"];
+            };
+        };
+        responses: {
+            /** @description Commande annulée ; `sans_frais` dit si quelque chose est dû. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultatAnnulation"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État terminal : une commande livrée, annulée ou échouée ne s'annule pas. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

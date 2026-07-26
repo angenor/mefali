@@ -714,3 +714,153 @@ impl PgCommandes {
         })
     }
 }
+
+// ── Remise (US9 / T058) ────────────────────────────────────────────────────
+
+/// Comment le coursier prouve la remise (contrat §2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PreuveRemise {
+    /// Jeton lu dans le QR de réception du client.
+    Qr(String),
+    /// Code à 4 chiffres dicté par le client (mode dégradé).
+    Code(String),
+    /// Dépôt convenu : photo sur place, aucun secret à présenter (§7.4-5).
+    Depot {
+        /// Clé de la photo déposée.
+        photo_cle: String,
+    },
+}
+
+impl PreuveRemise {
+    /// Valeur journalisée dans `mode_remise` et dans les événements.
+    pub fn mode(&self) -> &'static str {
+        match self {
+            PreuveRemise::Qr(_) => "qr",
+            PreuveRemise::Code(_) => "code",
+            PreuveRemise::Depot { .. } => "depot",
+        }
+    }
+}
+
+/// Résultat d'une remise validée.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemiseFaite {
+    /// Commande close.
+    pub commande_id: Uuid,
+    /// Livraison close.
+    pub livraison_id: Uuid,
+    /// Mode retenu.
+    pub mode_remise: String,
+    /// Nombre d'essais de code consommés.
+    pub essais_code: i16,
+}
+
+impl PgCommandes {
+    /// Valide la remise et clôt la course (CMD-08, contrat §2).
+    ///
+    /// ⚠ **Le coursier ne reçoit JAMAIS le code** (research R6) : il en reçoit
+    /// l'empreinte au pré-provisionnement, et c'est le client qui le lui dicte.
+    /// La comparaison a donc lieu ici, côté serveur, sur la valeur stockée.
+    ///
+    /// Le compteur d'essais est **par commande** et persistant : trois erreurs
+    /// et le code est verrouillé (`423`) jusqu'à intervention admin. Sans
+    /// plafond, quatre chiffres se devinent en quelques minutes ; avec lui, la
+    /// fenêtre se referme avant.
+    pub async fn valider_remise(
+        &self,
+        livraison_id: Uuid,
+        coursier: Uuid,
+        preuve: PreuveRemise,
+        horodatage: DateTime<Utc>,
+    ) -> Result<RemiseFaite, ErreurCommandes> {
+        let contexte = sqlx::query!(
+            r#"SELECT l.commande_id, l.coursier_id, l.etat::text AS "etat!",
+                      c.code_livraison, c.jeton_reception, c.essais_code, c.zone_id
+               FROM commandes.livraison l
+               JOIN commandes.commande c ON c.id = l.commande_id
+               WHERE l.id = $1"#,
+            livraison_id,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(ErreurCommandes::LivraisonInconnue(livraison_id))?;
+
+        if contexte.coursier_id != Some(coursier) {
+            return Err(ErreurCommandes::NonProprietaire);
+        }
+
+        let essais_max = self
+            .parametre_i64(contexte.zone_id, "commande.essais_code_livraison")
+            .await? as i16;
+
+        // Le verrou d'abord : un code déjà épuisé ne redonne pas d'essai parce
+        // qu'on a redémarré l'app.
+        if contexte.essais_code >= essais_max {
+            return Err(ErreurCommandes::CodeEpuise);
+        }
+
+        let mut essais_code = contexte.essais_code;
+        match &preuve {
+            // Le QR ne se devine pas : pas de compteur d'essais dessus.
+            PreuveRemise::Qr(jeton) if *jeton != contexte.jeton_reception => {
+                return Err(ErreurCommandes::RemiseIncorrecte);
+            }
+            PreuveRemise::Code(code) if *code != contexte.code_livraison => {
+                essais_code += 1;
+                let mut tx = self.pool.begin().await?;
+                sqlx::query!(
+                    "UPDATE commandes.commande SET essais_code = $2 WHERE id = $1",
+                    contexte.commande_id,
+                    essais_code,
+                )
+                .execute(&mut *tx)
+                .await?;
+                tx.commit().await?;
+
+                if essais_code >= essais_max {
+                    // Alerte ADMIN : trois codes faux sur une commande, c'est
+                    // soit un client qui ne trouve plus son SMS, soit quelqu'un
+                    // qui essaie. Les deux demandent un humain.
+                    tracing::warn!(
+                        commande = %contexte.commande_id,
+                        essais = essais_code,
+                        "code de remise ÉPUISÉ — intervention admin requise",
+                    );
+                    return Err(ErreurCommandes::CodeEpuise);
+                }
+                return Err(ErreurCommandes::RemiseIncorrecte);
+            }
+            _ => {}
+        }
+
+        let mut tx = self.pool.begin().await?;
+        if let PreuveRemise::Depot { photo_cle } = &preuve {
+            sqlx::query!(
+                "UPDATE commandes.livraison SET depot_photo_cle = $2 WHERE id = $1",
+                livraison_id,
+                photo_cle,
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        self.cloturer_livraison_prouvee(
+            &mut tx,
+            livraison_id,
+            contexte.commande_id,
+            preuve.mode(),
+            essais_code,
+            coursier,
+            horodatage,
+        )
+        .await?;
+        tx.commit().await?;
+
+        Ok(RemiseFaite {
+            commande_id: contexte.commande_id,
+            livraison_id,
+            mode_remise: preuve.mode().to_owned(),
+            essais_code,
+        })
+    }
+}

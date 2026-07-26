@@ -126,6 +126,7 @@ impl Bac {
             Arc::new(commandes::RestrictionsSimulees::nouveau()),
             objets_dyn.clone(),
             Arc::new(commandes::PositionFixe::nouveau()),
+            Arc::new(commandes::PreuvesFixes::nouveau()),
         );
         let qr = PgQr::new(
             pool.clone(),
