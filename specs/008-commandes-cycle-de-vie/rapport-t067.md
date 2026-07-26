@@ -2,13 +2,19 @@
 
 **Branche** `008-commandes-cycle-de-vie` · **2026-07-26** · non fusionnée dans `main`
 
-**68 tâches sur 68 livrées.** `cargo test --workspace` **484 verts**, Flutter
-**57 (client) + 94 (core)**, `dart analyze` propre sur les deux paquets,
+**68 tâches sur 68 livrées.** `cargo test --workspace` **488 verts**, Flutter
+**57 (client) + 95 (core)**, `dart analyze` propre sur les trois paquets,
 `cargo sqlx prepare` vert, clients Dart/TS régénérés **sans diff**.
 
-> **Reprise du 2026-07-26** — le dernier geste manquant (accepter la scission)
-> est livré. Voir « [La scission est acceptable](#la-scission-est-acceptable-cmd-01-c3-3d) »
-> ci-dessous ; le point ouvert n° 1 a disparu.
+> **Reprise du 2026-07-26**, en trois temps :
+> 1. le dernier geste manquant — accepter la scission — est livré
+>    ([section](#la-scission-est-acceptable-cmd-01-c3-3d)) ; le point ouvert n° 1
+>    a disparu ;
+> 2. la **livraison devient un composant optionnel du contrat**
+>    ([section](#la-livraison-devient-optionnelle-au-contrat)) ; l'ancien point
+>    ouvert sur `Commande.livraison` a disparu ;
+> 3. la scission est **passée sur émulateur** à deux et trois vendeurs, échec
+>    partiel compris ([section](#passe-émulateur-de-la-scission)).
 
 ---
 
@@ -156,9 +162,71 @@ déplacement » pour trois. Les deux clés prennent maintenant `n` ; le cas à d
 garde **mot pour mot** la lettre de la maquette (`{n, plural, =2{Deux
 commandes, deux frais de déplacement.} …}`).
 
+## La livraison devient optionnelle au contrat
+
+Le contrat se contredisait **lui-même** : `SuiviCommande` rendait déjà
+`livraison_id` et `livraison_etat` optionnels, le schéma Postgres n'exige aucune
+livraison (test T037), et `creer_relivraison` (`echec.rs`) en crée bel et bien
+une sans — seul `Commande`, la réponse de `POST /commandes`, la forçait. Corrigé
+maintenant plutôt qu'après DSP, CRS et PAY, pour qui le changement deviendrait
+cassant.
+
+**Le défaut commençait dans le type du domaine.** `CommandeCreee` portait trois
+champs plats — `livraison_id: Uuid`, `nb_arrets: i64`, `devis: Devis` — qui
+peuvent se contredire : un identifiant nul avec deux arrêts, un devis à zéro
+sans livraison. Ils vivent ou meurent ensemble : ils sont groupés dans un
+`Option<LivraisonCreee>`.
+
+**Dix valeurs par défaut supprimées.** `relire_commande_creee` lisait la
+livraison en `LEFT JOIN`, ce qui rendait ses colonnes nullables pour sqlx alors
+qu'elles sont `NOT NULL` en base (migration 0009) : il fallait dix `unwrap_or`
+pour recomposer un devis, dont un `unwrap_or_default()` sur un `Uuid` — soit
+`Uuid::nil()`, un identifiant qui a l'air valide et ne désigne rien. Une lecture
+DÉDIÉE, sans jointure, type les colonnes non-`Option` : zéro défaut, et
+l'absence naît là où elle est vraie, dans le `fetch_optional`. Coût : un
+aller-retour SQL sur le seul chemin de rejeu.
+
+**Aucun changement de comportement**, vérifié par quatre relecteurs
+adversariaux (aucun défaut confirmé) : chemin nominal et rejeu **avec** livraison
+rendent le même corps, octet pour octet. Deux écarts préexistants ont été
+délibérément reconduits plutôt que corrigés en passant — `etat: "assignee"` en
+dur (le lire en base changerait le corps du rejeu d'une course déjà avancée) et
+`ordre: Vec::new()` au rejeu. Seul le rejeu d'une commande **sans** livraison
+change : il rendait un UUID nul, il rend `null`.
+
+Quatre tests, chacun ne prouvant que ce qu'il couvre : le rejeu sans livraison
+rend `None` sur une **vraie base** (`tronc.rs` — le test qui aurait échoué sur
+l'ancien `unwrap_or_default`) ; le schéma n'exige plus `livraison` mais la
+décrit toujours (`lib.rs`) ; `"livraison": null` sur le fil et forme inchangée
+sous `Option` (`commandes_http.rs`) ; le client **généré** lit une commande sans
+livraison sans broncher (`mefali_core`).
+
+## Passe émulateur de la scission
+
+AVD `Medium_Phone_API_36.1`, API locale, **OSRM absent** → dégradé vol d'oiseau
+×1,4. Trois restaurants créés **en base locale** (le seed n'en porte qu'un par
+catégorie ; `restauration` est la seule catégorie seedée `mixable = false`).
+
+| Scénario | Résultat |
+|---|---|
+| **2 vendeurs** | ✅ Proposition, acceptation, **deux frais de 150 FCFA chiffrés séparément** (la tournée unique n'en montrait qu'un), « Commander · 4 300 FCFA » = somme des deux, **2 commandes** créées, **2 codes distincts** (7204 / 1652), une livraison chacune |
+| **3 vendeurs** | ✅ « Scinder en **3** commandes », « **3 commandes, 3 frais de déplacement.** », trois récapitulatifs (150 / 150 / 175), **aucun débordement** en 360 dp |
+| **Échec partiel** | ✅ Article du 2ᵉ tronçon rendu indisponible entre acceptation et confirmation : « 1 commande sur 3 a été créée. » + « 2 commandes n'ont pas pu être créées. » — la série s'est **arrêtée au premier refus**, le 3ᵉ tronçon n'a jamais été tenté (vérifié en base) |
+| **Reprise** | ✅ Après rétablissement, « Reprendre le reste » crée les deux manquantes avec **leurs clés d'origine** : trois commandes en base, **aucun doublon** (R7) |
+
+**Un défaut trouvé sur l'appareil, corrigé** : le titre disait « Commande
+confirmée » au **singulier** au-dessus de deux codes de remise — le contraire de
+ce que l'écran montrait. La clé prend le nombre ; test widget ajouté.
+
+Deux constats d'environnement sont devenus des points ouverts (n° 8 et n° 9) :
+l'absence de contrôle de propriété au rejeu, et le choix du transport par
+« premier actif de la zone » qui fait échouer toute tournée de plus de 800 m.
+
 ## Commits
 
 ```
+4db60dd  fix(commandes): CMD-01 le titre de confirmation compte les commandes
+ad7df7f  feat(commandes): CMD-03 la livraison devient un composant optionnel
 dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
 26ad6ee  feat(commandes): T067 alerte outbox du code de remise épuisé + clôture
 9449df1  test(commandes): T067 câblage du parcours couvert, deux défauts d'UI corrigés
@@ -170,7 +238,7 @@ dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
 
 ## Checklist de fin de cycle
 
-- [x] Critères d'acceptation des stories couverts par des tests — 484 backend, 57 + 94 Flutter (17 tests neufs sur le câblage, 7 sur la scission)
+- [x] Critères d'acceptation des stories couverts par des tests — 488 backend, 57 + 95 Flutter (17 tests neufs sur le câblage, 8 sur la scission, 4 sur la livraison optionnelle)
 - [x] Annotations utoipa à jour ; clients Dart/TS régénérés, **aucun diff**
 - [x] Migrations sqlx versionnées ; `cargo sqlx prepare` vert ; seeds à jour
 - [x] Événements outbox émis pour chaque transition ; événements de métriques déclarés — **28**
@@ -208,17 +276,25 @@ dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
 7. **Trois ajouts dépassent la lettre des tâches** : accueil, fiche vendeur et
    `AdressesApi`. Sans eux le parcours n'existe pas, mais aucune tâche ne les
    demandait.
-8. **`Commande.livraison` est `required` au contrat** (`openapi.json`,
-   `components.schemas.Commande.required`), alors que la doctrine tient la
-   livraison pour un **composant optionnel 0..n**. Vrai dans le MVP — toute
-   commande en a exactement une — mais un retrait sur place casserait le contrat
-   avant de casser le tronc. **À arbitrer** au prochain cycle touchant le
-   contrat ; rien changé ici, le serveur est clos.
-9. **Une proposition de scission imbriquée est ignorée.** Le devis d'un tronçon
-   peut lui-même proposer une scission (deux moitiés encore dispersées, cause
-   `plafond_eclatement`). L'app ne la présente pas : le client vient d'arbitrer,
-   lui reposer la question au même écran serait une boucle. Il la reverra au
-   prochain devis du panier. Choix délibéré, à confirmer par l'usage.
+8. **Le rejeu idempotent ne vérifie PAS la propriété de la commande.**
+   `relire_commande_creee` filtre sur `WHERE c.id = $1`, sans `client_id`
+   (`creation.rs`) : un compte porteur du rôle `Client` qui poste
+   `POST /commandes` avec `Idempotency-Key` = l'identifiant d'une commande
+   **d'autrui** reçoit un `200` portant son `code_livraison` et son
+   `jeton_reception` — précisément les deux secrets que R6 réserve au client
+   propriétaire. Il faut connaître l'identifiant (UUIDv7, 74 bits aléatoires),
+   ce qui limite la portée, mais le contrôle manque. **PRÉEXISTANT** — trouvé en
+   relisant ce chemin, pas introduit par le regroupement, et non corrigé ici :
+   ajouter le filtre ferait retomber la relecture sur la création, qui buterait
+   sur la clé primaire. Demande son propre arbitrage.
+9. **L'app demande TOUJOURS le premier transport actif de la zone**
+   (`ActionsCommande.transportDemande`), sans regarder la distance. Constaté à
+   la passe émulateur : `a_pied` en tête, dont la règle plafonne à 800 m, fait
+   répondre `500 « aucune règle tarifaire applicable »` dès que la tournée est
+   plus longue — et l'app n'affiche qu'« Une erreur est survenue ». Contourné en
+   local en mettant `moto` en tête. Le choix du véhicule selon distance et
+   charge appartient à **TRF/produit** ; à défaut, ce refus mérite au moins un
+   message qui dise ce qui se passe.
 10. **La liste d'accueil n'est pas rafraîchie après création.**
     `mesCommandesProvider` garde sa valeur en cache tant que l'accueil reste
     monté : revenir dessus après avoir commandé montre la liste d'avant jusqu'au
@@ -229,6 +305,21 @@ dd6ba61  feat(commandes): CMD-01 accepter la scission — N commandes, N clés
 
 ## Pièges d'environnement payés (ne pas les repayer)
 
+- **Aucun panier multi-vendeurs n'est possible avec le seed** : il ne porte
+  qu'UN vendeur par catégorie, et la scission en exige deux dans une même
+  catégorie **non mixable** — `restauration` est la seule seedée `mixable =
+  false`. Deux restaurants ont été ajoutés **en base locale** (préfixe
+  `019de000-…`, retirables d'un `DELETE`), avec site, horaires 7j/7 et articles.
+- **`transport.actifs` mis à `["moto", …]` en base locale** : l'app demande le
+  PREMIER transport actif, et la règle `a_pied` plafonne à 800 m — au-delà, le
+  devis répond `500 « aucune règle tarifaire applicable »` (point ouvert n° 9).
+- **`drapeau.livraison_offerte_mefali` mis à `false` en base locale** : à `true`
+  (valeur du seed) tous les frais de livraison valent 0, et « N frais de
+  déplacement » ne se vérifie pas à l'œil.
+- **`adb shell input text` AJOUTE au contenu du champ** au lieu de le remplacer,
+  et `identifiantVendeur` prend la PREMIÈRE correspondance : deux identifiants
+  saisis à la suite rouvrent le premier vendeur. Vider le champ (≈45 `keyevent
+  67`) avant chaque saisie, sinon le panier composé n'est pas celui qu'on croit.
 - La démo tombait un **dimanche** : les horaires du seed couvrent lun–sam, donc
   boutiques **fermées** — comportement correct. Le dimanche a été ouvert **en
   base locale**, sans toucher au seed versionné. La bascule admin « ouvrir » ne

@@ -357,6 +357,12 @@ Environnement : Postgres 5433, Redis, Garage, **OSRM absent** (image
    L'accueil ouvre donc une fiche **par son lien de plaque ou son identifiant**
    — le canal que le produit prévoit (page `mefali.com/v/{id}`, plaque). Le
    tri par distance et fiabilité appartient à **VND**.
+4bis. **`Commande.livraison` était `required` au contrat** alors que la livraison
+   est un composant 0..n — **RÉSOLU le 2026-07-26** : le type de domaine groupe
+   désormais `Option<LivraisonCreee>`, dix valeurs par défaut (dont un
+   `Uuid::nil()`) disparaissent du chemin de rejeu, et le contrat n'exige plus
+   la livraison. Aucun changement de comportement. Détail : `rapport-t067.md`.
+
 4. **`commande.repere_texte_min_caracteres` n'est pas servi au client** : la
    liste blanche de `/config` n'expose que `client.*`, et ce paramètre vit dans
    `commande.*`. L'app garde son défaut de 10 — le serveur reste seul juge, et
