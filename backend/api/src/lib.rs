@@ -112,6 +112,9 @@ pub fn api_openapi() -> OpenApi {
         .service(course_http::arret_en_route)
         .service(course_http::arret_arrive)
         .service(course_http::arret_indisponible)
+        .service(commandes_http::mes_commandes)
+        .service(commandes_http::suivre_commande)
+        .service(commandes_http::intention_appel)
         .service(admin_commandes_http::file_attente)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
@@ -360,6 +363,13 @@ pub async fn run() -> std::io::Result<()> {
                 // le dépôt comptes, qui satisfait le port (P3, R12) — aucune
                 // requête de `commandes` n'écrit dans `comptes.compte`.
                 let tarification_dyn = Arc::new(tarification.clone());
+                // Position du coursier : LECTURE seule ce cycle — DSP-01
+                // l'écrira. Redis coupé rend `None`, jamais une erreur : un
+                // suivi doit rester lisible sans position (research R13).
+                let positions: Arc<dyn commandes::PositionCoursier> = Arc::new(
+                    infra_redis::RedisPositions::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis positions : {e}")))?,
+                );
                 let depot_commandes = commandes::PgCommandes::new(
                     pool.clone(),
                     presta.clone(),
@@ -367,6 +377,7 @@ pub async fn run() -> std::io::Result<()> {
                     tarification_dyn,
                     Arc::new(depot.clone()),
                     objets.clone(),
+                    positions,
                 );
                 // Le compteur d'essais du code dégradé passe par Redis
                 // (éphémère, R7).
@@ -489,6 +500,9 @@ pub async fn run() -> std::io::Result<()> {
             .service(course_http::arret_en_route)
             .service(course_http::arret_arrive)
             .service(course_http::arret_indisponible)
+            .service(commandes_http::mes_commandes)
+            .service(commandes_http::suivre_commande)
+            .service(commandes_http::intention_appel)
             .service(admin_commandes_http::file_attente)
             .split_for_parts();
         let mut app = app

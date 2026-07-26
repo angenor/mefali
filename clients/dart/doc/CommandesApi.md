@@ -11,6 +11,9 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**creerCommande**](CommandesApi.md#creercommande) | **POST** /commandes | Crée une commande : prix verrouillés, devis figé, code et QR remis immédiatement (CMD-03).
 [**devisPanier**](CommandesApi.md#devispanier) | **POST** /paniers/devis | Devis d&#39;un panier multi-vendeurs — **sans aucun effet de bord** (CMD-01).
+[**intentionAppel**](CommandesApi.md#intentionappel) | **POST** /commandes/{id}/appel | CMD-05 — journalise l&#39;intention d&#39;appeler le coursier (FR-041).
+[**mesCommandes**](CommandesApi.md#mescommandes) | **GET** /moi/commandes | CMD-05 — les commandes du compte, les plus récentes d&#39;abord.
+[**suivreCommande**](CommandesApi.md#suivrecommande) | **GET** /commandes/{id} | CMD-05 — suivi complet d&#39;une commande, pour son **propriétaire**.
 
 
 # **creerCommande**
@@ -97,6 +100,130 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **intentionAppel**
+> intentionAppel(id, intentionAppel)
+
+CMD-05 — journalise l'intention d'appeler le coursier (FR-041).
+
+L'appel part du téléphone : le serveur n'en voit rien et **ne journalise aucun numéro**. Ce qu'il enregistre, c'est qu'un client a eu BESOIN d'appeler — une métrique de friction (minimisation ARTCI).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande du compte appelant.
+final IntentionAppel intentionAppel = ; // IntentionAppel | 
+
+try {
+    api.intentionAppel(id, intentionAppel);
+} on DioException catch (e) {
+    print('Exception when calling CommandesApi->intentionAppel: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Commande du compte appelant. | 
+ **intentionAppel** | [**IntentionAppel**](IntentionAppel.md)|  | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **mesCommandes**
+> MesCommandes mesCommandes()
+
+CMD-05 — les commandes du compte, les plus récentes d'abord.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesApi();
+
+try {
+    final response = api.mesCommandes();
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CommandesApi->mesCommandes: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**MesCommandes**](MesCommandes.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suivreCommande**
+> SuiviCommande suivreCommande(id)
+
+CMD-05 — suivi complet d'une commande, pour son **propriétaire**.
+
+Le code et le jeton de remise ne sont servis qu'ici, et qu'au propriétaire : le coursier, lui, ne reçoit que des empreintes (research R6).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCommandesApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande du compte appelant.
+
+try {
+    final response = api.suivreCommande(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CommandesApi->suivreCommande: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Commande du compte appelant. | 
+
+### Return type
+
+[**SuiviCommande**](SuiviCommande.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

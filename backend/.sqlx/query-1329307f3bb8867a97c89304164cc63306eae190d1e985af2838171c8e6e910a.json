@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.id, a.ordre, a.statut::text AS \"statut!\", p.nom AS \"nom?\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               LEFT JOIN prestataires.prestataire p ON p.id = a.prestataire_id\n               WHERE s.livraison_id = $1\n                 AND a.statut NOT IN ('collecte','indisponible')\n               ORDER BY s.ordre, a.ordre\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ordre",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "ordre"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "nom?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.prestataire",
+            "name": "nom"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "1329307f3bb8867a97c89304164cc63306eae190d1e985af2838171c8e6e910a"
+}

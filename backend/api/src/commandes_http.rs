@@ -8,7 +8,7 @@
 //! Erreurs rendues `{ code, message_cle }` par [`crate::erreurs_commandes`] :
 //! un même refus rend le même statut et la même clé sur les trois surfaces.
 
-use actix_web::{post, web, HttpResponse};
+use actix_web::{get, post, web, HttpResponse};
 use commandes::{ErreurCommandes, LignePanier, PgCommandes, PreferenceSubstitution};
 use comptes::Role;
 use serde::{Deserialize, Serialize};
@@ -567,4 +567,309 @@ pub async fn creer_commande(
     } else {
         HttpResponse::Created().json(dto)
     })
+}
+
+// ── Suivi (US6 / CMD-05) ───────────────────────────────────────────────────
+
+/// Position du coursier, **toujours accompagnée de son âge**.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PositionSuivi)]
+pub struct PositionSuiviDto {
+    /// Latitude.
+    pub lat: f64,
+    /// Longitude.
+    pub lon: f64,
+    /// Ancienneté du relevé, en secondes. L'app affiche « il y a 12 s » et
+    /// n'invente JAMAIS une position (FR-040, maquette C4-4d).
+    pub age_s: i64,
+}
+
+/// L'arrêt où en est le coursier.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ArretCourantSuivi)]
+pub struct ArretCourantDto {
+    /// Arrêt.
+    pub arret_id: Uuid,
+    /// Nom du vendeur (`null` sur l'arrêt de remise).
+    pub prestataire_nom: Option<String>,
+    /// Rang dans l'itinéraire.
+    pub ordre: i16,
+    /// Statut de l'arrêt.
+    pub statut: String,
+}
+
+/// Progression de la course, en ARRÊTS DE COLLECTE.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ProgressionSuivi)]
+pub struct ProgressionSuiviDto {
+    /// Collectes résolues (collectées ou indisponibles).
+    pub collectes_faites: i64,
+    /// Nombre total de collectes — **la remise n'en est pas une** (P1).
+    pub collectes_total: i64,
+    /// Arrêt courant.
+    pub arret_courant: Option<ArretCourantDto>,
+}
+
+/// Le coursier affecté, tel que l'écran de suivi le montre.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = CoursierSuivi)]
+pub struct CoursierSuiviDto {
+    /// Identifiant du coursier.
+    pub id: Uuid,
+    /// Prénom — **toujours `null` ce cycle** : `comptes.compte` ne porte aucun
+    /// nom (cycle CPT), et rien ne sera inventé pour remplir un champ.
+    pub prenom: Option<String>,
+    /// Note moyenne — **toujours `null` ce cycle** : les avis appartiennent au
+    /// cycle AVI, qui n'existe pas encore.
+    pub note: Option<f64>,
+    /// Vrai si l'app peut proposer d'appeler.
+    pub appel_possible: bool,
+}
+
+/// Proposition de remplacement en attente de décision (maquette C4-4c).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = SubstitutionSuivi)]
+pub struct SubstitutionSuiviDto {
+    /// Proposition.
+    pub id: Uuid,
+    /// Ligne concernée.
+    pub ligne_id: Uuid,
+    /// Nom de l'article proposé.
+    pub article_nom: String,
+    /// Prix proposé (unités mineures).
+    pub prix_unites: i64,
+    /// Prix de la ligne d'origine (unités mineures).
+    pub ancien_prix_unites: i64,
+    /// Clé de la photo déposée par le coursier.
+    pub photo_cle: String,
+    /// Secondes restantes pour décider.
+    pub reste_s: i64,
+}
+
+/// Vue de suivi complète (contrat §1.3).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = SuiviCommande)]
+pub struct SuiviCommandeDto {
+    /// Commande.
+    pub id: Uuid,
+    /// État de très haut niveau.
+    pub etat: String,
+    /// **Clé i18n** de l'état affiché — jamais une phrase (constitution VII).
+    pub etat_cle: String,
+    /// Instant du dernier changement d'état.
+    pub etat_le: chrono::DateTime<chrono::Utc>,
+    /// Montant des articles (révisé si des articles ont sauté).
+    pub montant_articles_unites: i64,
+    /// Total à payer.
+    pub total_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Livraison, si la commande en a une (composant 0..n).
+    pub livraison_id: Option<Uuid>,
+    /// État logistique.
+    pub livraison_etat: Option<String>,
+    /// Progression par arrêt.
+    pub progression: ProgressionSuiviDto,
+    /// Coursier affecté.
+    pub coursier: Option<CoursierSuiviDto>,
+    /// Dernière position connue — `null` si aucune (research R13).
+    pub position: Option<PositionSuiviDto>,
+    /// Code et QR de remise — **propriétaire seul** (R6).
+    pub remise: SecretsRemiseDto,
+    /// Proposition de remplacement ouverte.
+    pub substitution_en_attente: Option<SubstitutionSuiviDto>,
+}
+
+impl From<commandes::suivi::VueSuivi> for SuiviCommandeDto {
+    fn from(v: commandes::suivi::VueSuivi) -> Self {
+        Self {
+            id: v.commande_id,
+            etat: v.etat.comme_str().to_owned(),
+            etat_cle: v.etat_cle.to_owned(),
+            etat_le: v.etat_le,
+            montant_articles_unites: v.montant_articles_unites,
+            total_unites: v.total_unites,
+            devise: v.devise,
+            livraison_id: v.livraison_id,
+            livraison_etat: v.livraison_etat.map(|e| e.comme_str().to_owned()),
+            progression: ProgressionSuiviDto {
+                collectes_faites: v.collectes_faites,
+                collectes_total: v.collectes_total,
+                arret_courant: v.arret_courant.map(|a| ArretCourantDto {
+                    arret_id: a.arret_id,
+                    prestataire_nom: a.prestataire_nom,
+                    ordre: a.ordre,
+                    statut: a.statut,
+                }),
+            },
+            coursier: v.coursier_id.map(|id| CoursierSuiviDto {
+                id,
+                prenom: None,
+                note: None,
+                appel_possible: true,
+            }),
+            position: v.position.map(|p| PositionSuiviDto {
+                lat: p.lat,
+                lon: p.lon,
+                age_s: p.age_s,
+            }),
+            remise: SecretsRemiseDto {
+                code_livraison: v.remise.code_livraison,
+                jeton_reception: v.remise.jeton_reception,
+            },
+            substitution_en_attente: v.substitution_en_attente.map(|s| SubstitutionSuiviDto {
+                id: s.substitution_id,
+                ligne_id: s.ligne_id,
+                article_nom: s.article_nom,
+                prix_unites: s.prix_unites,
+                ancien_prix_unites: s.ancien_prix_unites,
+                photo_cle: s.photo_cle,
+                reste_s: s.reste_s,
+            }),
+        }
+    }
+}
+
+/// Une commande de la liste `GET /moi/commandes`.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = CommandeResumee)]
+pub struct CommandeResumeeDto {
+    /// Commande.
+    pub id: Uuid,
+    /// État de très haut niveau.
+    pub etat: String,
+    /// Clé i18n de l'état affiché.
+    pub etat_cle: String,
+    /// Création.
+    pub cree_le: chrono::DateTime<chrono::Utc>,
+    /// Total à payer.
+    pub total_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Nombre de vendeurs.
+    pub nb_vendeurs: i64,
+}
+
+/// La liste des commandes du compte.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = MesCommandes)]
+pub struct MesCommandesDto {
+    /// Commandes, les plus récentes d'abord.
+    pub commandes: Vec<CommandeResumeeDto>,
+}
+
+/// CMD-05 — suivi complet d'une commande, pour son **propriétaire**.
+///
+/// Le code et le jeton de remise ne sont servis qu'ici, et qu'au propriétaire :
+/// le coursier, lui, ne reçoit que des empreintes (research R6).
+#[utoipa::path(
+    get,
+    path = "/commandes/{id}",
+    tag = "commandes",
+    params(("id" = Uuid, Path, description = "Commande du compte appelant.")),
+    responses(
+        (status = 200, description = "Suivi : état en clé i18n, progression par arrêt, position \
+         AVEC son âge, code et QR de remise.", body = SuiviCommandeDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle client requis.", body = ErreurApiDto),
+        (status = 404, description = "Commande inconnue — ou appartenant à un autre compte : \
+         les deux sont indiscernables, et c'est voulu.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/commandes/{id}")]
+pub async fn suivre_commande(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Client)?;
+    let vue = depot
+        .suivi(chemin.into_inner(), auth.compte_id, chrono::Utc::now())
+        .await?;
+    Ok(HttpResponse::Ok().json(SuiviCommandeDto::from(vue)))
+}
+
+/// CMD-05 — les commandes du compte, les plus récentes d'abord.
+#[utoipa::path(
+    get,
+    path = "/moi/commandes",
+    tag = "commandes",
+    responses(
+        (status = 200, description = "Commandes du compte, les plus récentes d'abord.",
+         body = MesCommandesDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle client requis.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/moi/commandes")]
+pub async fn mes_commandes(
+    auth: Auth,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Client)?;
+    let commandes = depot.mes_commandes(auth.compte_id).await?;
+    Ok(HttpResponse::Ok().json(MesCommandesDto {
+        commandes: commandes
+            .into_iter()
+            .map(|c| CommandeResumeeDto {
+                id: c.commande_id,
+                etat: c.etat.comme_str().to_owned(),
+                etat_cle: c.etat_cle.to_owned(),
+                cree_le: c.cree_le,
+                total_unites: c.total_unites,
+                devise: c.devise,
+                nb_vendeurs: c.nb_vendeurs,
+            })
+            .collect(),
+    }))
+}
+
+/// Motif d'une intention d'appel.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = IntentionAppel)]
+pub struct IntentionAppelDto {
+    /// `suivi` (défaut) | `substitution` | `expiration`.
+    pub motif: Option<String>,
+}
+
+/// CMD-05 — journalise l'intention d'appeler le coursier (FR-041).
+///
+/// L'appel part du téléphone : le serveur n'en voit rien et **ne journalise
+/// aucun numéro**. Ce qu'il enregistre, c'est qu'un client a eu BESOIN
+/// d'appeler — une métrique de friction (minimisation ARTCI).
+#[utoipa::path(
+    post,
+    path = "/commandes/{id}/appel",
+    tag = "commandes",
+    params(("id" = Uuid, Path, description = "Commande du compte appelant.")),
+    request_body = IntentionAppelDto,
+    responses(
+        (status = 204, description = "Intention journalisée — aucun numéro n'est enregistré."),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle client requis.", body = ErreurApiDto),
+        (status = 404, description = "Commande inconnue ou appartenant à un autre compte.",
+         body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/commandes/{id}/appel")]
+pub async fn intention_appel(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<IntentionAppelDto>,
+    depot: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurCommandesHttp> {
+    auth.exiger_role(Role::Client)?;
+    let motif = corps.into_inner().motif.unwrap_or_else(|| "suivi".to_owned());
+    depot
+        .journaliser_appel(
+            chemin.into_inner(),
+            auth.compte_id,
+            &motif,
+            chrono::Utc::now(),
+        )
+        .await?;
+    Ok(HttpResponse::NoContent().finish())
 }

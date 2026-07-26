@@ -180,6 +180,7 @@ async fn plafond_eclatement_produit_le_meme_bloc(pool: sqlx::PgPool) {
         tarif,
         bac.restrictions.clone(),
         std::sync::Arc::new(socle::MemoireObjets::new()),
+        bac.positions.clone(),
     );
 
     let lignes: Vec<Value> = bac.vendeurs.iter().map(|v| v.ligne(1)).collect();

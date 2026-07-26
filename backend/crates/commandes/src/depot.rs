@@ -29,7 +29,8 @@ use crate::modele::{
     ProgressionCollecte, StatutArret,
 };
 use crate::ports::{
-    ArretsDeCollecte, CommandeADispatcher, CommandesADispatcher, RestrictionsCompte,
+    ArretsDeCollecte, CommandeADispatcher, CommandesADispatcher, PositionCoursier,
+    RestrictionsCompte,
 };
 
 /// Clés de configuration de zone lues par la file d'attente (constitution I —
@@ -56,12 +57,17 @@ pub struct PgCommandes {
     pub(crate) restrictions: Arc<dyn RestrictionsCompte>,
     /// Stockage objet (photos de substitution, photo de dépôt).
     pub(crate) objets: Arc<dyn DepotObjets>,
+    /// Dernière position du coursier + son ÂGE (Redis éphémère, R13). Une
+    /// position sans âge serait pire que pas de position : l'app la croirait
+    /// fraîche (FR-040).
+    pub(crate) positions: Arc<dyn PositionCoursier>,
 }
 
 impl PgCommandes {
     /// Compose le domaine. `PgZones` est dérivé du pool ; tous les autres
     /// collaborateurs sont injectés par la racine (`api`), qui seule connaît
     /// l'infrastructure (constitution II).
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pool: PgPool,
         prestataires: PgPrestataires,
@@ -69,6 +75,7 @@ impl PgCommandes {
         optimisation: Arc<dyn OptimisationArrets>,
         restrictions: Arc<dyn RestrictionsCompte>,
         objets: Arc<dyn DepotObjets>,
+        positions: Arc<dyn PositionCoursier>,
     ) -> Self {
         Self {
             zones: PgZones::new(pool.clone()),
@@ -78,6 +85,7 @@ impl PgCommandes {
             optimisation,
             restrictions,
             objets,
+            positions,
         }
     }
 

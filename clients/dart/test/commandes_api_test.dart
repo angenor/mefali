@@ -25,5 +25,30 @@ void main() {
       // TODO
     });
 
+    // CMD-05 — journalise l'intention d'appeler le coursier (FR-041).
+    //
+    // L'appel part du téléphone : le serveur n'en voit rien et **ne journalise aucun numéro**. Ce qu'il enregistre, c'est qu'un client a eu BESOIN d'appeler — une métrique de friction (minimisation ARTCI).
+    //
+    //Future intentionAppel(String id, IntentionAppel intentionAppel) async
+    test('test intentionAppel', () async {
+      // TODO
+    });
+
+    // CMD-05 — les commandes du compte, les plus récentes d'abord.
+    //
+    //Future<MesCommandes> mesCommandes() async
+    test('test mesCommandes', () async {
+      // TODO
+    });
+
+    // CMD-05 — suivi complet d'une commande, pour son **propriétaire**.
+    //
+    // Le code et le jeton de remise ne sont servis qu'ici, et qu'au propriétaire : le coursier, lui, ne reçoit que des empreintes (research R6).
+    //
+    //Future<SuiviCommande> suivreCommande(String id) async
+    test('test suivreCommande', () async {
+      // TODO
+    });
+
   });
 }

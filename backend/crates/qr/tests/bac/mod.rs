@@ -125,6 +125,7 @@ impl Bac {
             tarif,
             Arc::new(commandes::RestrictionsSimulees::nouveau()),
             objets_dyn.clone(),
+            Arc::new(commandes::PositionFixe::nouveau()),
         );
         let qr = PgQr::new(
             pool.clone(),

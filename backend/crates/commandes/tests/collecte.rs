@@ -41,6 +41,7 @@ fn depot(pool: &sqlx::PgPool) -> PgCommandes {
         tarif,
         Arc::new(RestrictionsSimulees::nouveau()),
         objets,
+        Arc::new(commandes::PositionFixe::nouveau()),
     )
 }
 

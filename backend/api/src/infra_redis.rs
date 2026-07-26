@@ -18,6 +18,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use deadpool_redis::{Config as ConfigRedis, Pool, Runtime};
 
+use chrono::{DateTime, TimeZone, Utc};
+use commandes::{ErreurCommandes, PositionCoursier, PositionDatee};
 use comptes::{Compteur, DepotEphemere, ErreurEphemere, IssueDefi, JetonInscription};
 use qr::{CompteurEssais, ErreurCompteur};
 use tarification::{CacheRoutage, ErreurCache, Troncon};
@@ -358,5 +360,113 @@ impl CacheRoutage for RedisCacheRoutage {
         pipe.query_async::<()>(&mut conn)
             .await
             .map_err(|e| ErreurCache(format!("écriture des tronçons : {e}")))
+    }
+}
+
+/// Dernière position d'un coursier (port [`PositionCoursier`], research R13).
+///
+/// Layout : `coursier:pos:{uuid}` → `"{lat}:{lon}:{epoch_s}"`, avec un TTL posé
+/// par **DSP-01** au moment de l'écriture. Ce cycle ne fait que LIRE : la
+/// production de positions appartient au cycle dispatch, et jusqu'à lui la
+/// lecture rend simplement `None` — ce qui est exact, pas dégradé.
+///
+/// ⚠ Trois choses, toutes délibérées :
+/// - l'**âge** est calculé ici et voyage avec la position : une position sans
+///   âge serait pire que pas de position, l'app la croirait fraîche (FR-040) ;
+/// - **aucune erreur** ne sort de la lecture — Redis coupé, clé absente, valeur
+///   illisible rendent tous `None`. Un suivi doit rester lisible sans position ;
+/// - **aucune coordonnée n'est journalisée** (minimisation ARTCI) : les
+///   messages d'erreur ne portent que la nature de la panne.
+pub struct RedisPositions {
+    pool: Pool,
+}
+
+impl RedisPositions {
+    /// Construit le lecteur de positions à partir de l'URL Redis.
+    pub fn nouveau(redis_url: &str) -> Result<Self, ErreurCommandes> {
+        let pool = ConfigRedis::from_url(redis_url)
+            .create_pool(Some(Runtime::Tokio1))
+            .map_err(|e| ErreurCommandes::Dependance(format!("pool Redis positions : {e}")))?;
+        Ok(Self { pool })
+    }
+
+    /// Clé de la dernière position d'un coursier.
+    fn cle(coursier: Uuid) -> String {
+        format!("coursier:pos:{coursier}")
+    }
+
+    /// `lat:lon:epoch_s` → position datée. Toute valeur illisible est traitée
+    /// comme ABSENTE : afficher une position fausse serait pire que n'en
+    /// afficher aucune.
+    fn decoder(brut: &str, maintenant: DateTime<Utc>) -> Option<PositionDatee> {
+        let mut parts = brut.split(':');
+        let lat: f64 = parts.next()?.parse().ok()?;
+        let lon: f64 = parts.next()?.parse().ok()?;
+        let epoch_s: i64 = parts.next()?.parse().ok()?;
+        let releve_le = Utc.timestamp_opt(epoch_s, 0).single()?;
+        Some(PositionDatee {
+            lat,
+            lon,
+            releve_le,
+            age_s: (maintenant - releve_le).num_seconds().max(0),
+        })
+    }
+}
+
+#[async_trait]
+impl PositionCoursier for RedisPositions {
+    async fn derniere(&self, coursier: Uuid) -> Result<Option<PositionDatee>, ErreurCommandes> {
+        let Ok(mut conn) = self.pool.get().await else {
+            // Redis indisponible : le suivi continue SANS position (R13).
+            tracing::warn!("Redis indisponible — suivi servi sans position");
+            return Ok(None);
+        };
+        let brut: Option<String> = match redis::cmd("GET")
+            .arg(Self::cle(coursier))
+            .query_async(&mut conn)
+            .await
+        {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::warn!("lecture de position impossible — suivi servi sans position");
+                return Ok(None);
+            }
+        };
+        Ok(brut.as_deref().and_then(|b| Self::decoder(b, Utc::now())))
+    }
+}
+
+#[cfg(test)]
+mod tests_positions {
+    use super::*;
+
+    #[test]
+    fn une_position_illisible_est_traitee_comme_absente() {
+        let maintenant = Utc::now();
+        for brut in ["", "abc", "5.9", "5.9:-4.8", "5.9:-4.8:pas-un-entier"] {
+            assert!(
+                RedisPositions::decoder(brut, maintenant).is_none(),
+                "« {brut} » ne doit pas produire de position : mieux vaut aucune \
+                 position qu'une position fausse",
+            );
+        }
+    }
+
+    #[test]
+    fn l_age_voyage_avec_la_position() {
+        let maintenant = Utc.timestamp_opt(1_800_000_120, 0).single().unwrap();
+        let p = RedisPositions::decoder("5.898:-4.823:1800000000", maintenant)
+            .expect("position bien formée");
+        assert_eq!(p.age_s, 120, "l'app doit pouvoir dire « il y a 2 min »");
+        assert_eq!((p.lat, p.lon), (5.898, -4.823));
+    }
+
+    /// Une horloge qui recule ne doit pas produire un âge NÉGATIF — l'app
+    /// afficherait « il y a -3 s », ce qui ne veut rien dire.
+    #[test]
+    fn un_age_negatif_est_replie_a_zero() {
+        let maintenant = Utc.timestamp_opt(1_800_000_000, 0).single().unwrap();
+        let p = RedisPositions::decoder("5.898:-4.823:1800000100", maintenant).unwrap();
+        assert_eq!(p.age_s, 0);
     }
 }

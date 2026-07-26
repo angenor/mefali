@@ -659,6 +659,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/commandes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CMD-05 — suivi complet d'une commande, pour son **propriétaire**.
+         * @description Le code et le jeton de remise ne sont servis qu'ici, et qu'au propriétaire :
+         *     le coursier, lui, ne reçoit que des empreintes (research R6).
+         */
+        get: operations["suivre_commande"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/appel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CMD-05 — journalise l'intention d'appeler le coursier (FR-041).
+         * @description L'appel part du téléphone : le serveur n'en voit rien et **ne journalise
+         *     aucun numéro**. Ce qu'il enregistre, c'est qu'un client a eu BESOIN
+         *     d'appeler — une métrique de friction (minimisation ARTCI).
+         */
+        post: operations["intention_appel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -881,6 +924,23 @@ export interface paths {
         put?: never;
         /** Enregistre un nouveau repère vocal — après purge, ou pour le refaire. */
         post: operations["remplacer_repere_vocal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/commandes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CMD-05 — les commandes du compte, les plus récentes d'abord. */
+        get: operations["mes_commandes"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1278,6 +1338,23 @@ export interface components {
             /** @description Plateforme. */
             plateforme: components["schemas"]["PlateformeDto"];
         };
+        /** @description L'arrêt où en est le coursier. */
+        ArretCourantSuivi: {
+            /**
+             * Format: uuid
+             * @description Arrêt.
+             */
+            arret_id: string;
+            /**
+             * Format: int32
+             * @description Rang dans l'itinéraire.
+             */
+            ordre: number;
+            /** @description Nom du vendeur (`null` sur l'arrêt de remise). */
+            prestataire_nom?: string | null;
+            /** @description Statut de l'arrêt. */
+            statut: string;
+        };
         /** @description Arrêt pré-provisionné (empreintes, jamais de secret). */
         ArretPreProvisionne: {
             /**
@@ -1553,6 +1630,35 @@ export interface components {
              */
             total_articles_unites: number;
         };
+        /** @description Une commande de la liste `GET /moi/commandes`. */
+        CommandeResumee: {
+            /**
+             * Format: date-time
+             * @description Création.
+             */
+            cree_le: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de très haut niveau. */
+            etat: string;
+            /** @description Clé i18n de l'état affiché. */
+            etat_cle: string;
+            /**
+             * Format: uuid
+             * @description Commande.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Nombre de vendeurs.
+             */
+            nb_vendeurs: number;
+            /**
+             * Format: int64
+             * @description Total à payer.
+             */
+            total_unites: number;
+        };
         /** @description Détail des composantes (unités mineures) — FR-020. */
         Composantes: {
             /**
@@ -1743,6 +1849,27 @@ export interface components {
              * @description Livraison active (première des arrêts), `None` si aucune.
              */
             livraison_id?: string | null;
+        };
+        /** @description Le coursier affecté, tel que l'écran de suivi le montre. */
+        CoursierSuivi: {
+            /** @description Vrai si l'app peut proposer d'appeler. */
+            appel_possible: boolean;
+            /**
+             * Format: uuid
+             * @description Identifiant du coursier.
+             */
+            id: string;
+            /**
+             * Format: double
+             * @description Note moyenne — **toujours `null` ce cycle** : les avis appartiennent au
+             *     cycle AVI, qui n'existe pas encore.
+             */
+            note?: number | null;
+            /**
+             * @description Prénom — **toujours `null` ce cycle** : `comptes.compte` ne porte aucun
+             *     nom (cycle CPT), et rien ne sera inventé pour remplir un champ.
+             */
+            prenom?: string | null;
         };
         /** @description Création d'un article (disponible par défaut — FR-020). */
         CreerArticleDto: {
@@ -2328,6 +2455,11 @@ export interface components {
             /** @description Émis par `/auth/otp/verifier`, usage unique, TTL 10 min. */
             jeton_inscription: string;
         };
+        /** @description Motif d'une intention d'appel. */
+        IntentionAppel: {
+            /** @description `suivi` (défaut) | `substitution` | `expiration`. */
+            motif?: string | null;
+        };
         /** @description Itinéraire retenu par la simulation. */
         ItineraireSimule: {
             /** @description Vrai si la distance vient du repli vol d'oiseau × facteur de zone. */
@@ -2436,6 +2568,11 @@ export interface components {
              * @description Nombre d'arrêts (collectes + remise).
              */
             nb_arrets: number;
+        };
+        /** @description La liste des commandes du compte. */
+        MesCommandes: {
+            /** @description Commandes, les plus récentes d'abord. */
+            commandes: components["schemas"]["CommandeResumee"][];
         };
         /**
          * @description Mode de collecte (contrat).
@@ -2624,6 +2761,25 @@ export interface components {
              */
             lon: number;
         };
+        /** @description Position du coursier, **toujours accompagnée de son âge**. */
+        PositionSuivi: {
+            /**
+             * Format: int64
+             * @description Ancienneté du relevé, en secondes. L'app affiche « il y a 12 s » et
+             *     n'invente JAMAIS une position (FR-040, maquette C4-4d).
+             */
+            age_s: number;
+            /**
+             * Format: double
+             * @description Latitude.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            lon: number;
+        };
         /** @description Résumé admin d'un prestataire. */
         PrestataireAdmin: {
             /** @description Slug de la catégorie de service. */
@@ -2691,6 +2847,20 @@ export interface components {
             nom: string;
             /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
             statut: components["schemas"]["StatutPrestataire"];
+        };
+        /** @description Progression de la course, en ARRÊTS DE COLLECTE. */
+        ProgressionSuivi: {
+            arret_courant?: null | components["schemas"]["ArretCourantSuivi"];
+            /**
+             * Format: int64
+             * @description Collectes résolues (collectées ou indisponibles).
+             */
+            collectes_faites: number;
+            /**
+             * Format: int64
+             * @description Nombre total de collectes — **la remise n'en est pas une** (P1).
+             */
+            collectes_total: number;
         };
         /** @description Rattachement compte ↔ prestataire. */
         RattachementDto: {
@@ -3088,6 +3258,81 @@ export interface components {
          * @enum {string}
          */
         StatutPrestataire: "prospect" | "agree" | "suspendu";
+        /** @description Proposition de remplacement en attente de décision (maquette C4-4c). */
+        SubstitutionSuivi: {
+            /**
+             * Format: int64
+             * @description Prix de la ligne d'origine (unités mineures).
+             */
+            ancien_prix_unites: number;
+            /** @description Nom de l'article proposé. */
+            article_nom: string;
+            /**
+             * Format: uuid
+             * @description Proposition.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Ligne concernée.
+             */
+            ligne_id: string;
+            /** @description Clé de la photo déposée par le coursier. */
+            photo_cle: string;
+            /**
+             * Format: int64
+             * @description Prix proposé (unités mineures).
+             */
+            prix_unites: number;
+            /**
+             * Format: int64
+             * @description Secondes restantes pour décider.
+             */
+            reste_s: number;
+        };
+        /** @description Vue de suivi complète (contrat §1.3). */
+        SuiviCommande: {
+            coursier?: null | components["schemas"]["CoursierSuivi"];
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de très haut niveau. */
+            etat: string;
+            /** @description **Clé i18n** de l'état affiché — jamais une phrase (constitution VII). */
+            etat_cle: string;
+            /**
+             * Format: date-time
+             * @description Instant du dernier changement d'état.
+             */
+            etat_le: string;
+            /**
+             * Format: uuid
+             * @description Commande.
+             */
+            id: string;
+            /** @description État logistique. */
+            livraison_etat?: string | null;
+            /**
+             * Format: uuid
+             * @description Livraison, si la commande en a une (composant 0..n).
+             */
+            livraison_id?: string | null;
+            /**
+             * Format: int64
+             * @description Montant des articles (révisé si des articles ont sauté).
+             */
+            montant_articles_unites: number;
+            position?: null | components["schemas"]["PositionSuivi"];
+            /** @description Progression par arrêt. */
+            progression: components["schemas"]["ProgressionSuivi"];
+            /** @description Code et QR de remise — **propriétaire seul** (R6). */
+            remise: components["schemas"]["SecretsRemise"];
+            substitution_en_attente?: null | components["schemas"]["SubstitutionSuivi"];
+            /**
+             * Format: int64
+             * @description Total à payer.
+             */
+            total_unites: number;
+        };
         /** @description Corps de la suspension (motif REQUIS — FR-010). */
         SuspendreDto: {
             /** @description Motif de la décision, journalisé. */
@@ -5285,6 +5530,108 @@ export interface operations {
             };
         };
     };
+    suivre_commande: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suivi : état en clé i18n, progression par arrêt, position AVEC son âge, code et QR de remise. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviCommande"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue — ou appartenant à un autre compte : les deux sont indiscernables, et c'est voulu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    intention_appel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntentionAppel"];
+            };
+        };
+        responses: {
+            /** @description Intention journalisée — aucun numéro n'est enregistré. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     config: {
         parameters: {
             query: {
@@ -6007,6 +6354,44 @@ export interface operations {
             };
             /** @description Durée (> paramètre de zone) ou note vocale invalides. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    mes_commandes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Commandes du compte, les plus récentes d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesCommandes"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

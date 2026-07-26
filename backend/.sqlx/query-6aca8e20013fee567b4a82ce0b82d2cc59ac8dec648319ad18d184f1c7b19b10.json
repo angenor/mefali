@@ -1,0 +1,127 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.etat::text AS \"etat!\", c.etat_le, c.total_unites,\n                      c.montant_articles_unites, c.devise,\n                      c.code_livraison, c.jeton_reception,\n                      l.id AS \"livraison_id?\", l.etat::text AS \"livraison_etat?\",\n                      l.coursier_id\n               FROM commandes.commande c\n               LEFT JOIN commandes.livraison l ON l.commande_id = c.id\n               WHERE c.id = $1 AND c.client_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "etat_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "etat_le"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "montant_articles_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "montant_articles_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "code_livraison",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "code_livraison"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "jeton_reception",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "jeton_reception"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "livraison_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "livraison_etat?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "coursier_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      true
+    ]
+  },
+  "hash": "6aca8e20013fee567b4a82ce0b82d2cc59ac8dec648319ad18d184f1c7b19b10"
+}

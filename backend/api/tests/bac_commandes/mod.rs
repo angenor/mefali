@@ -246,6 +246,7 @@ impl Bac {
             0,
         ));
         let restrictions = Arc::new(RestrictionsSimulees::nouveau());
+        let positions = Arc::new(PositionFixe::nouveau());
         let commandes = PgCommandes::new(
             pool.clone(),
             prestataires.clone(),
@@ -253,6 +254,7 @@ impl Bac {
             tarif,
             restrictions.clone(),
             objets,
+            positions.clone(),
         );
 
         let mut bac = Self {
@@ -261,7 +263,7 @@ impl Bac {
             prestataires,
             commandes,
             preuves: Arc::new(PreuvesFixes::nouveau()),
-            positions: Arc::new(PositionFixe::nouveau()),
+            positions,
             restrictions,
             pays,
             ville,
@@ -473,6 +475,9 @@ impl Bac {
                 .service(crs::arret_en_route)
                 .service(crs::arret_arrive)
                 .service(crs::arret_indisponible)
+                .service(cmd::mes_commandes)
+                .service(cmd::suivre_commande)
+                .service(cmd::intention_appel)
                 .service(adm::file_attente);
         }
     }
@@ -633,6 +638,44 @@ impl Bac {
             .await
             .expect("clôture de la course");
         tx.commit().await.unwrap();
+    }
+
+    /// `GET` authentifié sur une route du bac.
+    pub async fn get(&self, uri: &str, jeton: &str) -> (u16, Value) {
+        let app = actix_web::test::init_service(
+            actix_web::App::new().configure(self.configurer()),
+        )
+        .await;
+        let req = actix_web::test::TestRequest::get()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        (statut, actix_web::test::read_body_json(resp).await)
+    }
+
+    /// `POST` JSON authentifié sur une route du bac. Le corps `204 No Content`
+    /// est rendu `null` : il n'y a rien à désérialiser.
+    pub async fn post(&self, uri: &str, jeton: &str, corps: Value) -> (u16, Value) {
+        let app = actix_web::test::init_service(
+            actix_web::App::new().configure(self.configurer()),
+        )
+        .await;
+        let req = actix_web::test::TestRequest::post()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .set_json(corps)
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        let octets = actix_web::test::read_body(resp).await;
+        let valeur = if octets.is_empty() {
+            Value::Null
+        } else {
+            serde_json::from_slice(&octets).expect("corps JSON")
+        };
+        (statut, valeur)
     }
 
     /// État courant du tronc, de la livraison et d'un arrêt.
