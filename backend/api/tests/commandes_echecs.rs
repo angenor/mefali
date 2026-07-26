@@ -469,6 +469,25 @@ async fn trois_codes_faux_verrouillent_la_remise(pool: sqlx::PgPool) {
     assert_eq!(statut, 423, "{corps}");
     assert_eq!(corps["code"], "code_epuise");
 
+    // Le verrou ALERTE : une commande bloquée à la porte du client exige un
+    // humain, et un humain ne s'abonne pas à un `tracing::warn!`. L'événement
+    // ne porte JAMAIS le code — le publier le sortirait du seul canal qui doit
+    // le porter (R6).
+    let alerte: serde_json::Value = sqlx::query_scalar(
+        "SELECT payload FROM outbox.evenement
+         WHERE type_evenement = 'remise.code_epuise' AND entite_id = $1",
+    )
+    .bind(course.commande)
+    .fetch_one(&bac.pool)
+    .await
+    .expect("l'épuisement du code doit émettre remise.code_epuise");
+    assert_eq!(alerte["essais"], 3);
+    assert_eq!(alerte["livraison"], json!(course.livraison));
+    assert!(
+        !alerte.to_string().contains("code_livraison"),
+        "aucun code de remise dans un événement : {alerte}"
+    );
+
     // Et le BON code ne rouvre pas la porte : seule une intervention admin le
     // peut. Sinon le plafond ne protégerait de rien.
     let vrai_code: String =

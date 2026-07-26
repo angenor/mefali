@@ -207,7 +207,7 @@ Backend Rust : crate `backend/crates/commandes/` (**étendu**, pas de nouveau cr
 - [X] T064 [P] Vérifier l'**i18n complète** : aucune chaîne utilisateur en dur côté API (`message_cle` sur tous les refus) ni côté Flutter (toutes les entrées ARB présentes en fr) ; grep de contrôle documenté dans le quickstart.
 - [X] T065 [P] Vérifier que **tous les paramètres** du cycle sont résolus par configuration de zone (aucune constante en dur) : les 11 clés de [data-model.md §6](./data-model.md), plus `mixable` (déjà seedé au cycle 002) ; test de résolution par héritage.
 - [X] T066 **Vérifier les cinq points obligatoires** du [plan §Points obligatoires](./plan.md) : **P1** — les trois critères du gating (test 006 vert sans modification, bascule avec arrêt de remise, progression « 2 sur 2 ») ; **P2** — `cargo sqlx migrate run` vert sur base vierge **et** sur base déjà migrée à `0007` ; **P3** — aucune requête de `commandes` n'écrit dans `comptes.compte` ; **P4** — le devis de panier n'écrit rien et n'émet rien ; **P5** — `backend/crates/` contient toujours 13 crates.
-- [ ] T067 Dérouler [quickstart.md](./quickstart.md) de bout en bout : suite backend complète, puis validation **sur émulateur Android** des parcours SC-001 (panier 12 articles / 3 vendeurs en < 3 min), SC-004 et SC-009 (suivi puis **mode avion** — QR et code affichés, dernier état connu, âge de la position), SC-011 (création → affectation simulée → 3 collectes → remise → terminée). Consigner les écarts constatés.
+- [X] T067 Dérouler [quickstart.md](./quickstart.md) de bout en bout : suite backend complète, puis validation **sur émulateur Android** des parcours SC-001 (panier 12 articles / 3 vendeurs en < 3 min), SC-004 et SC-009 (suivi puis **mode avion** — QR et code affichés, dernier état connu, âge de la position), SC-011 (création → affectation simulée → 3 collectes → remise → terminée). Consigner les écarts constatés.
 - [X] T068 **Revue Definition of Done** (`docs/user-stories-v2.md` §0.4) — les six points, un par un : (1) critères d'acceptation couverts par des tests, **transitions incluses** ; (2) annotations utoipa à jour et **clients Dart/TS régénérés sans diff manuel** ; (3) migrations SQL versionnées (`0008`, `0009`) et **seeds à jour** (`60_commandes_parametres.sql`) ; (4) **événement outbox pour tout changement d'état** + événements de métriques du parcours déclarés dans la taxonomie ; (5) **clés i18n fr externalisées** ; (6) **paramètres exposés en configuration de zone** partout où la story dit « paramétrable ». Puis `cargo test` + `cargo sqlx prepare` + `dart analyze` verts, et message de commit conventionnel référençant les stories (`feat(commandes): CMD-01..08,10 …`).
 
 ---
@@ -291,43 +291,99 @@ Task: "T014 i18n : module d'erreurs API + entrées ARB"
 
 ---
 
-## État d'avancement — session du 2026-07-26 (reprise après panne poste)
+## État d'avancement — session du 2026-07-26 (T067 close)
 
-**67 tâches sur 68 livrées**, `cargo test --workspace` **484 verts**, Flutter
-**33 + 78** verts, `dart analyze` propre, `cargo sqlx prepare` vert, clients
-Dart/TS régénérés **sans diff**.
+**68 tâches sur 68 livrées.** `cargo test --workspace` vert, Flutter **50
+(client) + 94 (core)**, `dart analyze` propre sur les deux paquets,
+`cargo sqlx prepare` vert, clients Dart/TS **sans diff**.
 
 | Phase | État |
 |---|---|
 | 1 à 11 — T001 à T062 | ✅ complètes |
 | 12 — Polish (T063–T066, T068) | ✅ |
-| 12 — T067 quickstart | ⚠️ **backend ✅, émulateur IMPOSSIBLE** — voir ci-dessous |
+| 12 — T067 quickstart | ✅ **déroulé sur émulateur** (`Medium_Phone_API_36.1`) |
 
-### ⚠️ T067 — la validation sur émulateur ne peut pas être déroulée
+### T067 — ce qu'il a fallu construire pour le dérouler
 
-La suite backend du quickstart passe **telle qu'elle est écrite** (les tests
-d'adresse US2 ont été sortis de `commandes_creation.rs` vers
-`commandes_adresse.rs`, que la commande documentée référençait sans qu'il
-existe). `flutter test` et `dart analyze` sont verts sur les deux paquets.
+La session précédente concluait que l'émulateur était **impossible** : six
+écrans livrés, aucune navigation pour les atteindre, aucun appel serveur câblé.
+Ce n'était l'oubli d'aucune tâche — T019/T020/T024/T032/T045/T046/T053
+demandent des écrans, jamais un routeur ni une couche d'appel. Le manque a été
+comblé ici, dans les limites strictes du parcours :
 
-En revanche **SC-001, SC-004, SC-009 et SC-011 ne sont pas jouables sur
-émulateur**, et ce n'est pas un problème d'environnement :
+| Ajout | Où | Pourquoi |
+|---|---|---|
+| `CommandesApi` | `mefali_core/src/commande/api_commandes.dart` | 7 routes du cycle sur le client Dart **généré** (constitution I) |
+| `codeErreurApi` / `estPanneReseau` | idem | un refus rend son CODE (VII) ; une panne réseau se distingue et autorise la bascule cache |
+| `CacheCommandes` | `mefali_core/src/offline/cache_commandes.dart` | écrit code + QR **à la création**, lus sans réseau (SC-009) |
+| `AdressesApi.enregistrer` | `mefali_core/src/adresses/api_adresses.dart` | un repère **vocal** exige une clé S3 que seule `POST /moi/adresses` produit — la commande passe donc par le carnet (CPT-05) |
+| `ActionsCommande` | `mefali_client/parcours/actions_commande.dart` | devis, confirmation, suivi, annulation, appel, substitution |
+| `AccueilClient`, `EcranVendeur`, `PagePanier`/`PageAdressePaiement`/`PageSuivi` | `mefali_client/parcours/` | le parcours accueil → vendeur → panier → adresse → confirmation → suivi |
+| `sourceSuiviProvider` surchargé | `mefali_client/main.dart` | injection par la PORTÉE, patron `urlApiProvider` |
 
-- l'accueil de `mefali_client` est toujours `AccueilProvisoire` — **aucune
-  navigation** ne mène aux écrans du cycle ;
-- **aucun appel API** n'est câblé côté client : `grep CommandesApi` ne rend
-  rien. Les écrans sont alimentés par leurs providers, que rien ne remplit
-  depuis le serveur.
+**Sortie en corps JSON du contrat, pas en DTO** : les vues d'écran se
+construisent depuis le JSON (`depuisJson`), et c'est ce chemin que couvrent les
+tests widget du cycle. Rendre le DTO aurait ouvert un SECOND chemin de
+conversion, non couvert, voué à diverger. La sérialisation passe par les
+`standardSerializers` du paquet généré — les noms de champs sont ceux
+d'`openapi.json`, jamais des littéraux recopiés.
 
-Ce n'est l'oubli d'aucune tâche : T019, T020, T024, T032, T045, T046 et T053
-demandent des **écrans**, jamais un routeur ni une couche d'appel. T067 suppose
-un parcours que le découpage du cycle ne produit pas. Les six écrans sont
-livrés, thémés, testés en widget — mais un utilisateur ne peut pas les
-atteindre.
+### T067 — déroulé réel sur émulateur
 
-**Décision à prendre** (hors périmètre de ce cycle, à arbitrer) : ajouter au
-cycle CMD un routeur client + une couche `CommandesApi`, ou les porter au cycle
-suivant et clore T067 sur sa seule moitié backend.
+Environnement : Postgres 5433, Redis, Garage, **OSRM absent** (image
+`ghcr.io/project-osrm/osrm-backend:v26.7.3` disparue du registre) → devis en
+**dégradé vol d'oiseau ×1,4 journalisé**, conforme constitution IV.
+
+| Critère | Résultat |
+|---|---|
+| **SC-001** | ✅ panier chiffré par le serveur (regroupement vendeur, sous-totaux, Articles/Livraison/Total), pin GPS capté, repère écrit avec compteur, **appoint exact** affiché, code `5319` + QR remis **immédiatement** |
+| **SC-004** | ✅ stepper en langage clair, « Chez Boutique Kofi », position annoncée absente plutôt qu'inventée, coursier et annulation apparaissant/disparaissant selon l'état |
+| **SC-009** | ✅ mode avion : « Hors connexion · Dernier état connu », stepper masqué, bloc « À la livraison — **disponible sans réseau** » avec QR et code depuis le cache ; la LISTE des commandes retombe aussi sur le cache |
+| **SC-011** | ✅ création → collecte (scan QR, **rejeu idempotent** vérifié) → `en_livraison` → remise contre code → `terminee`, `etat_paiement = regle`, `commande.terminee` avec `total_encaisse = 9800 = total_unites`. Assertion structurelle : **aucune colonne logistique sur le tronc** |
+
+### Écarts constatés à la validation
+
+1. **Deux défauts d'UI trouvés et CORRIGÉS** : la préférence « M'appeler » se
+   rendait une **lettre par ligne** (trois segments à droite du libellé ne
+   tiennent pas sur 1080 px — titre remonté au-dessus, coche retirée) ; et le
+   retour depuis le suivi tombait sur un **panier vide** (la pile est
+   maintenant vidée jusqu'à l'accueil).
+2. **Alerte du code de remise épuisé** — était un `tracing::warn!`, que
+   personne ne peut recevoir. Déclarée **dans la taxonomie d'abord**
+   (`remise.code_epuise`), puis émise dans la MÊME transaction que le compteur
+   qui la déclenche. Le payload ne porte **jamais** le code (R6).
+3. **La découverte des vendeurs n'existe pas** et n'a pas été construite : il
+   n'y a aucune route publique de recherche (`GET /prestataires/{id}` seul).
+   L'accueil ouvre donc une fiche **par son lien de plaque ou son identifiant**
+   — le canal que le produit prévoit (page `mefali.com/v/{id}`, plaque). Le
+   tri par distance et fiabilité appartient à **VND**.
+4. **`commande.repere_texte_min_caracteres` n'est pas servi au client** : la
+   liste blanche de `/config` n'expose que `client.*`, et ce paramètre vit dans
+   `commande.*`. L'app garde son défaut de 10 — le serveur reste seul juge, et
+   la garde locale n'évite qu'un aller-retour. **À combler par une vue dérivée
+   au prochain cycle qui touche ZON.**
+5. **La scission proposée n'est pas ACCEPTABLE depuis l'app** : le bandeau
+   s'affiche, chiffré et prévisualisé (SC-006 : proposition, jamais d'office),
+   mais son bouton reste inerte — accepter suppose de scinder le panier en deux
+   commandes successives, ce qu'aucune route ne fait et qu'aucune tâche du
+   cycle ne demandait. **À arbitrer** : c'est le seul geste de la maquette C3-3d
+   qui manque.
+6. **Le bloc « À la livraison » reste affiché sur une commande LIVRÉE** avec
+   son code. Sans conséquence (la commande est close), mais le code n'a plus
+   d'objet : à masquer quand `etat == terminee`.
+7. **Environnement, pas produit** : (a) la démo tombait un **dimanche** et les
+   horaires du seed couvrent lun–sam — les boutiques étaient donc fermées, ce
+   qui est le comportement correct ; le dimanche a été ouvert **en base
+   locale**, sans toucher au seed versionné ; (b) l'affectation d'un coursier a
+   été faite **directement en base** (le dispatch réel est DSP, le cycle
+   n'utilise qu'un double), ce qui a laissé le tronc en `nouvelle` et fait
+   refuser la remise — `nouvelle → terminee` n'est pas dans la table fermée, et
+   c'est **la table qui a raison**.
+8. **Plafond OTP par numéro** (≈ 50 min) : trois codes faux ont détruit le défi
+   ET bloqué le renvoi, l'écran DEV continuant d'afficher le dernier code
+   tracé — donc périmé. Comportement voulu, mais **l'écran DEV devrait dire que
+   le renvoi a été refusé** plutôt que d'afficher un code mort.
+
 
 ### Revue Definition of Done (T068) — les six points
 
@@ -336,7 +392,7 @@ suivant et clore T067 sur sa seule moitié backend.
 | 1 | Critères d'acceptation couverts, **transitions incluses** | ✅ une assertion par ligne des 3 tables + parcours réel |
 | 2 | utoipa à jour, clients régénérés **sans diff** | ✅ vérifié par régénération |
 | 3 | Migrations versionnées (`0008`, `0009`), seeds à jour | ✅ + P2 rejoué sur base vierge ET incrémentale |
-| 4 | Événement outbox pour **tout** changement d'état | ✅ 27 événements émis, **0 non déclaré** |
+| 4 | Événement outbox pour **tout** changement d'état | ✅ **28** événements émis (T067 ajoute `remise.code_epuise`), **0 non déclaré** |
 | 5 | Clés i18n fr externalisées | ✅ boucle fermée par `messageErreurCommande` |
 | 6 | Paramètres en configuration de zone | ✅ 14 clés résolues par héritage (T065) |
 
@@ -361,9 +417,19 @@ suivant et clore T067 sur sa seule moitié backend.
    pour toujours. Même classe de panne que P1, par l'autre bout.
 8. `coursier.prenom` et `coursier.note` du suivi restent `null` : `comptes` ne
    stocke aucun nom et le cycle AVI n'existe pas. **À combler par CPT et AVI.**
-9. L'**alerte admin** du code de remise épuisé est un `tracing::warn!`, pas un
-   événement outbox : la taxonomie n'en déclare aucun pour ce cas. À trancher
-   si l'exploitation doit pouvoir s'y abonner.
-10. **`ProgressionCollecte` distingue `nb_collectes` et `nb_resolues`** :
+9. L'**alerte admin** du code de remise épuisé était un `tracing::warn!` —
+   **tranché et corrigé à T067** : déclarée dans `docs/taxonomie-evenements.md`
+   d'abord (`remise.code_epuise`, 27 → 28 événements), puis émise dans la MÊME
+   transaction que le compteur d'essais. Le payload ne porte jamais le code.
+10. **La couche d'appel rend le corps JSON du contrat, pas les DTO générés**
+    (T067) : les vues d'écran se construisent depuis le JSON et c'est ce chemin
+    que couvrent les tests widget. Rendre le DTO aurait ouvert un second chemin
+    de conversion, non couvert, voué à diverger. La sérialisation passe par les
+    `standardSerializers` du paquet généré — jamais des littéraux recopiés.
+11. **Un repère VOCAL de commande passe par le carnet** (T067) :
+    `POST /commandes` attend une `repere_vocal_cle` (S3) que **seule**
+    `POST /moi/adresses` sait produire. L'app enregistre donc l'adresse — ce
+    que CPT-05 propose de toute façon — et commande sur son identifiant.
+12. **`ProgressionCollecte` distingue `nb_collectes` et `nb_resolues`** :
     « collecté » et « résolu » ne sont pas le même compte, et les confondre
     donnait soit une barre bloquée, soit un compteur d'achats faux.

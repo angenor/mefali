@@ -815,17 +815,40 @@ impl PgCommandes {
                 )
                 .execute(&mut *tx)
                 .await?;
-                tx.commit().await?;
 
-                if essais_code >= essais_max {
+                let epuise = essais_code >= essais_max;
+                if epuise {
                     // Alerte ADMIN : trois codes faux sur une commande, c'est
                     // soit un client qui ne trouve plus son SMS, soit quelqu'un
-                    // qui essaie. Les deux demandent un humain.
+                    // qui essaie. Les deux demandent un humain — et un humain ne
+                    // s'abonne pas à un `tracing::warn!`. L'événement part dans
+                    // la MÊME transaction que le compteur qui l'a déclenché : un
+                    // verrou sans alerte laisserait la commande bloquée à la
+                    // porte du client, sans que personne ne le sache.
+                    ecrire_evenement(
+                        &mut tx,
+                        NouvelEvenement {
+                            type_evenement: "remise.code_epuise",
+                            entite_type: "commande",
+                            entite_id: contexte.commande_id,
+                            payload: json!({
+                                "livraison": livraison_id,
+                                "essais": essais_code,
+                                "acteur": coursier,
+                            }),
+                            survenu_le: horodatage,
+                        },
+                    )
+                    .await?;
                     tracing::warn!(
                         commande = %contexte.commande_id,
                         essais = essais_code,
                         "code de remise ÉPUISÉ — intervention admin requise",
                     );
+                }
+                tx.commit().await?;
+
+                if epuise {
                     return Err(ErreurCommandes::CodeEpuise);
                 }
                 return Err(ErreurCommandes::RemiseIncorrecte);

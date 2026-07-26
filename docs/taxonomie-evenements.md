@@ -106,6 +106,7 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `substitution.decidee` | `substitution` | `commandes::substitution` (cycle CMD) | **Produit** — acceptée, refusée, expirée ou retirée |
 | `ligne.retiree` | `ligne_commande` | `commandes::substitution` (cycle CMD) | **Produit** — ligne retirée, montant des articles révisé (frais inchangés) |
 | `appel.intention` | `commande` | `commandes_http::appeler` / `commandes::substitution` (cycle CMD) | **Produit** — intention d'appel journalisée (aucun numéro dans le payload) |
+| `remise.code_epuise` | `commande` | `commandes::collecte::valider_remise` (cycle CMD) | **Produit** — essais du code de remise épuisés : la commande est bloquée à la porte du client et **exige un humain** (l'app dit « un conseiller va vous contacter »). Un `tracing::warn!` ne s'abonne pas — l'exploitation doit le recevoir comme les autres. |
 | `echec.issue_enregistree` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — issue de l'arbre §7.5 avec ses deux détenteurs |
 | `litige.ouvert` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par AVI-04) |
 | `indemnisation.due` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par CRS-06) |
@@ -348,6 +349,7 @@ propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
 | `commande.attente_coursier_escaladee` | `commande` | `commande.id` | `zone`, `age_s`, `seuil_s` (paramètre de zone franchi) |
 | `commande.assignee` | `commande` | `commande.id` | `livraison`, `coursier`, `depuis_attente` (booléen — reprise FIFO) |
 | `commande.terminee` | `commande` | `commande.id` | `mode_remise` (`qr` \| `code` \| `depot`), `duree_totale_s`, `total_encaisse`, `devise` |
+| `remise.code_epuise` | `commande` | `commande.id` | `livraison`, `essais` (= le plafond de zone atteint), `acteur` (coursier) — **aucun code, jamais** : le publier dans un événement le sortirait du seul canal qui doit le porter (client ↔ coursier, R6) |
 | `commande.annulee` | `commande` | `commande.id` | `par` (`client` \| `admin` \| `systeme`), `motif_cle`, `sans_frais` (booléen), `part_coursier_due` (unités mineures), `remboursement_du` (booléen), `devise` |
 | `commande.echec_declare` | `commande` | `commande.id` | `type_issue`, `preuves_ok` (booléen — toujours `true` : sans preuves, l'écriture est refusée) |
 | `panier.scission_proposee` | `commande` (virtuel) | `compte.id` (client) | `zone`, `categorie`, `cause` (`categorie_non_mixable` \| `plafond_eclatement`), `nb_commandes` — **métrique SC-006** |
