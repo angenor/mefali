@@ -468,6 +468,11 @@ impl PgCommandes {
     /// 3. les lignes de l'arrêt sont **retirées** et le montant de la commande
     ///    révisé — le client ne paie pas ce qui n'a pas été acheté. Le devis de
     ///    livraison, lui, ne bouge pas (FR-050).
+    // Huit paramètres : `tx` + l'arrêt + le coursier + l'uuid d'idempotence
+    // + le motif + les DEUX horodatages (local déclaré, serveur constaté — la
+    // constitution exige qu'ils restent distincts). Même arbitrage que
+    // `marquer_arret_collecte` juste au-dessus.
+    #[allow(clippy::too_many_arguments)]
     pub async fn marquer_arret_indisponible(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
@@ -587,6 +592,11 @@ impl PgCommandes {
     /// Le paiement passe `regle` : la contrainte `commande_terminee_payee`
     /// l'exige, et c'est la traduction en base de « un seul montant, encaissé
     /// en une fois » (constitution III).
+    // Huit paramètres : `tx` + la livraison + la commande + le mode de remise
+    // + le nombre d'essais du code + le coursier + l'horodatage. Tous sont
+    // écrits en base par cette clôture. Même arbitrage que
+    // `marquer_arret_collecte`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn cloturer_livraison_prouvee(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,

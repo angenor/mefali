@@ -799,22 +799,6 @@ fn ecart_pourcent(prix_origine: i64, prix_propose: i64) -> i64 {
     (prix_propose - prix_origine) * 100 / prix_origine
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn l_ecart_de_prix_se_mesure_sur_le_prix_unitaire() {
-        // Les deux bornes du produit : +20 % passe, +25 % non.
-        assert_eq!(ecart_pourcent(500, 600), 20);
-        assert_eq!(ecart_pourcent(500, 625), 25);
-        // Un remplacement MOINS cher est un écart négatif — borné lui aussi.
-        assert_eq!(ecart_pourcent(500, 400), -20);
-        // Prix d'origine nul : rien à mesurer, jamais une division par zéro.
-        assert_eq!(ecart_pourcent(0, 600), 0);
-    }
-}
-
 // ── T063 : purge des photos de substitution ───────────────────────────────
 
 impl PgCommandes {
@@ -869,5 +853,21 @@ impl PgCommandes {
             }
         }
         Ok(purgees)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn l_ecart_de_prix_se_mesure_sur_le_prix_unitaire() {
+        // Les deux bornes du produit : +20 % passe, +25 % non.
+        assert_eq!(ecart_pourcent(500, 600), 20);
+        assert_eq!(ecart_pourcent(500, 625), 25);
+        // Un remplacement MOINS cher est un écart négatif — borné lui aussi.
+        assert_eq!(ecart_pourcent(500, 400), -20);
+        // Prix d'origine nul : rien à mesurer, jamais une division par zéro.
+        assert_eq!(ecart_pourcent(0, 600), 0);
     }
 }

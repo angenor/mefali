@@ -459,9 +459,10 @@ impl PgCommandes {
 
     /// Bascule l'arrêt en COLLECTÉ dans `tx`, écrit `arret.collecte`, et si tous
     /// les arrêts de la livraison sont résolus, bascule la livraison EN_LIVRAISON
-    /// + écrit `livraison.mise_en_livraison`. Idempotent par `uuid_client` : un
-    /// rejeu du même uuid sur un arrêt déjà `collecte` renvoie la progression
-    /// sans nouvelle écriture ni événement.
+    /// en écrivant `livraison.mise_en_livraison`.
+    ///
+    /// Idempotent par `uuid_client` : un rejeu du même uuid sur un arrêt déjà
+    /// `collecte` renvoie la progression sans nouvelle écriture ni événement.
     #[allow(clippy::too_many_arguments)]
     pub async fn marquer_arret_collecte(
         &self,

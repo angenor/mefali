@@ -68,6 +68,10 @@ impl PgPrestataires {
     /// Le remplacement des horaires émet `site.horaires_modifies` s'ils
     /// changent (source `admin` — FR-036) ; la position se corrige en silence
     /// (donnée d'exploitation, pas une transition de parcours).
+    // Huit paramètres : `tx` + le prestataire + la position (lat, lng) + les
+    // horaires + le statut initial + l'acteur. Même arbitrage que
+    // `PgCommandes::new`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn definir_site(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
@@ -165,6 +169,10 @@ impl PgPrestataires {
         self.site_dans_tx(tx, prestataire).await
     }
 
+    // Huit paramètres : `tx` + la cible (prestataire, site) + le AVANT et le
+    // APRÈS des horaires — que l'événement `site.horaires_modifies` exige tous
+    // les deux — + la traçabilité. Même arbitrage que `PgCommandes::new`.
+    #[allow(clippy::too_many_arguments)]
     async fn remplacer_horaires(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,

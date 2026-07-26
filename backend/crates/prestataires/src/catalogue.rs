@@ -254,6 +254,11 @@ impl PgPrestataires {
 
     /// Dépose/remplace la photo (clé NEUVE) — rend la clé remplacée, ORPHELINE
     /// à purger APRÈS commit. Émet `article.modifie` (`champs: ["photo"]`).
+    // Huit paramètres : `tx` + la cible (prestataire, article) + le média
+    // (octets, mime) + la traçabilité (source, acteur). Aucun ne se déduit d'un
+    // autre, et les regrouper masquerait qui écrit quoi. Même arbitrage que
+    // `PgCommandes::new`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn photo_article(
         &self,
         tx: &mut sqlx::PgTransaction<'_>,
