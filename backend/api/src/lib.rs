@@ -246,6 +246,20 @@ async fn job_expirer_substitutions(depot: commandes::PgCommandes) {
 /// Purge périodique des photos de récupération expirées (QRC-02, constitution
 /// VIII, research R8). Même patron que [`job_purge_reperes`] : une tâche tokio,
 /// un échec journalisé et retenté au passage suivant.
+async fn job_purge_photos_substitution(depot: commandes::PgCommandes) {
+    let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
+    loop {
+        horloge.tick().await;
+        match depot.purger_photos_substitution().await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(purgees = n, "photos de substitution purgées (rétention de zone)"),
+            Err(e) => tracing::error!(erreur = %e, "purge des photos de substitution échouée"),
+        }
+    }
+}
+
+/// Purge périodique des photos de récupération expirées (QRC-02, constitution
+/// VIII, research R8).
 async fn job_purge_photos_collecte(depot: qr::PgQr) {
     let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
     loop {
@@ -437,6 +451,7 @@ pub async fn run() -> std::io::Result<()> {
                 eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
 
                 tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
+                tokio::spawn(job_purge_photos_substitution(depot_commandes.clone()));
                 eprintln!("job d'expiration des substitutions démarré (toutes les 10 s)");
 
                 commandes_domaine_opt = Some(depot_commandes);

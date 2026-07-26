@@ -162,6 +162,8 @@ mod cles {
     pub const DELAI_VALIDATION_S: &str = "substitution.delai_validation_s";
     /// Écart de prix maximal d'un remplacement, en pourcent (défaut : 20).
     pub const ECART_PRIX_MAX_POURCENT: &str = "substitution.ecart_prix_max_pourcent";
+    /// Rétention des PHOTOS de remplacement, en jours (constitution VIII).
+    pub const PHOTO_RETENTION_JOURS: &str = "substitution.photo_retention_jours";
 }
 
 /// Motifs de `ligne.retiree` — la taxonomie en ferme la liste.
@@ -810,5 +812,62 @@ mod tests {
         assert_eq!(ecart_pourcent(500, 400), -20);
         // Prix d'origine nul : rien à mesurer, jamais une division par zéro.
         assert_eq!(ecart_pourcent(0, 600), 0);
+    }
+}
+
+// ── T063 : purge des photos de substitution ───────────────────────────────
+
+impl PgCommandes {
+    /// Purge les photos de remplacement au-delà de la rétention de zone
+    /// (`substitution.photo_retention_jours`).
+    ///
+    /// Même patron que les purges de repères vocaux (cycle 003) et de photos de
+    /// collecte (cycle 006) : la rétention est un **paramètre de zone**, pas une
+    /// durée en dur, et la purge est **best-effort** — un échec de suppression
+    /// sur UN objet est journalisé et n'interrompt pas les autres. La clé reste
+    /// alors en base et sera retentée au prochain passage : mieux vaut un
+    /// orphelin rattrapable qu'une ligne qui pointe vers du vide.
+    ///
+    /// La ligne `substitution` SURVIT à sa photo : elle porte la trace d'une
+    /// décision d'argent (qui a proposé quoi, à quel prix, accepté ou non) et
+    /// n'est pas une donnée personnelle. Seule l'image, qui peut montrer un
+    /// lieu ou une personne, est minimisée (constitution VIII).
+    pub async fn purger_photos_substitution(&self) -> Result<u64, ErreurCommandes> {
+        let candidates = sqlx::query!(
+            r#"SELECT sub.id, sub.photo_cle, sub.proposee_le, c.zone_id
+               FROM commandes.substitution sub
+               JOIN commandes.ligne_commande lc ON lc.id = sub.ligne_id
+               JOIN commandes.commande c ON c.id = lc.commande_id
+               WHERE sub.photo_cle <> ''"#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut purgees = 0_u64;
+        for candidate in candidates {
+            let jours = self
+                .parametre_i64(candidate.zone_id, cles::PHOTO_RETENTION_JOURS)
+                .await?;
+            if Utc::now() < candidate.proposee_le + chrono::Duration::days(jours) {
+                continue;
+            }
+            match self.objets.supprimer(&candidate.photo_cle).await {
+                Ok(()) => {
+                    sqlx::query!(
+                        "UPDATE commandes.substitution SET photo_cle = '' WHERE id = $1",
+                        candidate.id,
+                    )
+                    .execute(&self.pool)
+                    .await?;
+                    purgees += 1;
+                }
+                Err(e) => tracing::warn!(
+                    cle = %candidate.photo_cle,
+                    erreur = %e,
+                    "purge d'une photo de substitution échouée — retentée au prochain passage",
+                ),
+            }
+        }
+        Ok(purgees)
     }
 }

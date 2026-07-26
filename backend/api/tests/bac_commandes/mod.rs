@@ -717,6 +717,44 @@ impl Bac {
         (statut, valeur)
     }
 
+    /// `POST` multipart : partie `demande` (JSON) + `photo` binaire optionnelle.
+    pub async fn post_multipart(
+        &self,
+        uri: &str,
+        jeton: &str,
+        demande: Value,
+        avec_photo: bool,
+    ) -> (u16, Value) {
+        let app = actix_web::test::init_service(
+            actix_web::App::new().configure(self.configurer()),
+        )
+        .await;
+        let frontiere = "----mefali-bac";
+        let mut corps = format!(
+            "--{frontiere}\r\nContent-Disposition: form-data; name=\"demande\"\r\n\r\n{demande}\r\n"
+        );
+        if avec_photo {
+            corps.push_str(&format!(
+                "--{frontiere}\r\nContent-Disposition: form-data; name=\"photo\"; \
+                 filename=\"p.jpg\"\r\nContent-Type: image/jpeg\r\n\r\nXXX\r\n"
+            ));
+        }
+        corps.push_str(&format!("--{frontiere}--\r\n"));
+
+        let req = actix_web::test::TestRequest::post()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .insert_header((
+                "content-type",
+                format!("multipart/form-data; boundary={frontiere}"),
+            ))
+            .set_payload(corps)
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        (statut, actix_web::test::read_body_json(resp).await)
+    }
+
     /// État courant du tronc, de la livraison et d'un arrêt.
     pub async fn etat_commande(&self, commande: Uuid) -> String {
         sqlx::query_scalar("SELECT etat::text FROM commandes.commande WHERE id = $1")

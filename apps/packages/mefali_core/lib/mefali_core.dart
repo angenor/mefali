@@ -19,6 +19,7 @@ export 'src/auth/session.dart';
 export 'src/auth/stockage_jetons.dart';
 export 'src/commande/bloc_remise.dart';
 export 'src/commande/carte_vendeur.dart';
+export 'src/commande/message_erreur.dart';
 export 'src/commande/recapitulatif_frais.dart';
 export 'src/config/amorce_config.dart';
 export 'src/config/cache_config.dart';
