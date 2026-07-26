@@ -30,6 +30,8 @@ class EcranAdressePaiement extends ConsumerWidget {
     this.onPositionActuelle,
     this.onChangerAdresse,
     this.onConfirmer,
+    this.onSuivre,
+    this.libelleSuivre,
     this.capturerNote,
     super.key,
   });
@@ -42,6 +44,14 @@ class EcranAdressePaiement extends ConsumerWidget {
 
   /// Confirme la commande (`POST /commandes` avec sa clé d'idempotence).
   final VoidCallback? onConfirmer;
+
+  /// Passage au suivi, une fois la commande créée (C3 → C4). Absent, l'écran
+  /// de confirmation s'en tient au code et au QR : c'est déjà l'essentiel.
+  final VoidCallback? onSuivre;
+
+  /// Libellé de [onSuivre], résolu par l'appelant — le paquet cœur n'a pas de
+  /// clé pour une navigation qui appartient à l'app (constitution VII).
+  final String? libelleSuivre;
 
   /// Capture d'une note vocale — doublée par les tests.
   final CapturerNote? capturerNote;
@@ -73,6 +83,10 @@ class EcranAdressePaiement extends ConsumerWidget {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ),
+            if (onSuivre != null && libelleSuivre != null) ...[
+              const SizedBox(height: MefaliTokens.space4),
+              FilledButton(onPressed: onSuivre, child: Text(libelleSuivre!)),
+            ],
           ],
         ),
       );

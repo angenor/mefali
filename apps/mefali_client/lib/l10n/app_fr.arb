@@ -7,5 +7,107 @@
   "splashTagline": "Vos repas et vos courses, livrés à Tiassalé",
   "@splashTagline": {
     "description": "Accroche de l'écran de démarrage"
+  },
+  "accueilCommandesTitre": "Mes commandes",
+  "@accueilCommandesTitre": {
+    "description": "Titre de la liste des commandes du compte, sur l'accueil"
+  },
+  "accueilAucuneCommande": "Aucune commande pour le moment.",
+  "@accueilAucuneCommande": {
+    "description": "Liste de commandes vide"
+  },
+  "accueilCommandesErreur": "Impossible de charger vos commandes.",
+  "@accueilCommandesErreur": {
+    "description": "Échec du chargement de la liste des commandes"
+  },
+  "accueilEtatCollecte": "Collecte en cours",
+  "@accueilEtatCollecte": {
+    "description": "État d'une commande dans la liste d'accueil, sans compteur : GET /moi/commandes ne sert pas la progression"
+  },
+  "accueilVoirPanier": "Voir mon panier ({articles})",
+  "@accueilVoirPanier": {
+    "description": "Bouton d'accès au panier, avec le nombre d'articles",
+    "placeholders": {
+      "articles": {
+        "type": "int"
+      }
+    }
+  },
+  "accueilOuvrirVendeur": "Ouvrir un vendeur",
+  "@accueilOuvrirVendeur": {
+    "description": "Action d'ouverture d'une fiche vendeur depuis son lien ou son identifiant"
+  },
+  "accueilVendeurIdentifiant": "Lien ou identifiant du vendeur",
+  "@accueilVendeurIdentifiant": {
+    "description": "Champ de saisie du lien de plaque ou de l'identifiant d'un vendeur"
+  },
+  "accueilVendeurAide": "Collez le lien de la plaque du vendeur (mefali.com/v/…) ou son identifiant.",
+  "@accueilVendeurAide": {
+    "description": "Aide du champ d'ouverture d'un vendeur"
+  },
+  "vendeurCatalogueVide": "Ce vendeur n'a aucun article en ligne.",
+  "@vendeurCatalogueVide": {
+    "description": "Catalogue vide sur la fiche d'un vendeur"
+  },
+  "vendeurIntrouvable": "Vendeur introuvable.",
+  "@vendeurIntrouvable": {
+    "description": "La fiche demandée n'existe pas ou n'est pas publiée"
+  },
+  "vendeurFerme": "Ce vendeur est fermé pour le moment.",
+  "@vendeurFerme": {
+    "description": "Bandeau d'un vendeur non commandable"
+  },
+  "vendeurArticleIndisponible": "Indisponible",
+  "@vendeurArticleIndisponible": {
+    "description": "Étiquette d'un article en rupture"
+  },
+  "vendeurAjouterAuPanier": "Ajouter",
+  "@vendeurAjouterAuPanier": {
+    "description": "Ajout d'un article au panier"
+  },
+  "vendeurArticleAjoute": "{article} ajouté au panier",
+  "@vendeurArticleAjoute": {
+    "description": "Confirmation d'ajout au panier",
+    "placeholders": {
+      "article": {
+        "type": "String"
+      }
+    }
+  },
+  "parcoursErreurLieu": "Placez le point de livraison pour continuer.",
+  "@parcoursErreurLieu": {
+    "description": "Aucun pin GPS n'a pu être obtenu ni saisi"
+  },
+  "parcoursErreurZone": "Configuration de la zone indisponible. Réessayez dans un instant.",
+  "@parcoursErreurZone": {
+    "description": "La configuration de zone n'a pas pu être chargée (transports actifs inconnus)"
+  },
+  "parcoursAdresseLivraisonLibelle": "Adresse de livraison",
+  "@parcoursAdresseLivraisonLibelle": {
+    "description": "Libellé de l'adresse créée pour porter un repère vocal de commande"
+  },
+  "parcoursSuivreCommande": "Suivre ma commande",
+  "@parcoursSuivreCommande": {
+    "description": "Passage de la confirmation au suivi"
+  },
+  "parcoursAnnulerTitre": "Annuler cette commande ?",
+  "@parcoursAnnulerTitre": {
+    "description": "Titre de la confirmation d'annulation"
+  },
+  "parcoursAnnulerAide": "Aucun achat n'a encore été fait : l'annulation est sans frais.",
+  "@parcoursAnnulerAide": {
+    "description": "Aide de la confirmation d'annulation sans frais"
+  },
+  "parcoursAnnulerConfirmer": "Annuler la commande",
+  "@parcoursAnnulerConfirmer": {
+    "description": "Action de confirmation de l'annulation"
+  },
+  "parcoursGarderCommande": "Garder ma commande",
+  "@parcoursGarderCommande": {
+    "description": "Renoncement à l'annulation"
+  },
+  "parcoursCommandeAnnulee": "Commande annulée.",
+  "@parcoursCommandeAnnulee": {
+    "description": "Confirmation d'annulation"
   }
 }

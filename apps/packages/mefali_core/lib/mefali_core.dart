@@ -2,6 +2,7 @@
 library;
 
 export 'l10n/mefali_core_localizations.dart';
+export 'src/adresses/api_adresses.dart';
 export 'src/adresses/feuille_enregistrer_adresse.dart';
 export 'src/adresses/liste_adresses.dart';
 export 'src/adresses/note_vocale.dart';

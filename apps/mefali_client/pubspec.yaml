@@ -21,8 +21,20 @@ dependencies:
   intl: 0.20.2
   # Utilisé directement dans l'écran de démarrage (Symbols.*).
   material_symbols_icons: 4.2951.0
+  # Clé d'idempotence de la création de commande (UUIDv7 — R7 : elle DEVIENT
+  # l'identifiant). Même version que mefali_core et mefali_pro (constitution X).
+  uuid: 4.5.3
+  # « Utiliser ma position actuelle » de l'écran d'adresse (maquette C3-3a′) —
+  # même plugin et même version que le scan de proximité de mefali_pro.
+  geolocator: ^14.0.2
   mefali_core:
     path: ../packages/mefali_core
+  # Client Dart GÉNÉRÉ — consulté DIRECTEMENT pour la fiche publique d'un
+  # vendeur (`GET /prestataires/{id}`, lecture seule, hors cycle CMD), comme le
+  # fait mefali_pro pour ses écrans vendeur. Les appels du cycle CMD, eux,
+  # passent par `CommandesApi` de mefali_core, qui les teste.
+  mefali_api_client:
+    path: ../../clients/dart
 
 dev_dependencies:
   flutter_test:

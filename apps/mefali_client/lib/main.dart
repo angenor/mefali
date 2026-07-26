@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_core/mefali_core.dart';
 
+import 'commande/etat_suivi.dart';
 import 'l10n/app_localizations.dart';
+import 'parcours/accueil.dart';
+import 'parcours/actions_commande.dart';
 import 'splash_screen.dart';
 
 /// URL du backend, surchargeable au build (`--dart-define=MEFALI_API_URL=...`).
@@ -18,7 +21,16 @@ Future<void> main() async {
   // retry NEUTRE sur la portée (FR-002), url d'API surchargée ici (FR-012).
   final container = ProviderContainer(
     retry: pasDeRetry,
-    overrides: [urlApiProvider.overrideWithValue(_urlApi)],
+    overrides: [
+      urlApiProvider.overrideWithValue(_urlApi),
+      // Le suivi reçoit sa source par la PORTÉE (constitution XII) : le porteur
+      // d'état ne construit pas son transport. En production c'est l'API, avec
+      // sa bascule sur le cache local quand le réseau manque (SC-009) ; en test
+      // widget, une vue figée. Aucun des deux ne connaît l'autre.
+      sourceSuiviProvider.overrideWith(
+        (ref) => ref.read(actionsCommandeProvider).chargerSuivi,
+      ),
+    ],
   );
   // Configuration produit distante démarrée en arrière-plan (cache immédiat +
   // rafraîchissement horaire) — l'inscription y lit la version du texte ARTCI.
@@ -55,7 +67,7 @@ class MefaliClientApp extends StatelessWidget {
       home: RacineAuth(
         nomAppareil: 'Mefali',
         demarrage: const SplashScreen(),
-        accueil: (_) => const AccueilProvisoire(),
+        accueil: (_) => const AccueilClient(),
       ),
     );
   }
