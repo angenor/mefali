@@ -20,6 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
+import 'bloc_scission.dart';
 import 'etat_confirmation.dart';
 import 'etat_panier.dart';
 
@@ -45,9 +46,13 @@ class EcranAdressePaiement extends ConsumerWidget {
   /// Confirme la commande (`POST /commandes` avec sa clé d'idempotence).
   final VoidCallback? onConfirmer;
 
-  /// Passage au suivi, une fois la commande créée (C3 → C4). Absent, l'écran
-  /// de confirmation s'en tient au code et au QR : c'est déjà l'essentiel.
-  final VoidCallback? onSuivre;
+  /// Passage au suivi d'UNE commande créée (C3 → C4). Absent, l'écran de
+  /// confirmation s'en tient aux codes et aux QR : c'est déjà l'essentiel.
+  ///
+  /// Reçoit l'identifiant : une scission acceptée en crée N, et chacune a son
+  /// propre suivi. Un rappel sans argument obligerait l'écran à en désigner une
+  /// arbitrairement.
+  final void Function(String commandeId)? onSuivre;
 
   /// Libellé de [onSuivre], résolu par l'appelant — le paquet cœur n'a pas de
   /// clé pour une navigation qui appartient à l'app (constitution VII).
@@ -60,43 +65,84 @@ class EcranAdressePaiement extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = MefaliCoreLocalizations.of(context)!;
     final saisie = ref.watch(confirmationProvider);
-    final devis = ref.watch(panierProvider).devis;
+    final panier = ref.watch(panierProvider);
 
-    // Après confirmation, l'écran ne montre plus qu'une chose : le code et le
-    // QR. C'est ce que la cliente est venue chercher, et c'est ce qui doit
+    // Ce qui va être commandé : un devis, ou les N devis d'une scission
+    // acceptée. Le second cas porte ses N frais de déplacement — le devis
+    // d'ensemble n'en connaîtrait qu'un (C3-3d).
+    final commandes = panier.scissionAcceptee
+        ? [for (final t in panier.troncons) t.devis]
+        : [if (panier.devis != null) panier.devis!];
+
+    // Après confirmation, l'écran ne montre plus qu'une chose : les codes et
+    // les QR. C'est ce que la cliente est venue chercher, et c'est ce qui doit
     // rester lisible même si le réseau tombe à la seconde suivante (R6).
-    final creee = saisie.commandeCreee;
-    if (creee != null) {
+    final creees = saisie.commandesCreees;
+    if (creees.isNotEmpty) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.commandeConfirmee)),
         body: ListView(
           padding: const EdgeInsets.all(MefaliTokens.screenMargin),
           children: [
-            BlocRemise(
-              jetonReception: creee.jetonReception,
-              codeLivraison: creee.codeLivraison,
-            ),
-            const SizedBox(height: MefaliTokens.space3),
-            Center(
-              child: Text(
-                formaterMontant(creee.totalUnites, creee.devise),
-                style: Theme.of(context).textTheme.headlineSmall,
+            // Échec partiel : ce qui manque se dit AVANT les codes de ce qui
+            // est passé. Le panier ne contient déjà plus que le reste.
+            if (panier.scissionAcceptee) ...[
+              BlocRepriseScission(
+                creees: creees.length,
+                restants: panier.troncons.length,
+                onReprendre: onConfirmer,
               ),
-            ),
-            if (onSuivre != null && libelleSuivre != null) ...[
               const SizedBox(height: MefaliTokens.space4),
-              FilledButton(onPressed: onSuivre, child: Text(libelleSuivre!)),
+            ],
+            for (var i = 0; i < creees.length; i++) ...[
+              // Le rang n'apparaît que s'il y en a plusieurs : sur une commande
+              // unique, « Commande 1 » n'apprend rien.
+              if (creees.length > 1) ...[
+                Text(
+                  l10n.panierScissionCommandeNumero(i + 1),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: MefaliTokens.space2),
+              ],
+              BlocRemise(
+                jetonReception: creees[i].jetonReception,
+                codeLivraison: creees[i].codeLivraison,
+              ),
+              const SizedBox(height: MefaliTokens.space3),
+              Center(
+                child: Text(
+                  formaterMontant(creees[i].totalUnites, creees[i].devise),
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              if (onSuivre != null && libelleSuivre != null) ...[
+                const SizedBox(height: MefaliTokens.space4),
+                FilledButton(
+                  onPressed: () => onSuivre!(creees[i].id),
+                  child: Text(libelleSuivre!),
+                ),
+              ],
+              const SizedBox(height: MefaliTokens.space4),
             ],
           ],
         ),
       );
     }
 
+    final totalUnites =
+        commandes.fold(0, (total, d) => total + d.totalUnites);
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n.commandeAdresseTitre)),
       body: ListView(
         padding: const EdgeInsets.all(MefaliTokens.screenMargin),
         children: [
+          // Rappel de la scission acceptée : N commandes, N frais de
+          // déplacement, dits une dernière fois AVANT le geste qui engage.
+          if (panier.scissionAPresenter) ...[
+            BlocScissionAcceptee(troncons: panier.troncons),
+            const SizedBox(height: MefaliTokens.space3),
+          ],
           _CarteAdresse(
             saisie: saisie,
             onPositionActuelle: onPositionActuelle,
@@ -105,17 +151,18 @@ class EcranAdressePaiement extends ConsumerWidget {
           const SizedBox(height: MefaliTokens.space3),
           _CarteRepere(saisie: saisie, capturerNote: capturerNote),
           const SizedBox(height: MefaliTokens.space3),
-          if (devis != null) _CartePaiement(devis: devis, saisie: saisie),
+          if (commandes.isNotEmpty)
+            _CartePaiement(commandes: commandes, saisie: saisie),
           const SizedBox(height: MefaliTokens.space4),
           FilledButton(
             // Le bouton est désarmé tant que le repère manque : mieux vaut une
             // action visiblement indisponible qu'un `422` après coup.
             onPressed: saisie.pretAConfirmer ? onConfirmer : null,
             child: Text(
-              devis == null
+              commandes.isEmpty
                   ? l10n.panierCommander
                   : '${l10n.panierCommander} · '
-                      '${formaterMontant(devis.totalUnites, devis.devise)}',
+                      '${formaterMontant(totalUnites, commandes.first.devise)}',
             ),
           ),
         ],
@@ -162,7 +209,7 @@ class _CarteAdresse extends StatelessWidget {
                 if (onChangerAdresse != null)
                   TextButton(
                     onPressed: onChangerAdresse,
-                    child: Text(l10n.panierScissionAction),
+                    child: Text(l10n.commandeAdresseChanger),
                   ),
               ],
             ),
@@ -245,16 +292,24 @@ class _CarteRepere extends ConsumerWidget {
 
 /// Le choix du paiement (C3-3a′ et C3-3b).
 class _CartePaiement extends ConsumerWidget {
-  const _CartePaiement({required this.devis, required this.saisie});
+  const _CartePaiement({required this.commandes, required this.saisie});
 
-  final DevisPanierVue devis;
+  /// Les devis des commandes à payer : un seul, ou les N d'une scission
+  /// acceptée. Le mode de paiement, lui, est commun aux N.
+  final List<DevisPanierVue> commandes;
+
   final EtatConfirmation saisie;
+
+  /// Le cash n'est proposé que s'il l'est pour CHAQUE commande : un mode refusé
+  /// sur l'une bloquerait la série entière au moment de créer.
+  bool get _cashAutorise => commandes.every((d) => d.cashAutorise);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = MefaliCoreLocalizations.of(context)!;
     final theme = Theme.of(context);
     final notifier = ref.read(confirmationProvider.notifier);
+    final devis = commandes.first;
 
     return Card(
       child: Padding(
@@ -267,7 +322,7 @@ class _CartePaiement extends ConsumerWidget {
 
             // C3-3b — le cash grisé montre SA RAISON. Un bouton désactivé sans
             // explication fait croire à une panne de l'app.
-            if (!devis.cashAutorise) ...[
+            if (!_cashAutorise) ...[
               Container(
                 padding: const EdgeInsets.all(MefaliTokens.space3),
                 decoration: BoxDecoration(
@@ -308,16 +363,32 @@ class _CartePaiement extends ConsumerWidget {
                     // inerte, avec sa raison juste au-dessus. La faire
                     // disparaître laisserait la cliente chercher une option
                     // qu'elle a déjà utilisée hier.
-                    enabled: devis.cashAutorise,
+                    enabled: _cashAutorise,
                     title: Text(l10n.commandePaiementCash),
                     // L'APPOINT EXACT, en toutes lettres : c'est lui qui évite
                     // la scène du gros billet devant un coursier sans monnaie
-                    // (§7.5-5).
-                    subtitle: devis.cashAutorise
-                        ? Text(l10n.commandePaiementAppoint(
-                            formaterMontant(devis.totalUnites, devis.devise),
-                          ))
-                        : null,
+                    // (§7.5-5). UN appoint par commande : deux livraisons sont
+                    // deux paiements, pas un règlement groupé.
+                    subtitle: !_cashAutorise
+                        ? null
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0; i < commandes.length; i++)
+                                Text(
+                                  commandes.length == 1
+                                      ? l10n.commandePaiementAppoint(
+                                          formaterMontant(
+                                            commandes[i].totalUnites,
+                                            commandes[i].devise,
+                                          ),
+                                        )
+                                      : '${l10n.panierScissionCommandeNumero(i + 1)}'
+                                          ' · '
+                                          '${l10n.commandePaiementAppoint(formaterMontant(commandes[i].totalUnites, commandes[i].devise))}',
+                                ),
+                            ],
+                          ),
                   ),
                   RadioListTile<String>(
                     value: 'mobile_money',

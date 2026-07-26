@@ -82,6 +82,10 @@
   "@parcoursErreurZone": {
     "description": "La configuration de zone n'a pas pu être chargée (transports actifs inconnus)"
   },
+  "parcoursErreurScissionHorsLigne": "Sans réseau, vos commandes séparées ne peuvent pas être chiffrées. Réessayez au retour du réseau.",
+  "@parcoursErreurScissionHorsLigne": {
+    "description": "Le chiffrage d'un tronçon de scission a échoué faute de réseau : l'app n'estime jamais un frais de déplacement (R8)"
+  },
   "parcoursAdresseLivraisonLibelle": "Adresse de livraison",
   "@parcoursAdresseLivraisonLibelle": {
     "description": "Libellé de l'adresse créée pour porter un repère vocal de commande"

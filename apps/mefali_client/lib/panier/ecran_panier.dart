@@ -14,19 +14,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
+import 'bloc_scission.dart';
 import 'etat_panier.dart';
 
 /// Écran du panier : cartes vendeur, récapitulatif chiffré, bloc de scission,
 /// et bandeau hors ligne.
 class EcranPanier extends ConsumerWidget {
   /// Crée l'écran du panier.
-  const EcranPanier({this.onContinuer, this.onScinder, super.key});
+  const EcranPanier({
+    this.onContinuer,
+    this.onScinder,
+    this.onAnnulerScission,
+    super.key,
+  });
 
   /// Passage à l'écran adresse et paiement (C3-3a′).
   final VoidCallback? onContinuer;
 
   /// Acceptation de la proposition de scission (C3-3d).
   final VoidCallback? onScinder;
+
+  /// Retour à une seule commande, après acceptation.
+  final VoidCallback? onAnnulerScission;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -65,15 +74,48 @@ class EcranPanier extends ConsumerWidget {
                 ],
 
                 // C3-3d — proposition de scission, AVANT les cartes : c'est la
-                // décision qui commande, pas le détail.
-                if (devis?.scission != null) ...[
+                // décision qui commande, pas le détail. Elle disparaît une fois
+                // acceptée : le bloc suivant prend sa place.
+                if (devis?.scission != null && !panier.scissionAcceptee) ...[
                   BandeauScission(
                     message: _messageScission(l10n, devis!.scission!.cause),
-                    libelleAction: l10n.panierScissionAction,
-                    avertissementFrais: l10n.panierScissionAvertissement,
-                    commandesProposees: devis.scission!.commandesProposees,
+                    libelleAction: l10n.panierScissionAction(
+                      devis.scission!.commandesProposees.length,
+                    ),
+                    avertissementFrais: l10n.panierScissionAvertissement(
+                      devis.scission!.commandesProposees.length,
+                    ),
+                    commandesProposees: [
+                      for (var i = 0;
+                          i < devis.scission!.commandesProposees.length;
+                          i++)
+                        CommandeProposeeVue(
+                          // Le serveur rend une CLÉ générique
+                          // (`panier.scission.par_vendeur`) : la rendre telle
+                          // quelle afficherait la clé. Le rang, lui, suffit à
+                          // désigner chaque commande, et c'est le même que
+                          // celui des codes de remise après création.
+                          libelle: l10n.panierScissionCommandeNumero(i + 1),
+                          totalArticlesUnites: devis
+                              .scission!.commandesProposees[i]
+                              .totalArticlesUnites,
+                          nbArticles: devis
+                              .scission!.commandesProposees[i].articles.length,
+                        ),
+                    ],
                     devise: devis.devise,
                     onScinder: onScinder,
+                  ),
+                  const SizedBox(height: MefaliTokens.space4),
+                ],
+
+                // C3-3d, accepté — les N commandes chiffrées une par une, donc
+                // les N frais de déplacement VISIBLES avant toute confirmation.
+                if (panier.scissionAPresenter) ...[
+                  BlocScissionAcceptee(
+                    troncons: panier.troncons,
+                    detaille: true,
+                    onAnnuler: onAnnulerScission,
                   ),
                   const SizedBox(height: MefaliTokens.space4),
                 ],
@@ -99,8 +141,10 @@ class EcranPanier extends ConsumerWidget {
 
                 const SizedBox(height: MefaliTokens.space3),
 
-                // Récapitulatif « Articles / Livraison / Effort ».
-                if (devis != null)
+                // Récapitulatif « Articles / Livraison / Effort ». Effacé quand
+                // plusieurs commandes sont en jeu : il ne connaît qu'UN frais de
+                // déplacement, et son total ne serait facturé par personne.
+                if (devis != null && !panier.scissionAPresenter)
                   RecapitulatifFrais(
                     devise: devis.devise,
                     totalEstime: panier.horsLigne,

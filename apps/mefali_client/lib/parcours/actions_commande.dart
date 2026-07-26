@@ -63,9 +63,25 @@ Future<({double lat, double lon})?> positionGeolocator() async {
 @Riverpod(keepAlive: true)
 ActionsCommande actionsCommande(Ref ref) => ActionsCommande(ref);
 
-/// Résultat d'une confirmation : l'identifiant de la commande créée, ou le
-/// `code` du refus. Jamais les deux, jamais aucun des deux.
-typedef IssueConfirmation = ({String? commandeId, String? codeErreur});
+/// Résultat d'une confirmation.
+///
+/// Sans scission, [creees] vaut 0 ou 1 et l'un de [commandeId] / [codeErreur]
+/// est nul. Avec une scission acceptée, les DEUX peuvent être renseignés : une
+/// commande créée et une autre refusée est précisément le cas que l'écran doit
+/// savoir dire, et qu'un couple exclusif rendrait indicible.
+typedef IssueConfirmation = ({
+  /// Première commande créée, ou `null` si aucune ne l'a été.
+  String? commandeId,
+
+  /// `code` du refus qui a interrompu la série, ou `null`.
+  String? codeErreur,
+
+  /// Nombre de commandes effectivement créées par cette tentative.
+  int creees,
+
+  /// Nombre de commandes que la tentative visait.
+  int attendues,
+});
 
 /// Actions du parcours : devis, confirmation, suivi, annulation, appel,
 /// décision de substitution.
@@ -142,8 +158,73 @@ class ActionsCommande {
     }
   }
 
+  /// Accepte la proposition de scission du devis courant (C3-3d, FR-010).
+  ///
+  /// Aucune route ne scinde : accepter veut dire préparer N créations
+  /// indépendantes. Cette méthode fait donc trois choses, et rien d'autre :
+  ///
+  /// 1. répartit les lignes du panier selon les articles de chaque commande
+  ///    proposée — le serveur découpe par VENDEUR, jamais par catégorie, donc
+  ///    les N commandes partagent zone, catégorie, transport, adresse et mode
+  ///    de paiement ;
+  /// 2. chiffre chaque tronçon SEUL (`POST /paniers/devis`, lecture pure) : sans
+  ///    ça l'écran annoncerait le frais de déplacement d'UNE livraison alors
+  ///    qu'il y en aura N (research R8 — l'app n'estime jamais un frais) ;
+  /// 3. donne à chaque tronçon sa propre clé d'idempotence.
+  ///
+  /// Rend le `code` d'un refus, ou `null`. Un abandon ne laisse RIEN derrière
+  /// lui : le panier n'est modifié qu'une fois les N devis obtenus.
+  Future<String?> accepterScission() async {
+    final panier = _ref.read(panierProvider);
+    final proposees = panier.devis?.scission?.commandesProposees;
+    if (proposees == null || proposees.length < 2) return 'panier_invalide';
+
+    final lieu = await _lieuCourant();
+    if (lieu == null) return 'lieu_indisponible';
+
+    final transport = await transportDemande();
+    if (transport == null) return 'zone_indisponible';
+
+    final troncons = <TronconScission>[];
+    for (final proposee in proposees) {
+      final lignes = [
+        for (final ligne in panier.lignes)
+          if (proposee.articles.contains(ligne.articleId)) ligne,
+      ];
+      // Une proposition sans aucune ligne du panier ne veut rien dire : le
+      // contenu a changé sous le devis. Rien n'est deviné.
+      if (lignes.isEmpty) return 'panier_invalide';
+
+      try {
+        final json = await _api.devis(
+          zoneId: panier.zoneId,
+          categorieSlug: panier.categorieSlug,
+          transportSlug: transport,
+          lat: lieu.lat,
+          lon: lieu.lon,
+          lignes: [for (final l in lignes) l.versJson()],
+        );
+        troncons.add(TronconScission(
+          cleIdempotence: const Uuid().v7(),
+          lignes: lignes,
+          devis: DevisPanierVue.depuisJson(json),
+        ));
+      } catch (erreur) {
+        if (estPanneReseau(erreur)) {
+          _ref.read(panierProvider.notifier).marquerHorsLigne();
+          return 'scission_hors_ligne';
+        }
+        return codeErreurApi(erreur);
+      }
+    }
+
+    _ref.read(panierProvider.notifier).accepterScission(troncons);
+    return null;
+  }
+
   /// Crée la commande (`POST /commandes`, CMD-03), met le code et le QR en
-  /// cache, et vide le panier.
+  /// cache, et vide le panier. Avec une scission acceptée : N créations
+  /// **en séquence**, une clé d'idempotence par commande.
   ///
   /// La mise en cache est faite AVANT de rendre la main : c'est elle qui rend
   /// le bloc « À la livraison » disponible sans réseau (SC-009), et le moment
@@ -151,63 +232,113 @@ class ActionsCommande {
   /// `libelleAdresse` n'est utilisé que sur le chemin du repère VOCAL, qui crée
   /// une adresse de carnet : il vient de l'écran, donc du l10n — aucune chaîne
   /// utilisateur ne se compose ici (constitution VII).
+  ///
+  /// **Échec partiel.** Si la 2ᵉ création échoue, la 1ʳᵉ N'EST PAS annulée : elle
+  /// est valide et le client la doit. La série s'arrête là — insister ferait
+  /// courir la 3ᵉ vers le même mur — et le panier ne garde que les tronçons non
+  /// créés, avec leurs clés inchangées. Un nouvel essai reprend donc le reste,
+  /// et ne peut pas doubler ce qui est déjà passé (R7).
   Future<IssueConfirmation> confirmer({required String libelleAdresse}) async {
     final panier = _ref.read(panierProvider);
     final saisie = _ref.read(confirmationProvider);
-    if (panier.estVide) return (commandeId: null, codeErreur: 'panier_invalide');
+    final attendues = panier.nbCommandes;
+    IssueConfirmation refus(String? code) =>
+        (commandeId: null, codeErreur: code, creees: 0, attendues: attendues);
+
+    if (panier.estVide) return refus('panier_invalide');
 
     final transport = await transportDemande();
-    if (transport == null) {
-      return (commandeId: null, codeErreur: 'zone_indisponible');
-    }
+    if (transport == null) return refus('zone_indisponible');
 
     final String? adresseId;
     try {
       adresseId = await _adresseDeLivraison(saisie, libelleAdresse);
     } catch (erreur) {
-      return (commandeId: null, codeErreur: codeErreurApi(erreur));
+      return refus(codeErreurApi(erreur));
     }
     // Sans adresse du carnet, le pin est obligatoire : le serveur refuserait
     // un lieu absent, autant ne pas partir.
     if (adresseId == null && (saisie.lat == null || saisie.lon == null)) {
-      return (commandeId: null, codeErreur: 'lieu_indisponible');
+      return refus('lieu_indisponible');
     }
 
-    try {
-      final json = await _api.creer(
-        idempotencyKey: cleIdempotence,
-        zoneId: panier.zoneId,
-        categorieSlug: panier.categorieSlug,
-        transportSlug: transport,
-        modePaiement: saisie.modePaiement,
-        lignes: [for (final l in panier.lignes) l.versJson()],
-        adresseId: adresseId,
-        // Une adresse du carnet porte déjà son pin et son repère : les renvoyer
-        // ferait diverger la commande de l'adresse qu'elle réutilise.
-        lat: adresseId == null ? saisie.lat : null,
-        lon: adresseId == null ? saisie.lon : null,
-        repereTexte: adresseId == null ? saisie.repereTexte.trim() : null,
-      );
+    // Sans scission acceptée : un seul lot, la clé du parcours. Avec : un lot
+    // par tronçon, chacun avec la sienne.
+    final lots = <({String cle, List<LignePanier> lignes, TronconScission? troncon})>[
+      if (panier.troncons.isEmpty)
+        (cle: cleIdempotence, lignes: panier.lignes, troncon: null)
+      else
+        for (final t in panier.troncons)
+          (cle: t.cleIdempotence, lignes: t.lignes, troncon: t),
+    ];
 
-      final creee = CommandeCreeeVue.depuisJson(json);
-      await _cache.memoriser(
-        commandeId: creee.id,
-        etat: creee.etat,
-        codeLivraison: creee.codeLivraison,
-        jetonReception: creee.jetonReception,
-        totalUnites: creee.totalUnites,
-        devise: creee.devise,
-        majLeLocal: DateTime.now(),
-      );
-      _ref.read(confirmationProvider.notifier).poserCommande(creee);
+    final creees = <CommandeCreeeVue>[];
+    final restants = <TronconScission>[];
+    // Drapeau SÉPARÉ du code : `codeErreurApi` rend `null` sur une panne réseau,
+    // qui est pourtant l'échec le plus fréquent. Tester la nullité du code
+    // laisserait la série continuer précisément quand elle doit s'arrêter.
+    var echoue = false;
+    String? code;
+
+    for (final lot in lots) {
+      if (echoue) {
+        // Une création a déjà échoué : les suivantes ne partent pas. Le client
+        // décide de reprendre, l'app ne s'entête pas à sa place.
+        if (lot.troncon != null) restants.add(lot.troncon!);
+        continue;
+      }
+      try {
+        final json = await _api.creer(
+          idempotencyKey: lot.cle,
+          zoneId: panier.zoneId,
+          categorieSlug: panier.categorieSlug,
+          transportSlug: transport,
+          modePaiement: saisie.modePaiement,
+          lignes: [for (final l in lot.lignes) l.versJson()],
+          adresseId: adresseId,
+          // Une adresse du carnet porte déjà son pin et son repère : les renvoyer
+          // ferait diverger la commande de l'adresse qu'elle réutilise.
+          lat: adresseId == null ? saisie.lat : null,
+          lon: adresseId == null ? saisie.lon : null,
+          repereTexte: adresseId == null ? saisie.repereTexte.trim() : null,
+        );
+
+        final creee = CommandeCreeeVue.depuisJson(json);
+        await _cache.memoriser(
+          commandeId: creee.id,
+          etat: creee.etat,
+          codeLivraison: creee.codeLivraison,
+          jetonReception: creee.jetonReception,
+          totalUnites: creee.totalUnites,
+          devise: creee.devise,
+          majLeLocal: DateTime.now(),
+        );
+        _ref.read(confirmationProvider.notifier).poserCommande(creee);
+        creees.add(creee);
+      } catch (erreur) {
+        echoue = true;
+        code = codeErreurApi(erreur);
+        if (lot.troncon != null) restants.add(lot.troncon!);
+      }
+    }
+
+    if (restants.isEmpty && creees.isNotEmpty) {
       _ref.read(panierProvider.notifier).vider();
-      // La commande existe : la clé a fini son office. En garder une pour la
+      // Les commandes existent : la clé a fini son office. En garder une pour la
       // suivante ferait rendre CETTE commande au prochain « Commander ».
       _cleIdempotence = null;
-      return (commandeId: creee.id, codeErreur: null);
-    } catch (erreur) {
-      return (commandeId: null, codeErreur: codeErreurApi(erreur));
+    } else if (restants.isNotEmpty && creees.isNotEmpty) {
+      _ref.read(panierProvider.notifier).conserverReste(restants);
     }
+    // Aucune création : le panier reste INTACT, clés comprises — c'est ce qui
+    // permet de réappuyer sans créer de doublon.
+
+    return (
+      commandeId: creees.isEmpty ? null : creees.first.id,
+      codeErreur: code,
+      creees: creees.length,
+      attendues: attendues,
+    );
   }
 
   /// Charge le suivi d'une commande (`GET /commandes/{id}`, CMD-05), rafraîchit

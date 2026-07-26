@@ -63,6 +63,37 @@ class LignePanier {
       );
 }
 
+/// Un tronçon de scission ACCEPTÉ : les lignes d'UNE des N commandes que le
+/// client vient de demander, sa clé d'idempotence et son devis serveur.
+///
+/// Le devis est celui du tronçon SEUL — c'est lui qui porte le frais de
+/// déplacement de cette commande-là. Le devis du panier entier n'en connaît
+/// qu'un, alors qu'il y en aura N (C3-3d) : afficher l'un pour l'autre
+/// annoncerait un montant que personne n'encaissera.
+///
+/// La clé d'idempotence naît à l'acceptation et vit dans l'état du panier : un
+/// nouvel essai après une coupure rejoue la MÊME clé, donc ne double aucune
+/// commande déjà passée (research R7).
+@immutable
+class TronconScission {
+  /// Crée un tronçon accepté.
+  const TronconScission({
+    required this.cleIdempotence,
+    required this.lignes,
+    required this.devis,
+  });
+
+  /// Clé d'idempotence de CETTE commande (UUIDv7). Distincte de celles des
+  /// autres tronçons : une clé partagée ferait rendre la même commande N fois.
+  final String cleIdempotence;
+
+  /// Lignes du panier qui composeront cette commande.
+  final List<LignePanier> lignes;
+
+  /// Devis serveur de ce tronçon seul.
+  final DevisPanierVue devis;
+}
+
 /// Contenu du panier + le dernier devis serveur connu.
 ///
 /// Classe IMMUABLE volontairement SANS `operator ==` : deux paniers au même
@@ -77,13 +108,15 @@ class EtatPanier {
     required this.lignes,
     this.devis,
     this.horsLigne = false,
+    this.troncons = const [],
   });
 
   /// Panier vide d'une zone et d'une catégorie.
   const EtatPanier.vide({required this.zoneId, required this.categorieSlug})
       : lignes = const [],
         devis = null,
-        horsLigne = false;
+        horsLigne = false,
+        troncons = const [];
 
   /// Zone de la commande.
   final String zoneId;
@@ -100,6 +133,29 @@ class EtatPanier {
   /// Le dernier recalcul a échoué faute de réseau : les montants affichés sont
   /// ESTIMÉS, et l'écran doit le dire (maquette C3-3c).
   final bool horsLigne;
+
+  /// Scission ACCEPTÉE, tronçon par tronçon — vide tant que le client n'a pas
+  /// appuyé sur « Scinder » (le serveur ne scinde jamais d'office, FR-010).
+  final List<TronconScission> troncons;
+
+  /// Le client a accepté de scinder : ce panier partira en N commandes, chacune
+  /// avec sa clé. Pilote la LOGIQUE de création.
+  bool get scissionAcceptee => troncons.isNotEmpty;
+
+  /// Il reste PLUSIEURS commandes à passer — le seul cas où parler de scission a
+  /// un sens. Pilote l'AFFICHAGE : après un échec partiel il peut n'en rester
+  /// qu'une, qui garde sa clé mais n'est plus « une commande séparée ».
+  bool get scissionAPresenter => troncons.length > 1;
+
+  /// Nombre de commandes que ce panier va produire (1 sans scission acceptée).
+  int get nbCommandes => troncons.isEmpty ? 1 : troncons.length;
+
+  /// Total de TOUTES les commandes à venir — somme des devis de tronçon, donc
+  /// N frais de déplacement compris. `null` sans scission acceptée : c'est
+  /// alors [devis] qui fait autorité.
+  int? get totalScissionUnites => troncons.isEmpty
+      ? null
+      : troncons.fold(0, (total, t) => total! + t.devis.totalUnites);
 
   /// Le panier ne contient rien.
   bool get estVide => lignes.isEmpty;
@@ -120,6 +176,10 @@ class EtatPanier {
       );
 
   /// Copie avec de nouvelles lignes.
+  ///
+  /// La scission acceptée est ABANDONNÉE : ses tronçons désignent les lignes
+  /// d'avant, et leurs devis les chiffrent. Les garder ferait commander un
+  /// contenu que le client vient de changer.
   EtatPanier avecLignes(List<LignePanier> lignes) => EtatPanier(
         zoneId: zoneId,
         categorieSlug: categorieSlug,
@@ -135,6 +195,7 @@ class EtatPanier {
         lignes: lignes,
         devis: devis,
         horsLigne: false,
+        troncons: troncons,
       );
 
   /// Copie marquée hors ligne : le devis connu est CONSERVÉ mais ne fait plus
@@ -145,6 +206,31 @@ class EtatPanier {
         lignes: lignes,
         devis: devis,
         horsLigne: true,
+        troncons: troncons,
+      );
+
+  /// Copie portant la scission ACCEPTÉE. Le contenu ne change pas : scinder
+  /// n'ajoute ni ne retire d'article, ça répartit ceux qui sont là.
+  EtatPanier avecTroncons(List<TronconScission> troncons) => EtatPanier(
+        zoneId: zoneId,
+        categorieSlug: categorieSlug,
+        lignes: lignes,
+        devis: devis,
+        horsLigne: horsLigne,
+        troncons: troncons,
+      );
+
+  /// Copie réduite aux tronçons qui RESTENT à commander, après un échec partiel.
+  ///
+  /// Le panier ne garde que leurs lignes : sinon un nouvel essai proposerait de
+  /// recommander ce qui vient de l'être. Le devis d'ensemble est abandonné — il
+  /// chiffrait des lignes qui sont maintenant parties en commande.
+  EtatPanier avecReste(List<TronconScission> restants) => EtatPanier(
+        zoneId: zoneId,
+        categorieSlug: categorieSlug,
+        lignes: [for (final t in restants) ...t.lignes],
+        horsLigne: horsLigne,
+        troncons: restants,
       );
 }
 
@@ -258,7 +344,7 @@ class ScissionVue {
   final String messageCle;
 
   /// Prévisualisation chiffrée.
-  final List<CommandeProposeeVue> commandesProposees;
+  final List<CommandeProposeeScission> commandesProposees;
 
   /// Construit la vue depuis le bloc `scission` du devis.
   factory ScissionVue.depuisJson(Map<String, Object?> json) => ScissionVue(
@@ -266,18 +352,47 @@ class ScissionVue {
         messageCle: json['message_cle']! as String,
         commandesProposees: [
           for (final c in json['commandes_proposees']! as List<Object?>)
-            _commandeProposeeDepuisJson(c! as Map<String, Object?>),
+            CommandeProposeeScission.depuisJson(c! as Map<String, Object?>),
         ],
       );
 }
 
-CommandeProposeeVue _commandeProposeeDepuisJson(Map<String, Object?> json) {
-  final articles = json['articles']! as List<Object?>;
-  return CommandeProposeeVue(
-    libelle: json['libelle_cle']! as String,
-    totalArticlesUnites: json['total_articles_unites']! as int,
-    nbArticles: articles.length,
-  );
+/// Une des commandes que le serveur PROPOSE, avec les articles qui la
+/// composeraient.
+///
+/// Les identifiants d'articles sont CONSERVÉS, pas comptés : accepter la
+/// scission veut dire renvoyer `POST /commandes` une fois par proposition, avec
+/// les lignes du panier qui lui correspondent. Un compteur ne dirait pas
+/// lesquelles.
+@immutable
+class CommandeProposeeScission {
+  /// Crée une commande proposée.
+  const CommandeProposeeScission({
+    required this.libelleCle,
+    required this.totalArticlesUnites,
+    required this.articles,
+  });
+
+  /// Clé i18n du libellé rendu par le serveur (découpe par vendeur, ou par
+  /// tournée).
+  final String libelleCle;
+
+  /// Total des ARTICLES de cette commande — les frais, eux, ne sont connus
+  /// qu'après un devis du tronçon seul.
+  final int totalArticlesUnites;
+
+  /// Identifiants des articles qui la composeraient.
+  final List<String> articles;
+
+  /// Construit depuis un élément de `scission.commandes_proposees`.
+  factory CommandeProposeeScission.depuisJson(Map<String, Object?> json) =>
+      CommandeProposeeScission(
+        libelleCle: json['libelle_cle']! as String,
+        totalArticlesUnites: json['total_articles_unites']! as int,
+        articles: [
+          for (final a in json['articles']! as List<Object?>) a! as String,
+        ],
+      );
 }
 
 /// Porteur du panier en cours de composition.
@@ -328,6 +443,20 @@ class Panier extends _$Panier {
 
   /// Enregistre le devis serveur fraîchement obtenu.
   void poserDevis(DevisPanierVue devis) => state = state.avecDevis(devis);
+
+  /// Le client ACCEPTE de scinder (C3-3d) : le panier retient les N tronçons,
+  /// chacun avec sa clé d'idempotence et son devis. Le contenu ne bouge pas.
+  void accepterScission(List<TronconScission> troncons) =>
+      state = state.avecTroncons(troncons);
+
+  /// Le client revient à une seule commande. La proposition reste affichée —
+  /// c'est une proposition, et refuser doit être aussi facile qu'accepter.
+  void annulerScission() => state = state.avecTroncons(const []);
+
+  /// Après un échec partiel : ne garder que les commandes qui n'ont PAS été
+  /// créées. Ce qui est déjà commandé quitte le panier, et rien d'autre.
+  void conserverReste(List<TronconScission> restants) =>
+      state = state.avecReste(restants);
 
   /// Le recalcul a échoué faute de réseau : le panier reste composable, les
   /// montants deviennent estimés (C3-3c). Rien n'est perdu.

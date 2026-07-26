@@ -38,7 +38,7 @@ class EtatConfirmation {
     this.noteVocale,
     this.modePaiement = 'cash',
     this.repereMinCaracteres = 10,
-    this.commandeCreee,
+    this.commandesCreees = const [],
   });
 
   /// Pin GPS choisi (`null` tant que rien n'est posé).
@@ -67,8 +67,17 @@ class EtatConfirmation {
   /// d'app : la règle doit pouvoir changer sans passage store.
   final int repereMinCaracteres;
 
-  /// Commande créée, après confirmation (C3 → C4).
-  final CommandeCreeeVue? commandeCreee;
+  /// Commandes créées, dans l'ordre de création (C3 → C4).
+  ///
+  /// Une LISTE, et non une commande : une scission acceptée en crée N, chacune
+  /// avec son propre code de remise et son propre QR. N'en montrer qu'un ferait
+  /// présenter le mauvais code à la seconde livraison.
+  final List<CommandeCreeeVue> commandesCreees;
+
+  /// La première commande créée, ou `null` — le chemin sans scission n'en a
+  /// qu'une, et c'est celle-là que le suivi ouvre.
+  CommandeCreeeVue? get commandeCreee =>
+      commandesCreees.isEmpty ? null : commandesCreees.first;
 
   /// Le repère est FOURNI : texte assez long **ou** note vocale (FR-018).
   ///
@@ -93,7 +102,7 @@ class EtatConfirmation {
     NoteVocaleCaptee? noteVocale,
     String? modePaiement,
     int? repereMinCaracteres,
-    CommandeCreeeVue? commandeCreee,
+    List<CommandeCreeeVue>? commandesCreees,
   }) =>
       EtatConfirmation(
         lat: lat ?? this.lat,
@@ -104,7 +113,7 @@ class EtatConfirmation {
         noteVocale: noteVocale ?? this.noteVocale,
         modePaiement: modePaiement ?? this.modePaiement,
         repereMinCaracteres: repereMinCaracteres ?? this.repereMinCaracteres,
-        commandeCreee: commandeCreee ?? this.commandeCreee,
+        commandesCreees: commandesCreees ?? this.commandesCreees,
       );
 }
 
@@ -210,7 +219,12 @@ class Confirmation extends _$Confirmation {
   void appliquerConfig({required int repereMinCaracteres}) =>
       state = state.copie(repereMinCaracteres: repereMinCaracteres);
 
-  /// La commande vient d'être créée : le code et le QR sont disponibles.
-  void poserCommande(CommandeCreeeVue commande) =>
-      state = state.copie(commandeCreee: commande);
+  /// Une commande vient d'être créée : son code et son QR sont disponibles.
+  ///
+  /// AJOUTE au lieu de remplacer : une scission acceptée appelle cette méthode
+  /// N fois, et l'écran de confirmation doit rendre les N codes — celui de la
+  /// deuxième livraison n'est pas celui de la première.
+  void poserCommande(CommandeCreeeVue commande) => state = state.copie(
+        commandesCreees: [...state.commandesCreees, commande],
+      );
 }

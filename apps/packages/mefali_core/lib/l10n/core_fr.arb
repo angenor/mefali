@@ -394,13 +394,74 @@
   "@panierScissionPlafondEclatement": {
     "description": "Cause « plafond d'éclatement » d'une proposition de scission"
   },
-  "panierScissionAction": "Scinder en 2 commandes",
+  "panierScissionAction": "Scinder en {n} commandes",
   "@panierScissionAction": {
-    "description": "Bouton de la proposition de scission (C3-3d)"
+    "description": "Bouton de la proposition de scission (C3-3d). Le nombre vient du SERVEUR : une catégorie non mixable à trois vendeurs propose trois commandes, pas deux",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
-  "panierScissionAvertissement": "Deux commandes, deux frais de déplacement.",
+  "panierScissionAvertissement": "{n, plural, =2{Deux commandes, deux frais de déplacement.} other{{n} commandes, {n} frais de déplacement.}}",
   "@panierScissionAvertissement": {
-    "description": "Avertissement chiffré de la scission — jamais scindée d'office (FR-010)"
+    "description": "Avertissement chiffré de la scission — jamais scindée d'office (FR-010). Le cas à deux garde la lettre de la maquette C3-3d",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionAcceptee": "{n} commandes séparées",
+  "@panierScissionAcceptee": {
+    "description": "Titre du bloc de scission ACCEPTÉE, avant confirmation",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionCommandeNumero": "Commande {n}",
+  "@panierScissionCommandeNumero": {
+    "description": "Numéro d'une des commandes d'une scission, dans la prévisualisation et sur les codes de remise",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "panierScissionAnnuler": "Revenir à une seule commande",
+  "@panierScissionAnnuler": {
+    "description": "Annule une scission acceptée — refuser doit rester aussi simple qu'accepter (FR-010)"
+  },
+  "commandeScissionCreees": "{creees, plural, =1{1 commande sur {total} a été créée.} other{{creees} commandes sur {total} ont été créées.}}",
+  "@commandeScissionCreees": {
+    "description": "Échec partiel d'une scission : ce qui a bien été créé",
+    "placeholders": {
+      "creees": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "commandeScissionReste": "{n, plural, =1{La commande restante n'a pas pu être créée.} other{{n} commandes n'ont pas pu être créées.}}",
+  "@commandeScissionReste": {
+    "description": "Échec partiel d'une scission : ce qui n'a PAS été créé. Ce qui l'est reste dû",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "commandeScissionReprendre": "Reprendre le reste",
+  "@commandeScissionReprendre": {
+    "description": "Relance les seules commandes non créées, avec leurs clés d'idempotence inchangées (R7)"
+  },
+  "commandeAdresseChanger": "Changer",
+  "@commandeAdresseChanger": {
+    "description": "Ouvre le carnet d'adresses depuis le bloc adresse (CPT-05)"
   },
   "commandeAdresseTitre": "Où livrer ?",
   "@commandeAdresseTitre": {

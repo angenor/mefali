@@ -362,12 +362,14 @@ Environnement : Postgres 5433, Redis, Garage, **OSRM absent** (image
    `commande.*`. L'app garde son défaut de 10 — le serveur reste seul juge, et
    la garde locale n'évite qu'un aller-retour. **À combler par une vue dérivée
    au prochain cycle qui touche ZON.**
-5. **La scission proposée n'est pas ACCEPTABLE depuis l'app** : le bandeau
-   s'affiche, chiffré et prévisualisé (SC-006 : proposition, jamais d'office),
-   mais son bouton reste inerte — accepter suppose de scinder le panier en deux
-   commandes successives, ce qu'aucune route ne fait et qu'aucune tâche du
-   cycle ne demandait. **À arbitrer** : c'est le seul geste de la maquette C3-3d
-   qui manque.
+5. ~~**La scission proposée n'est pas ACCEPTABLE depuis l'app**~~ — **RÉSOLU le
+   2026-07-26**, sans aucune route nouvelle : accepter, c'est appeler
+   `POST /commandes` **N fois**, avec **N clés d'idempotence** et le
+   sous-ensemble de lignes de chaque commande proposée. Chaque tronçon est
+   chiffré séparément (`POST /paniers/devis`, lecture pure) pour que les **N
+   frais de déplacement** soient montrés avant confirmation, et un **échec
+   partiel** conserve ce qui est créé, le dit, et ne reprend que le reste.
+   Détail et décisions : `rapport-t067.md`, « La scission est acceptable ».
 6. **Le bloc « À la livraison » reste affiché sur une commande LIVRÉE** avec
    son code. Sans conséquence (la commande est close), mais le code n'a plus
    d'objet : à masquer quand `etat == terminee`.

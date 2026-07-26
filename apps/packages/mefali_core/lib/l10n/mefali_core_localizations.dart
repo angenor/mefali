@@ -613,17 +613,59 @@ abstract class MefaliCoreLocalizations {
   /// **'Vos vendeurs sont très éloignés les uns des autres.'**
   String get panierScissionPlafondEclatement;
 
-  /// Bouton de la proposition de scission (C3-3d)
+  /// Bouton de la proposition de scission (C3-3d). Le nombre vient du SERVEUR : une catégorie non mixable à trois vendeurs propose trois commandes, pas deux
   ///
   /// In fr, this message translates to:
-  /// **'Scinder en 2 commandes'**
-  String get panierScissionAction;
+  /// **'Scinder en {n} commandes'**
+  String panierScissionAction(int n);
 
-  /// Avertissement chiffré de la scission — jamais scindée d'office (FR-010)
+  /// Avertissement chiffré de la scission — jamais scindée d'office (FR-010). Le cas à deux garde la lettre de la maquette C3-3d
   ///
   /// In fr, this message translates to:
-  /// **'Deux commandes, deux frais de déplacement.'**
-  String get panierScissionAvertissement;
+  /// **'{n, plural, =2{Deux commandes, deux frais de déplacement.} other{{n} commandes, {n} frais de déplacement.}}'**
+  String panierScissionAvertissement(int n);
+
+  /// Titre du bloc de scission ACCEPTÉE, avant confirmation
+  ///
+  /// In fr, this message translates to:
+  /// **'{n} commandes séparées'**
+  String panierScissionAcceptee(int n);
+
+  /// Numéro d'une des commandes d'une scission, dans la prévisualisation et sur les codes de remise
+  ///
+  /// In fr, this message translates to:
+  /// **'Commande {n}'**
+  String panierScissionCommandeNumero(int n);
+
+  /// Annule une scission acceptée — refuser doit rester aussi simple qu'accepter (FR-010)
+  ///
+  /// In fr, this message translates to:
+  /// **'Revenir à une seule commande'**
+  String get panierScissionAnnuler;
+
+  /// Échec partiel d'une scission : ce qui a bien été créé
+  ///
+  /// In fr, this message translates to:
+  /// **'{creees, plural, =1{1 commande sur {total} a été créée.} other{{creees} commandes sur {total} ont été créées.}}'**
+  String commandeScissionCreees(int creees, int total);
+
+  /// Échec partiel d'une scission : ce qui n'a PAS été créé. Ce qui l'est reste dû
+  ///
+  /// In fr, this message translates to:
+  /// **'{n, plural, =1{La commande restante n\'a pas pu être créée.} other{{n} commandes n\'ont pas pu être créées.}}'**
+  String commandeScissionReste(int n);
+
+  /// Relance les seules commandes non créées, avec leurs clés d'idempotence inchangées (R7)
+  ///
+  /// In fr, this message translates to:
+  /// **'Reprendre le reste'**
+  String get commandeScissionReprendre;
+
+  /// Ouvre le carnet d'adresses depuis le bloc adresse (CPT-05)
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer'**
+  String get commandeAdresseChanger;
 
   /// Titre du bloc adresse de commande
   ///

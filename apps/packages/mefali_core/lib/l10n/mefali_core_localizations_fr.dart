@@ -305,11 +305,61 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
       'Vos vendeurs sont très éloignés les uns des autres.';
 
   @override
-  String get panierScissionAction => 'Scinder en 2 commandes';
+  String panierScissionAction(int n) {
+    return 'Scinder en $n commandes';
+  }
 
   @override
-  String get panierScissionAvertissement =>
-      'Deux commandes, deux frais de déplacement.';
+  String panierScissionAvertissement(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commandes, $n frais de déplacement.',
+      two: 'Deux commandes, deux frais de déplacement.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String panierScissionAcceptee(int n) {
+    return '$n commandes séparées';
+  }
+
+  @override
+  String panierScissionCommandeNumero(int n) {
+    return 'Commande $n';
+  }
+
+  @override
+  String get panierScissionAnnuler => 'Revenir à une seule commande';
+
+  @override
+  String commandeScissionCreees(int creees, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      creees,
+      locale: localeName,
+      other: '$creees commandes sur $total ont été créées.',
+      one: '1 commande sur $total a été créée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String commandeScissionReste(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commandes n\'ont pas pu être créées.',
+      one: 'La commande restante n\'a pas pu être créée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commandeScissionReprendre => 'Reprendre le reste';
+
+  @override
+  String get commandeAdresseChanger => 'Changer';
 
   @override
   String get commandeAdresseTitre => 'Où livrer ?';

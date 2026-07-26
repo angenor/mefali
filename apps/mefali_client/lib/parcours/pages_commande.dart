@@ -24,7 +24,6 @@ import '../commande/feuille_substitution.dart';
 import '../l10n/app_localizations.dart';
 import '../panier/ecran_adresse_paiement.dart';
 import '../panier/ecran_panier.dart';
-import '../panier/etat_confirmation.dart';
 import '../panier/etat_panier.dart';
 import 'actions_commande.dart';
 
@@ -66,6 +65,7 @@ String messageErreurParcours(
     switch (code) {
       'lieu_indisponible' => app.parcoursErreurLieu,
       'zone_indisponible' => app.parcoursErreurZone,
+      'scission_hors_ligne' => app.parcoursErreurScissionHorsLigne,
       _ => messageErreurCommande(core, code),
     };
 
@@ -109,6 +109,10 @@ class _PagePanierState extends ConsumerState<PagePanier> {
   /// est évitée en comparant ce que le devis a COÛTÉ, pas en comptant les tours.
   String? _chiffre;
 
+  /// Acceptation de scission en vol. État strictement LOCAL (constitution XII) :
+  /// il empêche un double appui de lancer deux séries de devis de tronçon.
+  bool _scissionEnCours = false;
+
   @override
   void initState() {
     super.initState();
@@ -134,6 +138,18 @@ class _PagePanierState extends ConsumerState<PagePanier> {
           '${l.prestataireId}:${l.articleId}:${l.quantite}:${l.preference}',
       ].join('|');
 
+  /// C3-3d — le client ACCEPTE de scinder. Rien n'est créé ici : on chiffre les
+  /// N commandes à venir pour qu'il voie leurs N frais de déplacement avant
+  /// d'engager quoi que ce soit.
+  Future<void> _scinder() async {
+    if (_scissionEnCours) return;
+    setState(() => _scissionEnCours = true);
+    final code = await ref.read(actionsCommandeProvider).accepterScission();
+    if (!mounted) return;
+    setState(() => _scissionEnCours = false);
+    if (code != null) _signaler(context, ref, code);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Un changement de contenu (retrait, préférence) redemande un devis : les
@@ -144,6 +160,9 @@ class _PagePanierState extends ConsumerState<PagePanier> {
       onContinuer: () => Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const PageAdressePaiement()),
       ),
+      onScinder: _scissionEnCours ? null : _scinder,
+      onAnnulerScission: () =>
+          ref.read(panierProvider.notifier).annulerScission(),
     );
   }
 }
@@ -185,20 +204,21 @@ class _PageAdressePaiementState extends ConsumerState<PageAdressePaiement> {
         );
     if (!mounted) return;
     setState(() => _enCours = false);
-    if (issue.commandeId == null) _signaler(context, ref, issue.codeErreur);
+    // Un refus se dit même si une commande est passée : sur une scission,
+    // « 1 créée sur 2 » est bien une réussite ET un échec. Le détail persistant
+    // est rendu par l'écran ; le message du refus, lui, passe une fois.
+    if (issue.codeErreur != null) _signaler(context, ref, issue.codeErreur);
   }
 
   @override
   Widget build(BuildContext context) {
     final app = AppLocalizations.of(context)!;
-    final creee = ref.watch(confirmationProvider).commandeCreee;
 
     return EcranAdressePaiement(
       onPositionActuelle: _positionActuelle,
       onConfirmer: _enCours ? null : _confirmer,
-      onSuivre: creee == null
-          ? null
-          : () => ouvrirSuivi(context, creee.id, remplacer: true),
+      onSuivre: (commandeId) =>
+          ouvrirSuivi(context, commandeId, remplacer: true),
       libelleSuivre: app.parcoursSuivreCommande,
     );
   }
