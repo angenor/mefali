@@ -291,29 +291,76 @@ Task: "T014 i18n : module d'erreurs API + entrées ARB"
 
 ---
 
-## État d'avancement — session du 2026-07-25
+## État d'avancement — session du 2026-07-26
 
-**30 tâches sur 68 livrées**, 17 commits, `cargo test --workspace` **399 verts**,
-`dart analyze` propre sur `mefali_core` et `mefali_client`, clients Dart/TS
-régénérés **sans diff**.
+**53 tâches sur 68 cochées**, 28 commits. Les tâches T033..T053, T024 et T032
+sont livrées, testées et commitées ; T006 a été cochée (elle était livrée mais
+la case n'avait pas été faite).
 
 | Phase | État |
 |---|---|
-| 1 — Setup (T001–T003) | ✅ complète |
-| 2 — Foundational (T004–T014) | ✅ complète — **P1 et P2 vérifiés** |
-| 3 — US1 panier (T015–T020) | ✅ complète, **UI comprise** |
-| 4 — US2 adresse (T021–T024) | API ✅ (T021–T023) · **UI T024 à faire** |
-| 5 — US3 création (T025–T032) | API ✅ (T025–T031) · **UI T032 à faire** |
-| 6 à 11 — US4 à US9 (T033–T062) | ⬜ à faire |
-| 12 — Polish (T063–T068) | ⬜ à faire |
+| 1 — Setup (T001–T003) | ✅ |
+| 2 — Foundational (T004–T014) | ✅ — **P1 et P2 vérifiés** |
+| 3 — US1 panier (T015–T020) | ✅ |
+| 4 — US2 adresse (T021–T024) | ✅ |
+| 5 — US3 création (T025–T032) | ✅ |
+| 6 — US4 états (T033–T037) | ✅ |
+| 7 — US5 file d'attente (T038–T040) | ✅ |
+| 8 — US6 suivi (T041–T046) | ✅ |
+| 9 — US7 substitutions (T047–T053) | ✅ |
+| 10 — US8 annulations (T054–T056) | ⚠️ **partiel, NON TESTÉ** |
+| 11 — US9 échecs (T057–T062) | ⚠️ **partiel, NON COMPILÉ** |
+| 12 — Polish (T063–T068) | ⬜ |
 
-**Reprise conseillée** : T033 (transitions d'arrêt) — le socle, la table de
-transitions fermée, les doubles et le harnais `api/tests/bac_commandes/` sont
-déjà en place et suffisent à écrire US4 sans nouvelle fondation. Les deux
-tâches d'UI restantes (T024, T032) closent US2 et US3.
+### ⚠️ Interruption : poste hors service en cours de cycle
 
-**Quatre écarts de conception tranchés** — détaillés dans les messages de commit
-correspondants : dépendance `commandes`→`qr` impossible (empreintes remontées
-dans `socle`), `RestrictionsCompte` implémenté côté `commandes` pour `PgComptes`
-(P3 tenu), `panier.scission_proposee` seule écriture du chemin de devis (P4 vs
-SC-006), et `en_route → collecte` refusé conformément à data-model §3.3.
+Le disque du poste a atteint **0 octet libre** pendant une édition de lien,
+emportant Docker Desktop et la base Postgres. 15 Gio ont été libérés
+(`backend/target/debug/incremental`, cache de recompilation régénérable), mais
+**le démon Docker n'est pas remonté** malgré un redémarrage propre de
+l'application. Tout le travail backend est bloqué depuis : les macros `sqlx`
+vérifient les requêtes à la compilation contre une base vivante, et
+`SQLX_OFFLINE=true` ne peut pas aider sur des requêtes NEUVES.
+
+**Ce qui est dans l'arbre mais N'A PAS été vérifié :**
+
+| Fichier | État réel |
+|---|---|
+| `commandes/src/annulation.rs` (T054) | type-checké contre la base, jamais lié ni testé — **commité** dans `3ec43c5` |
+| `commandes_http::annuler_commande`, `admin_commandes_http::annuler_commande_admin` (T055) | idem — **commités** |
+| `commandes/src/echec.rs` (T057/T059) | écrit, **jamais compilé** — non commité |
+| `commandes/src/collecte.rs` — `valider_remise` (T058) | écrit, **jamais compilé** — non commité |
+| Port `PreuvesEchec` en 8ᵉ collaborateur de `PgCommandes` | 5 sites de composition modifiés, **jamais compilés** — non commité |
+
+**Reprise, dans cet ordre :**
+
+1. relancer Docker (`docker compose -f infra/docker-compose.yml up -d`) ;
+2. `cargo build --workspace --all-targets` — attendre des erreurs sur
+   `echec.rs`, `collecte.rs` et les 5 sites de composition ;
+3. `cargo sqlx prepare --workspace -- --all-targets` (le cache `.sqlx` ne
+   contient PAS les requêtes d'annulation ni d'échec) ;
+4. T056, T060, T061, T062 (tests US8/US9) ;
+5. `./scripts/generate-clients.sh` — `openapi.json` n'est PAS à jour des deux
+   endpoints d'annulation ;
+6. phase 12 (T063–T068).
+
+### Écarts de conception tranchés ce cycle
+
+1. `commandes` ne peut pas dépendre de `qr` — empreintes remontées dans `socle`.
+2. `RestrictionsCompte` implémenté côté `commandes` pour `PgComptes` (P3 tenu).
+3. `panier.scission_proposee` seule écriture du chemin de devis (P4 vs SC-006).
+4. `en_route → collecte` refusé (data-model §3.3) — **à signaler au produit**.
+5. **Deux événements ajoutés à la taxonomie** (`livraison.mise_en_collecte`,
+   `commande.paiement_confirme`) : deux transitions de data-model §3 n'en
+   avaient aucun, alors que la constitution VI en exige un par transition.
+   25 → 27 événements du cycle.
+6. **`qr_flutter` 4.1.0 ajoutée** à `mefali_core`, figée au lockfile — arbitrée
+   avec l'utilisateur : le bloc « À la livraison » doit se rendre SANS RÉSEAU
+   (SC-009), ce qu'un QR servi en image par l'API interdirait.
+7. **Bug trouvé et corrigé** : un scan direct (chemin du cycle 006) laissait la
+   livraison en `assignee`, donc hors du gating EN_LIVRAISON — course bloquée
+   pour toujours. Même classe de panne que P1, par l'autre bout.
+8. `coursier.prenom` et `coursier.note` du suivi restent `null` : `comptes` ne
+   stocke aucun nom et le cycle AVI n'existe pas. À combler par CPT et AVI.
+9. L'**alerte admin** du code de remise épuisé est un `tracing::warn!`, pas un
+   événement outbox : la taxonomie n'en déclare aucun pour ce cas.
