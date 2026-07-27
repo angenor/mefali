@@ -22,6 +22,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -49,6 +50,26 @@ typedef FluxPositions = Stream<Position> Function(LocationSettings reglages);
 Stream<Position> fluxGeolocator(LocationSettings reglages) =>
     Geolocator.getPositionStream(locationSettings: reglages);
 
+/// Demande de permission de position — extraite pour la même raison : un test
+/// widget ne doit ouvrir aucun dialogue système.
+typedef DemandePermission = Future<bool> Function();
+
+/// La demande réelle, sur le patron du scan de collecte (cycle QRC 006).
+///
+/// **Sans elle, DSP-01 ne fonctionne pas du tout sur un appareil neuf** : le
+/// flux du capteur reste muet, le coursier ne publie jamais et n'entre jamais
+/// dans le pool — tout en lisant « en attente de courses ». Défaut trouvé à la
+/// validation sur émulateur (T071), après qu'une réinstallation a révoqué la
+/// permission accordée à la main.
+Future<bool> demanderPermissionGeolocator() async {
+  var perm = await Geolocator.checkPermission();
+  if (perm == LocationPermission.denied) {
+    perm = await Geolocator.requestPermission();
+  }
+  return perm != LocationPermission.denied &&
+      perm != LocationPermission.deniedForever;
+}
+
 /// Permet à un test d'injecter un flux de positions déterministe.
 ///
 /// `dependencies: []` la déclare **surchargeable par portée** : sans cette
@@ -58,13 +79,42 @@ Stream<Position> fluxGeolocator(LocationSettings reglages) =>
 @Riverpod(keepAlive: true, dependencies: [])
 FluxPositions sourcePositions(Ref ref) => fluxGeolocator;
 
+/// Relevé PONCTUEL, demandé à la cadence de zone — distinct du flux.
+typedef PositionPonctuelle = Future<Position?> Function();
+
+/// Le relevé réel. `null` si le capteur ne répond pas : on ne publie alors
+/// rien, et Yao sort du pool — c'est honnête, et son écran le dit.
+Future<Position?> positionGeolocator() async {
+  try {
+    return await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: precisionPosition),
+    );
+  } on Object catch (e) {
+    // Un capteur muet n'est pas une panne d'app : on se tait, et le TTL fait
+    // sortir du pool.
+    debugPrint('position ponctuelle indisponible : $e');
+    return null;
+  }
+}
+
+/// Permet à un test de court-circuiter la demande de permission.
+///
+/// Même raison que [sourcePositions], et même `dependencies: []` : sans cette
+/// déclaration, un `ProviderScope` imbriqué qui la surcharge serait ignoré.
+@Riverpod(keepAlive: true, dependencies: [])
+DemandePermission permissionPosition(Ref ref) => demanderPermissionGeolocator;
+
+/// Permet à un test de fournir un relevé ponctuel déterministe.
+@Riverpod(keepAlive: true, dependencies: [])
+PositionPonctuelle relevePonctuel(Ref ref) => positionGeolocator;
+
 /// Émetteur de position — **jetable** (`@riverpod` nu, autoDispose) : il ne vit
 /// que tant qu'un écran de dispatch l'observe.
 ///
 /// C'est délibérément l'inverse du porteur de disponibilité, qui est
 /// `keepAlive` : l'INTENTION d'être en ligne traverse les écrans, la
 /// PUBLICATION ne le peut pas (constitution XII, deux moules opposés).
-@Riverpod(dependencies: [sourcePositions])
+@Riverpod(dependencies: [sourcePositions, permissionPosition, relevePonctuel])
 class EmetteurPosition extends _$EmetteurPosition {
   static const _uuid = Uuid();
   StreamSubscription<Position>? _abonnement;
@@ -72,17 +122,49 @@ class EmetteurPosition extends _$EmetteurPosition {
   /// Horloge de la CADENCE de zone — distincte du capteur.
   Timer? _cadence;
 
-  /// Dernier relevé du capteur, et l'instant où il est arrivé.
-  Position? _derniere;
-  DateTime? _derniereLe;
+  /// Vrai tant que ce porteur n'a pas été éliminé — garde des reprises `async`.
+  ///
+  /// ⚠ Réarmé à CHAQUE `build`. `build` est rejoué quand Yao passe en ligne, et
+  /// Riverpod exécute les `onDispose` de la construction précédente avant : sans
+  /// ce réarmement, le drapeau resterait à `false` et la demande de permission
+  /// rendrait la main dans le vide — l'abonnement au capteur ne serait jamais
+  /// posé, précisément au passage en ligne.
+  bool _vivant = true;
 
   @override
   int build() {
+    _vivant = true;
     // Ne publie que si Yao s'est déclaré en ligne : rien ne sert d'arroser le
     // serveur de positions qu'il répondra `204`.
     final enLigne = ref.watch(disponibiliteProvider.select((e) => e.enLigne));
     final periode = ref.watch(disponibiliteProvider.select((e) => e.periodePositionS));
+    ref.onDispose(() {
+      _vivant = false;
+      _abonnement?.cancel();
+      _abonnement = null;
+      _cadence?.cancel();
+      _cadence = null;
+    });
     if (!enLigne) return 0;
+
+    unawaited(_demarrer(periode));
+    return 0;
+  }
+
+  /// Demande la permission, PUIS s'abonne au capteur et lance la cadence.
+  ///
+  /// L'ordre compte : `getPositionStream` sur un appareil qui n'a pas accordé la
+  /// position reste muet, sans erreur — le coursier n'entrerait jamais dans le
+  /// pool tout en lisant « en attente de courses ».
+  Future<void> _demarrer(int periode) async {
+    final accordee = await ref.read(permissionPositionProvider)();
+    if (!_vivant) return;
+    if (!accordee) {
+      // Rien à publier : le porteur de disponibilité le dira à l'écran, qui
+      // n'affiche « en attente de courses » que si le serveur confirme la
+      // présence au pool.
+      return;
+    }
 
     final source = ref.read(sourcePositionsProvider);
     _abonnement = source(
@@ -109,39 +191,33 @@ class EmetteurPosition extends _$EmetteurPosition {
     // C'est aussi ce que le contrat annonce déjà : `prochaine_publication_s` est
     // une CADENCE, et le serveur la rend à chaque publication.
     _cadence = Timer.periodic(Duration(seconds: periode.clamp(5, 300)), (_) {
-      _republier(periode);
+      unawaited(_relever());
     });
-
-    ref.onDispose(() {
-      _abonnement?.cancel();
-      _abonnement = null;
-      _cadence?.cancel();
-      _cadence = null;
-    });
-    return 0;
+    // Un premier relevé TOUT DE SUITE : sans lui, un coursier immobile
+    // attendrait une cadence entière avant d'entrer dans le pool, et le flux ne
+    // dirait rien puisqu'il ne bouge pas.
+    unawaited(_relever());
   }
 
-  /// Un relevé du capteur : on le retient, et on le publie.
+  /// Un relevé du capteur — Yao a bougé : on publie tout de suite.
   void _surReleve(Position position) {
-    _derniere = position;
-    _derniereLe = DateTime.now();
     unawaited(_publier(position));
   }
 
-  /// Republication à la cadence, tant que le dernier relevé est FRAIS.
+  /// Relevé de CADENCE : on redemande la position au capteur.
   ///
-  /// La fraîcheur est la garde qui empêche cette horloge de devenir un rejeu :
-  /// republier indéfiniment une position vieille de dix minutes maintiendrait
-  /// Yao dans le pool à un endroit où il n'est plus, et le dispatch lui
-  /// offrirait une course à des kilomètres — exactement ce que la dérogation au
-  /// principe V refuse de faire pour la file hors-ligne. Passé ce délai, on se
-  /// tait, et il sort du pool : c'est honnête.
-  void _republier(int periode) {
-    final derniere = _derniere;
-    final le = _derniereLe;
-    if (derniere == null || le == null) return;
-    if (DateTime.now().difference(le) > Duration(seconds: periode * 3)) return;
-    unawaited(_publier(derniere));
+  /// Redemander plutôt que rejouer la dernière connue, et la raison est de
+  /// fond : rejouer une position stockée est un RE-ENVOI, et une position
+  /// vieille de dix minutes réinscrirait Yao là où il n'est plus — exactement
+  /// ce que la dérogation au principe V refuse pour la file hors-ligne. Un
+  /// relevé ponctuel, lui, est toujours vrai à l'instant où il part.
+  ///
+  /// Et si le capteur ne répond pas, il ne rend rien : on se tait, Yao sort du
+  /// pool par expiration, et son écran cesse de dire qu'il attend des courses.
+  Future<void> _relever() async {
+    final position = await ref.read(relevePonctuelProvider)();
+    if (!_vivant || position == null) return;
+    await _publier(position);
   }
 
   Future<void> _publier(Position position) async {

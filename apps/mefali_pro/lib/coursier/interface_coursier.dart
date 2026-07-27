@@ -92,8 +92,15 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
   }
 
   /// Yao a conclu : offre acceptée, refusée, ou panneau refermé.
+  ///
+  /// La course active est RELUE au passage. Sans cela, un coursier qui vient
+  /// d'accepter retombe sur K1 — il a gagné la course, et son app ne la lui
+  /// montre pas. `EtatCourseActive` n'a aucune raison de savoir tout seul qu'une
+  /// offre vient d'être acceptée : c'est ici qu'on l'apprend.
   void _congedier(String offreId) {
-    if (mounted) setState(() => _offreCongediee = offreId);
+    if (!mounted) return;
+    setState(() => _offreCongediee = offreId);
+    ref.invalidate(etatCourseActiveProvider);
   }
 
   @override

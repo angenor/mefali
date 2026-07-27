@@ -80,6 +80,27 @@ Map<String, Object?> _etat({
 /// constructeur : c'est ce qui prouve que l'écran ne connaît pas sa source.
 Stream<Position> _aucunePosition(LocationSettings _) => const Stream.empty();
 
+/// Permission ACCORDÉE sans dialogue — un test widget n'en ouvre aucun.
+Future<bool> _permissionAccordee() async => true;
+
+/// Position de Tiassalé, rendue par le relevé ponctuel du double.
+Position _positionTiassale() => Position(
+      latitude: 5.8960,
+      longitude: -4.8210,
+      timestamp: DateTime(2026, 7, 27, 12),
+      accuracy: 8,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
+
+/// Le capteur RÉPOND, sans jamais rien émettre de nouveau : c'est l'état
+/// d'un coursier arrêté.
+Future<Position?> _relevePonctuelFixe() async => _positionTiassale();
+
 Widget _monter(ProviderContainer container) => harnaisApp(
       container: container,
       localizationsDelegates: const [
@@ -88,7 +109,12 @@ Widget _monter(ProviderContainer container) => harnaisApp(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProviderScope(
-        overrides: [sourcePositionsProvider.overrideWithValue(_aucunePosition)],
+        overrides: [
+          sourcePositionsProvider.overrideWithValue(_aucunePosition),
+          // Aucun dialogue système dans un test widget.
+          permissionPositionProvider.overrideWithValue(_permissionAccordee),
+          relevePonctuelProvider.overrideWithValue(_relevePonctuelFixe),
+        ],
         child: const EcranDisponibilite(),
       ),
     );
@@ -261,21 +287,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // UNE seule position, puis plus rien : le coursier s'est arrêté.
-      Stream<Position> uneSeulePosition(LocationSettings _) => Stream.value(
-            Position(
-              latitude: 5.8960,
-              longitude: -4.8210,
-              timestamp: DateTime(2026, 7, 27, 12),
-              accuracy: 8,
-              altitude: 0,
-              altitudeAccuracy: 0,
-              heading: 0,
-              headingAccuracy: 0,
-              speed: 0,
-              speedAccuracy: 0,
-            ),
-          );
+      // Le capteur ne dit RIEN — pas un seul relevé : c'est exactement l'état
+      // d'un coursier arrêté, que `distanceFilter` rend muet.
+      Stream<Position> capteurMuet(LocationSettings _) => const Stream.empty();
 
       await tester.pumpWidget(
         harnaisApp(
@@ -286,15 +300,28 @@ void main() {
           ],
           supportedLocales: AppLocalizations.supportedLocales,
           home: ProviderScope(
-            overrides: [sourcePositionsProvider.overrideWithValue(uneSeulePosition)],
+            overrides: [
+              sourcePositionsProvider.overrideWithValue(capteurMuet),
+              permissionPositionProvider.overrideWithValue(_permissionAccordee),
+              relevePonctuelProvider.overrideWithValue(_relevePonctuelFixe),
+            ],
             child: const EcranDisponibilite(),
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      // Plusieurs tours : le chargement de la disponibilité, puis la demande
+      // de PERMISSION, sont tous deux asynchrones — et c'est la permission qui
+      // débloque l'abonnement au capteur (T071 : sans elle le flux reste muet,
+      // et le coursier n'entre jamais dans le pool).
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
       final apresReleve = publications;
-      expect(apresReleve, greaterThanOrEqualTo(1), reason: 'le relevé du capteur publie');
+      expect(
+        apresReleve,
+        greaterThanOrEqualTo(1),
+        reason: 'le premier relevé de CADENCE publie, même capteur muet',
+      );
 
       // Deux cadences plus tard, immobile : la publication a CONTINUÉ.
       await tester.pump(const Duration(seconds: 31));

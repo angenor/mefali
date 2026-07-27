@@ -497,6 +497,8 @@
   "@dispoBasculeHorsLigne": { "description": "Côté « hors ligne » du toggle segmenté" },
   "dispoAttenteCourses": "En attente de courses — restez proche du centre",
   "@dispoAttenteCourses": { "description": "État d'attente quand le coursier est dans le pool" },
+  "dispoPositionAbsente": "Position non transmise — aucune course ne peut vous parvenir",
+  "@dispoPositionAbsente": { "description": "En ligne mais ABSENT du pool : position refusée, GPS coupé ou réseau muet" },
   "dispoAucuneCourse": "Vous ne recevez pas de courses",
   "@dispoAucuneCourse": { "description": "État hors ligne : aucune offre ne parviendra" },
   "dispoPlafondTitre": "Plafond d'avance du jour — ce que vous pouvez avancer en cash",

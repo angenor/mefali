@@ -240,24 +240,38 @@ class _CarteBascule extends StatelessWidget {
             ),
           ),
           const SizedBox(height: MefaliTokens.space2),
+          // ⚠ « En attente de courses » n'est vrai QUE si le serveur confirme
+          // la présence au pool. Le contrat distingue `en_ligne` de
+          // `dans_le_pool` précisément pour ça : une position refusée, un GPS
+          // coupé ou un réseau muet laissent Yao en ligne et HORS du pool, et
+          // lui dire qu'il attend des courses serait un mensonge — il croirait
+          // travailler pendant qu'aucune offre ne peut lui parvenir. Défaut
+          // constaté sur émulateur (T071), pool VIDE sous « en attente ».
           Row(
             children: [
               Icon(
-                etat.enLigne
+                etat.attendDesCourses
                     ? Symbols.schedule_rounded
                     : Symbols.error_outline_rounded,
                 size: 20,
-                color: etat.enLigne ? MefaliTokens.success : MefaliTokens.textMuted,
+                color: etat.attendDesCourses
+                    ? MefaliTokens.success
+                    : MefaliTokens.textMuted,
               ),
               const SizedBox(width: MefaliTokens.space2),
               Expanded(
                 child: Text(
-                  etat.enLigne ? t.dispoAttenteCourses : t.dispoAucuneCourse,
+                  switch ((etat.enLigne, etat.dansLePool)) {
+                    (true, true) => t.dispoAttenteCourses,
+                    (true, false) => t.dispoPositionAbsente,
+                    _ => t.dispoAucuneCourse,
+                  },
                   style: TextStyle(
                     fontSize: MefaliTokens.bodySize,
                     fontWeight: MefaliTokens.weightSemiBold,
-                    color:
-                        etat.enLigne ? MefaliTokens.success : MefaliTokens.textMuted,
+                    color: etat.attendDesCourses
+                        ? MefaliTokens.success
+                        : MefaliTokens.textMuted,
                   ),
                 ),
               ),

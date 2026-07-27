@@ -69,6 +69,120 @@ final class SourcePositionsProvider
 
 String _$sourcePositionsHash() => r'7099b325eea74d3d5696a1437bd6c44fa5f4b541';
 
+/// Permet à un test de court-circuiter la demande de permission.
+///
+/// Même raison que [sourcePositions], et même `dependencies: []` : sans cette
+/// déclaration, un `ProviderScope` imbriqué qui la surcharge serait ignoré.
+
+@ProviderFor(permissionPosition)
+final permissionPositionProvider = PermissionPositionProvider._();
+
+/// Permet à un test de court-circuiter la demande de permission.
+///
+/// Même raison que [sourcePositions], et même `dependencies: []` : sans cette
+/// déclaration, un `ProviderScope` imbriqué qui la surcharge serait ignoré.
+
+final class PermissionPositionProvider
+    extends
+        $FunctionalProvider<
+          DemandePermission,
+          DemandePermission,
+          DemandePermission
+        >
+    with $Provider<DemandePermission> {
+  /// Permet à un test de court-circuiter la demande de permission.
+  ///
+  /// Même raison que [sourcePositions], et même `dependencies: []` : sans cette
+  /// déclaration, un `ProviderScope` imbriqué qui la surcharge serait ignoré.
+  PermissionPositionProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'permissionPositionProvider',
+        isAutoDispose: false,
+        dependencies: <ProviderOrFamily>[],
+        $allTransitiveDependencies: <ProviderOrFamily>[],
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$permissionPositionHash();
+
+  @$internal
+  @override
+  $ProviderElement<DemandePermission> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  DemandePermission create(Ref ref) {
+    return permissionPosition(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DemandePermission value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DemandePermission>(value),
+    );
+  }
+}
+
+String _$permissionPositionHash() =>
+    r'3cfe2e984fd6dff9d6619f8f7802db3dd8c5ee69';
+
+/// Permet à un test de fournir un relevé ponctuel déterministe.
+
+@ProviderFor(relevePonctuel)
+final relevePonctuelProvider = RelevePonctuelProvider._();
+
+/// Permet à un test de fournir un relevé ponctuel déterministe.
+
+final class RelevePonctuelProvider
+    extends
+        $FunctionalProvider<
+          PositionPonctuelle,
+          PositionPonctuelle,
+          PositionPonctuelle
+        >
+    with $Provider<PositionPonctuelle> {
+  /// Permet à un test de fournir un relevé ponctuel déterministe.
+  RelevePonctuelProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'relevePonctuelProvider',
+        isAutoDispose: false,
+        dependencies: <ProviderOrFamily>[],
+        $allTransitiveDependencies: <ProviderOrFamily>[],
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$relevePonctuelHash();
+
+  @$internal
+  @override
+  $ProviderElement<PositionPonctuelle> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  PositionPonctuelle create(Ref ref) {
+    return relevePonctuel(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PositionPonctuelle value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PositionPonctuelle>(value),
+    );
+  }
+}
+
+String _$relevePonctuelHash() => r'43fca94f39877169804ce4236093bf6769d18b28';
+
 /// Émetteur de position — **jetable** (`@riverpod` nu, autoDispose) : il ne vit
 /// que tant qu'un écran de dispatch l'observe.
 ///
@@ -100,13 +214,21 @@ final class EmetteurPositionProvider
         retry: null,
         name: r'emetteurPositionProvider',
         isAutoDispose: true,
-        dependencies: <ProviderOrFamily>[sourcePositionsProvider],
+        dependencies: <ProviderOrFamily>[
+          sourcePositionsProvider,
+          permissionPositionProvider,
+          relevePonctuelProvider,
+        ],
         $allTransitiveDependencies: <ProviderOrFamily>[
           EmetteurPositionProvider.$allTransitiveDependencies0,
+          EmetteurPositionProvider.$allTransitiveDependencies1,
+          EmetteurPositionProvider.$allTransitiveDependencies2,
         ],
       );
 
   static final $allTransitiveDependencies0 = sourcePositionsProvider;
+  static final $allTransitiveDependencies1 = permissionPositionProvider;
+  static final $allTransitiveDependencies2 = relevePonctuelProvider;
 
   @override
   String debugGetCreateSourceHash() => _$emetteurPositionHash();
@@ -124,7 +246,7 @@ final class EmetteurPositionProvider
   }
 }
 
-String _$emetteurPositionHash() => r'418ccc3294b1c37259809ddee3fdfd575690f16f';
+String _$emetteurPositionHash() => r'970cf311a02f6c517ee45de36835ea110fb1c695';
 
 /// Émetteur de position — **jetable** (`@riverpod` nu, autoDispose) : il ne vit
 /// que tant qu'un écran de dispatch l'observe.

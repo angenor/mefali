@@ -112,6 +112,12 @@ EtatRolesData _coursierSeul() => const EtatRolesData(
 /// destruction de l'arbre. Injectée par la PORTÉE (constitution XII).
 Stream<Position> _aucunePosition(LocationSettings _) => const Stream.empty();
 
+/// Permission ACCORDÉE sans dialogue — un test widget n'en ouvre aucun.
+Future<bool> _permissionAccordee() async => true;
+
+/// Aucun relevé ponctuel : ces tests ne regardent pas la publication.
+Future<Position?> _aucunReleve() async => null;
+
 Widget _monter(ProviderContainer container) => harnaisApp(
       container: container,
       localizationsDelegates: const [
@@ -120,7 +126,12 @@ Widget _monter(ProviderContainer container) => harnaisApp(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProviderScope(
-        overrides: [sourcePositionsProvider.overrideWithValue(_aucunePosition)],
+        overrides: [
+          sourcePositionsProvider.overrideWithValue(_aucunePosition),
+          // Aucun dialogue système dans un test widget.
+          permissionPositionProvider.overrideWithValue(_permissionAccordee),
+          relevePonctuelProvider.overrideWithValue(_aucunReleve),
+        ],
         child: InterfaceCoursier(etat: _coursierSeul()),
       ),
     );

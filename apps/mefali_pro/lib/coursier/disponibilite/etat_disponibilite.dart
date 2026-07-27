@@ -93,6 +93,11 @@ class EtatDisponibilite {
   /// Code du dernier refus métier (`dispatch.erreur.*`), ou `null`.
   final String? codeErreur;
 
+  /// Vrai seulement si une offre peut RÉELLEMENT parvenir : en ligne **et**
+  /// présent au pool. L'intention ne suffit pas — c'est la position publiée
+  /// qui fait entrer dans le vivier (contrat §1.1).
+  bool get attendDesCourses => enLigne && dansLePool;
+
   /// Vrai si Yao doit (re)déclarer son plafond : nouveau jour, ou première mise
   /// en ligne.
   bool get plafondADeclarer => plafondDeclareUnites == null;
