@@ -244,7 +244,11 @@ pub async fn pool_dispatch(
 /// `#[utoipa::path]` ci-dessus : un paramètre exigé par l'extracteur mais absent
 /// du contrat rend l'endpoint inappelable depuis les clients générés, qui ne
 /// sauraient pas le transmettre.
-#[derive(Debug, Deserialize, ToSchema)]
+/// Pas de `ToSchema` : le paramètre est déclaré dans le `params(...)` ci-dessus,
+/// et cette structure n'est le corps d'aucune requête. Le dérive n'ajoutait
+/// aucun composant au contrat (`RequetePool` est absent d'`openapi.json`) — il
+/// laissait seulement croire à un composant qui n'existe pas.
+#[derive(Debug, Deserialize)]
 pub struct RequetePool {
     /// Zone dont on lit le pool.
     pub zone_id: Uuid,

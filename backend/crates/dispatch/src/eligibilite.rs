@@ -72,8 +72,11 @@ pub struct CandidatEligible {
     pub distance_m: i64,
     /// Durée de trajet routière (secondes).
     pub duree_s: i64,
-    /// Plafond d'avance RETENU (min de la grille et du déclaré).
-    pub plafond_retenu_unites: i64,
+    // Pas de `plafond_retenu_unites` ici, et c'est délibéré : le champ y était
+    // ÉCRIT et jamais lu. Le plafond que l'offre annonce à Yao est recalculé au
+    // moment de l'offre (`plafond_du_jour`), parce qu'il peut avoir changé entre
+    // le filtrage et l'émission. Deux vérités sur un montant d'argent, dont une
+    // que personne ne consulte, sont une invitation à lire la mauvaise.
 }
 
 /// Résultat brut du filtre, avant classement.
@@ -105,10 +108,17 @@ impl PgDispatch {
     /// implémentés par `commandes` et `comptes` — c'est-à-dire une modification
     /// hors du périmètre de ce cycle, faite sans mesure.
     ///
-    /// **Déclencheur** : quand le pool d'une zone dépasse durablement la
-    /// cinquantaine de membres, `bloquees` et `etat` compris (eux aussi par
-    /// candidat), passer les quatre en lot — la boucle est déjà écrite pour
-    /// consommer des tableaux indexés, la substitution est locale.
+    /// **Déclencheur, et son honnêteté** : `plan.md` dimensionne Tiassalé à
+    /// **~4 coursiers**. Un pool qui atteindrait durablement quelques DIZAINES
+    /// de membres dans une zone serait donc un ordre de grandeur au-dessus de
+    /// tout ce qui a été mesuré, et c'est là qu'il faut passer les quatre
+    /// lectures en lot — la boucle consomme déjà des tableaux indexés, la
+    /// substitution est locale.
+    ///
+    /// ⚠ Ce seuil n'est **pas** une mesure : aucune métrique ne signale son
+    /// franchissement aujourd'hui. Il se lit à la main sur
+    /// `GET /admin/dispatch/pool`, qui rend les membres d'une zone. Le dire
+    /// plutôt que d'annoncer un chiffre qui aurait l'air d'un relevé.
     pub async fn filtrer(
         &self,
         config: &ConfigDispatch,
@@ -226,7 +236,15 @@ impl PgDispatch {
             }
 
             // 5. CAPACITÉ D'AVANCE — comparaison en ENTIERS, même devise
-            //    (constitution III). Le plafond retenu est `min(palier, déclaré)`.
+            //    (constitution III).
+            //
+            //    ⚠ `inscription.plafond_unites` porte DÉJÀ le RETENU
+            //    (`min(palier, déclaré)`, voir `InscriptionPool`), pas le
+            //    déclaré : le commentaire d'origine disait l'inverse, et
+            //    contredisait le modèle sur le champ qui décide d'offrir ou non
+            //    une course. Le `min` reste — il est idempotent, et il protège
+            //    d'un index reconstruit par un écrivain plus ancien qui y aurait
+            //    mis le déclaré.
             let (palier, _) = config.grille_avance.palier(inscription.note_centiemes);
             let plafond_retenu = palier.plafond_unites.min(inscription.plafond_unites);
             if demande.montant_a_avancer > plafond_retenu
@@ -261,7 +279,6 @@ impl PgDispatch {
                     inscription,
                     distance_m: t.distance_m,
                     duree_s: t.duree_s,
-                    plafond_retenu_unites: plafond_retenu,
                 });
             } else {
                 journaliser_ecart(demande.commande, coursier, &motifs);
