@@ -131,9 +131,22 @@ class EmetteurPosition extends _$EmetteurPosition {
   /// posé, précisément au passage en ligne.
   bool _vivant = true;
 
+  /// Numéro de la construction en cours — arbitre des démarrages CONCURRENTS.
+  ///
+  /// `_vivant` ne suffit pas, et c'est subtil : il est réarmé à chaque `build`.
+  /// Une bascule en ligne → hors ligne → en ligne assez rapide laisse donc DEUX
+  /// `_demarrer` en vol, tous deux suspendus sur la demande de permission, tous
+  /// deux se croyant vivants au réveil. Le second écrasait `_abonnement` et
+  /// `_cadence` du premier : le `Timer.periodic` remplacé n'était plus annulé
+  /// par personne — publication en double et réveil du GPS sur un porteur que
+  /// plus rien ne référence.
+  int _generation = 0;
+
   @override
   int build() {
     _vivant = true;
+    _generation += 1;
+    final generation = _generation;
     // Ne publie que si Yao s'est déclaré en ligne : rien ne sert d'arroser le
     // serveur de positions qu'il répondra `204`.
     final enLigne = ref.watch(disponibiliteProvider.select((e) => e.enLigne));
@@ -147,7 +160,7 @@ class EmetteurPosition extends _$EmetteurPosition {
     });
     if (!enLigne) return 0;
 
-    unawaited(_demarrer(periode));
+    unawaited(_demarrer(periode, generation));
     return 0;
   }
 
@@ -156,9 +169,12 @@ class EmetteurPosition extends _$EmetteurPosition {
   /// L'ordre compte : `getPositionStream` sur un appareil qui n'a pas accordé la
   /// position reste muet, sans erreur — le coursier n'entrerait jamais dans le
   /// pool tout en lisant « en attente de courses ».
-  Future<void> _demarrer(int periode) async {
+  Future<void> _demarrer(int periode, int generation) async {
     final accordee = await ref.read(permissionPositionProvider)();
-    if (!_vivant) return;
+    // Périmé : une construction plus récente a pris la main pendant l'attente.
+    // Continuer ici écraserait SON abonnement et SA cadence, et laisserait un
+    // `Timer.periodic` que plus personne n'annule.
+    if (!_vivant || generation != _generation) return;
     if (!accordee) {
       // Rien à publier : le porteur de disponibilité le dira à l'écran, qui
       // n'affiche « en attente de courses » que si le serveur confirme la
