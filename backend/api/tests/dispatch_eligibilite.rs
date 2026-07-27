@@ -11,12 +11,10 @@ mod bac_dispatch;
 
 use bac_dispatch::Bac;
 use dispatch::{DecisionPipeline, MotifEcart};
-use serde_json::json;
 
 /// Motifs d'écart constatés pour un coursier donné, après un passage.
-async fn motifs_de(bac: &Bac, index: usize, commande: uuid::Uuid) -> Vec<String> {
+async fn motifs_de(bac: &Bac) -> Vec<String> {
     let payloads = bac.evenements("dispatch.evaluation_faite").await;
-    let _ = (index, commande);
     payloads
         .last()
         .and_then(|p| p.get("motifs").cloned())
@@ -41,7 +39,7 @@ async fn motif_hors_ligne(pool: sqlx::PgPool) {
     let decision = bac.dispatcher(commande).await;
 
     assert!(matches!(decision, DecisionPipeline::MiseEnFile { .. }));
-    assert!(motifs_de(&bac, 0, commande).await.contains(&"hors_ligne".to_owned()));
+    assert!(motifs_de(&bac).await.contains(&"hors_ligne".to_owned()));
 }
 
 /// **COURSE ACTIVE** — pas de superposition au MVP (FR-007). Et c'est la BASE
@@ -60,7 +58,7 @@ async fn motif_course_active(pool: sqlx::PgPool) {
 
     let commande = bac.commande_prete().await;
     bac.dispatcher(commande).await;
-    assert!(motifs_de(&bac, 0, commande)
+    assert!(motifs_de(&bac)
         .await
         .contains(&"course_active".to_owned()));
 }
@@ -85,7 +83,7 @@ async fn motif_capacite_non_couverte(pool: sqlx::PgPool) {
     .unwrap();
 
     bac.dispatcher(commande).await;
-    assert!(motifs_de(&bac, 0, commande)
+    assert!(motifs_de(&bac)
         .await
         .contains(&"capacite_non_couverte".to_owned()));
 }
@@ -110,7 +108,7 @@ async fn motif_hors_rayon_aux_bornes(pool: sqlx::PgPool) {
     bac.proximite.defaut(5_000, 900);
     let dehors = bac.commande_prete().await;
     bac.dispatcher(dehors).await;
-    assert!(motifs_de(&bac, 0, dehors).await.contains(&"hors_rayon".to_owned()));
+    assert!(motifs_de(&bac).await.contains(&"hors_rayon".to_owned()));
 }
 
 /// **CAPACITÉ D'AVANCE** — et c'est le cas qui compte : grille 5 000 (palier
@@ -137,7 +135,7 @@ async fn motif_capacite_avance_le_plus_bas_decide(pool: sqlx::PgPool) {
 
     bac.dispatcher(commande).await;
     assert!(
-        motifs_de(&bac, 0, commande)
+        motifs_de(&bac)
             .await
             .contains(&"capacite_avance".to_owned()),
         "déclarer 15 000 ne suffit pas : le palier de la grille plafonne à 5 000",
@@ -148,7 +146,7 @@ async fn motif_capacite_avance_le_plus_bas_decide(pool: sqlx::PgPool) {
 /// aller-retour pour toutes les contreparties (FR-025).
 #[sqlx::test(migrations = "../migrations")]
 async fn motif_paire_bloquee(pool: sqlx::PgPool) {
-    use dispatch::{AucunePaireBloquee, PairesSimulees, PgDispatch};
+    use dispatch::{PairesSimulees, PgDispatch};
     use std::sync::Arc;
 
     let bac = Bac::nouveau(pool).await;
@@ -171,12 +169,9 @@ async fn motif_paire_bloquee(pool: sqlx::PgPool) {
     );
 
     avec_paires.dispatcher(commande, chrono::Utc::now()).await.unwrap();
-    assert!(motifs_de(&bac, 0, commande)
+    assert!(motifs_de(&bac)
         .await
         .contains(&"paire_bloquee".to_owned()));
-
-    // Contrôle : sans la paire, le même coursier serait éligible.
-    let _ = AucunePaireBloquee;
 }
 
 /// **COMPTE INDISPONIBLE** — FR-009, et c'est LE cas qui justifie la
@@ -203,7 +198,7 @@ async fn motif_compte_indisponible_malgre_l_etat_de_pool(pool: sqlx::PgPool) {
 
     let commande = bac.commande_prete().await;
     bac.dispatcher(commande).await;
-    assert!(motifs_de(&bac, 0, commande)
+    assert!(motifs_de(&bac)
         .await
         .contains(&"compte_indisponible".to_owned()));
 }
@@ -224,7 +219,7 @@ async fn motif_offre_en_vol(pool: sqlx::PgPool) {
     // Une seconde commande arrive : le seul coursier porte déjà une offre.
     let seconde = bac.commande_prete().await;
     bac.dispatcher(seconde).await;
-    assert!(motifs_de(&bac, 0, seconde)
+    assert!(motifs_de(&bac)
         .await
         .contains(&"offre_en_vol".to_owned()));
 }
@@ -339,5 +334,4 @@ fn les_huit_motifs_ont_chacun_leur_test() {
             motif.comme_str(),
         );
     }
-    let _ = json!({});
 }

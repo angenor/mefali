@@ -273,7 +273,6 @@ async fn changer_les_poids_change_l_ordre_sans_redeployer(pool: sqlx::PgPool) {
     // Le TRONC reste `en_cours` : le passer `terminee` exigerait un paiement
     // réglé (CHECK `commande_terminee_payee`), et c'est la LIVRAISON qui fonde
     // l'inactivité — pas l'état du tronc.
-    let _ = livree;
 
     let commande = bac.commande_prete().await;
     let DecisionPipeline::OffreEmise(offre) = bac.dispatcher(commande).await else {

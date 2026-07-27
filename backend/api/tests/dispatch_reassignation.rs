@@ -8,7 +8,7 @@
 mod bac_dispatch;
 
 use bac_dispatch::Bac;
-use dispatch::{Canal, DecisionPipeline};
+use dispatch::DecisionPipeline;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -281,5 +281,4 @@ async fn la_reprise_manuelle_exige_un_motif(pool: sqlx::PgPool) {
         .await;
     assert_eq!(statut, 403);
 
-    let _ = Canal::Exploitation;
 }
