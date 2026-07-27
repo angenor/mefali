@@ -178,6 +178,15 @@ export interface paths {
          * `GET /admin/dispatch/pool` — les coursiers en ligne d'une zone.
          * @description Matière de la « carte des coursiers » d'ADM-02. Le rôle `Admin` est la garde :
          *     c'est le seul endroit du cycle où une position sort du serveur.
+         *
+         *     **Une zone, rien d'autre** (contrat §2.2). L'exploitation demande « qui est en
+         *     ligne », pas « qui est près d'ici » : elle n'a aucun centre à proposer, et
+         *     l'approcher par un rayon très large écarterait en silence le coursier qui le
+         *     dépasse. Le port [`dispatch::PoolCoursiers::membres`] répond exactement à
+         *     cette question — l'index GEO de Redis est un zset, qui sait s'énumérer.
+         *
+         *     Les **fantômes** de l'index (membre survivant à son état, research R2) sont
+         *     omis : la carte ne montre que ce dont on connaît la position et l'âge.
          */
         get: operations["pool_dispatch"];
         put?: never;
@@ -2366,7 +2375,7 @@ export interface components {
             lon: number;
             /**
              * Format: int64
-             * @description Plafond d'avance déclaré du jour.
+             * @description Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`.
              */
             plafond_unites: number;
         };

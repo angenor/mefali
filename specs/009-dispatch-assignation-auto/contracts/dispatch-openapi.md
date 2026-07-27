@@ -200,7 +200,41 @@ tranche T3) consommera ; aucun écran n'est construit ici (FR-096).
 }
 ```
 
-### 2.2 `POST /admin/dispatch/courses/{livraison_id}/reprendre`
+### 2.2 `GET /admin/dispatch/pool`
+
+```jsonc
+// Requête — la ZONE, et rien d'autre
+GET /admin/dispatch/pool?zone_id=…
+
+// Réponse 200
+{
+  "zone_id": "…",
+  "coursiers": [
+    { "coursier_id": "…", "lat": 5.8961, "lon": -4.8211,
+      "age_s": 12,                          // fraîcheur de la position publiée
+      "capacites": ["moto"],
+      "plafond_unites": 5000, "devise": "XOF",   // plafond RETENU du jour
+      "course_active": null }
+  ]
+}
+```
+
+**Pas de centre, pas de rayon.** L'exploitation demande « qui est en ligne dans
+cette zone », pas « qui est près d'ici » : elle n'a aucune position à proposer, et
+l'approcher par un rayon élargi écarterait en silence le coursier qui le dépasse
+— une carte qui ment par omission est pire qu'une carte absente. Le port
+`PoolCoursiers::membres(zone)` répond exactement à cette question ; l'index GEO
+de Redis est un zset, qui sait s'énumérer (`ZRANGE 0 -1`).
+
+Les **fantômes** de l'index (membre survivant à son état, research R2) sont omis :
+la carte ne montre que ce dont on connaît la position et son âge. `age_s` est
+rendu pour cela — l'exploitation doit savoir si elle regarde une position fraîche
+ou un point figé.
+
+C'est le **seul** endroit du cycle où une position sort du serveur, et `Admin` en
+est la garde.
+
+### 2.3 `POST /admin/dispatch/courses/{livraison_id}/reprendre`
 
 ```jsonc
 // Requête — motif OBLIGATOIRE, journalisé avec son auteur

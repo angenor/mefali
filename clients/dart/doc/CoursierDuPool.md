@@ -15,7 +15,7 @@ Name | Type | Description | Notes
 **devise** | **String** | Devise ISO 4217. | 
 **lat** | **double** | Dernière latitude publiée. | 
 **lon** | **double** | Dernière longitude publiée. | 
-**plafondUnites** | **int** | Plafond d'avance déclaré du jour. | 
+**plafondUnites** | **int** | Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`. | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

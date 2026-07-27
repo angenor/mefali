@@ -307,6 +307,67 @@ async fn l_evenement_de_disponibilite_est_sobre_et_unique(pool: sqlx::PgPool) {
     assert_eq!(evenements[1]["en_ligne"], false);
 }
 
+/// `GET /admin/dispatch/pool` — la matière de la « carte des coursiers »
+/// (FR-006), interrogée **par HTTP**, avec la seule `zone_id` du contrat §2.2.
+///
+/// Ce que ce test protège : l'endpoint doit être appelable avec ce que le
+/// contrat annonce. Un paramètre exigé par l'extracteur mais absent du
+/// `#[utoipa::path]` rendrait l'endpoint inatteignable depuis les clients
+/// générés — un `400` que personne ne saurait corriger côté appelant.
+#[sqlx::test(migrations = "../migrations")]
+async fn la_carte_des_coursiers_se_lit_avec_la_seule_zone(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.dans_le_pool(0, 8_000).await;
+    bac.dans_le_pool(1, 3_000).await;
+
+    let (statut, corps) = bac
+        .get(
+            &format!("/admin/dispatch/pool?zone_id={}", bac.cmd.ville),
+            &bac.cmd.jeton_admin,
+        )
+        .await;
+    assert_eq!(statut, 200, "{corps}");
+    assert_eq!(corps["zone_id"], bac.cmd.ville.to_string());
+
+    let coursiers = corps["coursiers"].as_array().unwrap();
+    assert_eq!(coursiers.len(), 2, "les DEUX du pool, sans centre à fournir");
+    let yao = coursiers
+        .iter()
+        .find(|c| c["coursier_id"] == bac.coursiers[0].id.to_string())
+        .expect("Yao est dans la carte");
+    assert_eq!(yao["capacites"][0], "moto");
+    assert_eq!(
+        yao["plafond_unites"], PALIER_ENTREE,
+        "le plafond RETENU (palier d'entrée), pas les 8 000 déclarés : c'est ce \
+         qu'il peut réellement avancer",
+    );
+    assert_eq!(yao["devise"], "XOF");
+    assert!(
+        yao["age_s"].as_i64().unwrap() >= 0,
+        "l'exploitation doit savoir si elle regarde une position fraîche",
+    );
+
+    // Un FANTÔME de l'index (état expiré, membre survivant — research R2) est
+    // omis : la carte ne montre que ce dont on connaît la position et l'âge.
+    bac.pool_coursiers.faire_expirer(bac.coursiers[1].id);
+    let (_, corps) = bac
+        .get(
+            &format!("/admin/dispatch/pool?zone_id={}", bac.cmd.ville),
+            &bac.cmd.jeton_admin,
+        )
+        .await;
+    assert_eq!(corps["coursiers"].as_array().unwrap().len(), 1);
+
+    // La garde de rôle tient : un coursier ne lit pas les positions des autres.
+    let (statut, _) = bac
+        .get(
+            &format!("/admin/dispatch/pool?zone_id={}", bac.cmd.ville),
+            &bac.coursiers[0].jeton,
+        )
+        .await;
+    assert_eq!(statut, 403, "seul l'admin voit les positions");
+}
+
 /// Une position rejouée avec le MÊME `uuid_client` ne double rien : elle
 /// repousse simplement la durée de vie (constitution V).
 #[sqlx::test(migrations = "../migrations")]

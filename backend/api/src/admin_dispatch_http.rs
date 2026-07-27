@@ -89,7 +89,7 @@ pub struct CoursierPoolDto {
     pub age_s: i64,
     /// Capacités déclarées (slugs).
     pub capacites: Vec<String>,
-    /// Plafond d'avance déclaré du jour.
+    /// Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`.
     pub plafond_unites: i64,
     /// Devise ISO 4217.
     pub devise: String,
@@ -186,6 +186,15 @@ pub async fn alertes_dispatch(
 ///
 /// Matière de la « carte des coursiers » d'ADM-02. Le rôle `Admin` est la garde :
 /// c'est le seul endroit du cycle où une position sort du serveur.
+///
+/// **Une zone, rien d'autre** (contrat §2.2). L'exploitation demande « qui est en
+/// ligne », pas « qui est près d'ici » : elle n'a aucun centre à proposer, et
+/// l'approcher par un rayon très large écarterait en silence le coursier qui le
+/// dépasse. Le port [`dispatch::PoolCoursiers::membres`] répond exactement à
+/// cette question — l'index GEO de Redis est un zset, qui sait s'énumérer.
+///
+/// Les **fantômes** de l'index (membre survivant à son état, research R2) sont
+/// omis : la carte ne montre que ce dont on connaît la position et l'âge.
 #[utoipa::path(
     get,
     path = "/admin/dispatch/pool",
@@ -207,14 +216,7 @@ pub async fn pool_dispatch(
 ) -> Result<HttpResponse, ErreurDispatchHttp> {
     auth.exiger_role(Role::Admin)?;
     let zone = requete.zone_id;
-    let config = depot.config(zone).await?;
-    // Le pool ne s'interroge que par rayon : on prend un rayon large autour du
-    // centre déclaré, puis on lit l'état de chacun. Un « lister tout » n'existe
-    // pas côté index, et c'est voulu — l'appartenance au pool est géographique.
-    let membres = depot
-        .pool_coursiers()
-        .dans_rayon(zone, requete.lat, requete.lon, config.rayon_m * 10)
-        .await?;
+    let membres = depot.pool_coursiers().membres(zone).await?;
     let mut coursiers = Vec::new();
     for membre in membres {
         if let Some(i) = depot.pool_coursiers().etat(membre).await? {
@@ -236,15 +238,16 @@ pub async fn pool_dispatch(
     }))
 }
 
-/// Paramètres de lecture du pool.
+/// Paramètres de lecture du pool — **la zone, et rien d'autre**.
+///
+/// Tout champ ajouté ici doit l'être aussi dans le `params(...)` de
+/// `#[utoipa::path]` ci-dessus : un paramètre exigé par l'extracteur mais absent
+/// du contrat rend l'endpoint inappelable depuis les clients générés, qui ne
+/// sauraient pas le transmettre.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct RequetePool {
     /// Zone dont on lit le pool.
     pub zone_id: Uuid,
-    /// Centre de la recherche (latitude).
-    pub lat: f64,
-    /// Centre de la recherche (longitude).
-    pub lon: f64,
 }
 
 /// `POST /admin/dispatch/courses/{livraison_id}/reprendre` — la seule voie de

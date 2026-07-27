@@ -203,6 +203,46 @@ async fn le_prefiltre_geographique_borne_le_vivier() {
     pool.retirer(loin, zone).await.unwrap();
 }
 
+/// FR-006 — `membres` énumère l'index d'une zone **sans centre ni rayon**.
+///
+/// Ce que ce test protège : la « carte des coursiers » de l'exploitation demande
+/// « qui est en ligne », pas « qui est près d'ici ». L'approcher par un rayon
+/// très large écarterait en silence celui qui le dépasse — et l'index GEO de
+/// Redis est un zset, qui sait parfaitement s'énumérer.
+#[tokio::test]
+async fn les_membres_s_enumerent_sans_centre() {
+    let Some(pool) = pool().await else { return };
+    let (zone, proche, tres_loin) = (Uuid::now_v7(), Uuid::now_v7(), Uuid::now_v7());
+    pool.publier(
+        &inscription(proche, zone, TIASSALE.0, TIASSALE.1),
+        Duration::from_secs(90),
+    )
+    .await
+    .unwrap();
+    // ≈ 110 km au nord : au-delà de tout rayon élargi qu'on aurait pu bricoler.
+    pool.publier(
+        &inscription(tres_loin, zone, TIASSALE.0 + 1.0, TIASSALE.1),
+        Duration::from_secs(90),
+    )
+    .await
+    .unwrap();
+
+    let membres = pool.membres(zone).await.unwrap();
+    assert!(membres.contains(&proche));
+    assert!(
+        membres.contains(&tres_loin),
+        "aucune distance ne fait disparaître un coursier de la carte",
+    );
+    assert!(
+        pool.membres(Uuid::now_v7()).await.unwrap().is_empty(),
+        "une zone sans index est vide, jamais une erreur",
+    );
+
+    pool.retirer(proche, zone).await.unwrap();
+    pool.retirer(tres_loin, zone).await.unwrap();
+    assert!(pool.membres(zone).await.unwrap().is_empty());
+}
+
 /// Une URL Redis injoignable ne fait pas tomber une LECTURE : le pré-filtre rend
 /// une liste vide et l'état `None`. Redis muet dégrade, il ne casse pas.
 #[tokio::test]
@@ -214,6 +254,7 @@ async fn redis_injoignable_degrade_les_lectures_sans_erreur() {
         .await
         .unwrap()
         .is_empty());
+    assert!(pool.membres(Uuid::now_v7()).await.unwrap().is_empty());
     assert!(pool.etat(Uuid::now_v7()).await.unwrap().is_none());
     assert_eq!(pool.elaguer(Uuid::now_v7()).await.unwrap(), 0);
 }

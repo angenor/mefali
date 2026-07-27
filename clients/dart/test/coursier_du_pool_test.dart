@@ -49,7 +49,7 @@ void main() {
       // TODO
     });
 
-    // Plafond d'avance déclaré du jour.
+    // Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`.
     // int plafondUnites
     test('to test the property `plafondUnites`', () async {
       // TODO

@@ -27,6 +27,13 @@ pub trait PoolCoursiers: Send + Sync {
     async fn dans_rayon(&self, zone: Uuid, lat: f64, lon: f64, rayon_m: i64)
         -> Result<Vec<Uuid>, ErreurPool>;
 
+    /// TOUS les membres de l'index d'une zone, sans centre ni rayon — la
+    /// « carte des coursiers » de l'exploitation (FR-006) demande « qui est en
+    /// ligne », pas « qui est près d'ici », et n'a aucun centre à proposer.
+    /// L'index GEO de Redis est un zset : `ZRANGE 0 -1` sait l'énumérer.
+    /// Rend les membres BRUTS, fantômes compris — c'est `etat` qui tranche.
+    async fn membres(&self, zone: Uuid) -> Result<Vec<Uuid>, ErreurPool>;
+
     /// État d'un coursier, ou `None` s'il est sorti du pool. `None` n'est
     /// JAMAIS une erreur — Redis muet doit dégrader, pas casser.
     async fn etat(&self, coursier: Uuid) -> Result<Option<InscriptionPool>, ErreurPool>;
@@ -219,10 +226,21 @@ pub trait ProximiteRoutiere: Send + Sync {
     /// d'oiseau ×1,4 `degraded=true` journalisé — une commande n'est jamais
     /// bloquée par le routage (constitution IV, FR-030).
     async fn vers_point(&self, origines: &[Point], destination: Point) -> Trajets;
+
+    /// Les `n − 1` tronçons CONSÉCUTIFS d'un itinéraire (`p0→p1`, `p1→p2`, …),
+    /// depuis UNE seule matrice — les distances inter-arrêts de l'écran K2.
+    /// Sans elle, un itinéraire se mesure tronçon par tronçon, c'est-à-dire une
+    /// requête de routage par arrêt, et le cache par tronçon du cycle 007 ne les
+    /// absorbe pas : il ne réchauffe jamais coursier→vendeur, qui part d'une
+    /// position mobile. Rend des `Trajets` et non une `Matrice` : l'appelant n'a
+    /// besoin que de la diagonale adjacente, et le domaine n'a pas à connaître
+    /// l'indexation d'un moteur de routage.
+    async fn troncons_consecutifs(&self, zone: Uuid, points: &[Point]) -> Trajets;
 }
 
 pub struct Trajets {
-    /// Une entrée par origine, dans l'ORDRE fourni.
+    /// Une entrée par origine (`vers_point`) ou par tronçon
+    /// (`troncons_consecutifs`), dans l'ORDRE fourni.
     pub trajets: Vec<Trajet>,
     pub degraded: bool,
 }

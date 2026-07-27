@@ -19,7 +19,7 @@ part 'coursier_du_pool.g.dart';
 /// * [devise] - Devise ISO 4217.
 /// * [lat] - Dernière latitude publiée.
 /// * [lon] - Dernière longitude publiée.
-/// * [plafondUnites] - Plafond d'avance déclaré du jour.
+/// * [plafondUnites] - Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`.
 @BuiltValue()
 abstract class CoursierDuPool implements Built<CoursierDuPool, CoursierDuPoolBuilder> {
   /// Âge de la dernière publication (secondes) — l'exploitation doit savoir si elle regarde une position fraîche ou un point figé.
@@ -50,7 +50,7 @@ abstract class CoursierDuPool implements Built<CoursierDuPool, CoursierDuPoolBui
   @BuiltValueField(wireName: r'lon')
   double get lon;
 
-  /// Plafond d'avance déclaré du jour.
+  /// Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`.
   @BuiltValueField(wireName: r'plafond_unites')
   int get plafondUnites;
 

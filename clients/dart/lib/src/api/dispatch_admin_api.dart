@@ -103,7 +103,7 @@ class DispatchAdminApi {
   }
 
   /// &#x60;GET /admin/dispatch/pool&#x60; — les coursiers en ligne d&#39;une zone.
-  /// Matière de la « carte des coursiers » d&#39;ADM-02. Le rôle &#x60;Admin&#x60; est la garde : c&#39;est le seul endroit du cycle où une position sort du serveur.
+  /// Matière de la « carte des coursiers » d&#39;ADM-02. Le rôle &#x60;Admin&#x60; est la garde : c&#39;est le seul endroit du cycle où une position sort du serveur.  **Une zone, rien d&#39;autre** (contrat §2.2). L&#39;exploitation demande « qui est en ligne », pas « qui est près d&#39;ici » : elle n&#39;a aucun centre à proposer, et l&#39;approcher par un rayon très large écarterait en silence le coursier qui le dépasse. Le port [&#x60;dispatch::PoolCoursiers::membres&#x60;] répond exactement à cette question — l&#39;index GEO de Redis est un zset, qui sait s&#39;énumérer.  Les **fantômes** de l&#39;index (membre survivant à son état, research R2) sont omis : la carte ne montre que ce dont on connaît la position et l&#39;âge.
   ///
   /// Parameters:
   /// * [zoneId] - Zone dont on lit le pool.

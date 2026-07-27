@@ -571,6 +571,31 @@ impl RedisPool {
             .join(",")
     }
 
+    /// Membres BRUTS de l'index d'une zone, tels que Redis les stocke.
+    ///
+    /// Un index illisible rend une liste VIDE et se journalise : ni l'élagage ni
+    /// la carte de l'exploitation ne doivent tomber parce que Redis est muet
+    /// (constitution II — l'éphémère est reconstructible).
+    async fn membres_bruts(&self, zone: Uuid) -> Vec<String> {
+        let Ok(mut conn) = self.pool.get().await else {
+            tracing::warn!("Redis indisponible — index de pool illisible");
+            return Vec::new();
+        };
+        match redis::cmd("ZRANGE")
+            .arg(Self::cle_index(zone))
+            .arg(0)
+            .arg(-1)
+            .query_async(&mut conn)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(erreur = %e, "index de pool illisible — considéré vide");
+                Vec::new()
+            }
+        }
+    }
+
     /// Décodage tolérant : une entrée mal formée est IGNORÉE plutôt que de faire
     /// échouer toute la lecture — une capacité perdue écarte un coursier, une
     /// lecture qui échoue les écarte tous.
@@ -698,6 +723,17 @@ impl PoolCoursiers for RedisPool {
         Ok(membres.iter().filter_map(|m| m.parse().ok()).collect())
     }
 
+    async fn membres(&self, zone: Uuid) -> Result<Vec<Uuid>, ErreurDispatch> {
+        // L'index GEO **est** un zset : `ZRANGE 0 -1` en rend tous les membres,
+        // sans centre ni rayon. C'est ce que l'élagage lit déjà.
+        Ok(self
+            .membres_bruts(zone)
+            .await
+            .iter()
+            .filter_map(|m| m.parse().ok())
+            .collect())
+    }
+
     async fn etat(&self, coursier: Uuid) -> Result<Option<InscriptionPool>, ErreurDispatch> {
         let Ok(mut conn) = self.pool.get().await else {
             tracing::warn!("Redis indisponible — état de pool inconnu");
@@ -749,19 +785,7 @@ impl PoolCoursiers for RedisPool {
         let Ok(mut conn) = self.pool.get().await else {
             return Ok(0);
         };
-        let membres: Vec<String> = match redis::cmd("ZRANGE")
-            .arg(Self::cle_index(zone))
-            .arg(0)
-            .arg(-1)
-            .query_async(&mut conn)
-            .await
-        {
-            Ok(v) => v,
-            Err(e) => {
-                tracing::warn!(erreur = %e, "élagage impossible — index inchangé");
-                return Ok(0);
-            }
-        };
+        let membres = self.membres_bruts(zone).await;
         let mut fantomes = Vec::new();
         for membre in membres {
             let existe: i64 = redis::cmd("EXISTS")

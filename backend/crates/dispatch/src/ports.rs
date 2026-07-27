@@ -69,6 +69,20 @@ pub trait PoolCoursiers: Send + Sync {
         rayon_m: i64,
     ) -> Result<Vec<Uuid>, ErreurDispatch>;
 
+    /// **Tous** les membres de l'index d'une zone, sans centre ni rayon.
+    ///
+    /// Ce que [`dans_rayon`](PoolCoursiers::dans_rayon) ne peut pas faire : il
+    /// répond « qui est près d'ici », question du dispatch, alors que la « carte
+    /// des coursiers » de l'exploitation (FR-006) demande « qui est en ligne »,
+    /// et n'a aucun centre à proposer. L'approcher par un rayon très large
+    /// écarterait en silence le coursier qui le dépasse — une carte qui ment par
+    /// omission est pire qu'une carte absente.
+    ///
+    /// Rend les membres BRUTS, fantômes compris (research R2) : c'est
+    /// [`etat`](PoolCoursiers::etat) qui dit lesquels sont vivants, exactement
+    /// comme après un pré-filtre géographique.
+    async fn membres(&self, zone: Uuid) -> Result<Vec<Uuid>, ErreurDispatch>;
+
     /// État d'un coursier, ou `None` s'il est sorti du pool.
     ///
     /// `None` n'est JAMAIS une erreur : un index muet doit dégrader, pas casser.
@@ -526,6 +540,16 @@ impl PoolCoursiers for MemoirePool {
                     .copied()
                     .collect()
             })
+            .unwrap_or_default())
+    }
+
+    async fn membres(&self, zone: Uuid) -> Result<Vec<Uuid>, ErreurDispatch> {
+        Ok(self
+            .index
+            .lock()
+            .expect("index")
+            .get(&zone)
+            .cloned()
             .unwrap_or_default())
     }
 

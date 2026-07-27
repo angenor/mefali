@@ -67,7 +67,10 @@ pub struct InscriptionPool {
     pub capacites: Vec<Capacite>,
     /// Note en centièmes, ou `None` tant qu'AVI n'existe pas (research R7).
     pub note_centiemes: Option<i32>,
-    /// Plafond d'avance DÉCLARÉ du jour (unités mineures).
+    /// Plafond d'avance **RETENU** du jour (unités mineures) — `min(palier de
+    /// la grille, montant déclaré)`, jamais le seul déclaré : c'est le montant
+    /// qu'un candidat peut réellement avancer, donc le seul que l'éligibilité
+    /// puisse comparer sans se tromper de sens (FR-010).
     pub plafond_unites: i64,
     /// Devise ISO 4217 de la zone.
     pub devise: String,
