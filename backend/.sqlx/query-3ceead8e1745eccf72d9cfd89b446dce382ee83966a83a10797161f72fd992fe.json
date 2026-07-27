@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.prestataire_id AS \"prestataire!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE l.commande_id = $1 AND a.prestataire_id IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prestataire!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "prestataire_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3ceead8e1745eccf72d9cfd89b446dce382ee83966a83a10797161f72fd992fe"
+}

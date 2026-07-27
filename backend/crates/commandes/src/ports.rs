@@ -222,6 +222,34 @@ pub trait CommandesADispatcher: Send + Sync {
         horodatage: DateTime<Utc>,
     ) -> Result<(), ErreurCommandes>;
 
+    /// Escalade les commandes non assignées au-delà du seuil de zone, et rend
+    /// celles qui l'ont été (FR-064, research R14).
+    ///
+    /// Écrite au cycle 008 mais **planifiée nulle part** : c'est le tic de
+    /// dispatch qui l'appelle désormais. Idempotente par le `NOT EXISTS` sur
+    /// l'outbox — exactement une alerte par commande, quel que soit le chemin.
+    async fn escalader_attentes(
+        &self,
+        zone: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<Vec<Uuid>, ErreurCommandes>;
+
+    /// Met la commande dans la file FIFO faute d'éligible (CMD-10, FR-037).
+    ///
+    /// Le cycle 008 laissait cette décision à l'appelant (« `Ok(None)` = aucun
+    /// coursier éligible : c'est à l'appelant de mettre la commande en
+    /// attente »). Cet appelant, c'est le pipeline de dispatch — d'où cette
+    /// méthode plutôt qu'un accès direct : `dispatch` n'écrit jamais dans le
+    /// schéma `commandes`.
+    ///
+    /// Une commande qui n'est plus `nouvelle` refuse la transition, et c'est un
+    /// refus ATTENDU (annulée, déjà assignée entre-temps) — pas une panne.
+    async fn mettre_en_attente(
+        &self,
+        commande: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes>;
+
     /// Bascule cash → mobile money après création (FR-026) : tronc
     /// `nouvelle → en_attente_paiement`, `mode_paiement = mobile_money`.
     ///

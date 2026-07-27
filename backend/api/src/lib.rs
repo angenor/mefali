@@ -6,6 +6,8 @@
 
 /// Surface HTTP admin du cycle CMD (file d'attente, annulation, issues).
 pub mod admin_commandes_http;
+/// Surface HTTP admin du cycle DSP (alertes, pool, reprise manuelle).
+pub mod admin_dispatch_http;
 pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
@@ -131,6 +133,12 @@ pub fn api_openapi() -> OpenApi {
         .service(dispatch_http::basculer_disponibilite_coursier)
         .service(dispatch_http::lire_disponibilite)
         .service(dispatch_http::publier_position)
+        .service(dispatch_http::offre_courante)
+        .service(dispatch_http::accepter_offre)
+        .service(dispatch_http::refuser_offre)
+        .service(admin_dispatch_http::alertes_dispatch)
+        .service(admin_dispatch_http::pool_dispatch)
+        .service(admin_dispatch_http::reprendre_course_admin)
         .service(admin_commandes_http::enregistrer_issue)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
@@ -235,6 +243,118 @@ async fn job_purge_reperes(depot: PgComptes) {
 /// d'argent ne dépend pas de la vie d'un processus.
 const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// **PREMIER consommateur outbox réel du produit.**
+///
+/// `WorkerOutbox::new(pool, Vec::new())` tournait jusqu'ici avec zéro
+/// consommateur : le trait `ConsommateurOutbox` était le point d'extension
+/// prévu, et le dispatch est le premier à s'y brancher. Son intervalle par
+/// défaut (1 s) donne une latence d'assignation d'environ une seconde après la
+/// création — très en dessous des 2 min de SC-002.
+///
+/// ⚠ **Ne rend `Err` QUE sur une panne d'infrastructure récupérable.** Le worker
+/// ne marque l'événement publié que si TOUS les consommateurs rendent `Ok` ; un
+/// `Err` incrémente `tentatives` et l'événement est rejoué **indéfiniment**.
+/// Toute issue MÉTIER — aucun éligible, bascule prépaiement, pool vide — est
+/// donc un succès écrit en base : sinon une commande sans coursier bloquerait sa
+/// propre ligne d'outbox pour toujours (research R1).
+struct DispatchOutbox {
+    depot: dispatch::PgDispatch,
+}
+
+#[async_trait::async_trait]
+impl socle::ConsommateurOutbox for DispatchOutbox {
+    fn nom(&self) -> &'static str {
+        "dispatch"
+    }
+
+    async fn consommer(
+        &self,
+        evenement: &socle::EvenementPublie,
+    ) -> Result<(), socle::ConsommationError> {
+        // Indifférent au reste du journal : un consommateur reçoit TOUT, et ne
+        // doit réagir qu'à ce qui le concerne (idempotent par construction).
+        match evenement.type_evenement.as_str() {
+            // Une commande prête, ou un prépaiement confirmé qui la rend
+            // dispatchable à nouveau — la reprise se fait SANS le critère
+            // d'avance, puisque le client a payé.
+            "commande.prete_a_dispatcher" | "commande.paiement_confirme" => {
+                match self
+                    .depot
+                    .dispatcher(evenement.entite_id, chrono::Utc::now())
+                    .await
+                {
+                    Ok(decision) => {
+                        tracing::info!(
+                            commande = %evenement.entite_id,
+                            decision = ?decision,
+                            "pipeline de dispatch exécuté",
+                        );
+                        Ok(())
+                    }
+                    // Panne d'infrastructure : on laisse le worker rejouer.
+                    Err(dispatch::ErreurDispatch::Sql(e)) => {
+                        Err(socle::ConsommationError(format!("base de données : {e}")))
+                    }
+                    Err(dispatch::ErreurDispatch::Dependance(detail)) => {
+                        Err(socle::ConsommationError(detail))
+                    }
+                    // Refus métier ou configuration : journalisé, JAMAIS rejoué
+                    // — rejouer ne changerait rien et bloquerait la ligne.
+                    Err(e) => {
+                        tracing::warn!(
+                            commande = %evenement.entite_id, erreur = %e,
+                            "dispatch sans effet — l'événement reste consommé",
+                        );
+                        Ok(())
+                    }
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Pas du tic de dispatch. Tout ce qui est TEMPOREL y passe : expiration
+/// d'offre, broadcast, escalade, réassignation, reprise FIFO, élagage.
+///
+/// 5 s : une offre dure 40 s, et un compte à rebours résolu à la minute
+/// laisserait le coursier suivant attendre pour rien. Comme
+/// [`BALAYAGE_SUBSTITUTIONS`], ce job n'est PAS la source de vérité de
+/// l'expiration — l'échéance est persistée et toute lecture la respecte déjà.
+const TIC_DISPATCH: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Le tic de dispatch, par zone active.
+///
+/// Une erreur est journalisée et retentée au passage suivant : un incident de
+/// tic ne doit **jamais** faire tomber l'API.
+async fn job_tic_dispatch(depot: dispatch::PgDispatch, pool: sqlx::PgPool) {
+    let mut horloge = tokio::time::interval(TIC_DISPATCH);
+    loop {
+        horloge.tick().await;
+        // Les zones qui ont de l'activité : celles où vit au moins une commande
+        // non close. Balayer tout l'arbre coûterait une requête par ville pour
+        // rien.
+        let zones: Vec<uuid::Uuid> = match sqlx::query_scalar(
+            "SELECT DISTINCT zone_id FROM commandes.commande
+             WHERE etat IN ('nouvelle', 'en_attente_coursier', 'en_cours')",
+        )
+        .fetch_all(&pool)
+        .await
+        {
+            Ok(z) => z,
+            Err(e) => {
+                tracing::error!(erreur = %e, "tic de dispatch : zones illisibles");
+                continue;
+            }
+        };
+        for zone in zones {
+            if let Err(e) = depot.tic(zone, chrono::Utc::now()).await {
+                tracing::error!(zone = %zone, erreur = %e, "tic de dispatch échoué");
+            }
+        }
+    }
+}
+
 /// Résolution périodique des propositions de remplacement échues (FR-046).
 ///
 /// À l'expiration on APPELLE, puis l'article est retiré et non facturé. Une
@@ -332,9 +452,7 @@ pub async fn run() -> std::io::Result<()> {
                 if let Err(e) = sqlx::migrate!("../migrations").run(&pool).await {
                     return Err(std::io::Error::other(format!("migrations : {e}")));
                 }
-                let worker = socle::WorkerOutbox::new(pool.clone(), Vec::new());
-                tokio::spawn(worker.run());
-                eprintln!("migrations appliquées ; worker outbox démarré");
+                eprintln!("migrations appliquées");
 
                 let ephemere = infra_redis::RedisEphemere::nouveau(&config.redis_url)
                     .map_err(|e| std::io::Error::other(format!("Redis : {e}")))?;
@@ -506,6 +624,20 @@ pub async fn run() -> std::io::Result<()> {
                     "pipeline DSP câblé (pool Redis, double verrou Lua, proximité routière ; \
                      note AVI, paires CRS-07 et transport NTF-01 non construits)"
                 );
+                // Le worker outbox démarre ICI, et pas plus tôt : il attendait
+                // son premier consommateur réel (research R1).
+                let worker = socle::WorkerOutbox::new(
+                    pool.clone(),
+                    vec![Arc::new(DispatchOutbox {
+                        depot: depot_dispatch.clone(),
+                    })],
+                );
+                tokio::spawn(worker.run());
+                tokio::spawn(job_tic_dispatch(depot_dispatch.clone(), pool.clone()));
+                eprintln!(
+                    "worker outbox démarré avec son premier consommateur (dispatch) ; \
+                     tic de dispatch toutes les 5 s"
+                );
                 dispatch_opt = Some(depot_dispatch);
 
                 commandes_domaine_opt = Some(depot_commandes);
@@ -626,6 +758,18 @@ pub async fn run() -> std::io::Result<()> {
             .service(dispatch_http::basculer_disponibilite_coursier)
             .service(dispatch_http::lire_disponibilite)
             .service(dispatch_http::publier_position)
+            .service(dispatch_http::offre_courante)
+            .service(dispatch_http::accepter_offre)
+            .service(dispatch_http::refuser_offre)
+            .service(admin_dispatch_http::alertes_dispatch)
+            .service(admin_dispatch_http::pool_dispatch)
+            .service(admin_dispatch_http::reprendre_course_admin)
+        .service(dispatch_http::offre_courante)
+        .service(dispatch_http::accepter_offre)
+        .service(dispatch_http::refuser_offre)
+        .service(admin_dispatch_http::alertes_dispatch)
+        .service(admin_dispatch_http::pool_dispatch)
+        .service(admin_dispatch_http::reprendre_course_admin)
             .service(admin_commandes_http::enregistrer_issue)
             .split_for_parts();
         let mut app = app

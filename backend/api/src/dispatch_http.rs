@@ -357,3 +357,303 @@ pub async fn publier_position(
         prochaine_publication_s: config.position_periode_s,
     }))
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// Offre courante et décision (DSP-04)
+// ══════════════════════════════════════════════════════════════════════════
+
+/// Un arrêt de l'offre, tel que K2 l'affiche.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ArretOffre)]
+pub struct ArretOffreDto {
+    /// Rang d'affichage (1 = premier arrêt).
+    pub ordre: i32,
+    /// Prestataire visé.
+    pub prestataire_id: Option<Uuid>,
+    /// Nom affiché sur la carte.
+    pub nom: String,
+    /// Distance INTER-ARRÊTS (mètres) — « + 40 m » de la maquette.
+    pub distance_m: i64,
+}
+
+/// La destination, **avant** acceptation : jamais de coordonnée (ARTCI).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = DestinationOffre)]
+pub struct DestinationDto {
+    /// Nom de la zone de livraison.
+    pub zone_nom: String,
+    /// Distance approximative depuis le dernier arrêt (mètres arrondis).
+    pub distance_m: i64,
+    /// Clé i18n de la mention « adresse exacte après acceptation ».
+    pub mention_cle: String,
+}
+
+/// Le gain, détaillé comme sur K2.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = GainOffre)]
+pub struct GainDto {
+    /// Gain total (unités mineures).
+    pub total_unites: i64,
+    /// Part de déplacement.
+    pub deplacement_unites: i64,
+    /// Part des arrêts supplémentaires.
+    pub arrets_unites: i64,
+    /// Part d'effort.
+    pub effort_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+}
+
+/// Ce que le coursier devra avancer, avec son plafond.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = AvanceOffre)]
+pub struct AvanceDto {
+    /// Montant à avancer (unités mineures).
+    pub montant_unites: i64,
+    /// Plafond RETENU du coursier — pourquoi il peut la prendre.
+    pub plafond_retenu_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+}
+
+/// L'offre en vol, telle que l'écran K2 la rend.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = OffreCourante)]
+pub struct OffreCouranteDto {
+    /// Offre concernée.
+    pub offre_id: Uuid,
+    /// Commande offerte.
+    pub commande_id: Uuid,
+    /// `cascade` | `broadcast`.
+    pub mode: String,
+    /// **AUTORITÉ** du compte à rebours : le widget compte, le serveur tranche.
+    pub echeance_le: DateTime<Utc>,
+    /// Durée totale du compte à rebours (secondes).
+    pub timer_s: i64,
+    /// Secondes restantes à l'instant de la lecture.
+    pub restant_s: i64,
+    /// Arrêts dans l'ordre optimisé du devis FIGÉ.
+    pub arrets: Vec<ArretOffreDto>,
+    /// Destination approximative.
+    pub destination: DestinationDto,
+    /// Gain détaillé.
+    pub gain: GainDto,
+    /// Avance et plafond.
+    pub avance: AvanceDto,
+    /// Vrai si les distances viennent du repli vol d'oiseau (constitution IV).
+    pub degraded: bool,
+}
+
+/// Décision sur une offre — accepter ou refuser.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DecisionOffre)]
+pub struct DecisionOffreDto {
+    /// Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+    pub uuid_client: Uuid,
+    /// Horodatage de l'appareil — **observation seulement**.
+    pub horodatage_local: DateTime<Utc>,
+}
+
+/// Résultat d'une acceptation.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = AcceptationOffre)]
+pub struct AcceptationDto {
+    /// Commande affectée.
+    pub commande_id: Uuid,
+    /// Livraison assignée.
+    pub livraison_id: Uuid,
+    /// État de la livraison après affectation.
+    pub etat_livraison: String,
+    /// Vrai si l'appel était un rejeu — même corps, aucune seconde affectation.
+    pub rejeu: bool,
+}
+
+/// Résultat d'un refus.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = RefusOffre)]
+pub struct RefusDto {
+    /// Issue de l'offre après refus.
+    pub issue: String,
+}
+
+/// `GET /courses/offre-courante` — l'offre en vol de CE coursier, ou `204`.
+///
+/// Une offre **échue** rend `204` **même si le tic n'a pas encore passé** :
+/// l'échéance persistée est l'autorité, et le tic ne fait qu'écrire ce que la
+/// lecture savait déjà (research R1).
+///
+/// C'est l'app qui **va chercher** son offre (toutes les 2 s tant qu'un écran de
+/// dispatch est monté) : le push haute priorité appartient à NTF-01, et le jour
+/// où il arrivera il réveillera l'app, qui appellera ce même endpoint — aucun
+/// contrat à refaire (research R16).
+#[utoipa::path(
+    get,
+    path = "/courses/offre-courante",
+    tag = "dispatch",
+    responses(
+        (status = 200, description = "Offre en vol : arrêts, gain, avance, échéance.",
+         body = OffreCouranteDto),
+        (status = 204, description = "Aucune offre en vol (ou offre échue)."),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/courses/offre-courante")]
+pub async fn offre_courante(
+    auth: Auth,
+    depot: web::Data<PgDispatch>,
+) -> Result<HttpResponse, ErreurDispatchHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let maintenant = Utc::now();
+    let Some(offre) = depot.offre_courante(auth.compte_id, maintenant).await? else {
+        return Ok(HttpResponse::NoContent().finish());
+    };
+    let contenu = depot.contenu_offre(&offre, maintenant).await?;
+    Ok(HttpResponse::Ok().json(vers_dto(&offre, contenu, maintenant)))
+}
+
+/// `POST /courses/offres/{offre_id}/accepter` — prendre la course.
+///
+/// **Idempotent** (FR-054) : un rejeu avec le même `uuid_client` rend le même
+/// `200` et le même corps ; il ne crée ni seconde affectation ni second
+/// événement.
+///
+/// Un `409 deja_prise` n'est **pas** un échec technique : l'app l'affiche comme
+/// l'état K2-1b, ton neutre, sans blâme et **sans pénalité** (FR-049).
+#[utoipa::path(
+    post,
+    path = "/courses/offres/{offre_id}/accepter",
+    tag = "dispatch",
+    params(("offre_id" = Uuid, Path, description = "Offre adressée à l'appelant.")),
+    request_body = DecisionOffreDto,
+    responses(
+        (status = 200, description = "Course affectée (idempotent au rejeu).", body = AcceptationDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
+        (status = 404, description = "Offre inconnue, ou adressée à un autre coursier.",
+         body = ErreurApiDto),
+        (status = 409, description = "Course déjà prise (sans pénalité), offre échue, \
+                                      ou course active.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/offres/{offre_id}/accepter")]
+pub async fn accepter_offre(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DecisionOffreDto>,
+    depot: web::Data<PgDispatch>,
+) -> Result<HttpResponse, ErreurDispatchHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let faite = depot
+        .accepter_offre(
+            chemin.into_inner(),
+            auth.compte_id,
+            corps.uuid_client,
+            Utc::now(),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(AcceptationDto {
+        commande_id: faite.commande,
+        livraison_id: faite.livraison,
+        etat_livraison: "assignee".to_owned(),
+        rejeu: faite.rejeu,
+    }))
+}
+
+/// `POST /courses/offres/{offre_id}/refuser` — passer son tour.
+///
+/// Le candidat suivant est sollicité **immédiatement**, sans attendre la fin du
+/// compte à rebours (FR-050). Un refus compte dans le taux d'acceptation ; il
+/// n'entraîne **aucune** sanction — l'anti-abus (DSP-08) est hors périmètre.
+#[utoipa::path(
+    post,
+    path = "/courses/offres/{offre_id}/refuser",
+    tag = "dispatch",
+    params(("offre_id" = Uuid, Path, description = "Offre adressée à l'appelant.")),
+    request_body = DecisionOffreDto,
+    responses(
+        (status = 200, description = "Offre refusée ; le suivant est sollicité aussitôt.",
+         body = RefusDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
+        (status = 404, description = "Offre inconnue, ou adressée à un autre coursier.",
+         body = ErreurApiDto),
+        (status = 409, description = "Offre déjà conclue.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/offres/{offre_id}/refuser")]
+pub async fn refuser_offre(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DecisionOffreDto>,
+    depot: web::Data<PgDispatch>,
+) -> Result<HttpResponse, ErreurDispatchHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let offre = depot
+        .refuser_offre(
+            chemin.into_inner(),
+            auth.compte_id,
+            corps.uuid_client,
+            Utc::now(),
+        )
+        .await?;
+    // Le candidat suivant, TOUT DE SUITE : attendre le tic ferait perdre au
+    // client les secondes que le refus vient justement d'économiser.
+    let depot_relance = depot.clone();
+    let commande = offre.commande;
+    actix_web::rt::spawn(async move {
+        if let Err(e) = depot_relance.dispatcher(commande, Utc::now()).await {
+            tracing::warn!(commande = %commande, erreur = %e, "relance après refus impossible");
+        }
+    });
+    Ok(HttpResponse::Ok().json(RefusDto {
+        issue: offre.issue.comme_str().to_owned(),
+    }))
+}
+
+/// Assemble le DTO d'offre depuis le domaine.
+fn vers_dto(
+    offre: &dispatch::Offre,
+    contenu: dispatch::ContenuOffre,
+    maintenant: DateTime<Utc>,
+) -> OffreCouranteDto {
+    OffreCouranteDto {
+        offre_id: offre.id,
+        commande_id: offre.commande,
+        mode: offre.mode.comme_str().to_owned(),
+        echeance_le: offre.echeance_le,
+        timer_s: (offre.echeance_le - offre.emise_le).num_seconds().max(0),
+        restant_s: offre.restant_s(maintenant),
+        arrets: contenu
+            .arrets
+            .into_iter()
+            .map(|a| ArretOffreDto {
+                ordre: a.ordre,
+                prestataire_id: a.prestataire_id,
+                nom: a.nom,
+                distance_m: a.distance_m,
+            })
+            .collect(),
+        destination: DestinationDto {
+            zone_nom: contenu.destination_zone_nom,
+            distance_m: contenu.destination_distance_m,
+            mention_cle: "dispatch.offre.adresse_apres_acceptation".to_owned(),
+        },
+        gain: GainDto {
+            total_unites: contenu.gain_total_unites,
+            deplacement_unites: contenu.gain_deplacement_unites,
+            arrets_unites: contenu.gain_arrets_unites,
+            effort_unites: contenu.gain_effort_unites,
+            devise: offre.devise.clone(),
+        },
+        avance: AvanceDto {
+            montant_unites: offre.montant_a_avancer,
+            plafond_retenu_unites: contenu.plafond_retenu_unites,
+            devise: offre.devise.clone(),
+        },
+        degraded: contenu.degraded,
+    }
+}

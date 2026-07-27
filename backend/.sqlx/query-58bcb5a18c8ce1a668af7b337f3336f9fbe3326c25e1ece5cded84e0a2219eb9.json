@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT coursier_id FROM dispatch.offre\n             WHERE issue = 'en_vol' AND echeance_le > now()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "coursier_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "58bcb5a18c8ce1a668af7b337f3336f9fbe3326c25e1ece5cded84e0a2219eb9"
+}

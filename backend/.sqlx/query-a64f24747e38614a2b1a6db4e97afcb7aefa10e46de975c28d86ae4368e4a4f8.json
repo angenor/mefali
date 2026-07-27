@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT coursier_id FROM dispatch.offre WHERE commande_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "coursier_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a64f24747e38614a2b1a6db4e97afcb7aefa10e46de975c28d86ae4368e4a4f8"
+}

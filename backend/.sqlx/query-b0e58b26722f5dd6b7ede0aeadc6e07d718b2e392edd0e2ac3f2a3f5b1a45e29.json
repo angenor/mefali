@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                 count(*) FILTER (WHERE issue = 'acceptee')                  AS \"acceptees!\",\n                 count(*) FILTER (\n                     WHERE issue IN ('acceptee', 'refusee')\n                        OR (issue = 'non_repondue' AND NOT franche)\n                 ) AS \"decidees!\"\n               FROM dispatch.offre\n               WHERE coursier_id = $1 AND emise_le >= $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "acceptees!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "decidees!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "b0e58b26722f5dd6b7ede0aeadc6e07d718b2e392edd0e2ac3f2a3f5b1a45e29"
+}

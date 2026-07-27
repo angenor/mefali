@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.id AS livraison_id, l.commande_id, l.coursier_id,\n                      e.payload AS \"payload?\",\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.type_arret = 'collecte' AND a.statut = 'collecte')\n                          AS \"nb_collectes!\",\n                      EXTRACT(EPOCH FROM (now() - COALESCE(sp.progresse_le, l.assignee_le)))::bigint\n                          AS \"stagnation_s?\"\n               FROM commandes.livraison l\n               LEFT JOIN dispatch.suivi_progression sp ON sp.livraison_id = l.id\n               LEFT JOIN outbox.evenement e\n                      ON e.type_evenement = 'dispatch.course_bloquee_escaladee'\n                     AND e.entite_id = l.id\n               WHERE l.coursier_id IS NOT NULL\n                 AND l.etat IN ('assignee', 'en_collecte')\n                 AND e.id IS NOT NULL\n               ORDER BY l.assignee_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "payload?",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "outbox.evenement",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "nb_collectes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "stagnation_s?",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "9cd96c979c0b8f47f46b47bb7d7352588b5688ef11d96c51362d74c01f9e611f"
+}

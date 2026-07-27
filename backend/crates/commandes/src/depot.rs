@@ -1010,6 +1010,26 @@ impl CommandesADispatcher for PgCommandes {
         Ok(())
     }
 
+    /// Escalade les attentes d'une zone — planifiée par le tic de dispatch.
+    async fn escalader_attentes(
+        &self,
+        zone: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<Vec<Uuid>, ErreurCommandes> {
+        PgCommandes::escalader_attentes(self, zone, horodatage).await
+    }
+
+    /// Met la commande en file d'attente FIFO — la mécanique CMD-10 existante,
+    /// appelée par le pipeline de dispatch.
+    async fn mettre_en_attente(
+        &self,
+        commande: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        self.mettre_en_attente_coursier(commande, horodatage).await?;
+        Ok(())
+    }
+
     /// Exige un prépaiement après création : le tronc passe
     /// `nouvelle → en_attente_paiement` et le mode devient `mobile_money`.
     ///

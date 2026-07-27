@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT reponse_uuid_client FROM dispatch.offre WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reponse_uuid_client",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "reponse_uuid_client"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ec553e35e16ba17964962195fc467936c11ea9274995cdc17e92021a2ce95968"
+}

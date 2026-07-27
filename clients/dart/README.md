@@ -112,9 +112,15 @@ Class | Method | HTTP request | Description
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 [*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
+[*DispatchApi*](doc/DispatchApi.md) | [**accepterOffre**](doc/DispatchApi.md#accepteroffre) | **POST** /courses/offres/{offre_id}/accepter | &#x60;POST /courses/offres/{offre_id}/accepter&#x60; — prendre la course.
 [*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
 [*DispatchApi*](doc/DispatchApi.md) | [**lireDisponibilite**](doc/DispatchApi.md#liredisponibilite) | **GET** /moi/disponibilite | &#x60;GET /moi/disponibilite&#x60; — l&#39;état courant, tel que K1 l&#39;affiche.
+[*DispatchApi*](doc/DispatchApi.md) | [**offreCourante**](doc/DispatchApi.md#offrecourante) | **GET** /courses/offre-courante | &#x60;GET /courses/offre-courante&#x60; — l&#39;offre en vol de CE coursier, ou &#x60;204&#x60;.
 [*DispatchApi*](doc/DispatchApi.md) | [**publierPosition**](doc/DispatchApi.md#publierposition) | **POST** /moi/position | &#x60;POST /moi/position&#x60; — publier sa position, et rester dans le pool.
+[*DispatchApi*](doc/DispatchApi.md) | [**refuserOffre**](doc/DispatchApi.md#refuseroffre) | **POST** /courses/offres/{offre_id}/refuser | &#x60;POST /courses/offres/{offre_id}/refuser&#x60; — passer son tour.
+[*DispatchAdminApi*](doc/DispatchAdminApi.md) | [**alertesDispatch**](doc/DispatchAdminApi.md#alertesdispatch) | **GET** /admin/dispatch/alertes | &#x60;GET /admin/dispatch/alertes&#x60; — ce qui demande un humain.
+[*DispatchAdminApi*](doc/DispatchAdminApi.md) | [**poolDispatch**](doc/DispatchAdminApi.md#pooldispatch) | **GET** /admin/dispatch/pool | &#x60;GET /admin/dispatch/pool&#x60; — les coursiers en ligne d&#39;une zone.
+[*DispatchAdminApi*](doc/DispatchAdminApi.md) | [**reprendreCourseAdmin**](doc/DispatchAdminApi.md#reprendrecourseadmin) | **POST** /admin/dispatch/courses/{livraison_id}/reprendre | &#x60;POST /admin/dispatch/courses/{livraison_id}/reprendre&#x60; — la seule voie de reprise d&#39;une course dont un arrêt est **déjà collecté**.
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
 [*MoiApi*](doc/MoiApi.md) | [**mesAdresses**](doc/MoiApi.md#mesadresses) | **GET** /moi/adresses | Adresses enregistrées du compte courant (FR-021).
@@ -155,18 +161,22 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AcceptationOffre](doc/AcceptationOffre.md)
  - [Accepte](doc/Accepte.md)
  - [ActionArret](doc/ActionArret.md)
  - [ActionBoutiqueDto](doc/ActionBoutiqueDto.md)
  - [ActionRoleDto](doc/ActionRoleDto.md)
  - [Adresse](doc/Adresse.md)
  - [AffichageRupture](doc/AffichageRupture.md)
+ - [AlertesDispatch](doc/AlertesDispatch.md)
  - [AppareilDto](doc/AppareilDto.md)
  - [ArretCourantSuivi](doc/ArretCourantSuivi.md)
+ - [ArretOffre](doc/ArretOffre.md)
  - [ArretPreProvisionne](doc/ArretPreProvisionne.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
  - [Attente](doc/Attente.md)
+ - [AvanceOffre](doc/AvanceOffre.md)
  - [BasculeDisponibilite](doc/BasculeDisponibilite.md)
  - [BasculeDisponibiliteDto](doc/BasculeDisponibiliteDto.md)
  - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
@@ -186,9 +196,12 @@ Class | Method | HTTP request | Description
  - [CorpsForcage](doc/CorpsForcage.md)
  - [CorrigerDto](doc/CorrigerDto.md)
  - [CourseActive](doc/CourseActive.md)
+ - [CourseBloquee](doc/CourseBloquee.md)
+ - [CoursierDuPool](doc/CoursierDuPool.md)
  - [CoursierSuivi](doc/CoursierSuivi.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
+ - [DecisionOffre](doc/DecisionOffre.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DecisionSubstitution](doc/DecisionSubstitution.md)
  - [DemandeAnnulation](doc/DemandeAnnulation.md)
@@ -199,8 +212,10 @@ Class | Method | HTTP request | Description
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
  - [DemandeRemise](doc/DemandeRemise.md)
+ - [DemandeReprise](doc/DemandeReprise.md)
  - [DemandeRupture](doc/DemandeRupture.md)
  - [DemandeSimulation](doc/DemandeSimulation.md)
+ - [DestinationOffre](doc/DestinationOffre.md)
  - [Devis](doc/Devis.md)
  - [DevisLivraison](doc/DevisLivraison.md)
  - [DevisPanier](doc/DevisPanier.md)
@@ -211,6 +226,7 @@ Class | Method | HTTP request | Description
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
  - [DrapeauxZone](doc/DrapeauxZone.md)
  - [ErreurApi](doc/ErreurApi.md)
+ - [EscaladeDispatch](doc/EscaladeDispatch.md)
  - [EtatArretCourse](doc/EtatArretCourse.md)
  - [EtatCategorie](doc/EtatCategorie.md)
  - [EtatDisponibilite](doc/EtatDisponibilite.md)
@@ -220,6 +236,7 @@ Class | Method | HTTP request | Description
  - [FichePublique](doc/FichePublique.md)
  - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
  - [ForcageDto](doc/ForcageDto.md)
+ - [GainOffre](doc/GainOffre.md)
  - [Grille](doc/Grille.md)
  - [GrillesZone](doc/GrillesZone.md)
  - [GroupeVendeur](doc/GroupeVendeur.md)
@@ -240,6 +257,7 @@ Class | Method | HTTP request | Description
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
+ - [OffreCourante](doc/OffreCourante.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
  - [PaiementCommande](doc/PaiementCommande.md)
  - [PaiementPanier](doc/PaiementPanier.md)
@@ -248,6 +266,7 @@ Class | Method | HTTP request | Description
  - [PlaqueUrl](doc/PlaqueUrl.md)
  - [PlateformeDto](doc/PlateformeDto.md)
  - [Point](doc/Point.md)
+ - [PoolDeZone](doc/PoolDeZone.md)
  - [PositionSuivi](doc/PositionSuivi.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
@@ -256,9 +275,11 @@ Class | Method | HTTP request | Description
  - [PublicationPosition](doc/PublicationPosition.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
+ - [RefusOffre](doc/RefusOffre.md)
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
+ - [RepriseFaite](doc/RepriseFaite.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatAnnulation](doc/ResultatAnnulation.md)
  - [ResultatCollecte](doc/ResultatCollecte.md)
