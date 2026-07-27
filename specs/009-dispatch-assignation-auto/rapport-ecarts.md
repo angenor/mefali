@@ -263,3 +263,63 @@ est locale.
 
 **À décider par le produit** : rien. C'est une dette technique nommée, avec son
 seuil ; elle n'engage aucune promesse faite à un utilisateur.
+
+---
+
+## 7. Validation sur émulateur (T071) — ce que le terrain a trouvé
+
+Déroulée le 2026-07-27 sur `Medium_Phone_API_36.1`, API sur IP LAN, émulateur
+positionné sur Tiassalé. **Neuf défauts**, tous invisibles à une suite de tests
+pourtant verte — parce qu'aucun ne regardait les **jonctions** entre des pièces
+qui, prises une par une, étaient justes.
+
+Le plus grave d'abord : **K1 et K2 étaient inatteignables**. L'espace coursier
+menait directement à l'écran de course du cycle QRC, et les deux écrans du cycle
+n'étaient référencés que par leurs propres tests widget. Tout DSP était injouable
+sur le terrain. Les huit autres :
+
+| Trouvé | Ce que Yao vivait |
+|---|---|
+| K2-1b escamoté ; son bouton `Navigator.maybePop()` sans route à dépiler | il ne pouvait pas LIRE « sans pénalité — n sur 3 » et croyait avoir été puni |
+| Acceptation réussie affichant « temps écoulé » | il gagnait la course et lisait qu'il l'avait perdue |
+| Détail du gain toujours à zéro (clés `deplacement`/`arrets`/`effort` inexistantes) | « 0 + 0 + 0 » sous un gain de 150 FCFA — un détail qui contredit le total fait douter du total |
+| Publication seulement sur mouvement du capteur | **arrêté au carrefour**, il sortait du pool en 90 s, en lisant « en attente de courses » |
+| Permission de position jamais demandée | sur un appareil neuf, il n'entrait **jamais** dans le pool |
+| K1 disant « en attente de courses » hors du pool | il croyait travailler ; aucune course ne pouvait lui parvenir |
+| Course active jamais relue après acceptation | il retombait sur K1, sa course invisible |
+| Publication interrompue tant que K2 tenait l'écran | il sortait du pool en lisant « restez en ligne » |
+
+**Validé sur appareil** : connexion coursier, K1 (plafond retenu + palier
+d'entrée, FR-010 ; verrouillage en ligne ; « nouveau jour, déclarez »), entrée au
+pool, `GET /admin/dispatch/pool` **par HTTP avec la seule `zone_id`**, dispatch →
+K2 plein écran (arrêts et distances inter-arrêts, destination sans coordonnée,
+gain détaillé faisant le total, avance avec son plafond, « distances estimées »
+en dégradé sans OSRM), une acceptation en 25 s, expiration → K2-1b persistant
+avec « sans pénalité — 1 sur 3 aujourd'hui » et retour au tableau de bord,
+demande de permission, et **un coursier immobile depuis plus de trois minutes
+resté dans le pool** grâce à la cadence.
+
+**Non validé visuellement** : la bascule K2 → écran de course après acceptation.
+Le correctif est en place et la suite est verte, mais piloter un compte à rebours
+de 40 s par `adb shell input tap` à l'aveugle n'a pas permis de l'observer. À
+reprendre à la main.
+
+**Pièges d'environnement rencontrés**, à ajouter aux rappels du quickstart :
+
+- `adb emu geo fix` avec la MÊME position n'émet aucun relevé — il faut déplacer ;
+- une réinstallation par `flutter run` **révoque** les permissions accordées par
+  `adb shell pm grant` ;
+- `mode_paiement` vaut `cash` (pas `especes`), et `POST /commandes` exige
+  l'en-tête `Idempotency-Key` **et** un repère (`repere_texte`) ;
+- allonger `dispatch.timer_offre_s` pour tester à la main **casse la
+  configuration** si `dispatch.verrou_offre_s` ne suit pas — le garde-fou du
+  domaine refuse, à juste titre, et le tic s'arrête.
+
+### 7.1 Défaut d'affichage mineur — **non corrigé**
+
+Quand la disponibilité tombe en erreur, K1 affiche **deux fois** le même message
+(« Vous ne recevez pas de courses ») : une fois en bandeau de reconnexion, une
+fois en carte d'erreur — parce qu'un code d'erreur inconnu retombe sur la même
+clé i18n. Redondant, jamais faux. Laissé tel quel : le corriger demande de
+décider quel message porte quel cas, ce qui est une question de produit et non de
+code.
