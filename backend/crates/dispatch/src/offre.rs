@@ -743,21 +743,16 @@ impl PgDispatch {
             .proximite
             .troncons_consecutifs(offre.zone, &points)
             .await;
-        let degraded = entete.devis_degraded || troncons.degraded;
+        // Une position de coursier ABSENTE (sorti du pool entre l'émission et
+        // l'affichage) rend le premier tronçon INCONNU — et un « à 0 m » sur un
+        // vendeur à 3 km est un mensonge, pas une approximation. On le marque
+        // avec le seul mécanisme que l'écran sait rendre : `degraded`, qui
+        // affiche « Distances estimées » (constitution IV).
+        let degraded = entete.devis_degraded || troncons.degraded || origine.is_none();
         let distances: Vec<i64> = troncons.trajets.iter().map(|t| t.distance_m).collect();
 
-        // Décalage des arrêts dans `points` : 1 quand la position du coursier
-        // ouvre l'itinéraire, 0 quand elle est inconnue (coursier sorti du pool
-        // entre l'émission et l'affichage). Sans lui, une position absente
-        // décalerait toutes les distances d'un arrêt — chaque arrêt afficherait
-        // celle de son SUIVANT.
-        let decalage = usize::from(origine.is_some());
-        let distance_vers = |arret: usize| -> i64 {
-            (arret + decalage)
-                .checked_sub(1)
-                .and_then(|troncon| distances.get(troncon).copied())
-                .unwrap_or(0)
-        };
+        let origine_connue = origine.is_some();
+        let distance_vers = |arret: usize| distance_vers_arret(&distances, arret, origine_connue);
 
         let gain = decomposer_gain(entete.devis_part_coursier, &entete.devis_composantes);
 
@@ -798,6 +793,24 @@ impl PgDispatch {
             degraded,
         })
     }
+}
+
+/// Distance à afficher pour l'arrêt de rang `arret` (0 = premier).
+///
+/// Les tronçons viennent d'une matrice construite sur `[position du coursier ?,
+/// arrêt 0, arrêt 1, …]` : quand la position OUVRE l'itinéraire, le tronçon `k`
+/// mène à l'arrêt `k`, sinon il mène à l'arrêt `k+1`.
+///
+/// **Sans ce décalage**, une position absente décalait toutes les distances
+/// d'un arrêt — chaque arrêt affichait celle de son SUIVANT, et le dernier
+/// affichait la remise au client. Le premier arrêt rend alors `0` : c'est une
+/// distance INCONNUE, et l'appelant la marque `degraded` plutôt que de la faire
+/// passer pour une mesure.
+fn distance_vers_arret(distances: &[i64], arret: usize, origine_connue: bool) -> i64 {
+    (arret + usize::from(origine_connue))
+        .checked_sub(1)
+        .and_then(|troncon| distances.get(troncon).copied())
+        .unwrap_or(0)
 }
 
 /// Les trois parts du gain que K2 affiche sous son total.
@@ -856,6 +869,43 @@ pub fn decomposer_gain(part_coursier: i64, composantes: &serde_json::Value) -> G
         deplacement: total - arrets - effort,
         arrets,
         effort,
+    }
+}
+
+#[cfg(test)]
+mod tests_distances {
+    use super::*;
+
+    /// Position connue : `[coursier, A, B, C]` ⇒ tronçons
+    /// `coursier→A`, `A→B`, `B→C`. Chaque arrêt lit SA distance d'approche.
+    #[test]
+    fn avec_la_position_du_coursier_chaque_arret_lit_son_approche() {
+        let distances = [800, 40, 1_200];
+        assert_eq!(distance_vers_arret(&distances, 0, true), 800);
+        assert_eq!(distance_vers_arret(&distances, 1, true), 40);
+        assert_eq!(distance_vers_arret(&distances, 2, true), 1_200);
+    }
+
+    /// Position INCONNUE : `[A, B, C]` ⇒ tronçons `A→B`, `B→C`. Sans décalage,
+    /// l'arrêt 0 affichait `A→B` (40 m) — la distance de son SUIVANT — et le
+    /// dernier affichait la remise au client.
+    #[test]
+    fn sans_position_les_distances_ne_glissent_pas_d_un_arret() {
+        let distances = [40, 1_200];
+        assert_eq!(
+            distance_vers_arret(&distances, 0, false),
+            0,
+            "le premier tronçon est INCONNU, pas emprunté au suivant",
+        );
+        assert_eq!(distance_vers_arret(&distances, 1, false), 40);
+        assert_eq!(distance_vers_arret(&distances, 2, false), 1_200);
+    }
+
+    /// Un tronçon manquant ne panique pas : l'offre s'affiche quand même.
+    #[test]
+    fn un_troncon_absent_rend_zero_sans_paniquer() {
+        assert_eq!(distance_vers_arret(&[], 0, true), 0);
+        assert_eq!(distance_vers_arret(&[800], 5, true), 0);
     }
 }
 

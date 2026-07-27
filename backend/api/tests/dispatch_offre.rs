@@ -151,6 +151,41 @@ async fn l_ecran_d_offre_ne_coute_qu_une_mesure_de_proximite(pool: sqlx::PgPool)
     }
 }
 
+/// Un coursier **sorti du pool** entre l'émission et l'affichage : la distance
+/// du premier arrêt devient inconnue, et l'écran doit le DIRE.
+///
+/// Ce que ce test protège : sans position d'origine, le premier tronçon
+/// n'existe pas et la distance rendue vaut `0`. Affichée telle quelle, elle
+/// annonce « à 0 m » un vendeur qui est à trois kilomètres — Yao accepterait
+/// une course en croyant l'avoir sous la main. Le cycle a déjà `degraded` pour
+/// marquer une distance qui n'est pas une mesure : il sert ici.
+#[sqlx::test(migrations = "../migrations")]
+async fn sans_position_de_coursier_les_distances_sont_marquees_estimees(pool: sqlx::PgPool) {
+    use dispatch::PoolCoursiers;
+
+    let bac = Bac::nouveau(pool).await;
+    bac.dans_le_pool(0, 15_000).await;
+    let commande = bac.commande_prete().await;
+    bac.dispatcher(commande).await;
+
+    // Le TTL a expiré, ou Yao a coupé : l'offre lui reste adressée, sa position
+    // non.
+    bac.pool_coursiers
+        .retirer(bac.coursiers[0].id, bac.cmd.ville)
+        .await
+        .expect("sortie du pool");
+
+    let (statut, corps) = bac
+        .get("/courses/offre-courante", &bac.coursiers[0].jeton)
+        .await;
+    assert_eq!(statut, 200, "{corps}");
+    assert_eq!(
+        corps["degraded"], true,
+        "une distance qu'on ne peut pas mesurer doit être annoncée comme telle, \
+         jamais rendue « à 0 m » : {corps}",
+    );
+}
+
 /// Une offre **échue** rend `204`, **même si le tic n'a pas encore passé** :
 /// l'échéance persistée est l'autorité (research R1).
 #[sqlx::test(migrations = "../migrations")]
