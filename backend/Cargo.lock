@@ -343,6 +343,7 @@ dependencies = [
  "commandes",
  "comptes",
  "deadpool-redis",
+ "dispatch",
  "prestataires",
  "qr",
  "redis",

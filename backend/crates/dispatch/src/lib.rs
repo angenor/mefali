@@ -39,3 +39,39 @@ pub mod ports;
 pub mod reprise;
 pub mod scoring;
 pub mod tic;
+
+pub use config::{ConfigDispatch, GrilleAvance, PalierAvance, Poids, RangPalier};
+pub use depot::PgDispatch;
+pub use modele::{
+    Candidat, Capacite, Composantes, EcartEligibilite, ErreurDispatch, Evaluation, InscriptionPool,
+    IssueOffre, MesureProximite, ModeOffre, MotifEcart, MotifReassignation, Offre, Reprise,
+};
+pub use ports::{
+    // Offerts — implémentés dans `api` (Redis), doublés en test.
+    AnnoncesJournalisees,
+    Annonce,
+    AucunePaireBloquee,
+    Canal,
+    CoursierExploitable,
+    // Doubles de test.
+    CoursierFixe,
+    EtatCoursier,
+    MemoirePool,
+    // Impls de PRODUCTION avant AVI, CRS-07 et NTF-01.
+    NoteAbsente,
+    NoteFixe,
+    NotePrestataire,
+    NotificationsCollectees,
+    NotificationsDispatch,
+    PairesBloquees,
+    PairesSimulees,
+    PoolCoursiers,
+    PoseVerrou,
+    ProximiteFixe,
+    // Consommés.
+    ProximiteRoutiere,
+    Trajet,
+    Trajets,
+    VerrouMemoire,
+    VerrouOffre,
+};
