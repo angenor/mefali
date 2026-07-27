@@ -18,7 +18,11 @@ pub mod course_http;
 pub mod dev_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
 pub mod erreurs_commandes;
+/// Mapping HTTP partagé des refus du domaine dispatch (cycle DSP 009, T021).
+pub mod erreurs_dispatch;
 pub mod health;
+/// Impl RÉELLE du port `ProximiteRoutiere` au-dessus du moteur de routage (T020).
+pub mod infra_dispatch;
 pub mod infra_redis;
 pub mod infra_s3;
 pub mod prestataires_http;
