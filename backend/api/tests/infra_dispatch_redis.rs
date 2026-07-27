@@ -39,8 +39,8 @@ async fn pool() -> Option<RedisPool> {
         }
     };
     // Un aller-retour réel : le pool est paresseux, `nouveau` ne prouve rien.
-    match pool.elaguer(Uuid::now_v7()).await {
-        Ok(_) => Some(pool),
+    match sonder(&pool).await {
+        Ok(()) => Some(pool),
         Err(e) => {
             eprintln!("test sauté — Redis injoignable ({url}) : {e}");
             None
@@ -61,6 +61,35 @@ async fn verrous() -> Option<RedisVerrouOffre> {
             None
         }
     }
+}
+
+/// L'aller-retour de SONDE, isolé pour être vérifiable.
+///
+/// Il doit PROPAGER l'échec de connexion. `elaguer` ne le fait pas — il rend
+/// `Ok(0)` dès que le pool n'obtient pas de connexion, ce qui est le bon
+/// comportement pour un élagage (on n'a rien élagué) et le pire possible pour
+/// une sonde : elle réussissait toujours, y compris sans Redis, et les cinq
+/// tests de ce fichier tombaient alors en échec DUR au lieu d'être sautés.
+async fn sonder(pool: &RedisPool) -> Result<(), dispatch::ErreurDispatch> {
+    // `retirer` sur un coursier qui n'existe pas est sans effet, et il propage :
+    // c'est ce qui en fait une sonde.
+    pool.retirer(Uuid::now_v7(), Uuid::now_v7()).await
+}
+
+/// La sonde d'absence de Redis doit ÉCHOUER quand Redis est absent.
+///
+/// Sans ce contrôle, le « test sauté » de ce fichier est une promesse que rien
+/// ne tient : `cargo test` sur une machine sans infra rougissait sur cinq
+/// tests, en annonçant qu'il les sauterait.
+#[tokio::test]
+async fn la_sonde_dit_vraiment_quand_redis_est_absent() {
+    // Port fermé : la connexion est refusée tout de suite, aucun délai d'attente.
+    let pool = RedisPool::nouveau("redis://127.0.0.1:1").expect("URL bien formée");
+    assert!(
+        sonder(&pool).await.is_err(),
+        "une sonde qui réussit sans Redis fait échouer en DUR les tests qu'elle \
+         devait faire sauter",
+    );
 }
 
 fn inscription(coursier: Uuid, zone: Uuid, lat: f64, lon: f64) -> InscriptionPool {
