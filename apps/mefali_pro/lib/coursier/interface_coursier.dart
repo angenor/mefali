@@ -132,12 +132,11 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
     // que Yao le referme, et le coursier sortait du pool en lisant « restez en
     // ligne : une autre course arrive bientôt ».
     //
-    // ⚠ L'INTENTION d'être en ligne, elle, reste chargée par K1 : `keepAlive`
-    // la conserve ensuite pour tous les écrans. La charger ici AUSSI produit
-    // deux chargements concurrents qui se marchent dessus — constaté à
-    // l'écran (deux bandeaux, plafond retenu à 0). Limite connue : si l'app
-    // s'ouvre alors qu'une offre est déjà en vol, K1 n'est jamais monté et
-    // l'émetteur ne démarre qu'à la conclusion de l'offre.
+    // L'INTENTION d'être en ligne, elle, se charge dans `Disponibilite.build`
+    // — une fois par session, quel que soit l'écran monté. Tant qu'elle
+    // appartenait à K1, un coursier dont Android tue l'app en pleine course la
+    // rouvrait sur l'écran de course : K1 jamais monté, `enLigne` faux, aucune
+    // position publiée, et le serveur reprenait la course faute de progression.
     ref.watch(emetteurPositionProvider);
 
     final valides = widget.etat.rolesValides;
