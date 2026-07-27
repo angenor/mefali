@@ -233,6 +233,88 @@ void main() {
     },
   );
 
+  testWidgets(
+    'un coursier ARRÊTÉ reste dans le pool : la cadence de zone publie sans lui',
+    (tester) async {
+      // Ce que ce test protège : le capteur ne parle que si Yao BOUGE
+      // (`distanceFilter`). Or le cas nominal de DSP-01 est un coursier arrêté,
+      // qui attend au carrefour pendant que son écran dit « en attente de
+      // courses ». Sans cadence, il ne publie plus rien et sort du pool par
+      // expiration du TTL (90 s) — sans que rien ne le lui dise.
+      //
+      // Trouvé sur émulateur (T071) : le pool était VIDE pendant que K1
+      // affichait « en attente de courses ».
+      var publications = 0;
+      final transport = TransportFake((requete) {
+        if (requete.path.contains('/moi/position')) {
+          publications++;
+          return reponseJson({'dans_le_pool': true, 'prochaine_publication_s': 30});
+        }
+        if (requete.path.contains('/moi/disponibilite')) {
+          return reponseJson(_etat(enLigne: true, dansLePool: true));
+        }
+        return reponseJson({'code': 'introuvable'}, statut: 404);
+      });
+      final container = conteneurMefali(
+        jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+        transport: transport,
+      );
+      addTearDown(container.dispose);
+
+      // UNE seule position, puis plus rien : le coursier s'est arrêté.
+      Stream<Position> uneSeulePosition(LocationSettings _) => Stream.value(
+            Position(
+              latitude: 5.8960,
+              longitude: -4.8210,
+              timestamp: DateTime(2026, 7, 27, 12),
+              accuracy: 8,
+              altitude: 0,
+              altitudeAccuracy: 0,
+              heading: 0,
+              headingAccuracy: 0,
+              speed: 0,
+              speedAccuracy: 0,
+            ),
+          );
+
+      await tester.pumpWidget(
+        harnaisApp(
+          container: container,
+          localizationsDelegates: const [
+            ...AppLocalizations.localizationsDelegates,
+            MefaliCoreLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProviderScope(
+            overrides: [sourcePositionsProvider.overrideWithValue(uneSeulePosition)],
+            child: const EcranDisponibilite(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final apresReleve = publications;
+      expect(apresReleve, greaterThanOrEqualTo(1), reason: 'le relevé du capteur publie');
+
+      // Deux cadences plus tard, immobile : la publication a CONTINUÉ.
+      await tester.pump(const Duration(seconds: 31));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(seconds: 31));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(
+        publications,
+        greaterThan(apresReleve),
+        reason: 'immobile, Yao doit RESTER dans le pool — sinon il croit '
+            'travailler pendant qu\'aucune course ne peut lui parvenir',
+      );
+
+      // L'écran doit alors être démonté proprement (le Timer de cadence est
+      // annulé par `ref.onDispose`), sans minuteur pendant.
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   test('l\'état se construit depuis le corps JSON du contrat', () {
     final etat = EtatDisponibilite.depuisJson(_etat(enLigne: true, dansLePool: true));
     expect(etat.enLigne, isTrue);

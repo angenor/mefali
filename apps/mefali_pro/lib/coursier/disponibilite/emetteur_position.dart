@@ -69,6 +69,13 @@ class EmetteurPosition extends _$EmetteurPosition {
   static const _uuid = Uuid();
   StreamSubscription<Position>? _abonnement;
 
+  /// Horloge de la CADENCE de zone — distincte du capteur.
+  Timer? _cadence;
+
+  /// Dernier relevé du capteur, et l'instant où il est arrivé.
+  Position? _derniere;
+  DateTime? _derniereLe;
+
   @override
   int build() {
     // Ne publie que si Yao s'est déclaré en ligne : rien ne sert d'arroser le
@@ -85,13 +92,56 @@ class EmetteurPosition extends _$EmetteurPosition {
         // La périodicité est un PARAMÈTRE DE ZONE, jamais une constante d'app.
         timeLimit: Duration(seconds: periode * 3),
       ),
-    ).listen(_publier);
+    ).listen(_surReleve);
+
+    // ── La CADENCE, et pourquoi elle est indispensable ──────────────────────
+    //
+    // Le capteur ne parle que si Yao BOUGE (`distanceFilter`). Or le cas
+    // nominal de DSP-01 est un coursier ARRÊTÉ : il attend au carrefour, moteur
+    // coupé, et son écran dit « en attente de courses ». Sans cette horloge, il
+    // ne publie plus rien et sort du pool par expiration du TTL au bout de 90 s
+    // — sans que rien ne le lui dise. Il croit travailler ; aucune course ne
+    // peut plus lui parvenir.
+    //
+    // Défaut trouvé à la validation sur émulateur (T071) : le pool était vide
+    // pendant que K1 affichait « en attente de courses ».
+    //
+    // C'est aussi ce que le contrat annonce déjà : `prochaine_publication_s` est
+    // une CADENCE, et le serveur la rend à chaque publication.
+    _cadence = Timer.periodic(Duration(seconds: periode.clamp(5, 300)), (_) {
+      _republier(periode);
+    });
 
     ref.onDispose(() {
       _abonnement?.cancel();
       _abonnement = null;
+      _cadence?.cancel();
+      _cadence = null;
     });
     return 0;
+  }
+
+  /// Un relevé du capteur : on le retient, et on le publie.
+  void _surReleve(Position position) {
+    _derniere = position;
+    _derniereLe = DateTime.now();
+    unawaited(_publier(position));
+  }
+
+  /// Republication à la cadence, tant que le dernier relevé est FRAIS.
+  ///
+  /// La fraîcheur est la garde qui empêche cette horloge de devenir un rejeu :
+  /// republier indéfiniment une position vieille de dix minutes maintiendrait
+  /// Yao dans le pool à un endroit où il n'est plus, et le dispatch lui
+  /// offrirait une course à des kilomètres — exactement ce que la dérogation au
+  /// principe V refuse de faire pour la file hors-ligne. Passé ce délai, on se
+  /// tait, et il sort du pool : c'est honnête.
+  void _republier(int periode) {
+    final derniere = _derniere;
+    final le = _derniereLe;
+    if (derniere == null || le == null) return;
+    if (DateTime.now().difference(le) > Duration(seconds: periode * 3)) return;
+    unawaited(_publier(derniere));
   }
 
   Future<void> _publier(Position position) async {
