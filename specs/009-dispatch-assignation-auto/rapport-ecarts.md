@@ -52,8 +52,9 @@ disponibilité, son plafond, son état de connexion.
 
 **Ce que la maquette demande** : K2 est décrit « Plein écran + sonnerie ».
 
-**Ce qui est livré** : l'app **va chercher** son offre toutes les 2 s tant qu'un
-écran de dispatch est monté.
+**Ce qui est livré** : l'app **va chercher** son offre toutes les 2 s depuis
+l'aiguillage coursier, et **seulement quand une offre peut arriver** — en ligne,
+sans course en cours (§8.5).
 
 **Pourquoi** : FR-094 attribue le transport à **NTF-01**, story distincte de la
 même tranche T1. Le cycle livre le **contrat d'émission**
@@ -304,7 +305,8 @@ Le correctif est en place et la suite est verte, mais piloter un compte à rebou
 de 40 s par `adb shell input tap` à l'aveugle n'a pas permis de l'observer. À
 reprendre à la main.
 
-**Pièges d'environnement rencontrés**, à ajouter aux rappels du quickstart :
+**Pièges d'environnement rencontrés** — **ajoutés au quickstart** le
+2026-07-27 (ils y étaient annoncés sans y être) :
 
 - `adb emu geo fix` avec la MÊME position n'émet aucun relevé — il faut déplacer ;
 - une réinstallation par `flutter run` **révoque** les permissions accordées par
@@ -323,3 +325,174 @@ fois en carte d'erreur — parce qu'un code d'erreur inconnu retombe sur la mêm
 clé i18n. Redondant, jamais faux. Laissé tel quel : le corriger demande de
 décider quel message porte quel cas, ce qui est une question de produit et non de
 code.
+
+---
+
+## 8. Revue du 2026-07-27 (seconde passe) — ce qu'une suite verte ne voyait pas
+
+La suite était verte sur les six contrôles de clôture. Une revue ligne à ligne a
+pourtant trouvé onze défauts de plus, **tous de la même famille que les neuf de
+§7** : des pièces justes et testées, et rien qui vérifie qu'elles se touchent.
+
+Règle tenue sur tout ce lot : **un correctif sans test qui rougit sans lui n'est
+pas un correctif**. Chaque test ci-dessous a été vérifié ROUGE en retirant sa
+correction — les exceptions sont nommées.
+
+### 8.1 Une course était reprise à un coursier qui roule — **corrigé**
+
+Le plus grave, et il tenait à un seul endroit : `EcranDisponibilite` (K1) était
+le **seul** à appeler `charger()`. Enchaînement, sur la cible du produit :
+
+1. Yao accepte une course et roule vers son premier vendeur ;
+2. Android tue l'app (entrée de gamme) ;
+3. il la rouvre : l'aiguillage l'envoie sur l'écran de course, **K1 n'est jamais
+   monté** ⇒ `enLigne` reste faux ⇒ l'émetteur ne démarre pas ⇒ **aucune
+   position ne part** ;
+4. sans progression observée, `reprendre_courses_immobiles` reprend la course au
+   bout de `dispatch.reassignation_sans_mouvement_s` (300 s) ;
+5. rien n'est collecté à ce stade : la **garde d'argent ne le protège pas**.
+
+Un coursier qui travaille perdait sa course — « le coursier ne perd jamais »
+(cadrage §7.5) mis en défaut.
+
+Le chargement part désormais de `Disponibilite.build`, qui s'exécute **une fois
+par session** quel que soit le nombre d'écrans : l'idempotence est tenue par
+construction, et non par prudence. Le piège documenté au cycle (deux `charger()`
+concurrents ⇒ « deux bandeaux, plafond retenu à 0 ») disparaît avec le second
+point de chargement.
+
+### 8.2 Deux décisions perdues par le réseau, deux mensonges — **corrigés**
+
+| Trouvé | Ce que Yao vivait |
+|---|---|
+| `refuser()` avalait son erreur, K2 rendait la main quoi qu'il arrive | coupure réseau au refus : Yao croit avoir refusé ; l'offre reste `en_vol`, donc **aucune autre offre ne peut lui parvenir**, elle expire à 40 s, et la non-réponse consomme une de ses **trois franchises du jour** |
+| `decision.codeErreur ?? 'deja_prise'` à l'acceptation | toute panne réseau annonçait « Course attribuée à un autre coursier » — alors que le serveur a peut-être reçu l'acceptation et lui a affecté la course. Il abandonnait une course qui était à lui, sur une information fausse |
+
+Un code d'erreur **absent** n'est pas un verdict du serveur : c'est une requête
+qui n'est pas partie. K2 reste à l'écran, le dit, et le réessai porte le **même**
+`uuid_client` — l'acceptation était idempotente côté serveur, elle ne l'était pas
+côté app (un UUID neuf était tiré à chaque appel).
+
+Corrigé au même endroit : K2 lisait `AsyncValue.when`, dont la branche `error`
+affichait « Temps écoulé ». Le tic rechargeant toutes les 2 s, **une coupure
+suffisait** à déclarer perdue une offre qui avait encore 30 s.
+
+### 8.3 Le détail du gain pouvait dépasser son total — **corrigé**
+
+Le grief initial — « les parts affichées sont surévaluées parce que ce sont des
+composantes du prix CLIENT » — est **écarté** : les trois composantes d'effort
+sont **100 % coursier** (`tarification::evaluation`, étape 5 : « elle abonde le
+prix client ET la part coursier ; la marge ne bouge pas d'un franc »). C'est le
+**commentaire** qui affirmait le contraire, et qui rendait le grief crédible.
+
+Ce qui survit : le `.max(0)` sur le seul déplacement laissait la somme des trois
+parts **dépasser** le total dès qu'un devis figé portait un effort supérieur à la
+part coursier. Impossible via TRF, mais cette lecture porte sur une colonne JSON
+que rien ne contraint. Les parts sont désormais bornées dans l'ordre, le
+déplacement absorbe le reste : la somme fait le total quelle que soit la donnée.
+
+### 8.4 Trois contrôles qui ne contrôlaient rien — **corrigés**
+
+C'est le cœur du lot, et le plus inquiétant : trois tests **verts** ne pouvaient
+pas rougir.
+
+| Contrôle | Pourquoi il ne prouvait rien | Mutation qui passait |
+|---|---|---|
+| Détail du gain (`dispatch_offre.rs`) | le double `TarifFixe` rendait un devis dont **toutes** les composantes étaient nulles sous une part coursier de 2 500 — un devis impossible. `0 + 0 + total` fait toujours le total | remettre les trois clés fausses (`deplacement`/`arrets`/`effort`), celles-là mêmes qui affichaient « 0 + 0 + 0 » sur émulateur |
+| `troncons_consecutifs` (`api/src/infra_dispatch.rs`) | seul le **double** de port était exercé ; l'implémentation réelle ne l'était par aucun test | inverser la diagonale en `troncon(i+1, i)` — invisible en dégradé vol d'oiseau, où la matrice est symétrique |
+| Sonde Redis (`infra_dispatch_redis.rs`) | `elaguer` rend `Ok(0)` sans connexion : la sonde réussissait **toujours** | supprimer Redis — les 5 tests tombaient en échec DUR au lieu d'être sautés, en annonçant qu'ils seraient sautés |
+
+Les trois mutations rougissent maintenant. Le double de tarification porte des
+composantes qui tiennent l'invariant du modèle, la lecture de matrice est
+extraite et testée sur une matrice **asymétrique**, la sonde utilise `retirer`
+(qui propage) et un test vérifie qu'elle échoue sur un port fermé.
+
+### 8.5 Interrogation permanente de l'offre, hors ligne compris — **corrigé**
+
+Deux horloges de 2 s coexistaient : celle de l'aiguillage, qui tournait tant que
+l'espace coursier était monté **sans regarder l'état de Yao**, et celle de K2.
+Mesuré : **~1 800 `GET /courses/offre-courante` par heure** pour un coursier
+**hors ligne** qui laisse l'app ouverte — forfait prépayé, batterie d'entrée de
+gamme — alors qu'aucune offre ne peut lui parvenir ; et un débit **doublé**
+pendant les 40 s de décision.
+
+Une seule horloge, qui ne tire que si une offre peut réellement arriver : en
+ligne (contrat §1.1) et sans course active (FR-007).
+
+### 8.6 Deux démarrages concurrents laissaient un `Timer` orphelin — **corrigé**
+
+`_vivant` est réarmé à chaque `build` de l'émetteur de position. Une bascule
+en ligne → hors ligne → en ligne assez rapide laissait **deux** `_demarrer` en
+vol, tous deux suspendus sur la demande de permission, tous deux se croyant
+vivants au réveil : le second écrasait `_abonnement` et `_cadence` du premier.
+Le `Timer.periodic` remplacé n'était plus annulé par personne — publication en
+double et réveil du GPS sur un porteur que plus rien ne référence. Un numéro de
+génération arbitre.
+
+### 8.7 « À 0 m » pour un vendeur à trois kilomètres — **corrigé**
+
+Sans position de coursier (sorti du pool entre l'émission et l'affichage), le
+premier tronçon n'existe pas et la distance rendue vaut `0`. Affichée telle
+quelle, elle annonçait « à 800 m » → « à 0 m » un vendeur qui est loin : Yao
+aurait accepté une course en la croyant sous la main. Marqué `degraded`, le
+mécanisme que le cycle a déjà pour dire « ce n'est pas une mesure », et que
+l'écran rend en « Distances estimées ».
+
+### 8.8 Le pin `source_gen` n'existait que dans un lockfile — **corrigé**
+
+Le rattrapage de §4.2 avait aligné `apps/mefali_client/pubspec.lock` sans poser
+de **contrainte** : aucun `pubspec.yaml` ne mentionnait `source_gen`.
+`verifier-accord-locks.sh` restait vert, mais la prochaine résolution aurait
+défait la réparation — par l'accident exact qui l'avait cassée. Vérifié : sans
+contrainte, `flutter pub upgrade --dry-run` remonte `source_gen 4.2.4 (was
+4.2.3)` ; avec, il ne le touche plus. Posé dans les **trois** paquets : n'en
+contraindre qu'un aurait laissé les deux autres dériver.
+
+### 8.9 La CI ne régénérait jamais `mefali_client` — **corrigé**
+
+`.github/workflows/apps.yml` posait `codegen: false` sur `mefali_client`, sous un
+commentaire affirmant qu'il « n'a ni riverpod_annotation ni riverpod_generator ».
+Il porte les deux, et **six** `.g.dart` commités. Le contrôle de dérive comparait
+donc un arbre que rien n'avait régénéré — d'où les deux `.g.dart` périmés depuis
+le cycle CMD 008 (§4.2), restés invisibles à la CI.
+
+### 8.10 Deux vérités et un champ mort — **corrigés**
+
+- `eligibilite.rs` affirmait au site de décision que `inscription.plafond_unites`
+  est le **déclaré**, quand `modele.rs` le documente comme le **RETENU**. Le code
+  était juste (le `min` est idempotent), le commentaire contredisait le modèle
+  sur le champ qui décide d'offrir ou non une course.
+- `CandidatEligible.plafond_retenu_unites` était **écrit et jamais lu** : une
+  seconde vérité sur un montant d'argent, que personne ne consulte. Retiré — le
+  plafond annoncé est recalculé à l'émission (`plafond_du_jour`), parce qu'il
+  peut avoir changé entre le filtrage et l'offre.
+- `RequetePool` dérivait `ToSchema` sans produire aucun composant
+  (`RequetePool` est absent d'`openapi.json`). Retiré.
+
+### 8.11 Le seuil du N+1 n'était pas une mesure — **reformulé, pas corrigé**
+
+§6.1 annonçait « au-delà d'une cinquantaine de membres durables ». `plan.md`
+dimensionne Tiassalé à **~4 coursiers** : le chiffre était donc un ordre de
+grandeur inventé, présenté avec l'assurance d'un relevé, et **aucune métrique ne
+signale son franchissement**.
+
+Le doc-comment de `filtrer` le dit maintenant tel quel : le seuil se lit à la
+main sur `GET /admin/dispatch/pool`, il n'est pas instrumenté. Le N+1 reste
+assumé — ce qui change, c'est qu'on ne prétend plus l'avoir mesuré.
+
+**À décider par le produit** : rien. Poser une métrique sur la taille de pool par
+zone appartient à MET, pas à ce cycle.
+
+### 8.12 Ce que ce lot n'a PAS fermé
+
+- **La bascule K2 → écran de course après acceptation n'a toujours pas été
+  observée à l'écran.** Le correctif est en place depuis §7, les tests couvrent
+  ses deux extrémités (la décision rend la main, la course est relue), mais
+  l'enchaînement complet n'a été vu ni sur émulateur ni en test. La réserve de §7
+  reste entière, et `tasks.md` (T071), ce rapport et l'en-tête de
+  `interface_coursier_test.dart` la disent désormais tous les trois.
+- **`dart analyze` ne voit pas les tests hors arbre.** Le test de §8.6 vit hors
+  `testWidgets` parce que le harnais fige le temps : l'enchaînement
+  en ligne → hors ligne → en ligne n'y est pas déroulable. C'est une limite du
+  harnais, pas du code.
+- Le doublon d'affichage de §7.1 reste tel quel, pour la même raison.

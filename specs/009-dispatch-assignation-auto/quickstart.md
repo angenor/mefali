@@ -271,10 +271,23 @@ Rappels d'environnement déjà payés aux cycles précédents :
 - les horaires du seed couvrent lun–sam : un dimanche, les boutiques sont fermées
   et aucune commande n'est créable — donc rien à dispatcher.
 
+Payés à la validation T071 de ce cycle :
+
+- `adb emu geo fix` avec la **même** position n'émet aucun relevé — il faut
+  déplacer le point, sinon le capteur reste muet et le pool paraît vide ;
+- une réinstallation par `flutter run` **révoque** les permissions accordées à la
+  main par `adb shell pm grant` : la position redevient à demander ;
+- `mode_paiement` vaut `cash` (jamais `especes`), et `POST /commandes` exige
+  l'en-tête `Idempotency-Key` **et** un repère (`repere_texte`) ;
+- allonger `dispatch.timer_offre_s` pour décider à la main **casse la
+  configuration** si `dispatch.verrou_offre_s` ne suit pas : le garde-fou du
+  domaine refuse, à juste titre, et le tic s'arrête. Déplacer les deux.
+
 **Ce qui ne se voit pas sur appareil, et c'est normal** : aucune sonnerie ne
 réveille le téléphone. Le push haute priorité et la sonnerie prolongée
 appartiennent à NTF-01 (FR-094) ; ici, l'app **va chercher** son offre toutes les
-2 s tant qu'un écran de dispatch est monté. En arrière-plan, l'app cesse de
+2 s depuis l'aiguillage coursier, et seulement quand une offre peut arriver — en
+ligne, sans course en cours. En arrière-plan, l'app cesse de
 publier sa position et le coursier sort du pool par expiration — comportement
 **conforme** à DSP-01, et visible par son bandeau de reconnexion.
 
