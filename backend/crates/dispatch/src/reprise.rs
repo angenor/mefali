@@ -533,7 +533,7 @@ impl PgDispatch {
 }
 
 /// Une commande escaladée, telle que l'exploitation la lit.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EscaladeVue {
     /// Commande concernée.
     pub commande_id: Uuid,
@@ -552,7 +552,7 @@ pub struct EscaladeVue {
 }
 
 /// Une course assignée qui n'avance pas.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CourseBloqueeVue {
     /// Commande concernée.
     pub commande_id: Uuid,
@@ -571,7 +571,7 @@ pub struct CourseBloqueeVue {
 }
 
 /// Le tableau d'alertes.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Alertes {
     /// Escalades, **les plus anciennes d'abord**.
     pub escalades: Vec<EscaladeVue>,
@@ -599,9 +599,19 @@ impl PgDispatch {
         .fetch_all(&self.pool)
         .await?;
 
+        // L'événement d'escalade est OBLIGATOIRE ici : une course bloquée qui
+        // n'a pas encore été escaladée n'a rien à faire dans un tableau
+        // d'alertes — c'est le tic qui décide quand elle y entre. D'où un JOIN
+        // interne, et non un `LEFT JOIN … WHERE e.id IS NOT NULL` qui disait la
+        // même chose en laissant croire au lecteur que l'événement était
+        // facultatif.
+        //
+        // Le `LEFT JOIN` sur `suivi_progression`, lui, est bien nécessaire : une
+        // course assignée dont aucune position n'est encore arrivée n'a pas de
+        // suivi, et sa stagnation se compte alors depuis l'affectation.
         let bloquees = sqlx::query!(
             r#"SELECT l.id AS livraison_id, l.commande_id, l.coursier_id,
-                      e.payload AS "payload?",
+                      e.payload,
                       (SELECT count(*) FROM commandes.arret a
                          JOIN commandes.segment s ON s.id = a.segment_id
                         WHERE s.livraison_id = l.id
@@ -610,13 +620,12 @@ impl PgDispatch {
                       EXTRACT(EPOCH FROM (now() - COALESCE(sp.progresse_le, l.assignee_le)))::bigint
                           AS "stagnation_s?"
                FROM commandes.livraison l
+               JOIN outbox.evenement e
+                 ON e.type_evenement = 'dispatch.course_bloquee_escaladee'
+                AND e.entite_id = l.id
                LEFT JOIN dispatch.suivi_progression sp ON sp.livraison_id = l.id
-               LEFT JOIN outbox.evenement e
-                      ON e.type_evenement = 'dispatch.course_bloquee_escaladee'
-                     AND e.entite_id = l.id
                WHERE l.coursier_id IS NOT NULL
                  AND l.etat IN ('assignee', 'en_collecte')
-                 AND e.id IS NOT NULL
                ORDER BY l.assignee_le"#,
         )
         .fetch_all(&self.pool)
@@ -648,8 +657,7 @@ impl PgDispatch {
                     coursier_id: b.coursier_id,
                     motif: b
                         .payload
-                        .as_ref()
-                        .and_then(|p| p.get("motif"))
+                        .get("motif")
                         .and_then(|v| v.as_str())
                         .unwrap_or("sans_mouvement")
                         .to_owned(),

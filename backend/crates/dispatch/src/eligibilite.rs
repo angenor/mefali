@@ -33,12 +33,15 @@ use crate::modele::{
 };
 
 /// Ce qu'il faut savoir d'une commande pour décider qui peut la faire.
+///
+/// **Aucune zone ici** : elle vit dans la [`ConfigDispatch`] que `filtrer` reçoit
+/// par ailleurs, et qui a été résolue POUR cette zone. La porter deux fois
+/// offrirait deux vérités sur la même question — la seconde ne servirait qu'à
+/// diverger de la première.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DemandeEligibilite {
     /// Commande évaluée.
     pub commande: Uuid,
-    /// Zone qui résout les paramètres.
-    pub zone: Uuid,
     /// Montant total à avancer, TOUS arrêts confondus (unités mineures).
     pub montant_a_avancer: i64,
     /// Devise ISO 4217.
@@ -88,6 +91,24 @@ pub struct Vivier {
 
 impl PgDispatch {
     /// Le filtre des huit critères.
+    ///
+    /// ⚠ **Deux lectures par candidat**, assumées à cette échelle et à surveiller
+    /// (dette nommée, rapport d'écarts §6.1) : `course_active` et `coursier` sont
+    /// interrogées dans la boucle, soit `2n` requêtes pour `n` membres du
+    /// pré-filtre. Elles ne peuvent pas être court-circuitées : FR-026 exige la
+    /// liste COMPLÈTE des motifs d'écart — s'arrêter au premier refus rendrait
+    /// « la capacité d'avance est le seul obstacle » indécidable.
+    ///
+    /// Elles ne sont pas mises en lot **aujourd'hui** parce que le pré-filtre
+    /// géographique borne déjà `n` au rayon de zone, et qu'à Tiassalé il vaut
+    /// quelques unités. Le lot coûterait un changement de contrat de DEUX ports
+    /// implémentés par `commandes` et `comptes` — c'est-à-dire une modification
+    /// hors du périmètre de ce cycle, faite sans mesure.
+    ///
+    /// **Déclencheur** : quand le pool d'une zone dépasse durablement la
+    /// cinquantaine de membres, `bloquees` et `etat` compris (eux aussi par
+    /// candidat), passer les quatre en lot — la boucle est déjà écrite pour
+    /// consommer des tableaux indexés, la substitution est locale.
     pub async fn filtrer(
         &self,
         config: &ConfigDispatch,

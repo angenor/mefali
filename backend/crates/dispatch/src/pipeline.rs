@@ -101,7 +101,6 @@ impl PgDispatch {
 
         let demande = DemandeEligibilite {
             commande,
-            zone: contexte.zone,
             montant_a_avancer: contexte.montant_a_avancer,
             devise: contexte.devise.clone(),
             premiere_collecte: contexte.premiere_collecte,

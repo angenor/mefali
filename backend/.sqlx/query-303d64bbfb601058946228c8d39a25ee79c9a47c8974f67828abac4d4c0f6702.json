@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT l.id AS livraison_id, l.commande_id, l.coursier_id,\n                      e.payload AS \"payload?\",\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.type_arret = 'collecte' AND a.statut = 'collecte')\n                          AS \"nb_collectes!\",\n                      EXTRACT(EPOCH FROM (now() - COALESCE(sp.progresse_le, l.assignee_le)))::bigint\n                          AS \"stagnation_s?\"\n               FROM commandes.livraison l\n               LEFT JOIN dispatch.suivi_progression sp ON sp.livraison_id = l.id\n               LEFT JOIN outbox.evenement e\n                      ON e.type_evenement = 'dispatch.course_bloquee_escaladee'\n                     AND e.entite_id = l.id\n               WHERE l.coursier_id IS NOT NULL\n                 AND l.etat IN ('assignee', 'en_collecte')\n                 AND e.id IS NOT NULL\n               ORDER BY l.assignee_le",
+  "query": "SELECT l.id AS livraison_id, l.commande_id, l.coursier_id,\n                      e.payload,\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.type_arret = 'collecte' AND a.statut = 'collecte')\n                          AS \"nb_collectes!\",\n                      EXTRACT(EPOCH FROM (now() - COALESCE(sp.progresse_le, l.assignee_le)))::bigint\n                          AS \"stagnation_s?\"\n               FROM commandes.livraison l\n               JOIN outbox.evenement e\n                 ON e.type_evenement = 'dispatch.course_bloquee_escaladee'\n                AND e.entite_id = l.id\n               LEFT JOIN dispatch.suivi_progression sp ON sp.livraison_id = l.id\n               WHERE l.coursier_id IS NOT NULL\n                 AND l.etat IN ('assignee', 'en_collecte')\n               ORDER BY l.assignee_le",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,7 @@
       },
       {
         "ordinal": 3,
-        "name": "payload?",
+        "name": "payload",
         "type_info": "Jsonb",
         "origin": {
           "Table": {
@@ -72,5 +72,5 @@
       null
     ]
   },
-  "hash": "9cd96c979c0b8f47f46b47bb7d7352588b5688ef11d96c51362d74c01f9e611f"
+  "hash": "303d64bbfb601058946228c8d39a25ee79c9a47c8974f67828abac4d4c0f6702"
 }
