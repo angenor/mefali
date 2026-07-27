@@ -167,22 +167,29 @@ active (« Ma course »). **Deux tests étaient rouges avant ce cycle** — vér
 par `git stash`. Ils ont été mis à jour ici : un test rouge qui traîne finit par
 ne plus être lu, et masque le suivant.
 
-### 4.2 Désaccord de lockfiles Flutter — **non corrigé, hors périmètre**
+### 4.2 Désaccord de lockfiles Flutter — **corrigé**
 
-`./scripts/verifier-accord-locks.sh` signale `source_gen` en **4.2.4** dans
+`./scripts/verifier-accord-locks.sh` signalait `source_gen` en **4.2.4** dans
 `apps/mefali_client/pubspec.lock` contre **4.2.3** dans `mefali_core` et
-`mefali_pro`.
+`mefali_pro`. Le désaccord **préexistait** au cycle DSP 009 — vérifié en le
+rejouant sur l'arbre `git stash`.
 
-Ce désaccord **préexiste** au cycle DSP 009 — vérifié en le rejouant sur l'arbre
-`git stash`. Le corriger suppose de toucher `apps/mefali_client/`, que le plan de
-ce cycle liste explicitement parmi les zones **non touchées** : l'app cliente
-n'est pas modifiée par le dispatch, et y aligner une dépendance de génération
-ferait sortir le cycle de son périmètre (constitution IX) sans qu'aucun test du
-cycle ne couvre l'effet.
+Il avait d'abord été renvoyé « au prochain cycle qui touche `mefali_client` », au
+nom du périmètre. C'était une mauvaise économie : le script fait partie de la
+Definition of Done, et un contrôle laissé rouge cesse d'être lu. Corrigé par
+`flutter pub add dev:source_gen:4.2.3` — **incrémental** (FR-032, jamais
+`pub upgrade`) : un seul paquet a bougé au lockfile. Aligné vers le **bas**,
+parce que les deux paquets qui portent le code du cycle sont ceux qu'il ne faut
+pas déplacer.
 
-**À traiter** par un `flutter pub add source_gen:4.2.3 --dev` incrémental dans
-`mefali_client` (jamais `pub upgrade`, FR-032), au prochain cycle qui touche
-cette app.
+Non-régression vérifiée : `flutter test` + `dart analyze` verts dans les **trois**
+paquets.
+
+**Dette antérieure découverte au passage** : deux `.g.dart` de `mefali_client`
+(`etat_panier`, `etat_confirmation`) étaient **périmés dans le dépôt** depuis le
+cycle CMD 008 — leur hash de provider ne correspondait plus à leur source. Sans
+rapport avec `source_gen` : régénérer **avant** le changement de version, en
+4.2.4, produit exactement le même résultat qu'en 4.2.3. Rafraîchis ici.
 
 ---
 
@@ -201,3 +208,58 @@ cette app.
 
 Aucune **provision** n'a été activée : `TypeZone::Quartier` reste données
 seulement, et c'est ce qui produit l'écart 1.1.
+
+---
+
+## 6. Revue de conformité du 2026-07-27 — après relecture du code livré
+
+Une relecture ligne à ligne a trouvé quatre non-conformités **réelles** (des
+règles du cycle qui n'étaient pas tenues, pas des écarts assumés). Elles sont
+**corrigées** ; elles figurent ici pour que le prix de chacune reste lisible.
+
+| Trouvé | Ce que ça coûtait | Corrigé par |
+|---|---|---|
+| `contenu_offre` mesurait son itinéraire **tronçon par tronçon** — 4 requêtes de routage pour 3 collectes, alors que FR-035 pose « une matrice par évaluation ». Le commentaire annonçait pourtant « une seule matrice routière » | 4 allers-retours OSRM sur le chemin qui prépare l'écran d'un coursier qui a 40 s pour décider — et le cache par tronçon du cycle 007 ne les absorbait pas, il ne réchauffe jamais coursier→vendeur | port `ProximiteRoutiere::troncons_consecutifs`, UNE matrice pour tout l'itinéraire. Test comptant les appels |
+| `GET /admin/dispatch/pool` exigeait `lat`/`lon` que son `#[utoipa::path]` ne déclarait pas | endpoint **inappelable** depuis `clients/dart` et `clients/ts` : `400` garanti à tout appelant conforme au contrat | port `PoolCoursiers::membres(zone)` ; retour à la signature du contrat, qui gagne sa §2.2 (jusque-là absente) |
+| Le contournement `dans_rayon(zone, lat, lon, rayon_m * 10)` | la carte d'exploitation écartait **en silence** tout coursier au-delà de 40 km | idem — l'index GEO de Redis est un zset, `ZRANGE 0 -1` sait l'énumérer |
+| `alertes()` : `LEFT JOIN … WHERE e.id IS NOT NULL` | un `INNER JOIN` déguisé — le lecteur croyait l'événement d'escalade facultatif | `JOIN` interne explicite |
+
+Deux **faux-semblants** de moindre portée, corrigés au même passage : le dérive
+`serde::Serialize` sur `Alertes` / `EscaladeVue` / `CourseBloqueeVue`, qui donnait
+au domaine une capacité de sérialisation HTTP qui ne lui appartient pas
+(constitution II) et que personne ne consommait ; et `DemandeEligibilite.zone`,
+seconde vérité sur une zone que `ConfigDispatch` portait déjà. Plus cinq `let _ =
+…` sans effet dans les tests, dont un sous un commentaire annonçant un contrôle
+qui n'existait pas.
+
+Corrigé aussi : `plafond_unites` était documenté « déclaré » alors qu'il porte le
+**RETENU** (`min(palier, déclaré)`) — dans le modèle du domaine comme dans le DTO
+admin. Un exploitant lisant « 8 000 » sur un coursier qui ne peut avancer que
+5 000 se serait trompé sur ce qu'il pouvait lui confier.
+
+### 6.1 N+1 de lecture dans le filtre d'éligibilité — **assumé, avec seuil**
+
+`filtrer` interroge `commandes.course_active(coursier)` et
+`coursiers.coursier(coursier)` **par candidat** : `2n` requêtes Postgres pour `n`
+membres du pré-filtre (et `2n` de plus vers l'index et les paires bloquées, moins
+coûteuses). C'est le chemin le plus sensible du produit.
+
+**Pourquoi ce n'est pas court-circuitable** : FR-026 exige la liste **complète**
+des motifs d'écart, jamais le premier. Un filtre qui s'arrête au premier refus
+rend « la capacité d'avance est le SEUL obstacle » indécidable — et c'est
+précisément la question que la bascule prépaiement doit trancher.
+
+**Pourquoi ce n'est pas mis en lot maintenant** : le pré-filtre géographique
+borne déjà `n` au rayon de zone (4 km à Tiassalé), où il vaut quelques unités. Le
+lot exigerait de changer le contrat de **deux ports** implémentés par `commandes`
+et `comptes` — hors du périmètre de ce cycle, et sans mesure pour l'appuyer.
+Optimiser à l'aveugle un chemin qu'on n'a pas encore vu ralentir, c'est payer
+comptant une dette hypothétique.
+
+**Déclencheur, écrit dans le doc-comment de `filtrer`** : au-delà d'une
+cinquantaine de membres durables dans le pool d'une zone, passer les quatre
+lectures en lot. La boucle consomme déjà des tableaux indexés — la substitution
+est locale.
+
+**À décider par le produit** : rien. C'est une dette technique nommée, avec son
+seuil ; elle n'engage aucune promesse faite à un utilisateur.
