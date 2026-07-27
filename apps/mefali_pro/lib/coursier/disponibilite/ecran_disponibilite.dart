@@ -48,8 +48,13 @@ const int plafondDefautUnites = 10000;
 /// surcharge la source de positions verrait son override ignoré.
 @Dependencies([EmetteurPosition])
 class EcranDisponibilite extends ConsumerStatefulWidget {
-  /// Construit l'écran.
-  const EcranDisponibilite({super.key});
+  /// Construit l'écran. [entete] (optionnel) est rendu en tête du corps, DANS
+  /// l'unique `Scaffold` — la bascule de rôle du coursier bi-rôle y passe sans
+  /// imbriquer un second `Scaffold` (patron d'`EcranCourseActive`, FR-046).
+  const EcranDisponibilite({super.key, this.entete});
+
+  /// Entête optionnel (bascule de rôle).
+  final Widget? entete;
 
   @override
   ConsumerState<EcranDisponibilite> createState() => _EcranDisponibiliteState();
@@ -93,6 +98,10 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
       body: ListView(
         padding: const EdgeInsets.all(MefaliTokens.screenMargin),
         children: [
+          if (widget.entete != null) ...[
+            widget.entete!,
+            const SizedBox(height: MefaliTokens.space3),
+          ],
           if (etat.horsLigne) ...[
             BandeauHorsLigne(message: t.dispoAucuneCourse),
             const SizedBox(height: MefaliTokens.space3),

@@ -50,8 +50,28 @@ async fn le_contenu_de_l_offre_dit_tout_ce_qui_decide(pool: sqlx::PgPool) {
     assert!(destination.get("adresse").is_none());
 
     // Gain et avance : entiers + devise (constitution III).
-    assert!(corps["gain"]["total_unites"].as_i64().unwrap() > 0);
+    let total = corps["gain"]["total_unites"].as_i64().unwrap();
+    assert!(total > 0);
     assert_eq!(corps["gain"]["devise"], "XOF");
+
+    // Le DÉTAIL doit faire le TOTAL. Ce que ce contrôle protège : les trois
+    // parts se lisent par nom dans les composantes du devis figé, et une clé
+    // mal orthographiée les met toutes à zéro **sans rien casser**. Yao lit
+    // alors « 0 + 0 + 0 » sous un gain de 150 FCFA — et un détail qui contredit
+    // son total lui fait douter du total. Le défaut a vécu jusqu'à la
+    // validation sur émulateur (T071) parce qu'aucun test ne regardait ici.
+    let deplacement = corps["gain"]["deplacement_unites"].as_i64().unwrap();
+    let arrets = corps["gain"]["arrets_unites"].as_i64().unwrap();
+    let effort = corps["gain"]["effort_unites"].as_i64().unwrap();
+    assert_eq!(
+        deplacement + arrets + effort,
+        total,
+        "les trois parts doivent faire le total : {deplacement} + {arrets} + {effort} ≠ {total}",
+    );
+    assert!(
+        deplacement > 0,
+        "une course qui rapporte a forcément une part de déplacement",
+    );
     assert_eq!(corps["avance"]["devise"], "XOF");
     assert_eq!(
         corps["avance"]["plafond_retenu_unites"], 5_000,

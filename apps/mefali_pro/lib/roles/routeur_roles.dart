@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_core/mefali_core.dart';
+import 'package:riverpod_annotation/experimental/scope.dart';
 
+import '../coursier/disponibilite/emetteur_position.dart';
 import 'ecran_etat_demande.dart';
 import 'etat_roles.dart';
 import 'interface_pro.dart';
@@ -16,6 +18,12 @@ import 'interface_pro.dart';
 ///
 /// La porte qui FAIT foi reste celle du serveur (`exiger_role`, à chaque
 /// requête — FR-009) : ce routeur n'est que sa traduction à l'écran.
+///
+/// `@Dependencies` remonte celle de l'espace coursier jusqu'à la racine de
+/// l'app : c'est ici qu'un test — ou un point de montage — peut surcharger la
+/// source de positions sans que Riverpod héberge l'émetteur dans un conteneur
+/// où l'override n'existe pas.
+@Dependencies([EmetteurPosition])
 class RouteurRoles extends ConsumerStatefulWidget {
   /// Crée le routeur.
   const RouteurRoles({super.key});

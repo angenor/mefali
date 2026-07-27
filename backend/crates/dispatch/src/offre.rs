@@ -767,6 +767,30 @@ impl PgDispatch {
                 .unwrap_or(0)
         };
 
+        // ── Décomposition du GAIN COURSIER ──────────────────────────────────
+        //
+        // Le devis figé porte les composantes du **prix client**
+        // (`tarification::Composantes` : `base`, `km`, `supplements`,
+        // `effort_paliers`, `effort_attente`, `effort_arrets`, `arrondi`), pas
+        // celles de la part coursier. Les trois parts que K2 affiche s'en
+        // déduisent.
+        //
+        // ⚠ Ces clés se lisent par NOM : la première rédaction en demandait
+        // trois qui n'existaient pas (`deplacement`, `arrets`, `effort`), et les
+        // trois parts valaient donc **toujours zéro** sous un total non nul.
+        // Yao lisait « 0 + 0 + 0 » pour un gain de 150 FCFA — un détail qui
+        // contredit son total lui fait douter du total. Trouvé sur émulateur
+        // (T071), invisible en test parce qu'aucun n'assertait les parts.
+        //
+        // Le déplacement se prend par SOUSTRACTION, jamais en ré-additionnant
+        // base + km + suppléments − marge : la marge n'est pas une composante
+        // stockée, et la reconstituer ferait diverger la somme du total au
+        // premier arrondi. Ici l'invariant « les trois parts font le total » est
+        // tenu par construction.
+        let gain_arrets = composante("effort_arrets");
+        let gain_effort = composante("effort_paliers") + composante("effort_attente");
+        let gain_deplacement = (entete.devis_part_coursier - gain_arrets - gain_effort).max(0);
+
         let collectes: Vec<_> = arrets
             .iter()
             .enumerate()
@@ -797,9 +821,9 @@ impl PgDispatch {
             destination_zone_nom: entete.zone_nom,
             destination_distance_m,
             gain_total_unites: entete.devis_part_coursier,
-            gain_deplacement_unites: composante("deplacement"),
-            gain_arrets_unites: composante("arrets"),
-            gain_effort_unites: composante("effort"),
+            gain_deplacement_unites: gain_deplacement,
+            gain_arrets_unites: gain_arrets,
+            gain_effort_unites: gain_effort,
             plafond_retenu_unites: plafond_retenu,
             degraded,
         })

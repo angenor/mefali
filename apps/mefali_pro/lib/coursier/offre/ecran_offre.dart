@@ -42,8 +42,17 @@ const int francsParJourAffiches = 3;
 
 /// L'écran K2.
 class EcranOffre extends ConsumerStatefulWidget {
-  /// Construit l'écran.
-  const EcranOffre({super.key});
+  /// Construit l'écran. [onTermine] est appelé quand l'offre est CONCLUE — course
+  /// acceptée, refusée, ou panneau K2-1b fermé par Yao.
+  ///
+  /// Sans lui, l'écran retombe sur `Navigator.maybePop()` : c'est le cas d'un
+  /// test qui le monte seul. Mais dans l'app, K2 n'est pas une route poussée —
+  /// c'est une BRANCHE de l'aiguillage coursier, et dépiler n'y ferait rien.
+  /// Le défaut a coûté un K2-1b invisible à la validation sur émulateur (T071).
+  const EcranOffre({super.key, this.onTermine});
+
+  /// Appelé quand l'offre est conclue, ou `null` pour dépiler une route.
+  final VoidCallback? onTermine;
 
   @override
   ConsumerState<EcranOffre> createState() => _EcranOffreState();
@@ -89,6 +98,16 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
     super.dispose();
   }
 
+  /// Rend la main à l'aiguillage — ou dépile, quand l'écran est monté seul.
+  void _terminer() {
+    final onTermine = widget.onTermine;
+    if (onTermine != null) {
+      onTermine();
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -103,6 +122,7 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
             titre: t.offreTempsEcoule,
             corps: t.offreDejaPriseTexte,
             francs: 1,
+            onRetour: _terminer,
           ),
           data: (offre) {
             // K2-1b sans aucun appel réseau : l'échéance suffit à trancher.
@@ -113,6 +133,7 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
                     : t.offreTempsEcoule,
                 corps: t.offreDejaPriseTexte,
                 francs: 1,
+                onRetour: _terminer,
               );
             }
             return _Offre(
@@ -121,11 +142,20 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
               onAccepter: () async {
                 final decision =
                     await ref.read(offreEnCoursProvider.notifier).accepter();
-                if (!decision.acceptee && mounted) {
-                  setState(() => _refus = decision.codeErreur ?? 'deja_prise');
+                if (!mounted) return;
+                if (decision.acceptee) {
+                  // La course est à lui : sortir tout de suite. Rester ici
+                  // afficherait « temps écoulé » sur une course GAGNÉE, parce
+                  // que l'offre acceptée n'est plus une offre en vol.
+                  _terminer();
+                  return;
                 }
+                setState(() => _refus = decision.codeErreur ?? 'deja_prise');
               },
-              onRefuser: () => ref.read(offreEnCoursProvider.notifier).refuser(),
+              onRefuser: () async {
+                await ref.read(offreEnCoursProvider.notifier).refuser();
+                if (mounted) _terminer();
+              },
             );
           },
         ),
@@ -488,11 +518,19 @@ class _CarteAvance extends StatelessWidget {
 
 /// **K2-1b** — temps écoulé ou course déjà prise. Ton NEUTRE, aucun blâme.
 class _Expiree extends StatelessWidget {
-  const _Expiree({required this.titre, required this.corps, required this.francs});
+  const _Expiree({
+    required this.titre,
+    required this.corps,
+    required this.francs,
+    required this.onRetour,
+  });
 
   final String titre;
   final String corps;
   final int francs;
+
+  /// Action unique de K2-1b : revenir au tableau de bord (T054).
+  final VoidCallback onRetour;
 
   @override
   Widget build(BuildContext context) {
@@ -563,7 +601,7 @@ class _Expiree extends StatelessWidget {
             height: MefaliTokens.buttonHeight,
             child: FilledButton.icon(
               key: const Key('offre-retour'),
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: onRetour,
               icon: const Icon(Symbols.dashboard_rounded),
               label: Text(t.offreRetourTableau),
             ),
