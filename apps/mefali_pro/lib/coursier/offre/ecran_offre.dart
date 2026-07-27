@@ -149,6 +149,7 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
               restantS: offre.restantS(_maintenant),
               echecReseau: _echecReseau,
               onAccepter: () async {
+                setState(() => _echecReseau = false);
                 final decision =
                     await ref.read(offreEnCoursProvider.notifier).accepter();
                 if (!mounted) return;
@@ -159,7 +160,18 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
                   _terminer();
                   return;
                 }
-                setState(() => _refus = decision.codeErreur ?? 'deja_prise');
+                // Un code d'erreur ABSENT n'est pas un verdict du serveur —
+                // c'est une requête qui n'est pas arrivée. Le rabattre sur
+                // `deja_prise` annonçait à Yao qu'un autre coursier avait pris
+                // SA course, alors que le serveur l'a peut-être reçue et la lui
+                // a affectée : il abandonnait une course qui était à lui.
+                // L'acceptation est idempotente (`uuid_client` stable) — le
+                // réessai est sûr et rend le même corps.
+                if (decision.codeErreur == null) {
+                  setState(() => _echecReseau = true);
+                  return;
+                }
+                setState(() => _refus = decision.codeErreur);
               },
               onRefuser: () async {
                 // Le geste efface l'échec précédent : un message qui colle à

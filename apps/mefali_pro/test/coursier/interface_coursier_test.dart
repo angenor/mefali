@@ -380,4 +380,45 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'une acceptation coupée par le réseau ne dit PAS « course déjà prise »',
+    (tester) async {
+      // Ce que ce test protège : `decision.codeErreur ?? 'deja_prise'`
+      // transformait TOUTE panne en « Course attribuée à un autre coursier ».
+      // C'est faux — et le serveur peut très bien avoir reçu l'acceptation et
+      // lui avoir affecté la course. Yao apprenait une chose fausse sur une
+      // décision d'argent, et abandonnait une course qui était à lui.
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final reseau = _Reseau();
+      final (container, _) = _conteneur(offre: _offreEnVol(), reseau: reseau);
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_monter(container));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Étal Adjoua'), findsOneWidget);
+
+      reseau.coupe = true;
+      await tester.tap(find.byKey(const Key('offre-accepter')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.text('Course attribuée à un autre coursier'),
+        findsNothing,
+        reason: 'une panne réseau n\'est pas un verdict du serveur',
+      );
+      expect(
+        find.byKey(const Key('offre-echec-reseau')),
+        findsOneWidget,
+        reason: 'l\'acceptation est idempotente (`uuid_client`) : Yao doit '
+            'pouvoir réessayer, et l\'écran doit le lui dire',
+      );
+    },
+  );
 }
