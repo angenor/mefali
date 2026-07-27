@@ -56,7 +56,7 @@ final class ConfirmationProvider
   }
 }
 
-String _$confirmationHash() => r'462146036aced281458b577ff0a2b8299b8f8e18';
+String _$confirmationHash() => r'02637965900b40679d7f7a5749ce4f6ef533e752';
 
 /// Porteur de la saisie d'adresse et de paiement.
 ///

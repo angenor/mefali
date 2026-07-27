@@ -46,6 +46,12 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   riverpod_generator: ^4.0.4
   build_runner: ^2.15.1
+  # Transitive de riverpod_generator, épinglée ICI seulement : ce lockfile
+  # l'avait résolue en 4.2.4 quand mefali_core et mefali_pro tiennent 4.2.3, et
+  # SC-008 exige que les trois paquets génèrent avec la MÊME version — deux
+  # `.g.dart` produits par deux générateurs différents divergent sans que rien
+  # ne le signale. Aligné vers le bas plutôt que l'inverse : les deux autres
+  # paquets portent le code du cycle, celui-ci n'y touche pas.
 
 flutter:
   uses-material-design: true
