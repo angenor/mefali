@@ -421,4 +421,75 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'HORS LIGNE, l\'app n\'interroge pas l\'offre — 1 800 requêtes par heure pour rien',
+    (tester) async {
+      // Ce que ce test protège : le tic tournait tant que l'espace coursier
+      // était monté, sans regarder l'état de Yao. Un coursier hors ligne qui
+      // laisse l'app ouverte payait ~1 800 `GET /courses/offre-courante` par
+      // heure sur un forfait prépayé, et sa batterie avec — pour une offre qui
+      // ne peut PAS arriver : hors ligne, il n'est pas dans le vivier.
+      final (container, transport) = _conteneur();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_monter(container));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final apresMontage =
+          transport.recues.where((r) => r.path.contains('/offre-courante')).length;
+
+      // Dix secondes d'app ouverte, hors ligne : cinq tics de 2 s.
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      expect(
+        transport.recues.where((r) => r.path.contains('/offre-courante')).length,
+        apresMontage,
+        reason: 'aucune interrogation ne doit partir tant que Yao est hors ligne',
+      );
+    },
+  );
+
+  testWidgets(
+    'une offre à l\'écran n\'est interrogée que par UNE horloge, pas deux',
+    (tester) async {
+      // Ce que ce test protège : l'aiguillage et K2 avaient chacun leur tic de
+      // 2 s. Le débit était donc DOUBLÉ pendant les 40 s de décision —
+      // exactement le moment où la batterie et le forfait de Yao comptent le
+      // plus.
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final (container, transport) =
+          _conteneur(offre: _offreEnVol(), enLigne: true);
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_monter(container));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Étal Adjoua'), findsOneWidget);
+
+      final avant =
+          transport.recues.where((r) => r.path.contains('/offre-courante')).length;
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      final tics =
+          transport.recues.where((r) => r.path.contains('/offre-courante')).length -
+              avant;
+
+      expect(
+        tics,
+        lessThanOrEqualTo(3),
+        reason: 'six secondes à la période de 2 s font TROIS interrogations ; '
+            'davantage veut dire qu\'une seconde horloge bat en parallèle',
+      );
+      expect(tics, greaterThan(0), reason: 'l\'offre doit rester rafraîchie');
+    },
+  );
 }

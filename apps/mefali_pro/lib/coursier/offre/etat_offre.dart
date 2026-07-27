@@ -6,9 +6,11 @@
 /// l'affiche. La mise en ligne, elle, traverse les écrans — d'où son
 /// `keepAlive`.
 ///
-/// L'app **va chercher** son offre toutes les 2 s tant qu'un écran de dispatch
-/// est monté (research R16) : le push haute priorité appartient à NTF-01, et le
-/// jour où il arrivera il réveillera l'app, qui appellera le même endpoint.
+/// L'app **va chercher** son offre toutes les 2 s (research R16), depuis
+/// l'aiguillage coursier et depuis lui seul, et **seulement quand une offre
+/// peut arriver** — en ligne, sans course en cours. Le push haute priorité
+/// appartient à NTF-01, et le jour où il arrivera il réveillera l'app, qui
+/// appellera le même endpoint.
 ///
 /// ⚠ Le **compte à rebours** n'est PAS ici : c'est un état LOCAL du widget, que
 /// la constitution XII nomme explicitement. Son autorité est `echeance_le`,

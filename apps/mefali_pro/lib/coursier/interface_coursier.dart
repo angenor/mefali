@@ -15,12 +15,14 @@
 ///    et son plafond du jour est déjà engagé ;
 /// 3. sinon, **K1** : en ligne / hors ligne, plafond d'avance du jour.
 ///
-/// **C'est ici que bat la mesure** de l'interrogation d'offre (research R16) :
-/// tant que cet espace est monté, `GET /courses/offre-courante` est appelé
-/// toutes les 2 s. Le mettre plus bas — dans K1 seul — laisserait Yao sans
-/// offre dès qu'il regarde autre chose ; le mettre dans le provider en ferait
-/// une horloge qui tourne sur un arbre démonté, ce que `OffreEnCours` refuse
-/// explicitement.
+/// **C'est ici, et ici seulement, que bat la mesure** de l'interrogation
+/// d'offre (research R16) : `GET /courses/offre-courante` est appelé toutes les
+/// 2 s — mais uniquement quand une offre peut RÉELLEMENT arriver, c'est-à-dire
+/// quand Yao est en ligne et sans course en cours. Le mettre plus bas — dans K1
+/// seul — le laisserait sans offre dès qu'il regarde autre chose ; le mettre
+/// dans le provider en ferait une horloge qui tourne sur un arbre démonté, ce
+/// que `OffreEnCours` refuse explicitement ; en poser une SECONDE dans K2
+/// doublait le débit pendant les 40 s de décision.
 library;
 
 import 'dart:async';
@@ -35,6 +37,7 @@ import 'course/ecran_course_active.dart';
 import 'course/etat_course.dart';
 import 'disponibilite/ecran_disponibilite.dart';
 import 'disponibilite/emetteur_position.dart';
+import 'disponibilite/etat_disponibilite.dart';
 import 'offre/ecran_offre.dart';
 import 'offre/etat_offre.dart';
 
@@ -80,9 +83,26 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
   void initState() {
     super.initState();
     _tic = Timer.periodic(periodeInterrogation, (_) {
-      if (!mounted) return;
+      if (!mounted || !_uneOffrePeutArriver()) return;
       ref.invalidate(offreEnCoursProvider);
     });
+  }
+
+  /// Une offre peut-elle RÉELLEMENT arriver à cet instant ?
+  ///
+  /// Interroger quand la réponse est non coûte de l'argent à Yao — forfait
+  /// prépayé — et sa batterie : le tic tournait tant que l'espace coursier
+  /// était monté, soit ~1 800 `GET /courses/offre-courante` par heure pour un
+  /// coursier **hors ligne** qui laisse l'app ouverte.
+  ///
+  /// Les deux cas où le serveur ne peut rien envoyer :
+  ///
+  /// - **hors ligne** : Yao n'est pas dans le vivier (contrat §1.1) ;
+  /// - **en course** : `course_active` l'en exclut (FR-007).
+  bool _uneOffrePeutArriver() {
+    if (!ref.read(disponibiliteProvider).enLigne) return false;
+    final course = ref.read(etatCourseActiveProvider).value;
+    return course == null || course.arrets.isEmpty;
   }
 
   @override

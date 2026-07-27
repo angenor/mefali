@@ -69,6 +69,7 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
   /// Code du dernier refus (`deja_prise`, `offre_echue`), ou `null`.
   String? _refus;
 
+
   /// La dernière décision n'est **pas partie** (réseau).
   ///
   /// Distinct de [_refus], et la distinction est tout l'enjeu : un refus métier
@@ -76,26 +77,17 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
   /// perdre une franchise sur un refus, et une course sur une acceptation.
   bool _echecReseau = false;
 
-  /// Secondes écoulées depuis le dernier rechargement de l'offre.
-  int _depuisRechargement = 0;
-
   @override
   void initState() {
     super.initState();
-    // UNE horloge pour deux besoins : le compte à rebours (chaque seconde) et
-    // l'interrogation de l'offre (toutes les `periodeInterrogation`). Deux
-    // minuteurs, ou un minuteur côté provider, seraient deux choses de plus à
-    // annuler — et c'est exactement ce qu'on oublie.
+    // Le compte à rebours, et RIEN d'autre. L'interrogation de l'offre bat
+    // dans l'aiguillage, qui est monté au-dessus de cet écran et le reste
+    // pendant toute la décision : la faire battre ici AUSSI doublait le débit
+    // pendant les 40 s — le moment où le forfait prépayé et la batterie d'un
+    // Android d'entrée de gamme comptent le plus.
     _tic = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() {
-        _maintenant = DateTime.now().toUtc();
-        _depuisRechargement += 1;
-      });
-      if (_depuisRechargement >= periodeInterrogation.inSeconds) {
-        _depuisRechargement = 0;
-        ref.invalidate(offreEnCoursProvider);
-      }
+      setState(() => _maintenant = DateTime.now().toUtc());
     });
   }
 
