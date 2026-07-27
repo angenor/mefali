@@ -59,6 +59,49 @@ async fn le_contenu_de_l_offre_dit_tout_ce_qui_decide(pool: sqlx::PgPool) {
     );
 }
 
+/// FR-035 — l'écran d'offre d'une course à **plusieurs arrêts** ne coûte
+/// qu'**UNE** mesure de proximité.
+///
+/// Ce que ce test protège : mesurer tronçon par tronçon coûterait une requête de
+/// routage par arrêt, sur le chemin qui prépare l'écran d'un coursier qui a 40 s
+/// pour décider. Et le cache par tronçon du cycle 007 ne les absorberait pas —
+/// il ne réchauffe jamais coursier→vendeur, qui part d'une position mobile.
+#[sqlx::test(migrations = "../migrations")]
+async fn l_ecran_d_offre_ne_coute_qu_une_mesure_de_proximite(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.dans_le_pool(0, 15_000).await;
+    // Trois vendeurs : 3 collectes + 1 remise, donc 5 points avec la position du
+    // coursier — et 4 tronçons à mesurer.
+    let lignes: Vec<_> = bac.cmd.vendeurs.iter().map(|v| v.ligne(2)).collect();
+    let commande = bac.cmd.creer_commande_api("marche", lignes).await;
+    bac.dispatcher(commande).await;
+
+    // Le dispatch a mesuré, lui aussi : on ne compte que l'affichage.
+    bac.proximite.oublier_les_appels();
+    let (statut, corps) = bac
+        .get("/courses/offre-courante", &bac.coursiers[0].jeton)
+        .await;
+    assert_eq!(statut, 200, "{corps}");
+    assert_eq!(
+        corps["arrets"].as_array().unwrap().len(),
+        3,
+        "trois collectes",
+    );
+    assert_eq!(
+        bac.proximite.appels(),
+        1,
+        "UNE matrice pour tout l'itinéraire, jamais un appel par tronçon",
+    );
+
+    // Et les distances inter-arrêts sortent bien de cette unique mesure.
+    for arret in corps["arrets"].as_array().unwrap() {
+        assert!(
+            arret["distance_m"].as_i64().unwrap() > 0,
+            "chaque arrêt porte sa distance au précédent : {arret}",
+        );
+    }
+}
+
 /// Une offre **échue** rend `204`, **même si le tic n'a pas encore passé** :
 /// l'échéance persistée est l'autorité (research R1).
 #[sqlx::test(migrations = "../migrations")]

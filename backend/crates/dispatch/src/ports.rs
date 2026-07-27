@@ -262,7 +262,21 @@ pub struct Trajets {
     pub degraded: bool,
 }
 
-/// Proximité routière — **une seule** matrice pour tous les candidats.
+/// Proximité routière — **une seule** matrice par évaluation.
+///
+/// Deux formes de mesure, parce que le domaine en a deux et **une seule
+/// matrice** doit suffire à chacune (FR-035, research R5) :
+///
+/// - [`vers_point`](ProximiteRoutiere::vers_point) — « N origines → 1 point » :
+///   le classement des candidats vers le premier arrêt de collecte ;
+/// - [`troncons_consecutifs`](ProximiteRoutiere::troncons_consecutifs) — « un
+///   itinéraire » : les distances inter-arrêts que l'offre affiche.
+///
+/// La seconde n'est pas un confort : sans elle, un itinéraire à trois arrêts
+/// se mesure par trois appels successifs de la première, c'est-à-dire trois
+/// requêtes de routage là où `/table` en rend une. Et le cache par tronçon du
+/// cycle 007 ne les absorbe pas — il ne réchauffe jamais `coursier→vendeur`,
+/// qui part d'une position mobile.
 #[async_trait]
 pub trait ProximiteRoutiere: Send + Sync {
     /// Jamais un appel par candidat (FR-035), et **jamais d'erreur** :
@@ -280,6 +294,20 @@ pub trait ProximiteRoutiere: Send + Sync {
         origines: &[tarification::Point],
         destination: tarification::Point,
     ) -> Trajets;
+
+    /// Les tronçons **consécutifs** d'un itinéraire, en UNE seule matrice.
+    ///
+    /// Rend `points.len() - 1` trajets — `points[0]→points[1]`,
+    /// `points[1]→points[2]`, … — dans cet ordre, et un vecteur vide pour moins
+    /// de deux points.
+    ///
+    /// **Pourquoi des tronçons et non la matrice n×n.** L'appelant n'a besoin
+    /// que de la diagonale adjacente ; lui rendre une `tarification::Matrice`
+    /// ferait entrer un type d'infrastructure dans le vocabulaire du domaine et
+    /// l'obligerait à connaître l'indexation ligne-majeur d'un moteur de
+    /// routage. Le port promet ce que le domaine consomme, pas ce que
+    /// l'implémentation calcule.
+    async fn troncons_consecutifs(&self, zone: Uuid, points: &[tarification::Point]) -> Trajets;
 }
 
 /// Destinataire et canal d'une annonce.
@@ -715,6 +743,10 @@ impl PairesBloquees for PairesSimulees {
 
 /// Double de [`ProximiteRoutiere`] : distances et durées connues d'avance, donc
 /// classement assertable au rang près.
+///
+/// Il **compte ses appels** ([`ProximiteFixe::appels`]) : c'est ce qui rend
+/// FR-035 démontrable — « une matrice par évaluation, jamais un appel par
+/// candidat » est une promesse qui ne se vérifie qu'en comptant.
 #[derive(Debug)]
 pub struct ProximiteFixe {
     /// Trajets par point d'origine arrondi — la clé évite les surprises de f64.
@@ -723,6 +755,8 @@ pub struct ProximiteFixe {
     defaut: Mutex<Trajet>,
     /// Drapeau de dégradé rendu par le double.
     degraded: Mutex<bool>,
+    /// Nombre d'appels au port, toutes méthodes confondues.
+    appels: std::sync::atomic::AtomicUsize,
 }
 
 impl Default for ProximiteFixe {
@@ -752,6 +786,7 @@ impl ProximiteFixe {
                 duree_s: 300,
             }),
             degraded: Mutex::new(false),
+            appels: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
@@ -778,6 +813,31 @@ impl ProximiteFixe {
     pub fn degrade(&self, degraded: bool) {
         *self.degraded.lock().expect("degraded") = degraded;
     }
+
+    /// Nombre d'appels au port depuis la dernière remise à zéro.
+    pub fn appels(&self) -> usize {
+        self.appels.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Remet le compteur à zéro — pour isoler la mesure d'une phase précise
+    /// (l'affichage d'une offre, par exemple) de celle du dispatch qui l'a
+    /// produite.
+    pub fn oublier_les_appels(&self) {
+        self.appels.store(0, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    /// Trajet déclaré depuis ce point, ou le défaut.
+    fn depuis_ou_defaut(&self, point: tarification::Point) -> Trajet {
+        let trajets = self.trajets.lock().expect("trajets");
+        let defaut = *self.defaut.lock().expect("defaut");
+        trajets.get(&cle_point(point)).copied().unwrap_or(defaut)
+    }
+
+    /// Compte un appel au port.
+    fn compter_un_appel(&self) {
+        self.appels
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 #[async_trait]
@@ -788,12 +848,21 @@ impl ProximiteRoutiere for ProximiteFixe {
         origines: &[tarification::Point],
         _destination: tarification::Point,
     ) -> Trajets {
-        let trajets = self.trajets.lock().expect("trajets");
-        let defaut = *self.defaut.lock().expect("defaut");
+        self.compter_un_appel();
         Trajets {
-            trajets: origines
-                .iter()
-                .map(|o| trajets.get(&cle_point(*o)).copied().unwrap_or(defaut))
+            trajets: origines.iter().map(|o| self.depuis_ou_defaut(*o)).collect(),
+            degraded: *self.degraded.lock().expect("degraded"),
+        }
+    }
+
+    /// Un tronçon se lit sur son point de DÉPART, comme `vers_point` lit son
+    /// origine : `depuis()` suffit donc à piloter les deux mesures d'un test.
+    async fn troncons_consecutifs(&self, _zone: Uuid, points: &[tarification::Point]) -> Trajets {
+        self.compter_un_appel();
+        Trajets {
+            trajets: points
+                .windows(2)
+                .map(|fenetre| self.depuis_ou_defaut(fenetre[0]))
                 .collect(),
             degraded: *self.degraded.lock().expect("degraded"),
         }
@@ -1095,5 +1164,45 @@ mod tests {
         assert_eq!(trajets.trajets[0].distance_m, 2_000);
         assert_eq!(trajets.trajets[1].duree_s, 120);
         assert!(!trajets.degraded);
+    }
+
+    /// FR-035 — un itinéraire à `n` points se mesure en UN appel qui rend
+    /// `n − 1` tronçons consécutifs, jamais en `n − 1` appels.
+    #[tokio::test]
+    async fn les_troncons_consecutifs_tiennent_en_un_seul_appel() {
+        let a = tarification::Point {
+            lat: 5.896,
+            lon: -4.821,
+        };
+        let b = tarification::Point {
+            lat: 5.900,
+            lon: -4.825,
+        };
+        let c = tarification::Point {
+            lat: 5.902,
+            lon: -4.828,
+        };
+        let proximite = ProximiteFixe::nouveau();
+        proximite.depuis(a, 800, 200);
+        proximite.depuis(b, 40, 15);
+
+        let trajets = proximite
+            .troncons_consecutifs(Uuid::now_v7(), &[a, b, c])
+            .await;
+        assert_eq!(
+            trajets.trajets.len(),
+            2,
+            "trois points, deux tronçons — a→b puis b→c",
+        );
+        assert_eq!(trajets.trajets[0].distance_m, 800, "a→b");
+        assert_eq!(trajets.trajets[1].distance_m, 40, "b→c");
+        assert_eq!(proximite.appels(), 1, "UNE matrice, pas une par tronçon");
+
+        // Moins de deux points : aucun tronçon à mesurer.
+        assert!(proximite
+            .troncons_consecutifs(Uuid::now_v7(), &[a])
+            .await
+            .trajets
+            .is_empty());
     }
 }

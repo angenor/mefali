@@ -23,7 +23,7 @@
 use async_trait::async_trait;
 use dispatch::{ProximiteRoutiere, Trajet, Trajets};
 use tarification::{
-    routage::matrice_ou_degrade, CacheRoutage, PgTarification, Point, Routage,
+    routage::matrice_ou_degrade, CacheRoutage, Matrice, PgTarification, Point, Routage,
 };
 use uuid::Uuid;
 
@@ -52,18 +52,13 @@ impl ProximiteTarification {
             cache,
         }
     }
-}
 
-#[async_trait]
-impl ProximiteRoutiere for ProximiteTarification {
-    async fn vers_point(&self, zone: Uuid, origines: &[Point], destination: Point) -> Trajets {
-        if origines.is_empty() {
-            return Trajets {
-                trajets: Vec::new(),
-                degraded: false,
-            };
-        }
-
+    /// **UNE** matrice `n×n` pour ces points, jamais d'erreur.
+    ///
+    /// Les deux mesures du port passent par ici : c'est le seul endroit où le
+    /// routage est appelé, donc le seul endroit à relire pour savoir combien
+    /// d'appels une évaluation coûte.
+    async fn matrice_de_zone(&self, zone: Uuid, points: &[Point]) -> Matrice {
         // Les réglages de dégradé et de cache viennent de la zone. Si la
         // configuration est illisible, on prend les défauts du moteur plutôt que
         // de renoncer à classer : un classement dégradé vaut mieux qu'aucune
@@ -87,17 +82,10 @@ impl ProximiteRoutiere for ProximiteTarification {
             }
         };
 
-        // UNE matrice pour tous les candidats : `[origines…, destination]`.
-        // L'index de la destination est le dernier ; chaque origine lit sa
-        // cellule `(i, destination)`.
-        let mut points: Vec<Point> = origines.to_vec();
-        points.push(destination);
-        let index_destination = points.len() - 1;
-
         let matrice = matrice_ou_degrade(
             self.routage.as_ref(),
             self.cache.as_ref(),
-            &points,
+            points,
             options,
             facteur,
             vitesse,
@@ -107,16 +95,66 @@ impl ProximiteRoutiere for ProximiteTarification {
         if matrice.degraded {
             tracing::warn!(
                 zone = %zone,
-                nb_origines = origines.len(),
+                nb_points = points.len(),
                 facteur,
                 "proximité de dispatch en DÉGRADÉ vol d'oiseau (jamais bloquant)",
             );
         }
+        matrice
+    }
+}
+
+#[async_trait]
+impl ProximiteRoutiere for ProximiteTarification {
+    async fn vers_point(&self, zone: Uuid, origines: &[Point], destination: Point) -> Trajets {
+        if origines.is_empty() {
+            return Trajets {
+                trajets: Vec::new(),
+                degraded: false,
+            };
+        }
+
+        // UNE matrice pour tous les candidats : `[origines…, destination]`.
+        // L'index de la destination est le dernier ; chaque origine lit sa
+        // cellule `(i, destination)`.
+        let mut points: Vec<Point> = origines.to_vec();
+        points.push(destination);
+        let index_destination = points.len() - 1;
+
+        let matrice = self.matrice_de_zone(zone, &points).await;
 
         Trajets {
             trajets: (0..index_destination)
                 .map(|i| {
                     let troncon = matrice.troncon(i, index_destination);
+                    Trajet {
+                        distance_m: troncon.distance_m,
+                        duree_s: troncon.duree_s,
+                    }
+                })
+                .collect(),
+            degraded: matrice.degraded,
+        }
+    }
+
+    async fn troncons_consecutifs(&self, zone: Uuid, points: &[Point]) -> Trajets {
+        if points.len() < 2 {
+            return Trajets {
+                trajets: Vec::new(),
+                degraded: false,
+            };
+        }
+
+        // UNE matrice pour tout l'itinéraire : on n'en lit que la diagonale
+        // adjacente `(i, i+1)`, mais `/table` la rend d'un seul aller-retour.
+        // Un appel par tronçon coûterait `n-1` requêtes de routage sur le chemin
+        // qui prépare l'écran d'offre.
+        let matrice = self.matrice_de_zone(zone, points).await;
+
+        Trajets {
+            trajets: (0..points.len() - 1)
+                .map(|i| {
+                    let troncon = matrice.troncon(i, i + 1);
                     Trajet {
                         distance_m: troncon.distance_m,
                         duree_s: troncon.duree_s,

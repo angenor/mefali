@@ -713,9 +713,13 @@ impl PgDispatch {
         .fetch_all(&self.pool)
         .await?;
 
-        // Les distances INTER-ARRÊTS viennent d'une seule matrice routière : le
-        // premier arrêt est mesuré depuis la position du coursier, les suivants
-        // depuis leur prédécesseur (maquette : « à 800 m », « + 40 m »).
+        // Les distances INTER-ARRÊTS viennent d'UNE SEULE matrice routière
+        // (FR-035, research R5) : le premier arrêt est mesuré depuis la position
+        // du coursier, les suivants depuis leur prédécesseur (maquette :
+        // « à 800 m », « + 40 m »). Mesurer tronçon par tronçon coûterait une
+        // requête de routage par arrêt, et le cache par tronçon du cycle 007 ne
+        // les absorberait pas : il ne réchauffe jamais coursier→vendeur, qui
+        // part d'une position mobile.
         let origine = self
             .pool_coursiers
             .etat(offre.coursier)
@@ -735,16 +739,25 @@ impl PgDispatch {
             });
         }
 
-        let mut distances = Vec::new();
-        let mut degraded = entete.devis_degraded;
-        for fenetre in points.windows(2) {
-            let trajets = self
-                .proximite
-                .vers_point(offre.zone, &fenetre[..1], fenetre[1])
-                .await;
-            degraded = degraded || trajets.degraded;
-            distances.push(trajets.trajets.first().map(|t| t.distance_m).unwrap_or(0));
-        }
+        let troncons = self
+            .proximite
+            .troncons_consecutifs(offre.zone, &points)
+            .await;
+        let degraded = entete.devis_degraded || troncons.degraded;
+        let distances: Vec<i64> = troncons.trajets.iter().map(|t| t.distance_m).collect();
+
+        // Décalage des arrêts dans `points` : 1 quand la position du coursier
+        // ouvre l'itinéraire, 0 quand elle est inconnue (coursier sorti du pool
+        // entre l'émission et l'affichage). Sans lui, une position absente
+        // décalerait toutes les distances d'un arrêt — chaque arrêt afficherait
+        // celle de son SUIVANT.
+        let decalage = usize::from(origine.is_some());
+        let distance_vers = |arret: usize| -> i64 {
+            (arret + decalage)
+                .checked_sub(1)
+                .and_then(|troncon| distances.get(troncon).copied())
+                .unwrap_or(0)
+        };
 
         let composantes = entete.devis_composantes;
         let composante = |cle: &str| -> i64 {
@@ -778,7 +791,7 @@ impl PgDispatch {
                     ordre: rang as i32 + 1,
                     prestataire_id: a.prestataire_id,
                     nom: a.nom.clone(),
-                    distance_m: distances.get(*index).copied().unwrap_or(0),
+                    distance_m: distance_vers(*index),
                 })
                 .collect(),
             destination_zone_nom: entete.zone_nom,
