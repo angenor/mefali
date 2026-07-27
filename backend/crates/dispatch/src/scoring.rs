@@ -119,7 +119,7 @@ impl PgDispatch {
 
         let mut candidats = Vec::with_capacity(eligibles.len());
         for (index, eligible) in eligibles.iter().enumerate() {
-            let inactivite_s = self.inactivite_s(eligible, maintenant).await?;
+            let inactivite_s = self.inactivite_s(eligible, config, maintenant).await?;
             let taux = self
                 .taux_acceptation_pourcent(eligible.coursier, config, maintenant)
                 .await?;
@@ -156,19 +156,40 @@ impl PgDispatch {
 
     /// Inactivité d'un candidat, en secondes.
     ///
-    /// Depuis la dernière course LIVRÉE ; à défaut, depuis son entrée dans le
-    /// pool (l'âge de son inscription). Un nouvel arrivant n'est pas traité
-    /// comme quelqu'un qui vient de finir — sans quoi il attendrait la moitié du
-    /// plafond avant d'exister pour le classement.
+    /// Depuis la dernière course LIVRÉE ; à défaut, **depuis sa mise en ligne du
+    /// jour** — l'instant où il a décidé de travailler.
+    ///
+    /// ⚠ Surtout pas l'âge de sa dernière PUBLICATION de position : elle date de
+    /// quelques secondes, et un coursier en ligne depuis le matin sans avoir
+    /// rien reçu aurait alors la même inactivité que celui qui vient de
+    /// terminer une course. C'est l'inverse exact de l'équité que DSP-03
+    /// cherche — celui qui attend depuis le plus longtemps doit passer devant.
+    ///
+    /// Sans mise en ligne connue (index reconstruit après un vidage), on prend
+    /// le plafond de zone : un coursier dont on ignore l'attente est présumé
+    /// avoir attendu, jamais présumé venir de finir.
     async fn inactivite_s(
         &self,
         eligible: &CandidatEligible,
+        config: &ConfigDispatch,
         maintenant: DateTime<Utc>,
     ) -> Result<i64, ErreurDispatch> {
-        match self.commandes.fin_derniere_course(eligible.coursier).await? {
-            Some(fin) => Ok((maintenant - fin).num_seconds().max(0)),
-            None => Ok(eligible.inscription.age_s.max(0)),
+        if let Some(fin) = self.commandes.fin_derniere_course(eligible.coursier).await? {
+            return Ok((maintenant - fin).num_seconds().max(0));
         }
+        let bascule = sqlx::query_scalar!(
+            "SELECT bascule_le FROM dispatch.plafond_jour
+             WHERE coursier_id = $1 AND jour = $2",
+            eligible.coursier,
+            maintenant.date_naive(),
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten();
+        Ok(match bascule {
+            Some(depuis) => (maintenant - depuis).num_seconds().max(0),
+            None => config.inactivite_plafond_s,
+        })
     }
 
     /// Taux d'acceptation en pourcentage sur la fenêtre de zone, ou `None` si

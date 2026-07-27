@@ -1094,12 +1094,17 @@ mod tests {
         // de collecte) + 13 (pays, cycle 008 : 6 « périssable » de catégorie,
         // longueur du repère écrit, essais du code, seuil d'historique, délai et
         // écart de substitution, rétention des photos, période de position)
+        // + 7 (pays, cycle 009 : durée de vie du pool, compte à rebours d'offre
+        // et son exclusivité, non-réponses franches, fenêtre d'acceptation,
+        // valeur neutre, bruit GPS)
         // + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 : seuil et fenêtre
         // du masquage automatique) + 12 (ville, cycle 007 : 2 bornes de marge,
         // arrondi, supplément pluie, 4 knobs de routage, 4 knobs d'effort —
         // `effort.plafond_eclatement_m` reste DORMANT) + 3 (ville, cycle 008 :
-        // 2 plafonds cash et l'escalade d'attente coursier).
-        assert_eq!(apres_un.4, 63, "36 (pays) + 27 (ville) paramètres");
+        // 2 plafonds cash et l'escalade d'attente coursier)
+        // + 11 (ville, cycle 009 : rayon, grille d'avance, 4 poids, plafond
+        // d'inactivité, 2 seuils de broadcast, 2 seuils de réassignation).
+        assert_eq!(apres_un.4, 81, "43 (pays) + 38 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

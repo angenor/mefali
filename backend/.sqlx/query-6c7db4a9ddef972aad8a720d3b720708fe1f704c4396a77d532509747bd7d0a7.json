@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT bascule_le FROM dispatch.plafond_jour\n             WHERE coursier_id = $1 AND jour = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bascule_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "dispatch.plafond_jour",
+            "name": "bascule_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "6c7db4a9ddef972aad8a720d3b720708fe1f704c4396a77d532509747bd7d0a7"
+}

@@ -26,9 +26,14 @@ async fn sollicitations(bac: &Bac) -> HashMap<Uuid, i64> {
 /// **SC-007 — l'équité.** 20 dispatches, 4 coursiers de profils comparables :
 /// chacun est sollicité au moins 3 fois.
 ///
-/// Le mécanisme : chaque offre refusée fait remonter l'inactivité des autres,
-/// et la composante d'inactivité les fait passer devant. C'est ce qui empêche
-/// qu'un seul coursier accapare le flux.
+/// Le mécanisme testé est le VRAI : chaque destinataire accepte et livre, ce qui
+/// remet son inactivité à zéro et fait passer les autres devant. Un test où
+/// personne ne livrerait ne prouverait rien — l'inactivité y serait identique
+/// pour tous, et c'est le départage **aléatoire** qui distribuerait, pas la
+/// composante d'équité.
+///
+/// Entre deux courses, le temps est avancé de 5 min : c'est ce que fait une
+/// vraie matinée, et c'est ce qui creuse l'écart d'inactivité.
 #[sqlx::test(migrations = "../migrations")]
 async fn sc007_vingt_dispatches_personne_n_est_oublie(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
@@ -37,21 +42,50 @@ async fn sc007_vingt_dispatches_personne_n_est_oublie(pool: sqlx::PgPool) {
     }
 
     for _ in 0..20 {
+        // Le temps passe — pour TOUT LE MONDE. Les courses livrées vieillissent,
+        // et l'attente de ceux qui n'ont rien reçu vieillit aussi : c'est
+        // exactement ce que fait une matinée, et c'est ce qui creuse l'écart
+        // d'inactivité entre celui qui vient de finir et les autres.
+        sqlx::query(
+            "UPDATE commandes.livraison
+                SET livree_le = livree_le - interval '5 minutes'
+              WHERE etat = 'livree'",
+        )
+        .execute(&bac.cmd.pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "UPDATE dispatch.plafond_jour
+                SET bascule_le = bascule_le - interval '5 minutes'
+              WHERE en_ligne",
+        )
+        .execute(&bac.cmd.pool)
+        .await
+        .unwrap();
+
         let commande = bac.commande_prete().await;
         let DecisionPipeline::OffreEmise(offre) = bac.dispatcher(commande).await else {
             continue;
         };
-        // Le destinataire refuse : la course repart au suivant, et son propre
-        // compteur d'inactivité repart de zéro.
-        bac.dispatch
-            .refuser_offre(
+        let faite = bac
+            .dispatch
+            .accepter_offre(
                 offre.id,
                 offre.coursier,
                 Uuid::now_v7(),
                 chrono::Utc::now(),
             )
             .await
-            .unwrap();
+            .expect("le destinataire accepte");
+
+        // Il livre : son inactivité repart de zéro.
+        sqlx::query(
+            "UPDATE commandes.livraison SET etat = 'livree', livree_le = now() WHERE id = $1",
+        )
+        .bind(faite.livraison)
+        .execute(&bac.cmd.pool)
+        .await
+        .unwrap();
     }
 
     let par_coursier = sollicitations(&bac).await;
@@ -68,6 +102,61 @@ async fn sc007_vingt_dispatches_personne_n_est_oublie(pool: sqlx::PgPool) {
              demande au moins 3",
         );
     }
+}
+
+/// **La preuve que le paramètre agit** : avec `dispatch.poids_inactivite = 0`,
+/// la même boucle ne distribue plus — le coursier le mieux placé accapare.
+///
+/// C'est ce test qui donne son sens au précédent : sans lui, un `sc007` vert
+/// pourrait n'être qu'un heureux hasard de tirage.
+#[sqlx::test(migrations = "../migrations")]
+async fn sans_poids_d_inactivite_l_equite_disparait(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    for i in 0..4 {
+        bac.dans_le_pool(i, 15_000).await;
+    }
+    // Tout le poids sur la proximité, et une proximité qui DÉPARTAGE.
+    bac.poser_parametre(bac.cmd.ville, "dispatch.poids_inactivite", serde_json::json!(0))
+        .await;
+    bac.poser_parametre(bac.cmd.ville, "dispatch.poids_proximite", serde_json::json!(70))
+        .await;
+    bac.proximite.defaut(3_000, 900);
+    bac.proximite.depuis(
+        tarification::Point {
+            lat: bac.coursiers[2].lat,
+            lon: bac.coursiers[2].lon,
+        },
+        300,
+        60,
+    );
+
+    for _ in 0..8 {
+        let commande = bac.commande_prete().await;
+        let DecisionPipeline::OffreEmise(offre) = bac.dispatcher(commande).await else {
+            continue;
+        };
+        let faite = bac
+            .dispatch
+            .accepter_offre(offre.id, offre.coursier, Uuid::now_v7(), chrono::Utc::now())
+            .await
+            .unwrap();
+        sqlx::query(
+            "UPDATE commandes.livraison SET etat = 'livree', livree_le = now() WHERE id = $1",
+        )
+        .bind(faite.livraison)
+        .execute(&bac.cmd.pool)
+        .await
+        .unwrap();
+    }
+
+    let par_coursier = sollicitations(&bac).await;
+    assert_eq!(
+        par_coursier.len(),
+        1,
+        "sans composante d'inactivité, le plus proche prend TOUT — c'est \
+         exactement ce que SC-007 empêche",
+    );
+    assert_eq!(par_coursier.get(&bac.coursiers[2].id).copied(), Some(8));
 }
 
 /// Le classement suit la **proximité** quand tout le reste est égal : le plus
@@ -153,15 +242,29 @@ async fn changer_les_poids_change_l_ordre_sans_redeployer(pool: sqlx::PgPool) {
         serde_json::json!(100),
     )
     .await;
-    // Le coursier 0 est dans le pool depuis plus longtemps que le 1.
+
+    // Le coursier 1 vient de LIVRER : son inactivité repart de zéro, celle du
+    // coursier 0 court depuis son entrée dans le pool. Sans cette différence
+    // réelle, les deux scores seraient égaux et le départage aléatoire de
+    // FR-039 rendrait le test instable — ce qui ne prouverait rien.
+    let livree = bac.commande_prete().await;
+    let livraison = bac
+        .cmd
+        .commandes
+        .assigner_coursier(livree, bac.coursiers[1].id, chrono::Utc::now())
+        .await
+        .unwrap();
     sqlx::query(
-        "UPDATE commandes.livraison SET etat = 'livree', livree_le = now()
-         WHERE coursier_id = $1",
+        "UPDATE commandes.livraison SET etat = 'livree', livree_le = now() WHERE id = $1",
     )
-    .bind(bac.coursiers[1].id)
+    .bind(livraison)
     .execute(&bac.cmd.pool)
     .await
     .unwrap();
+    // Le TRONC reste `en_cours` : le passer `terminee` exigerait un paiement
+    // réglé (CHECK `commande_terminee_payee`), et c'est la LIVRAISON qui fonde
+    // l'inactivité — pas l'état du tronc.
+    let _ = livree;
 
     let commande = bac.commande_prete().await;
     let DecisionPipeline::OffreEmise(offre) = bac.dispatcher(commande).await else {
