@@ -6,4 +6,39 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine PUR (constitution II) : pool éphémère, éligibilité par capacités,
+# classement pondéré, offre sous double verrou, broadcast, réassignation. Le
+# crate porte sqlx et SON schéma (`dispatch`) ; tout le reste passe par des
+# traits doublables — Redis, OSRM, notifications et note du prestataire vivent
+# derrière des ports implémentés dans `api` (ou nulle part encore : AVI, CRS-07
+# et NTF-01 ne sont pas construits).
+#
+# ⚠ Pas de dépendance inverse : `commandes` ne dépendra JAMAIS de `dispatch`
+# (research R19) — c'est pourquoi le contrat `CommandesADispatcher` vit dans
+# `commandes::ports` depuis le cycle 008. L'inverse serait un cycle Cargo.
+#
+# AUCUNE dépendance nouvelle au workspace (constitution X) : `redis` et
+# `deadpool-redis` y sont déjà (cycle 003), et rien ici n'en a besoin — le pool
+# est derrière `PoolCoursiers`.
 [dependencies]
+socle.workspace = true
+# Les 18 paramètres du pipeline, hérités pays → ville (constitution I).
+zones.workspace = true
+# État coursier : rôle validé, compte non bloqué, véhicules déclarés.
+comptes.workspace = true
+# Contrat offert à DSP au cycle 008 : file FIFO, affectation, capacités requises.
+commandes.workspace = true
+# `Point` de la matrice routière — la proximité passe par un port au-dessus de
+# `tarification::routage::matrice_ou_degrade` (research R5).
+tarification.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

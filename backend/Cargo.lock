@@ -1627,6 +1627,22 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "commandes",
+ "comptes",
+ "serde",
+ "serde_json",
+ "socle",
+ "sqlx",
+ "tarification",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+ "zones",
+]
 
 [[package]]
 name = "dispatch2"
