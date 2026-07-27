@@ -243,10 +243,19 @@ async fn changer_les_poids_change_l_ordre_sans_redeployer(pool: sqlx::PgPool) {
     )
     .await;
 
-    // Le coursier 1 vient de LIVRER : son inactivité repart de zéro, celle du
-    // coursier 0 court depuis son entrée dans le pool. Sans cette différence
-    // réelle, les deux scores seraient égaux et le départage aléatoire de
-    // FR-039 rendrait le test instable — ce qui ne prouverait rien.
+    // Le coursier 0 attend depuis 30 min ; le coursier 1 vient de LIVRER, son
+    // inactivité repart de zéro. Sans cette différence RÉELLE, les deux scores
+    // seraient égaux et le départage aléatoire de FR-039 rendrait le test
+    // instable — ce qui ne prouverait rien.
+    sqlx::query(
+        "UPDATE dispatch.plafond_jour
+            SET bascule_le = bascule_le - interval '30 minutes'
+          WHERE coursier_id = $1",
+    )
+    .bind(bac.coursiers[0].id)
+    .execute(&bac.cmd.pool)
+    .await
+    .unwrap();
     let livree = bac.commande_prete().await;
     let livraison = bac
         .cmd
