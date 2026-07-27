@@ -78,7 +78,7 @@ void main() {
           reason: 'un compte purement client n\'a aucune fonction pro (FR-011)',
         );
         expect(
-          find.text('Espace coursier'),
+          find.text('Ma course'),
           findsNothing,
           reason: 'aucune interface pro ne doit fuiter sans rôle validé',
         );
@@ -106,7 +106,7 @@ void main() {
       expect(find.text('En attente'), findsOneWidget, reason: 'puce de statut du rôle');
       expect(find.text('Coursier'), findsOneWidget, reason: 'carte du rôle demandé');
       expect(
-        find.text('Espace coursier'),
+        find.text('Ma course'),
         findsNothing,
         reason: 'SC-005 — « en attente » ne franchit pas la porte',
       );
@@ -153,7 +153,7 @@ void main() {
 
       expect(find.text('Rôle suspendu'), findsOneWidget);
       expect(find.text('Plaintes répétées'), findsOneWidget);
-      expect(find.text('Espace coursier'), findsNothing);
+      expect(find.text('Ma course'), findsNothing);
       await _fin(tester, container);
     });
 
@@ -196,7 +196,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Espace coursier'),
+        find.text('Ma course'),
         findsOneWidget,
         reason: 'le réseau revenu, l\'écran se répare sans redémarrage',
       );
@@ -222,7 +222,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Le premier rôle validé (ordre de l'énum backend) ouvre l'app.
-      expect(find.text('Espace coursier'), findsOneWidget);
+      expect(find.text('Ma course'), findsOneWidget);
       final appelsApresChargement = transport.recues.length;
 
       await tester.tap(find.text('Vendeur'));
@@ -254,7 +254,7 @@ void main() {
 
       await tester.tap(find.text('Coursier'));
       await tester.pumpAndSettle();
-      expect(find.text('Espace coursier'), findsOneWidget, reason: 'et retour');
+      expect(find.text('Ma course'), findsOneWidget, reason: 'et retour');
       await _fin(tester, container);
     });
 
