@@ -184,6 +184,30 @@ class DecisionPrise {
 class OffreEnCours extends _$OffreEnCours {
   static const _uuid = Uuid();
 
+  /// UUID client de la décision en cours — **stable d'un essai à l'autre**.
+  ///
+  /// C'est ce qui rend un réessai SÛR : le serveur rejoue une décision
+  /// idempotente sur le même `uuid_client` et rend le même corps (constitution
+  /// V). En tirer un neuf à chaque appel ferait d'un réessai une SECONDE
+  /// décision — sur une acceptation, une course déjà gagnée deviendrait
+  /// « déjà prise ».
+  ///
+  /// ⚠ `static`, et il le faut : ce porteur est **jetable**, et le tic
+  /// d'interrogation l'invalide toutes les 2 s. Une mémoire d'instance serait
+  /// donc perdue entre le premier essai et le réessai — c'est-à-dire
+  /// exactement quand elle sert. Bornée à UNE offre : un coursier n'en a
+  /// jamais deux (`offre_en_vol` l'exclut du vivier).
+  static String? _offreDecidee;
+  static String? _uuidDecision;
+
+  String _uuidPour(String offreId) {
+    if (_offreDecidee != offreId) {
+      _offreDecidee = offreId;
+      _uuidDecision = _uuid.v7();
+    }
+    return _uuidDecision!;
+  }
+
   @override
   Future<OffreCourante?> build() async => _charger();
 
@@ -214,20 +238,33 @@ class OffreEnCours extends _$OffreEnCours {
   }
 
   /// Refuse l'offre courante — aucune sanction, le suivant est sollicité.
-  Future<void> refuser() async {
+  ///
+  /// Rend **vrai quand le refus est ACTÉ côté serveur** : soit la requête a
+  /// abouti, soit elle a été refusée pour un motif MÉTIER (l'offre n'était déjà
+  /// plus en vol — ce qui règle la question aussi bien). Rend **faux quand la
+  /// requête n'est pas partie**, et l'appelant doit alors garder K2 à l'écran.
+  ///
+  /// L'erreur était auparavant avalée et l'écran rendait la main quoi qu'il
+  /// arrive : sur une coupure réseau, Yao croyait avoir refusé, l'offre restait
+  /// `en_vol` — donc aucune autre ne pouvait lui parvenir —, elle expirait à
+  /// 40 s et consommait une des trois franchises du jour.
+  Future<bool> refuser() async {
     final offre = state.value;
-    if (offre == null) return;
+    if (offre == null) return true;
+    var acte = true;
     try {
       await ref.read(dispatchApiProvider).refuserOffre(
             offreId: offre.offreId,
-            uuidClient: _uuid.v7(),
+            uuidClient: _uuidPour(offre.offreId),
             horodatageLocal: DateTime.now().toUtc(),
           );
     } on Object catch (e) {
-      // Refuser une offre déjà conclue n'est pas un problème : elle n'est plus
-      // là, et c'est ce que le rechargement va montrer.
-      codeErreurApi(e);
+      // Un code d'erreur MÉTIER dit que le serveur a tranché : l'offre n'est
+      // plus en vol, le refus n'a plus d'objet. Son ABSENCE dit l'inverse — la
+      // requête n'est jamais arrivée.
+      acte = codeErreurApi(e) != null;
     }
     ref.invalidateSelf();
+    return acte;
   }
 }

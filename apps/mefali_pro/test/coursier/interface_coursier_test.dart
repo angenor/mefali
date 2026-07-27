@@ -22,6 +22,7 @@
 /// « Non validé visuellement ».
 library;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,12 +88,25 @@ Map<String, Object?> _disponibilite({bool enLigne = false}) => {
       ],
     };
 
+/// Interrupteur de réseau — le test coupe la ligne AU MOMENT du geste, comme
+/// les données mobiles de Tiassalé le font.
+class _Reseau {
+  bool coupe = false;
+}
+
 (ProviderContainer, TransportFake) _conteneur({
   Map<String, Object?>? offre,
   bool enLigne = false,
   List<dynamic> supplements = const [],
+  _Reseau? reseau,
 }) {
   final transport = TransportFake((requete) {
+    if (reseau != null && reseau.coupe) {
+      throw DioException.connectionError(
+        requestOptions: requete,
+        reason: 'réseau coupé',
+      );
+    }
     if (requete.path.contains('/offre-courante')) {
       if (offre == null) return reponseJson(<String, Object?>{}, statut: 204);
       return reponseJson(offre);
@@ -321,6 +335,48 @@ void main() {
         isNotEmpty,
         reason: 'sans position publiée, le serveur ne voit aucune progression '
             'et reprend la course à un coursier qui roule',
+      );
+    },
+  );
+
+  testWidgets(
+    'un refus PERDU sur coupure réseau ne referme pas K2 — sinon il coûte une franchise',
+    (tester) async {
+      // Ce que ce test protège : l'erreur du refus était AVALÉE et l'écran
+      // rendait la main quoi qu'il arrive. Yao croyait avoir refusé ; côté
+      // serveur l'offre restait `en_vol`, donc **aucune autre offre ne pouvait
+      // lui parvenir** (motif d'écart `offre_en_vol`), elle expirait à 40 s et
+      // consommait une des trois franchises du jour.
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final reseau = _Reseau();
+      final (container, _) = _conteneur(offre: _offreEnVol(), reseau: reseau);
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_monter(container));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Étal Adjoua'), findsOneWidget);
+
+      reseau.coupe = true;
+      await tester.tap(find.byKey(const Key('offre-refuser')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.byKey(const Key('offre-echec-reseau')),
+        findsOneWidget,
+        reason: 'un refus qui n\'est pas parti doit se DIRE : sinon Yao croit '
+            'avoir refusé et perd une franchise sans le savoir',
+      );
+      expect(
+        find.byKey(const Key('offre-refuser')),
+        findsOneWidget,
+        reason: 'K2 reste à l\'écran : c\'est le seul endroit d\'où Yao peut '
+            'réessayer avant les 40 s',
       );
     },
   );

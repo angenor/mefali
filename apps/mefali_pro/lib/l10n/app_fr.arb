@@ -590,6 +590,8 @@
   },
   "offreRefuser": "Refuser",
   "@offreRefuser": { "description": "Refus explicite — le candidat suivant est sollicité aussitôt" },
+  "offreEchecReseau": "Réseau indisponible : votre réponse n'est pas partie. Réessayez.",
+  "@offreEchecReseau": { "description": "K2-1a — la décision n'a pas atteint le serveur ; l'offre reste en vol et le réessai est idempotent" },
   "offreDistancesEstimees": "Distances estimées",
   "@offreDistancesEstimees": { "description": "degraded = true (constitution IV)" },
   "offreTempsEcoule": "Temps écoulé",

@@ -69,6 +69,13 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
   /// Code du dernier refus (`deja_prise`, `offre_echue`), ou `null`.
   String? _refus;
 
+  /// La dernière décision n'est **pas partie** (réseau).
+  ///
+  /// Distinct de [_refus], et la distinction est tout l'enjeu : un refus métier
+  /// CONCLUT l'offre, une panne réseau ne conclut rien. Confondre les deux fait
+  /// perdre une franchise sur un refus, et une course sur une acceptation.
+  bool _echecReseau = false;
+
   /// Secondes écoulées depuis le dernier rechargement de l'offre.
   int _depuisRechargement = 0;
 
@@ -111,20 +118,21 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final offre = ref.watch(offreEnCoursProvider);
+    final asyncOffre = ref.watch(offreEnCoursProvider);
+    // `value`, et non `when` : il PRÉSERVE la dernière offre connue à travers un
+    // rechargement en erreur. Le tic recharge toutes les 2 s ; sur une coupure
+    // réseau, `when(error:)` faisait basculer un coursier qui a encore 30 s de
+    // décision sur « Temps écoulé » — une offre bien vivante déclarée perdue.
+    final offre = asyncOffre.value;
 
     return Scaffold(
       backgroundColor: MefaliTokens.background,
       body: SafeArea(
-        child: offre.when(
-          loading: () => const Center(child: CircularProgressIndicator.adaptive()),
-          error: (_, _) => _Expiree(
-            titre: t.offreTempsEcoule,
-            corps: t.offreDejaPriseTexte,
-            francs: 1,
-            onRetour: _terminer,
-          ),
-          data: (offre) {
+        child: Builder(
+          builder: (context) {
+            if (offre == null && asyncOffre.isLoading) {
+              return const Center(child: CircularProgressIndicator.adaptive());
+            }
             // K2-1b sans aucun appel réseau : l'échéance suffit à trancher.
             if (offre == null || offre.estEchue(_maintenant) || _refus != null) {
               return _Expiree(
@@ -139,6 +147,7 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
             return _Offre(
               offre: offre,
               restantS: offre.restantS(_maintenant),
+              echecReseau: _echecReseau,
               onAccepter: () async {
                 final decision =
                     await ref.read(offreEnCoursProvider.notifier).accepter();
@@ -153,8 +162,21 @@ class _EcranOffreState extends ConsumerState<EcranOffre> {
                 setState(() => _refus = decision.codeErreur ?? 'deja_prise');
               },
               onRefuser: () async {
-                await ref.read(offreEnCoursProvider.notifier).refuser();
-                if (mounted) _terminer();
+                // Le geste efface l'échec précédent : un message qui colle à
+                // l'écran après un nouvel essai ment sur l'essai en cours.
+                setState(() => _echecReseau = false);
+                final acte =
+                    await ref.read(offreEnCoursProvider.notifier).refuser();
+                if (!mounted) return;
+                if (acte) {
+                  _terminer();
+                  return;
+                }
+                // Le refus n'est pas parti. Rendre la main ici laisserait
+                // l'offre `en_vol` côté serveur : aucune autre offre ne pourrait
+                // parvenir à Yao, celle-ci expirerait à 40 s, et la non-réponse
+                // consommerait une de ses trois franchises du jour.
+                setState(() => _echecReseau = true);
               },
             );
           },
@@ -169,12 +191,16 @@ class _Offre extends StatelessWidget {
   const _Offre({
     required this.offre,
     required this.restantS,
+    required this.echecReseau,
     required this.onAccepter,
     required this.onRefuser,
   });
 
   final OffreCourante offre;
   final int restantS;
+
+  /// La dernière décision n'est pas partie — l'offre est toujours en vol.
+  final bool echecReseau;
   final Future<void> Function() onAccepter;
   final Future<void> Function() onRefuser;
 
@@ -212,6 +238,30 @@ class _Offre extends StatelessWidget {
           padding: const EdgeInsets.all(MefaliTokens.screenMargin),
           child: Column(
             children: [
+              // La décision n'est pas partie : le dire, et laisser les deux
+              // boutons en place. L'offre est toujours en vol, et le réessai
+              // porte le MÊME `uuid_client` — il est donc sûr.
+              if (echecReseau) ...[
+                Row(
+                  key: const Key('offre-echec-reseau'),
+                  children: [
+                    const Icon(Symbols.wifi_off_rounded,
+                        color: MefaliTokens.danger, size: 20),
+                    const SizedBox(width: MefaliTokens.space2),
+                    Expanded(
+                      child: Text(
+                        t.offreEchecReseau,
+                        style: const TextStyle(
+                          fontSize: MefaliTokens.captionSize,
+                          fontWeight: MefaliTokens.weightSemiBold,
+                          color: MefaliTokens.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: MefaliTokens.space2),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: MefaliTokens.buttonHeight,
