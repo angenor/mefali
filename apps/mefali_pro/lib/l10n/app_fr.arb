@@ -483,5 +483,132 @@
   "collecteErreurArretHorsCourse": "Cet arrêt ne fait pas partie de votre course.",
   "@collecteErreurArretHorsCourse": { "description": "Erreur arret_hors_course" },
   "collecteErreurReseau": "Collecte enregistrée — synchronisation dès le retour du réseau.",
-  "@collecteErreurReseau": { "description": "Collecte mise en file hors-ligne" }
+  "@collecteErreurReseau": { "description": "Collecte mise en file hors-ligne" },
+
+  "dispoTitre": "Tableau de bord",
+  "@dispoTitre": { "description": "Titre de l'écran K1 (disponibilité coursier)" },
+  "dispoBadgeEnLigne": "EN LIGNE",
+  "@dispoBadgeEnLigne": { "description": "Badge d'en-tête K1-1a" },
+  "dispoBadgeHorsLigne": "HORS LIGNE",
+  "@dispoBadgeHorsLigne": { "description": "Badge d'en-tête K1-1b" },
+  "dispoBasculeEnLigne": "En ligne",
+  "@dispoBasculeEnLigne": { "description": "Côté « en ligne » du toggle segmenté" },
+  "dispoBasculeHorsLigne": "Hors ligne",
+  "@dispoBasculeHorsLigne": { "description": "Côté « hors ligne » du toggle segmenté" },
+  "dispoAttenteCourses": "En attente de courses — restez proche du centre",
+  "@dispoAttenteCourses": { "description": "État d'attente quand le coursier est dans le pool" },
+  "dispoAucuneCourse": "Vous ne recevez pas de courses",
+  "@dispoAucuneCourse": { "description": "État hors ligne : aucune offre ne parviendra" },
+  "dispoPlafondTitre": "Plafond d'avance du jour — ce que vous pouvez avancer en cash",
+  "@dispoPlafondTitre": { "description": "Titre du bloc de déclaration du plafond (FR-010)" },
+  "dispoPlafondVerrouille": "Verrouillé",
+  "@dispoPlafondVerrouille": { "description": "Le plafond ne s'édite plus une fois en ligne" },
+  "dispoPlafondPas": "Par pas de {pas}. Confirmé à la mise en ligne.",
+  "@dispoPlafondPas": {
+    "description": "Consigne du stepper de plafond",
+    "placeholders": { "pas": { "type": "String" } }
+  },
+  "dispoPasserEnLigne": "Passer en ligne — plafond {plafond}",
+  "@dispoPasserEnLigne": {
+    "description": "Action principale de K1-1b",
+    "placeholders": { "plafond": { "type": "String" } }
+  },
+  "dispoPasserHorsLigne": "Passer hors ligne",
+  "@dispoPasserHorsLigne": { "description": "Action de sortie immédiate du pool (FR-005)" },
+  "dispoPlafondRetenu": "Plafond retenu : {plafond}",
+  "@dispoPlafondRetenu": {
+    "description": "min(déclaré, palier de la grille) — Yao voit toujours lequel s'applique",
+    "placeholders": { "plafond": { "type": "String" } }
+  },
+  "dispoPlafondSourceGrille": "Votre palier limite l'avance",
+  "@dispoPlafondSourceGrille": { "description": "plafond_source = grille_note (FR-023)" },
+  "dispoPlafondSourceDeclaration": "C'est votre déclaration qui s'applique",
+  "@dispoPlafondSourceDeclaration": { "description": "plafond_source = declaration" },
+  "dispoPalierEntree": "Palier d'entrée",
+  "@dispoPalierEntree": { "description": "dispatch.palier.entree — note absente ou basse (research R7)" },
+  "dispoPalierIntermediaire": "Palier intermédiaire",
+  "@dispoPalierIntermediaire": { "description": "dispatch.palier.intermediaire" },
+  "dispoPalierHaut": "Palier haut",
+  "@dispoPalierHaut": { "description": "dispatch.palier.haut" },
+  "dispoNouveauJour": "Nouveau jour — déclarez votre plafond d'avance",
+  "@dispoNouveauJour": { "description": "Le plafond n'est jamais reporté d'un jour sur l'autre (FR-011)" },
+  "dispoErreurDossier": "Votre dossier coursier n'est pas validé.",
+  "@dispoErreurDossier": { "description": "Refus 409 dispatch.erreur.dossier_coursier_invalide" },
+  "dispoErreurCapacite": "Déclarez un véhicule pour recevoir des courses.",
+  "@dispoErreurCapacite": { "description": "Refus 422 dispatch.erreur.capacite_non_declaree" },
+  "dispoErreurCourseActive": "Terminez votre course avant de passer hors ligne.",
+  "@dispoErreurCourseActive": { "description": "Refus 409 dispatch.erreur.course_active" },
+
+  "offreTitre": "Nouvelle course",
+  "@offreTitre": { "description": "Titre du bandeau K2-1a" },
+  "offreSousTitre": "{n, plural, =1{1 arrêt · répondez avant la fin du temps} other{{n} arrêts · répondez avant la fin du temps}}",
+  "@offreSousTitre": {
+    "description": "Sous-titre du bandeau K2-1a",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "offreDestination": "Livraison — {zone}",
+  "@offreDestination": {
+    "description": "Destination AVANT acceptation : nom de zone seul, jamais de coordonnée (ARTCI)",
+    "placeholders": { "zone": { "type": "String" } }
+  },
+  "offreAdresseApresAcceptation": "Adresse exacte après acceptation",
+  "@offreAdresseApresAcceptation": { "description": "dispatch.offre.adresse_apres_acceptation" },
+  "offreDistanceDepart": "à {distance}",
+  "@offreDistanceDepart": {
+    "description": "Distance jusqu'au premier arrêt",
+    "placeholders": { "distance": { "type": "String" } }
+  },
+  "offreDistanceSuivante": "+ {distance}",
+  "@offreDistanceSuivante": {
+    "description": "Distance inter-arrêts (maquette : « + 40 m »)",
+    "placeholders": { "distance": { "type": "String" } }
+  },
+  "offreGainTotal": "Votre gain total",
+  "@offreGainTotal": { "description": "Libellé du gain, en display success" },
+  "offreGainDetail": "Déplacement {deplacement} + arrêts {arrets} + effort {effort} + attente éventuelle",
+  "@offreGainDetail": {
+    "description": "Détail des composantes du gain",
+    "placeholders": {
+      "deplacement": { "type": "String" },
+      "arrets": { "type": "String" },
+      "effort": { "type": "String" }
+    }
+  },
+  "offreAvanceTitre": "À avancer en cash aux vendeurs",
+  "@offreAvanceTitre": { "description": "Libellé du montant à avancer, en display danger" },
+  "offreAvanceRembourse": "Remboursé à la livraison — dans votre plafond ({plafond})",
+  "@offreAvanceRembourse": {
+    "description": "Rappel du plafond retenu sous le montant à avancer",
+    "placeholders": { "plafond": { "type": "String" } }
+  },
+  "offreAccepter": "ACCEPTER — gain {gain}",
+  "@offreAccepter": {
+    "description": "Action principale de K2-1a",
+    "placeholders": { "gain": { "type": "String" } }
+  },
+  "offreRefuser": "Refuser",
+  "@offreRefuser": { "description": "Refus explicite — le candidat suivant est sollicité aussitôt" },
+  "offreDistancesEstimees": "Distances estimées",
+  "@offreDistancesEstimees": { "description": "degraded = true (constitution IV)" },
+  "offreTempsEcoule": "Temps écoulé",
+  "@offreTempsEcoule": { "description": "Titre du bandeau K2-1b" },
+  "offreDejaPriseTitre": "Course attribuée à un autre coursier",
+  "@offreDejaPriseTitre": { "description": "K2-1b — ton neutre, aucun blâme" },
+  "offreDejaPriseTexte": "Vous n'avez pas répondu à temps. Restez en ligne : une autre course arrive bientôt.",
+  "@offreDejaPriseTexte": { "description": "Corps de K2-1b" },
+  "offreSansPenalite": "Sans pénalité — {n} sur {plafond} aujourd'hui",
+  "@offreSansPenalite": {
+    "description": "Compteur de non-réponses FRANCHES du jour (FR-052)",
+    "placeholders": { "n": { "type": "int" }, "plafond": { "type": "int" } }
+  },
+  "offreRetourTableau": "Retour au tableau de bord",
+  "@offreRetourTableau": { "description": "Action unique de K2-1b" },
+  "offreErreurDejaPrise": "Cette course vient d'être prise par un autre coursier.",
+  "@offreErreurDejaPrise": { "description": "Refus 409 dispatch.erreur.deja_prise — sans pénalité" },
+  "offreErreurEchue": "Le temps de réponse est passé.",
+  "@offreErreurEchue": { "description": "Refus 409 dispatch.erreur.offre_echue" },
+  "offreErreurInconnue": "Cette offre n'existe plus.",
+  "@offreErreurInconnue": { "description": "Refus 404 dispatch.erreur.offre_inconnue (garde de propriété)" },
+  "offreErreurCourseActive": "Terminez votre course en cours avant d'en accepter une autre.",
+  "@offreErreurCourseActive": { "description": "Refus 409 dispatch.erreur.course_active (FR-007)" }
 }
