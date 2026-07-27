@@ -98,11 +98,22 @@ ResponseBody reponseJson(Object corps, {int statut = 200}) =>
 /// (FR-036, par construction). `sessionProvider`/`clientSessionProvider` ne sont
 /// JAMAIS surchargés : on surcharge les DÉPENDANCES, jamais le sujet (R3).
 ///
+/// [supplements] accepte des surcharges de test SUPPLÉMENTAIRES, posées sur le
+/// conteneur RACINE. C'est le seul endroit qui puisse en poser pour un provider
+/// **non scopable** (déclaré sans `dependencies`) : un `ProviderScope` imbriqué
+/// qui le surcharge est silencieusement ignoré — Riverpod héberge alors le
+/// provider dans le conteneur parent, où l'override n'existe pas, et le test
+/// exerce le vrai provider en croyant tenir son double.
+///
+/// Typé `List<dynamic>` faute de mieux : `Override` n'est pas exporté par
+/// `flutter_riverpod` (contrainte 3, en tête de ce fichier), et `.cast()` sans
+/// argument laisse l'inférence retrouver le type attendu par `ProviderContainer`.
 ProviderContainer conteneurMefali({
   JetonsSession? jetons,
   TransportFake? transport,
   SourceConfig? source,
   CacheConfig? cache,
+  List<dynamic> supplements = const [],
 }) {
   final container = ProviderContainer(
     // FR-002 — retry NEUTRE sur TOUTE portée créée par le harnais (jamais réglé
@@ -124,6 +135,7 @@ ProviderContainer conteneurMefali({
       // paramètre reste un CacheConfig nu.
       cacheConfigProvider
           .overrideWith((ref) => Future.value(cache ?? _CacheConfigMemoire())),
+      ...supplements.cast(),
     ],
   );
   if (transport != null) {

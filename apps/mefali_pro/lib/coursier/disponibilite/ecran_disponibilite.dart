@@ -65,13 +65,10 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
   /// pas confirmé, il n'appartient à personne d'autre (constitution XII).
   int? _saisie;
 
-  @override
-  void initState() {
-    super.initState();
-    // Microtask : `charger()` écrit dans un provider, ce qui est interdit
-    // pendant la construction du premier frame (leçon du cycle 004).
-    Future.microtask(() => ref.read(disponibiliteProvider.notifier).charger());
-  }
+  // Aucun `initState` : le chargement de l'intention appartient au PORTEUR
+  // (`Disponibilite.build`), pas à cet écran. Tant qu'il était ici, un coursier
+  // dont l'app est tuée en pleine course la rouvrait sur l'écran de course —
+  // K1 jamais monté, aucune position publiée, course reprise par le serveur.
 
   @override
   Widget build(BuildContext context) {

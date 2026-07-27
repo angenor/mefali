@@ -9,20 +9,17 @@
 /// Ces tests la regardent : ils montent `InterfaceCoursier` et vérifient que
 /// chaque état du monde ouvre le bon écran.
 ///
-/// ⚠ **Ce que ce fichier ne couvre PAS**, et il y a deux trous :
+/// La troisième branche — course assignée ⇒ écran de course — est couverte
+/// ici : le porteur de course active est remplacé par un double (`supplements`),
+/// parce que le vrai lit un cache drift (SQLite) que `sqlite3_flutter_libs` ne
+/// fournit pas en test widget. Le même test suit la chaîne jusqu'au bout et
+/// vérifie qu'une **position part** alors que K1 n'a jamais été monté.
 ///
-/// 1. que la position continue d'être publiée pendant que K2 tient l'écran
-///    (l'aiguillage observe `emetteurPositionProvider` et charge la
-///    disponibilité pour cela). La chaîne à traverser est longue — charger
-///    la disponibilité, en déduire « en ligne », demander la permission,
-///    relever, publier — et la stabiliser en test widget demanderait un
-///    harnais que ce cycle n'a pas. Vérifié sur émulateur (T071) ;
-/// 2. la troisième branche — course
-/// assignée ⇒ écran de course. `EtatCourseActive` lit le cache drift (SQLite)
-/// avant le réseau, et `sqlite3_flutter_libs` n'existe pas dans un test
-/// widget ; le provider retombe alors sur un état vide, et l'aiguillage sur
-/// K1 — ce qui est le bon REPLI, mais ne prouve pas la branche. Elle est
-/// validée sur émulateur (quickstart, « Validation sur appareil »).
+/// ⚠ **Ce que ce fichier ne couvre PAS** : la bascule K2 → écran de course
+/// **après acceptation** n'est vérifiée qu'en aval de la décision (le panneau
+/// rend la main, la course est relue). L'enchaînement complet, à l'écran, n'a
+/// jamais été OBSERVÉ — ni ici, ni sur émulateur : voir `rapport-ecarts.md` §7,
+/// « Non validé visuellement ».
 library;
 
 import 'package:flutter/material.dart';
@@ -31,6 +28,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
+import 'package:mefali_pro/coursier/course/etat_course.dart';
 import 'package:mefali_pro/coursier/disponibilite/emetteur_position.dart';
 import 'package:mefali_pro/coursier/interface_coursier.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
@@ -68,24 +66,32 @@ Map<String, Object?> _offreEnVol({int dansSecondes = 31}) => {
       'degraded': false,
     };
 
-/// Corps de `GET /moi/disponibilite` — hors ligne, rien d'engagé.
-Map<String, Object?> _disponibilite() => {
-      'en_ligne': false,
+/// Corps de `GET /moi/disponibilite`. Hors ligne par défaut ; [enLigne] rend
+/// l'**intention persistée** d'un coursier qui roulait déjà (migration 0013).
+Map<String, Object?> _disponibilite({bool enLigne = false}) => {
+      // `jour` est REQUIS par le contrat : sans lui, le client généré rejette
+      // le corps, `charger()` tombe en `horsLigne` — et le double ment sur
+      // exactement ce que ces tests prétendent vérifier.
+      'jour': '2026-07-27',
+      'en_ligne': enLigne,
       'dans_le_pool': false,
-      'plafond_declare_unites': null,
+      'plafond_declare_unites': enLigne ? 10000 : null,
       'plafond_retenu_unites': 5000,
       'plafond_source': 'grille_note',
       'palier_note_cle': 'dispatch.palier.entree',
       'note_centiemes': null,
       'devise': 'XOF',
-      'ttl_s': 90,
       'periode_position_s': 30,
       'capacites': [
         {'famille': 'transport', 'valeur': 'moto'},
       ],
     };
 
-(ProviderContainer, TransportFake) _conteneur({Map<String, Object?>? offre}) {
+(ProviderContainer, TransportFake) _conteneur({
+  Map<String, Object?>? offre,
+  bool enLigne = false,
+  List<dynamic> supplements = const [],
+}) {
   final transport = TransportFake((requete) {
     if (requete.path.contains('/offre-courante')) {
       if (offre == null) return reponseJson(<String, Object?>{}, statut: 204);
@@ -95,16 +101,64 @@ Map<String, Object?> _disponibilite() => {
       return reponseJson(<String, Object?>{}, statut: 204);
     }
     if (requete.path.contains('/moi/disponibilite')) {
-      return reponseJson(_disponibilite());
+      return reponseJson(_disponibilite(enLigne: enLigne));
+    }
+    if (requete.path.contains('/moi/position')) {
+      return reponseJson({'dans_le_pool': true, 'prochaine_publication_s': 30});
     }
     return reponseJson({'code': 'introuvable'}, statut: 404);
   });
   final container = conteneurMefali(
     jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
     transport: transport,
+    supplements: supplements,
   );
   return (container, transport);
 }
+
+/// Course active FIXE — le vrai porteur lit un cache drift (SQLite) qui n'existe
+/// pas dans un test widget, et retomberait sur un état vide : l'aiguillage
+/// prendrait alors K1, c'est-à-dire exactement la branche que ce double sert à
+/// éviter. Surchargé sur le conteneur RACINE (`supplements`) : `EtatCourseActive`
+/// est déclaré sans `dependencies`, donc non scopable.
+class _CourseActiveFixe extends EtatCourseActive {
+  @override
+  Future<EtatCourse> build() async => const EtatCourse(
+        arrets: [
+          ArretCourse(
+            arretId: '019fa000-0000-7000-8000-0000000000a1',
+            prestataireId: '019fa000-0000-7000-8000-0000000000b1',
+            nom: 'Étal Adjoua',
+            empreinteJeton: '',
+            empreinteCode: '',
+            siteLat: 5.8960,
+            siteLon: -4.8210,
+            montantAvance: 5550,
+            devise: 'XOF',
+            photoExigee: false,
+            distanceMaxM: 120,
+            collecte: false,
+          ),
+        ],
+      );
+}
+
+/// Position de Tiassalé — ce que le relevé ponctuel rend quand le capteur parle.
+Position _positionTiassale() => Position(
+      latitude: 5.8960,
+      longitude: -4.8210,
+      timestamp: DateTime(2026, 7, 27, 12),
+      accuracy: 8,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
+
+/// Le capteur RÉPOND — c'est l'état d'un coursier arrêté qui reste joignable.
+Future<Position?> _relevePonctuelFixe() async => _positionTiassale();
 
 /// Un coursier seul — pas de bascule de rôle à rendre.
 EtatRolesData _coursierSeul() => const EtatRolesData(
@@ -128,7 +182,11 @@ Future<bool> _permissionAccordee() async => true;
 Future<Position?> _aucunReleve() async => null;
 
 
-Widget _monter(ProviderContainer container) => harnaisApp(
+Widget _monter(
+  ProviderContainer container, {
+  Future<Position?> Function() releve = _aucunReleve,
+}) =>
+    harnaisApp(
       container: container,
       localizationsDelegates: const [
         ...AppLocalizations.localizationsDelegates,
@@ -140,7 +198,7 @@ Widget _monter(ProviderContainer container) => harnaisApp(
           sourcePositionsProvider.overrideWithValue(_aucunePosition),
           // Aucun dialogue système dans un test widget.
           permissionPositionProvider.overrideWithValue(_permissionAccordee),
-          relevePonctuelProvider.overrideWithValue(_aucunReleve),
+          relevePonctuelProvider.overrideWithValue(releve),
         ],
         child: InterfaceCoursier(etat: _coursierSeul()),
       ),
@@ -219,4 +277,51 @@ void main() {
     },
   );
 
+  testWidgets(
+    'app rouverte sur une COURSE ACTIVE — la position part sans que K1 soit monté',
+    (tester) async {
+      // Ce que ce test protège, et ce qu'il a coûté de ne pas l'avoir : Android
+      // tue l'app d'un coursier qui roule vers son premier vendeur. Il la
+      // rouvre, l'aiguillage l'envoie sur l'écran de course — **K1 n'est jamais
+      // monté**. Tant que K1 était le seul à charger l'intention d'être en
+      // ligne, `enLigne` restait faux, l'émetteur ne démarrait pas, et plus
+      // aucune position ne partait. Côté serveur, `reprendre_courses_immobiles`
+      // ne voit alors aucune progression et REPREND la course au bout de
+      // `dispatch.reassignation_sans_mouvement_s` — rien n'est encore collecté,
+      // donc la garde d'argent ne protège pas Yao. Un coursier qui travaille
+      // perd sa course : « le coursier ne perd jamais » (cadrage §7.5) mis en
+      // défaut.
+      final (container, transport) = _conteneur(
+        enLigne: true,
+        supplements: [etatCourseActiveProvider.overrideWith(_CourseActiveFixe.new)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_monter(container, releve: _relevePonctuelFixe));
+      // La chaîne à traverser est longue — charger la disponibilité, en déduire
+      // « en ligne », demander la permission, relever, publier — et chaque
+      // maillon est une microtask. `pumpAndSettle` ne convient pas : l'écran
+      // porte des `Timer.periodic` qui ne se taisent jamais.
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(
+        find.text('Étal Adjoua'),
+        findsWidgets,
+        reason: 'l\'aiguillage doit être sur l\'écran de course, pas sur K1',
+      );
+      expect(
+        find.text('Tableau de bord'),
+        findsNothing,
+        reason: 'si K1 est monté, ce test ne prouve plus rien',
+      );
+      expect(
+        transport.recues.where((r) => r.path.contains('/moi/position')),
+        isNotEmpty,
+        reason: 'sans position publiée, le serveur ne voit aucune progression '
+            'et reprend la course à un coursier qui roule',
+      );
+    },
+  );
 }

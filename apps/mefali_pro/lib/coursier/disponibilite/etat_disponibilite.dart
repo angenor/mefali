@@ -14,6 +14,8 @@
 /// providerifié : XII le nomme explicitement.
 library;
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -161,10 +163,44 @@ class EtatDisponibilite {
 /// Porteur de la disponibilité — **vit tant que l'app vit**.
 @Riverpod(keepAlive: true)
 class Disponibilite extends _$Disponibilite {
+  /// Vrai tant que ce porteur n'a pas été éliminé — garde du chargement `async`.
+  bool _vivant = true;
+
   @override
   EtatDisponibilite build() {
+    _vivant = true;
     // Session fermée ⇒ provider invalidé ⇒ état vide (patron `etat_roles`).
     ref.watch(sessionProvider.select((e) => e.connecte));
+    ref.onDispose(() => _vivant = false);
+
+    // ── L'intention d'être en ligne se charge ICI, et ICI SEULEMENT ─────────
+    //
+    // Elle appartenait à K1, qui était le seul à appeler `charger()`. Un
+    // coursier dont Android tue l'app en pleine course la rouvre sur l'écran
+    // de course : K1 n'est JAMAIS monté, `enLigne` reste faux, l'émetteur ne
+    // démarre pas, et plus aucune position ne part. Le serveur ne voit alors
+    // aucune progression et REPREND la course au bout de
+    // `dispatch.reassignation_sans_mouvement_s` — rien n'est collecté à ce
+    // stade, donc la garde d'argent ne protège pas Yao. Il travaille, et il
+    // perd sa course.
+    //
+    // Le mettre ici plutôt que dans l'aiguillage règle du même coup le piège
+    // rencontré à l'écran (deux `charger()` concurrents, « deux bandeaux,
+    // plafond retenu à 0 ») : ce `build` s'exécute UNE fois par session, quel
+    // que soit le nombre d'écrans qui observent le porteur. L'idempotence est
+    // tenue par construction, pas par prudence.
+    //
+    // Le chargement n'est PAS conditionné à `connecte` — pas plus que ne
+    // l'était celui de K1 : cet état ne se construit que sous l'espace
+    // coursier, lui-même derrière le routeur de rôles. Le conditionner
+    // n'éviterait aucune requête et ferait dépendre la mise en ligne de
+    // l'ordre d'amorçage de la session.
+    //
+    // Microtask : écrire dans un provider pendant sa construction est interdit
+    // (leçon du cycle 004).
+    Future.microtask(() {
+      if (_vivant) unawaited(charger());
+    });
     return const EtatDisponibilite();
   }
 
