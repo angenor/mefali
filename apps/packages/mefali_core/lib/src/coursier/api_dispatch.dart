@@ -107,6 +107,62 @@ class DispatchApi {
     return _versJson(gen.EtatPublicationPosition.serializer, reponse.data!);
   }
 
+  /// `GET /courses/offre-courante` — l'offre en vol, ou `null` (`204`).
+  ///
+  /// L'app **va chercher** son offre (toutes les 2 s tant qu'un écran de
+  /// dispatch est monté) : le push haute priorité appartient à NTF-01, et le
+  /// jour où il arrivera il réveillera l'app, qui appellera ce même endpoint —
+  /// aucun contrat à refaire (research R16).
+  ///
+  /// Une offre **échue** rend `204` même si le tic serveur n'est pas encore
+  /// passé : l'échéance persistée est l'autorité.
+  Future<Map<String, Object?>?> offreCourante() async {
+    final reponse = await _api.offreCourante();
+    if (reponse.statusCode == 204 || reponse.data == null) return null;
+    return _versJson(gen.OffreCourante.serializer, reponse.data!);
+  }
+
+  /// `POST /courses/offres/{id}/accepter` — prendre la course.
+  ///
+  /// **Idempotent** : un rejeu avec le même `uuidClient` rend le même corps,
+  /// sans seconde affectation. Un `409 deja_prise` n'est pas un échec
+  /// technique — c'est l'état K2-1b, ton neutre et **sans pénalité**.
+  Future<Map<String, Object?>> accepterOffre({
+    required String offreId,
+    required String uuidClient,
+    required DateTime horodatageLocal,
+  }) async {
+    final reponse = await _api.accepterOffre(
+      offreId: offreId,
+      decisionOffre: gen.DecisionOffre(
+        (b) => b
+          ..uuidClient = uuidClient
+          ..horodatageLocal = horodatageLocal,
+      ),
+    );
+    return _versJson(gen.AcceptationOffre.serializer, reponse.data!);
+  }
+
+  /// `POST /courses/offres/{id}/refuser` — passer son tour.
+  ///
+  /// Le candidat suivant est sollicité **immédiatement**, sans attendre la fin
+  /// du compte à rebours. Un refus n'entraîne aucune sanction.
+  Future<Map<String, Object?>> refuserOffre({
+    required String offreId,
+    required String uuidClient,
+    required DateTime horodatageLocal,
+  }) async {
+    final reponse = await _api.refuserOffre(
+      offreId: offreId,
+      decisionOffre: gen.DecisionOffre(
+        (b) => b
+          ..uuidClient = uuidClient
+          ..horodatageLocal = horodatageLocal,
+      ),
+    );
+    return _versJson(gen.RefusOffre.serializer, reponse.data!);
+  }
+
   /// Sérialise un DTO généré en corps JSON du contrat — les noms de champs
   /// viennent d'`openapi.json`, jamais d'un littéral recopié.
   Map<String, Object?> _versJson<T>(Serializer<T> serializer, T valeur) =>
