@@ -34,3 +34,16 @@ Chaque cycle **ajoute ses fichiers** ici ; le runner ne change pas.
   du drapeau `gratuite_commissions`, pas d'une règle). `effort.plafond_eclatement_m`
   reste volontairement NON seedé (dormant, à calibrer en promo). Cycle TRF 007,
   T027 ; specs/007-tarification-moteur-effort/data-model.md §2.
+- `60_commandes_parametres.sql` — paramètres du cycle de vie d'une commande :
+  catégories périssables, longueur minimale du repère écrit, essais du code de
+  remise, délais et plafonds de substitution, période de position, plafonds cash
+  et seuil d'escalade de la file d'attente. Cycle CMD 008.
+- `70_dispatch_parametres.sql` — les **18 paramètres** du pipeline de dispatch :
+  7 au niveau PAYS (durée de vie du pool, compte à rebours d'offre et
+  exclusivité qui le couvre, non-réponses franches, fenêtre d'acceptation,
+  valeur neutre, bruit GPS) et 11 au niveau VILLE (rayon, grille d'avance par
+  note, les 4 poids du classement, plafond d'inactivité, seuils de broadcast et
+  de réassignation). Trois paramètres existants sont RÉUTILISÉS et jamais
+  redéclarés : `suivi.position_periode_s`, `commande.escalade_attente_coursier_s`
+  et `transport.actifs`. Cycle DSP 009 ;
+  specs/009-dispatch-assignation-auto/data-model.md §4.

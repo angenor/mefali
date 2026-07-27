@@ -111,6 +111,18 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `litige.ouvert` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par AVI-04) |
 | `indemnisation.due` | `issue_echec` | `commandes::echec` (cycle CMD) | **Produit** — contrat SANS consommateur ce cycle (branché par CRS-06) |
 | `sanction.posee` | `compte` | `comptes::restriction::poser_restriction` (cycle CMD) | **Produit** — restriction posée sur un compte client (CPT-06) |
+| `coursier.disponibilite_changee` | `coursier` | `dispatch::pool` (cycle DSP) | **Produit** — entrée ou sortie du pool (manuelle, ou constatée après expiration) |
+| `coursier.plafond_jour_declare` | `coursier` | `dispatch::plafond` (cycle DSP) | **Produit** — plafond d'avance déclaré pour le jour civil de la zone |
+| `dispatch.evaluation_faite` | `commande` | `dispatch::pipeline` (cycle DSP) | **Opérations** — agrégat d'un passage de pipeline (le détail va aux logs structurés) |
+| `dispatch.offre_emise` | `offre` | `dispatch::offre` (cycle DSP) | **Opérations** — offre émise sous double verrou (cascade ou broadcast) |
+| `dispatch.offre_acceptee` | `offre` | `dispatch::offre` (cycle DSP) | **Opérations** — offre acceptée ; l'affectation passe par `CommandesADispatcher::affecter` |
+| `dispatch.offre_refusee` | `offre` | `dispatch::offre` (cycle DSP) | **Opérations** — refus explicite ; le candidat suivant est sollicité immédiatement |
+| `dispatch.offre_non_repondue` | `offre` | `dispatch::tic` (cycle DSP) | **Opérations** — échéance atteinte ; `franche` les 3 premières fois du jour |
+| `dispatch.offre_deja_prise` | `offre` | `dispatch::offre` (cycle DSP) | **Opérations** — seconde acceptation refusée, **sans pénalité** (FR-049) |
+| `dispatch.broadcast_ouvert` | `commande` | `dispatch::pipeline` (cycle DSP) | **Opérations** — bascule en broadcast (candidats épuisés ou délai) |
+| `dispatch.bascule_prepaiement` | `commande` | `dispatch::pipeline` (cycle DSP) | **Opérations** — la capacité d'avance était le SEUL obstacle (FR-026) |
+| `dispatch.reassignation` | `livraison` | `dispatch::reprise` (cycle DSP) | **Opérations** — coursier retiré ; le devis figé n'est JAMAIS recalculé |
+| `dispatch.course_bloquee_escaladee` | `livraison` | `dispatch::reprise` (cycle DSP) | **Opérations** — un arrêt est collecté : aucune reprise automatique, l'exploitation tranche |
 
 ### Événements du cycle ZON (002 — zones & configuration héritée)
 
@@ -346,7 +358,7 @@ propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
 | `commande.prete_a_dispatcher` | `commande` | `commande.id` | `zone`, `nb_arrets`, `montant_a_avancer`, `devise`, `transport_requis` (slug) — **consommé par DSP** |
 | `commande.paiement_confirme` | `commande` | `commande.id` | `mode` (`mobile_money`), `total`, `devise` — le tronc repasse `nouvelle` |
 | `commande.mise_en_attente_coursier` | `commande` | `commande.id` | `zone`, `motif` (`aucun_coursier_eligible`), `age_s` |
-| `commande.attente_coursier_escaladee` | `commande` | `commande.id` | `zone`, `age_s`, `seuil_s` (paramètre de zone franchi) |
+| `commande.attente_coursier_escaladee` | `commande` | `commande.id` | `zone`, `age_s`, `seuil_s` (paramètre de zone franchi), `chemin` (`file` \| `pipeline`) — **amendé par le cycle DSP 009**, voir ci-dessous |
 | `commande.assignee` | `commande` | `commande.id` | `livraison`, `coursier`, `depuis_attente` (booléen — reprise FIFO) |
 | `commande.terminee` | `commande` | `commande.id` | `mode_remise` (`qr` \| `code` \| `depot`), `duree_totale_s`, `total_encaisse`, `devise` |
 | `remise.code_epuise` | `commande` | `commande.id` | `livraison`, `essais` (= le plafond de zone atteint), `acteur` (coursier) — **aucun code, jamais** : le publier dans un événement le sortirait du seul canal qui doit le porter (client ↔ coursier, R6) |
@@ -382,6 +394,75 @@ propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
 - les **transitions refusées** (hors séquence, non-propriétaire, état terminal) —
   un refus n'est pas une transition ;
 - les **seeds** — chargement initial (patron des cycles 002/003/005/006/007).
+
+### Événements du cycle DSP (009 — dispatch automatique)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
+(constitution VI ; specs/009 data-model §7). Registre posé AVANT
+l'implémentation. **12 nouveaux** ci-dessous, plus **1 amendé** :
+`commande.attente_coursier_escaladee` gagne `chemin` (`file` \| `pipeline`),
+parce que DSP-06 escalade *toute* commande non assignée — celles qui attendent
+dans la file FIFO comme celles dont la cascade n'a trouvé personne. Son
+`NOT EXISTS` sur l'outbox **reste** le marqueur d'idempotence : c'est lui qui
+livre « exactement une alerte par commande, quel que soit le chemin » (FR-066,
+research R14) sans colonne supplémentaire qui pourrait s'en désynchroniser.
+
+| Événement | `entite_type` | `entite_id` | Payload spécifique |
+|---|---|---|---|
+| `coursier.disponibilite_changee` | `coursier` | `compte.id` | `zone`, `en_ligne` (booléen), `capacites` (slugs), `motif` (`manuel` \| `ttl_expire`) |
+| `coursier.plafond_jour_declare` | `coursier` | `compte.id` | `zone`, `plafond_declare_unites`, `plafond_retenu_unites`, `devise`, `palier_note` |
+| `dispatch.evaluation_faite` | `commande` | `commande.id` | `zone`, `nb_eligibles`, `nb_ecartes`, `motifs` (objet motif→compte), `degraded` (booléen), `mesure` (`duree` \| `distance`) |
+| `dispatch.offre_emise` | `offre` | `offre.id` | `commande`, `coursier`, `mode` (`cascade` \| `broadcast`), `rang`, `score`, `montant_a_avancer`, `devise`, `timer_s` |
+| `dispatch.offre_acceptee` | `offre` | `offre.id` | `commande`, `coursier`, `livraison`, `delai_reponse_s` |
+| `dispatch.offre_refusee` | `offre` | `offre.id` | `commande`, `coursier`, `delai_reponse_s` |
+| `dispatch.offre_non_repondue` | `offre` | `offre.id` | `commande`, `coursier`, `franche` (booléen), `rang_du_jour` |
+| `dispatch.offre_deja_prise` | `offre` | `offre.id` | `commande`, `coursier` — **sans pénalité**, le coursier reste dans le pool (FR-049) |
+| `dispatch.broadcast_ouvert` | `commande` | `commande.id` | `zone`, `nb_destinataires`, `cause` (`candidats_epuises` \| `delai`) |
+| `dispatch.bascule_prepaiement` | `commande` | `commande.id` | `zone`, `montant_a_avancer`, `plafond_max_constate`, `devise` |
+| `dispatch.reassignation` | `livraison` | `livraison.id` | `commande`, `coursier_retire`, `motif` (`sans_mouvement` \| `sans_scan`), `distance_m` (arrondie), `stagnation_s`, `acteur` (`systeme` \| `admin`) |
+| `dispatch.course_bloquee_escaladee` | `livraison` | `livraison.id` | `commande`, `coursier`, `motif`, `nb_arrets_collectes` — **jamais** de reprise automatique quand un arrêt est collecté (FR-075) |
+
+**Minimisation (ARTCI).** AUCUN payload de ce cycle ne porte de coordonnée : ni
+la position du coursier, ni celle d'un site, ni le lieu de prestation. Les
+distances sont **arrondies en mètres entiers**, les montants sont des **entiers
+en unités mineures** accompagnés de leur devise, et aucun numéro de téléphone
+n'entre nulle part. `coursier.disponibilite_changee` dit *qu'*un coursier est
+entré ou sorti du pool, jamais *où* il est. Un test dédié parcourt tous les
+événements du module et échoue sur la présence d'une clé interdite (SC-011).
+
+**Le classement détaillé ne va PAS dans l'outbox.** `dispatch.evaluation_faite`
+en porte l'agrégat ; le détail par candidat (composantes, score, rang, motifs
+d'écart) part dans les **logs structurés** avec l'identifiant de corrélation
+(constitution VII). Émettre le vivier complet à chaque relance gonflerait
+l'outbox sans servir de KPI.
+
+**Déjà émis par `commandes`, non redéfinis ici** : `commande.prete_a_dispatcher`
+(désormais **consommé** — DSP est le premier consommateur outbox réel du
+produit), `commande.paiement_confirme` (consommé aussi : il reprend le pipeline
+après la bascule prépaiement), `commande.mise_en_attente_coursier`,
+`commande.assignee`, `livraison.affectee` et `commande.paiement_requis`.
+
+**Qualification produit vs opérations (MET-01).** Tous les événements ci-dessus
+sont des événements d'**opérations** (dérivés de l'outbox), sauf
+`coursier.disponibilite_changee` et `coursier.plafond_jour_declare`, qui sont des
+événements **produit** : ce sont des actions délibérées de Yao dans l'app. KPIs
+directement dérivables : délai création → assignation, taux de refus, taux de
+non-réponse, part de broadcasts, taux d'escalade, taux de réassignation, part de
+dégradé routier.
+
+**Ce qui n'émet PAS d'événement dans ce cycle** :
+
+- une **publication de position** — c'est un fait éphémère, écrit en Redis et
+  rejoué toutes les 30 s ; l'émettre noierait l'outbox et porterait une
+  coordonnée, ce que la minimisation interdit ;
+- une **sortie de pool par expiration** tant que personne ne la constate — le
+  motif `ttl_expire` n'est journalisé qu'au passage qui la constate ;
+- une **offre échue lue avant le tic** — la lecture respecte l'échéance
+  persistée ; seule l'expiration effectivement écrite émet
+  `dispatch.offre_non_repondue` (patron du cycle 008) ;
+- un **rejeu idempotent** d'acceptation, de refus ou de position — même
+  `uuid_client`, ni seconde ligne ni second événement ;
+- le **seed** des 18 paramètres — un chargement n'est pas une transition.
 
 ## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
 
