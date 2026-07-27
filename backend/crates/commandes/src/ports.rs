@@ -583,6 +583,21 @@ impl TarifFixe {
         }
     }
 
+    /// Remplace les composantes du devis fixe.
+    ///
+    /// `simple` les laisse toutes à zéro, et c'est un double qui MENT : aucun
+    /// devis réel n'a une part coursier non nulle sous des composantes vides.
+    /// Un test qui décompose le gain lit alors des zéros, et passe quoi qu'on
+    /// lui donne — c'est ainsi que « 0 + 0 + 0 » sous un gain de 150 FCFA a
+    /// survécu jusqu'à la validation sur émulateur (T071).
+    ///
+    /// À l'appelant de garder l'invariant du modèle :
+    /// `part_coursier = base − marge + km + supplements + effort + arrondi`.
+    pub fn avec_composantes(mut self, composantes: tarification::Composantes) -> Self {
+        self.devis.composantes = composantes;
+        self
+    }
+
     /// Force le drapeau de proposition de scission (plafond d'éclatement).
     pub fn avec_proposer_scission(mut self, proposer: bool) -> Self {
         self.devis.proposer_scission = proposer;

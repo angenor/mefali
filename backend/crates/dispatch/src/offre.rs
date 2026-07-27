@@ -759,37 +759,7 @@ impl PgDispatch {
                 .unwrap_or(0)
         };
 
-        let composantes = entete.devis_composantes;
-        let composante = |cle: &str| -> i64 {
-            composantes
-                .get(cle)
-                .and_then(serde_json::Value::as_i64)
-                .unwrap_or(0)
-        };
-
-        // ── Décomposition du GAIN COURSIER ──────────────────────────────────
-        //
-        // Le devis figé porte les composantes du **prix client**
-        // (`tarification::Composantes` : `base`, `km`, `supplements`,
-        // `effort_paliers`, `effort_attente`, `effort_arrets`, `arrondi`), pas
-        // celles de la part coursier. Les trois parts que K2 affiche s'en
-        // déduisent.
-        //
-        // ⚠ Ces clés se lisent par NOM : la première rédaction en demandait
-        // trois qui n'existaient pas (`deplacement`, `arrets`, `effort`), et les
-        // trois parts valaient donc **toujours zéro** sous un total non nul.
-        // Yao lisait « 0 + 0 + 0 » pour un gain de 150 FCFA — un détail qui
-        // contredit son total lui fait douter du total. Trouvé sur émulateur
-        // (T071), invisible en test parce qu'aucun n'assertait les parts.
-        //
-        // Le déplacement se prend par SOUSTRACTION, jamais en ré-additionnant
-        // base + km + suppléments − marge : la marge n'est pas une composante
-        // stockée, et la reconstituer ferait diverger la somme du total au
-        // premier arrondi. Ici l'invariant « les trois parts font le total » est
-        // tenu par construction.
-        let gain_arrets = composante("effort_arrets");
-        let gain_effort = composante("effort_paliers") + composante("effort_attente");
-        let gain_deplacement = (entete.devis_part_coursier - gain_arrets - gain_effort).max(0);
+        let gain = decomposer_gain(entete.devis_part_coursier, &entete.devis_composantes);
 
         let collectes: Vec<_> = arrets
             .iter()
@@ -821,11 +791,124 @@ impl PgDispatch {
             destination_zone_nom: entete.zone_nom,
             destination_distance_m,
             gain_total_unites: entete.devis_part_coursier,
-            gain_deplacement_unites: gain_deplacement,
-            gain_arrets_unites: gain_arrets,
-            gain_effort_unites: gain_effort,
+            gain_deplacement_unites: gain.deplacement,
+            gain_arrets_unites: gain.arrets,
+            gain_effort_unites: gain.effort,
             plafond_retenu_unites: plafond_retenu,
             degraded,
         })
+    }
+}
+
+/// Les trois parts du gain que K2 affiche sous son total.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GainDetaille {
+    /// Part de déplacement — le RÉSIDU, jamais une somme reconstituée.
+    pub deplacement: i64,
+    /// Part des arrêts supplémentaires.
+    pub arrets: i64,
+    /// Part d'effort (paliers d'articles + prime d'attente).
+    pub effort: i64,
+}
+
+/// Décompose la part coursier en trois parts dont la somme fait **exactement**
+/// le total.
+///
+/// Ce que cette fonction protège : un détail qui contredit le total fait douter
+/// du total. La première rédaction lisait trois clés qui n'existaient pas
+/// (`deplacement`, `arrets`, `effort`) et affichait « 0 + 0 + 0 » sous un gain
+/// de 150 FCFA — trouvé sur émulateur (T071), invisible en test.
+///
+/// **Pourquoi les composantes d'effort se lisent à l'échelle du coursier** :
+/// `tarification::Composantes` porte les composantes du prix CLIENT, mais les
+/// trois composantes d'effort y sont **100 % coursier** (évaluation, étape 5 :
+/// « elle abonde le prix client ET la part coursier ; la marge ne bouge pas
+/// d'un franc »). Elles se reportent donc telles quelles, sans prorata. Un
+/// commentaire antérieur affirmait l'inverse — il a fait croire, à juste titre,
+/// que les parts affichées étaient surévaluées.
+///
+/// Le déplacement se prend par SOUSTRACTION, jamais en ré-additionnant
+/// `base + km + suppléments − marge` : la marge n'est pas une composante
+/// stockée, et la reconstituer ferait diverger la somme du total au premier
+/// arrondi.
+///
+/// **Le bornage n'est pas décoratif** : `part_coursier ≥ effort_total` est vrai
+/// de tout devis produit par TRF (le résidu vaut `part_coursier_base + km +
+/// supplements + arrondi`, tous positifs), mais cette fonction lit une colonne
+/// JSON figée que rien ne garantit cohérente. Un `.max(0)` sur le seul
+/// déplacement laissait alors la somme des trois parts DÉPASSER le total, en
+/// silence. Ici les parts sont bornées dans l'ordre, et le déplacement absorbe
+/// ce qui reste : la somme fait le total quoi qu'on lise.
+pub fn decomposer_gain(part_coursier: i64, composantes: &serde_json::Value) -> GainDetaille {
+    let composante = |cle: &str| -> i64 {
+        composantes
+            .get(cle)
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0)
+            .max(0)
+    };
+
+    let total = part_coursier.max(0);
+    let arrets = composante("effort_arrets").min(total);
+    let effort = (composante("effort_paliers") + composante("effort_attente"))
+        .min(total - arrets);
+    GainDetaille {
+        deplacement: total - arrets - effort,
+        arrets,
+        effort,
+    }
+}
+
+#[cfg(test)]
+mod tests_gain {
+    use super::*;
+    use serde_json::json;
+
+    /// Le cas nominal : les composantes d'effort sont 100 % coursier, elles se
+    /// reportent telles quelles, et le déplacement est le reste.
+    #[test]
+    fn les_trois_parts_font_le_total() {
+        let gain = decomposer_gain(
+            450,
+            &json!({
+                "base": 500, "km": 120, "supplements": 0, "arrondi": 30,
+                "effort_paliers": 60, "effort_attente": 40, "effort_arrets": 50,
+            }),
+        );
+        assert_eq!(gain.arrets, 50);
+        assert_eq!(gain.effort, 100);
+        assert_eq!(gain.deplacement, 300);
+        assert_eq!(gain.deplacement + gain.arrets + gain.effort, 450);
+    }
+
+    /// Un devis figé dont l'effort DÉPASSE la part coursier — impossible via
+    /// TRF, mais cette fonction lit une colonne JSON que rien ne contraint.
+    /// L'ancienne rédaction rendait `arrets=50, effort=500, deplacement=0`,
+    /// soit 550 affichés sous un total de 150 : Yao lisait un détail qui
+    /// contredisait son gain, et doutait du gain.
+    #[test]
+    fn un_devis_incoherent_ne_fait_jamais_mentir_le_total() {
+        let total = 150;
+        let gain = decomposer_gain(
+            total,
+            &json!({
+                "effort_paliers": 300, "effort_attente": 200, "effort_arrets": 50,
+            }),
+        );
+        assert_eq!(
+            gain.deplacement + gain.arrets + gain.effort,
+            total,
+            "la somme affichée doit faire le total, quelle que soit la donnée lue",
+        );
+        assert!(gain.deplacement >= 0 && gain.arrets >= 0 && gain.effort >= 0);
+    }
+
+    /// Des clés ABSENTES (la faute d'origine) ne mettent pas les trois parts à
+    /// zéro : le déplacement absorbe tout, et le total reste vrai.
+    #[test]
+    fn des_composantes_absentes_laissent_le_total_intact() {
+        let gain = decomposer_gain(450, &json!({}));
+        assert_eq!(gain.deplacement, 450);
+        assert_eq!(gain.arrets + gain.effort, 0);
     }
 }

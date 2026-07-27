@@ -72,6 +72,35 @@ async fn le_contenu_de_l_offre_dit_tout_ce_qui_decide(pool: sqlx::PgPool) {
         deplacement > 0,
         "une course qui rapporte a forcément une part de déplacement",
     );
+
+    // ⚠ La somme seule ne prouve RIEN : remettre les trois clés fausses rend
+    // `0 + 0 + total`, qui fait toujours le total. C'est exactement l'état dans
+    // lequel le défaut a survécu. On compare donc chaque part au devis FIGÉ.
+    let composantes = sqlx::query_scalar!(
+        r#"SELECT l.devis_composantes AS "c!"
+           FROM commandes.livraison l WHERE l.commande_id = $1"#,
+        commande,
+    )
+    .fetch_one(&bac.cmd.pool)
+    .await
+    .expect("le devis figé de la livraison");
+    let composante = |cle: &str| composantes.get(cle).and_then(|v| v.as_i64()).unwrap_or(0);
+    assert_eq!(
+        arrets,
+        composante("effort_arrets"),
+        "la part « arrêts » est la composante d'effort du devis, 100 % coursier",
+    );
+    assert_eq!(
+        effort,
+        composante("effort_paliers") + composante("effort_attente"),
+        "la part « effort » somme les paliers d'articles et la prime d'attente",
+    );
+    assert!(
+        composante("effort_paliers") + composante("effort_attente") + composante("effort_arrets")
+            > 0,
+        "sans effort au devis, les deux égalités ci-dessus seraient 0 == 0 : ce \
+         test ne prouverait plus rien. Enrichir le devis du bac.",
+    );
     assert_eq!(corps["avance"]["devise"], "XOF");
     assert_eq!(
         corps["avance"]["plafond_retenu_unites"], 5_000,
