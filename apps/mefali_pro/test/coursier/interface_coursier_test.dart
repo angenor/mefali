@@ -9,7 +9,15 @@
 /// Ces tests la regardent : ils montent `InterfaceCoursier` et vérifient que
 /// chaque état du monde ouvre le bon écran.
 ///
-/// ⚠ **Ce que ce fichier ne couvre PAS** : la troisième branche — course
+/// ⚠ **Ce que ce fichier ne couvre PAS**, et il y a deux trous :
+///
+/// 1. que la position continue d'être publiée pendant que K2 tient l'écran
+///    (l'aiguillage observe `emetteurPositionProvider` et charge la
+///    disponibilité pour cela). La chaîne à traverser est longue — charger
+///    la disponibilité, en déduire « en ligne », demander la permission,
+///    relever, publier — et la stabiliser en test widget demanderait un
+///    harnais que ce cycle n'a pas. Vérifié sur émulateur (T071) ;
+/// 2. la troisième branche — course
 /// assignée ⇒ écran de course. `EtatCourseActive` lit le cache drift (SQLite)
 /// avant le réseau, et `sqlite3_flutter_libs` n'existe pas dans un test
 /// widget ; le provider retombe alors sur un état vide, et l'aiguillage sur
@@ -115,8 +123,10 @@ Stream<Position> _aucunePosition(LocationSettings _) => const Stream.empty();
 /// Permission ACCORDÉE sans dialogue — un test widget n'en ouvre aucun.
 Future<bool> _permissionAccordee() async => true;
 
-/// Aucun relevé ponctuel : ces tests ne regardent pas la publication.
+/// Aucun relevé ponctuel : la plupart de ces tests ne regardent pas la
+/// publication.
 Future<Position?> _aucunReleve() async => null;
+
 
 Widget _monter(ProviderContainer container) => harnaisApp(
       container: container,
@@ -208,4 +218,5 @@ void main() {
       expect(find.text('Tableau de bord'), findsOneWidget);
     },
   );
+
 }

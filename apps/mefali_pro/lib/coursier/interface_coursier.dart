@@ -105,6 +105,21 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
 
   @override
   Widget build(BuildContext context) {
+    // L'émetteur de position est observé ICI, pas dans K1 seul : « tant qu'un
+    // écran de dispatch est monté » (research R15) vaut pour les TROIS écrans.
+    // Le laisser à K1 faisait cesser la publication dès que K2 prenait l'écran
+    // — sans conséquence sur les 40 s d'une offre, mais K2-1b reste jusqu'à ce
+    // que Yao le referme, et le coursier sortait du pool en lisant « restez en
+    // ligne : une autre course arrive bientôt ».
+    //
+    // ⚠ L'INTENTION d'être en ligne, elle, reste chargée par K1 : `keepAlive`
+    // la conserve ensuite pour tous les écrans. La charger ici AUSSI produit
+    // deux chargements concurrents qui se marchent dessus — constaté à
+    // l'écran (deux bandeaux, plafond retenu à 0). Limite connue : si l'app
+    // s'ouvre alors qu'une offre est déjà en vol, K1 n'est jamais monté et
+    // l'émetteur ne démarre qu'à la conclusion de l'offre.
+    ref.watch(emetteurPositionProvider);
+
     final valides = widget.etat.rolesValides;
     // Bascule de rôle en entête UNIQUEMENT si deux rôles validés — passée à
     // l'écran destinataire, qui la rend dans son propre Scaffold (aucune
