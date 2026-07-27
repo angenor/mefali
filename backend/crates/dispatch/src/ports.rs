@@ -145,6 +145,33 @@ pub trait EtatCoursier: Send + Sync {
     async fn coursier(&self, compte: Uuid) -> Result<Option<CoursierExploitable>, ErreurDispatch>;
 }
 
+/// Adaptateur de PRODUCTION : le dépôt du crate `comptes` satisfait le port.
+///
+/// Le trait est local à `dispatch`, le type est étranger — la règle d'orphelin
+/// autorise cette implémentation, et c'est elle qui referme le montage : TOUTE
+/// la SQL qui touche `comptes.*` vit dans le crate `comptes`
+/// (`restriction::CoursierExploitablePar`), `dispatch` n'en écrit pas une
+/// ligne. Patron `RestrictionsCompte for comptes::PgComptes` du cycle 008.
+#[async_trait]
+impl EtatCoursier for comptes::PgComptes {
+    async fn coursier(&self, compte: Uuid) -> Result<Option<CoursierExploitable>, ErreurDispatch> {
+        let Some(en_ligne) = comptes::CoursierExploitablePar::coursier_exploitable(self, compte)
+            .await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(CoursierExploitable {
+            compte: en_ligne.compte,
+            zone: en_ligne.zone_id,
+            capacites: en_ligne
+                .transports
+                .into_iter()
+                .map(Capacite::transport)
+                .collect(),
+        }))
+    }
+}
+
 /// Note d'un prestataire — **sans implémentation** tant qu'AVI n'existe pas.
 #[async_trait]
 pub trait NotePrestataire: Send + Sync {
