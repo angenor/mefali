@@ -92,6 +92,17 @@ const TRANSITIONS: &[Transition] = &[
     // Aucun coursier éligible (DSP, simulé).
     Transition { niveau: Niveau::Commande, depuis: Some("nouvelle"), vers: "en_attente_coursier",
                  acteurs: &[Acteur::Systeme] },
+    // ── Ajouts du cycle DSP 009 (specs/009 data-model §3) ─────────────────
+    // Bascule prépaiement : la capacité d'avance était le SEUL obstacle du
+    // vivier (FR-026). Avant ce cycle, `en_attente_paiement` n'était atteignable
+    // qu'à la CRÉATION — le dispatch ne pouvait donc pas l'exiger après coup.
+    Transition { niveau: Niveau::Commande, depuis: Some("nouvelle"), vers: "en_attente_paiement",
+                 acteurs: &[Acteur::Systeme] },
+    // Retrait du coursier par réassignation : la commande RETOURNE au pipeline
+    // par son entrée normale, la file FIFO (specs/009 research R13). Aucun état
+    // nouveau n'est inventé.
+    Transition { niveau: Niveau::Commande, depuis: Some("en_cours"), vers: "en_attente_coursier",
+                 acteurs: &[Acteur::Systeme] },
     // Livraison assignée (DSP, simulé).
     Transition { niveau: Niveau::Commande, depuis: Some("nouvelle"), vers: "en_cours",
                  acteurs: &[Acteur::Systeme] },
@@ -253,6 +264,66 @@ mod tests {
         assert!(!transition_existe(Niveau::Commande, Some("nouvelle"), "en_collecte"));
         // `terminee` est un état de COMMANDE : il n'existe pas sur la livraison.
         assert!(!transition_existe(Niveau::Livraison, Some("en_livraison"), "terminee"));
+    }
+
+    /// Cycle DSP 009 — les DEUX lignes ajoutées, et rien d'autre.
+    #[test]
+    fn les_deux_transitions_du_dispatch_sont_autorisees() {
+        // Bascule prépaiement après création (FR-026).
+        verifier_transition(
+            Niveau::Commande,
+            Some("nouvelle"),
+            "en_attente_paiement",
+            Acteur::Systeme,
+        )
+        .expect("le dispatch peut exiger un prépaiement après création");
+
+        // Retrait du coursier par réassignation (FR-073).
+        verifier_transition(
+            Niveau::Commande,
+            Some("en_cours"),
+            "en_attente_coursier",
+            Acteur::Systeme,
+        )
+        .expect("une course reprise retourne à la file d'attente");
+    }
+
+    /// Les refus SYMÉTRIQUES — ce sont eux qui disent que la table est restée
+    /// fermée. On ne remet pas une course en paiement une fois lancée : le
+    /// coursier a déjà commencé, et la cliente ne peut plus renoncer sans frais.
+    #[test]
+    fn les_refus_symetriques_des_deux_ajouts_tiennent() {
+        assert!(
+            !transition_existe(Niveau::Commande, Some("en_cours"), "en_attente_paiement"),
+            "une course lancée ne repart jamais en paiement",
+        );
+        assert!(
+            !transition_existe(
+                Niveau::Commande,
+                Some("en_attente_coursier"),
+                "en_attente_paiement"
+            ),
+            "une commande en file d'attente ne bascule pas en paiement : le \
+             prépaiement se décide sur le vivier, pas sur l'attente",
+        );
+        // Et l'acteur reste borné : ni le client ni le coursier ne déclenchent
+        // ces deux transitions.
+        for acteur in [Acteur::Client, Acteur::Coursier] {
+            assert!(verifier_transition(
+                Niveau::Commande,
+                Some("nouvelle"),
+                "en_attente_paiement",
+                acteur
+            )
+            .is_err());
+            assert!(verifier_transition(
+                Niveau::Commande,
+                Some("en_cours"),
+                "en_attente_coursier",
+                acteur
+            )
+            .is_err());
+        }
     }
 
     #[test]
