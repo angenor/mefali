@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.commande_id, l.coursier_id, l.assignee_le,\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.type_arret = 'collecte'\n                          AND a.statut = 'collecte') AS \"nb_collectes!\",\n                      (SELECT count(*) FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.type_arret = 'collecte') AS \"nb_total!\",\n                      (SELECT a.site_lat FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.statut NOT IN ('collecte', 'indisponible')\n                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premier_lat,\n                      (SELECT a.site_lon FROM commandes.arret a\n                         JOIN commandes.segment s ON s.id = a.segment_id\n                        WHERE s.livraison_id = l.id\n                          AND a.statut NOT IN ('collecte', 'indisponible')\n                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premier_lon\n               FROM commandes.livraison l\n               WHERE l.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "assignee_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "assignee_le"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "nb_collectes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "nb_total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "premier_lat",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "premier_lon",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f7a95fc0c9ad99cd384f69b8da45d64929c517d7bcc293d66f0f38ac05951a93"
+}

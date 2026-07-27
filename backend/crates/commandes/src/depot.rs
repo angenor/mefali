@@ -29,8 +29,8 @@ use crate::modele::{
     ProgressionCollecte, StatutArret,
 };
 use crate::ports::{
-    ArretsDeCollecte, CommandeADispatcher, CommandesADispatcher, PositionCoursier, PreuvesEchec,
-    RestrictionsCompte,
+    ArretsDeCollecte, Capacite, CommandeADispatcher, CommandesADispatcher, EtatProgression,
+    MotifPrepaiementDispatch, PositionCoursier, PreuvesEchec, RestrictionsCompte,
 };
 
 /// Clés de configuration de zone lues par la file d'attente (constitution I —
@@ -846,6 +846,220 @@ impl CommandesADispatcher for PgCommandes {
     /// nominal.
     async fn affecter(&self, commande: Uuid, coursier: Uuid) -> Result<Uuid, ErreurCommandes> {
         self.assigner_coursier(commande, coursier, Utc::now()).await
+    }
+
+    // ── Ajouté par le cycle DSP 009 ───────────────────────────────────────
+
+    /// Course active, tous états de TRAVAIL confondus — servie par l'index
+    /// partiel `livraison_coursier_active` du cycle 008.
+    async fn course_active(&self, coursier: Uuid) -> Result<Option<Uuid>, ErreurCommandes> {
+        Ok(sqlx::query_scalar!(
+            r#"SELECT id FROM commandes.livraison
+               WHERE coursier_id = $1
+                 AND etat IN ('assignee', 'en_collecte', 'en_livraison')
+               LIMIT 1"#,
+            coursier,
+        )
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+
+    /// Fin de la dernière course LIVRÉE — servie par l'index
+    /// `livraison_coursier_livree` (migration 0012). Celui du cycle 008 filtre
+    /// les états de TRAVAIL et ne convient pas ici.
+    async fn fin_derniere_course(
+        &self,
+        coursier: Uuid,
+    ) -> Result<Option<DateTime<Utc>>, ErreurCommandes> {
+        Ok(sqlx::query_scalar!(
+            r#"SELECT livree_le FROM commandes.livraison
+               WHERE coursier_id = $1 AND etat = 'livree' AND livree_le IS NOT NULL
+               ORDER BY livree_le DESC
+               LIMIT 1"#,
+            coursier,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .flatten())
+    }
+
+    /// Capacités requises, lues sur la LIVRAISON de la commande (research R9).
+    async fn capacites_requises(&self, commande: Uuid) -> Result<Vec<Capacite>, ErreurCommandes> {
+        let lignes = sqlx::query!(
+            r#"SELECT cr.famille, cr.valeur
+               FROM commandes.capacite_requise cr
+               JOIN commandes.livraison l ON l.id = cr.livraison_id
+               WHERE l.commande_id = $1
+               ORDER BY cr.famille, cr.valeur"#,
+            commande,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(lignes
+            .into_iter()
+            .map(|l| Capacite {
+                famille: l.famille,
+                valeur: l.valeur,
+            })
+            .collect())
+    }
+
+    /// L'état d'avancement d'une course, tel que la reprise doit le lire.
+    ///
+    /// Le « premier arrêt non résolu » est celui contre lequel le rapprochement
+    /// se mesure : viser l'arrêt 1 quand le coursier vient de le collecter
+    /// ferait passer un coursier qui progresse pour un immobile.
+    async fn etat_progression(
+        &self,
+        livraison: Uuid,
+    ) -> Result<EtatProgression, ErreurCommandes> {
+        let ligne = sqlx::query!(
+            r#"SELECT l.commande_id, l.coursier_id, l.assignee_le,
+                      (SELECT count(*) FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                        WHERE s.livraison_id = l.id
+                          AND a.type_arret = 'collecte'
+                          AND a.statut = 'collecte') AS "nb_collectes!",
+                      (SELECT count(*) FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                        WHERE s.livraison_id = l.id
+                          AND a.type_arret = 'collecte') AS "nb_total!",
+                      (SELECT a.site_lat FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                        WHERE s.livraison_id = l.id
+                          AND a.statut NOT IN ('collecte', 'indisponible')
+                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premier_lat,
+                      (SELECT a.site_lon FROM commandes.arret a
+                         JOIN commandes.segment s ON s.id = a.segment_id
+                        WHERE s.livraison_id = l.id
+                          AND a.statut NOT IN ('collecte', 'indisponible')
+                        ORDER BY s.ordre, a.ordre LIMIT 1) AS premier_lon
+               FROM commandes.livraison l
+               WHERE l.id = $1"#,
+            livraison,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(ErreurCommandes::LivraisonInconnue(livraison))?;
+
+        Ok(EtatProgression {
+            commande_id: ligne.commande_id,
+            coursier_id: ligne.coursier_id,
+            assignee_le: ligne.assignee_le,
+            nb_arrets_collectes: ligne.nb_collectes,
+            nb_arrets_collecte_total: ligne.nb_total,
+            premier_arret_lat: ligne.premier_lat,
+            premier_arret_lon: ligne.premier_lon,
+        })
+    }
+
+    /// Retire le coursier et renvoie la commande au pipeline, dans UNE
+    /// transaction avec son événement (constitution VI).
+    ///
+    /// L'ordre compte : la transition du tronc est GARDÉE, donc si la commande
+    /// n'est pas `en_cours`, rien n'est écrit — pas même le `coursier_id = NULL`
+    /// qui laisserait une livraison orpheline.
+    async fn retirer_coursier(
+        &self,
+        livraison: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        let ligne = sqlx::query!(
+            r#"SELECT commande_id, coursier_id FROM commandes.livraison
+               WHERE id = $1 FOR UPDATE"#,
+            livraison,
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ErreurCommandes::LivraisonInconnue(livraison))?;
+
+        self.transition_commande(
+            &mut tx,
+            ligne.commande_id,
+            EtatCommande::EnAttenteCoursier,
+            Acteur::Systeme,
+            horodatage,
+            Some(NouvelEvenement {
+                type_evenement: "commande.mise_en_attente_coursier",
+                entite_type: "commande",
+                entite_id: ligne.commande_id,
+                payload: json!({
+                    "zone": sqlx::query_scalar!(
+                        "SELECT zone_id FROM commandes.commande WHERE id = $1",
+                        ligne.commande_id,
+                    )
+                    .fetch_one(&self.pool)
+                    .await?,
+                    "motif": "coursier_retire",
+                    "age_s": 0,
+                }),
+                survenu_le: horodatage,
+            }),
+        )
+        .await?;
+
+        sqlx::query!(
+            "UPDATE commandes.livraison SET coursier_id = NULL WHERE id = $1",
+            livraison,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Exige un prépaiement après création : le tronc passe
+    /// `nouvelle → en_attente_paiement` et le mode devient `mobile_money`.
+    ///
+    /// **Un seul montant, un seul état** : le total de la commande ne bouge pas,
+    /// et aucune fraction n'est écrite nulle part (constitution III).
+    async fn exiger_prepaiement(
+        &self,
+        commande: Uuid,
+        motif: MotifPrepaiementDispatch,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        let ligne = sqlx::query!(
+            "SELECT zone_id, total_unites, devise FROM commandes.commande WHERE id = $1",
+            commande,
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande))?;
+
+        self.transition_commande(
+            &mut tx,
+            commande,
+            EtatCommande::EnAttentePaiement,
+            Acteur::Systeme,
+            horodatage,
+            Some(NouvelEvenement {
+                type_evenement: "commande.paiement_requis",
+                entite_type: "commande",
+                entite_id: commande,
+                payload: json!({
+                    "motif": motif.comme_str(),
+                    "total": ligne.total_unites,
+                    "devise": ligne.devise,
+                    "zone": ligne.zone_id,
+                }),
+                survenu_le: horodatage,
+            }),
+        )
+        .await?;
+
+        sqlx::query!(
+            "UPDATE commandes.commande SET mode_paiement = 'mobile_money' WHERE id = $1",
+            commande,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
     }
 }
 

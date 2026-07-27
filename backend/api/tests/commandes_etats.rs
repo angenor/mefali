@@ -22,7 +22,8 @@ use uuid::Uuid;
 
 // ── 1. La table de transitions, ligne par ligne (data-model §3) ────────────
 
-/// Les 12 lignes du **tronc** (§3.1), chacune avec l'acteur qui la déclenche.
+/// Les 14 lignes du **tronc** (§3.1), chacune avec l'acteur qui la déclenche —
+/// 12 du cycle 008, plus les 2 du cycle DSP 009.
 #[test]
 fn table_du_tronc_ligne_par_ligne() {
     let lignes: &[(Option<&str>, &str, Acteur)] = &[
@@ -38,6 +39,9 @@ fn table_du_tronc_ligne_par_ligne() {
         (Some("en_cours"), "terminee", Acteur::Coursier),
         (Some("en_cours"), "annulee", Acteur::Client),
         (Some("en_cours"), "echouee", Acteur::Coursier),
+        // ── Cycle DSP 009 (specs/009 data-model §3) ───────────────────────
+        (Some("nouvelle"), "en_attente_paiement", Acteur::Systeme),
+        (Some("en_cours"), "en_attente_coursier", Acteur::Systeme),
     ];
     for (depuis, vers, acteur) in lignes {
         verifier_transition(Niveau::Commande, *depuis, vers, *acteur).unwrap_or_else(|e| {
@@ -430,4 +434,168 @@ async fn prepaiement_confirme_rend_la_commande_dispatchable(pool: sqlx::PgPool) 
         .await
         .expect("commande redevenue dispatchable");
     assert_eq!(bac.etat_commande(commande).await, "en_cours");
+}
+
+// ── 3. Les DEUX transitions ajoutées par le cycle DSP 009 ──────────────────
+//
+// Chacune a son test d'intégration, refus symétrique compris (constitution VII,
+// specs/009 data-model §3). Ce sont les seules lignes qu'un cycle extérieur a
+// ajoutées à la table depuis sa fermeture : elles doivent être exercées par le
+// vrai dépôt, pas seulement par la garde.
+
+/// FR-026 — la bascule prépaiement, quand la capacité d'avance des coursiers
+/// est le SEUL obstacle. Le tronc passe `nouvelle → en_attente_paiement`, le
+/// mode devient `mobile_money`, et **un seul montant** est écrit : le total ne
+/// bouge pas, aucune fraction n'apparaît nulle part (constitution III).
+#[sqlx::test(migrations = "../migrations")]
+async fn bascule_prepaiement_apres_creation(pool: sqlx::PgPool) {
+    use commandes::{CommandesADispatcher, MotifPrepaiementDispatch};
+
+    let bac = Bac::nouveau(pool).await;
+    let commande = bac
+        .creer_commande_api("marche", vec![bac.vendeurs[0].ligne(1)])
+        .await;
+    assert_eq!(bac.etat_commande(commande).await, "nouvelle");
+    let total_avant: i64 =
+        sqlx::query_scalar("SELECT total_unites FROM commandes.commande WHERE id = $1")
+            .bind(commande)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
+
+    bac.commandes
+        .exiger_prepaiement(
+            commande,
+            MotifPrepaiementDispatch::CapaciteAvanceCoursier,
+            chrono::Utc::now(),
+        )
+        .await
+        .expect("aucun coursier ne peut avancer : le prépaiement est exigé");
+
+    assert_eq!(bac.etat_commande(commande).await, "en_attente_paiement");
+    let (mode, total_apres): (String, i64) = sqlx::query_as(
+        "SELECT mode_paiement::text, total_unites FROM commandes.commande WHERE id = $1",
+    )
+    .bind(commande)
+    .fetch_one(&bac.pool)
+    .await
+    .unwrap();
+    assert_eq!(mode, "mobile_money");
+    assert_eq!(
+        total_apres, total_avant,
+        "aucun chemin partiel : le montant à payer est le total, entier",
+    );
+
+    // L'événement porte le motif du dispatch, et il est UNIQUE.
+    let payloads = bac.evenements("commande.paiement_requis").await;
+    assert_eq!(payloads.len(), 1);
+    assert_eq!(payloads[0]["motif"], "capacite_avance_coursier");
+    assert_eq!(payloads[0]["total"], total_avant);
+
+    // La boucle se referme sans état nouveau : le paiement confirmé rend la
+    // commande dispatchable.
+    bac.commandes
+        .confirmer_prepaiement(commande, chrono::Utc::now())
+        .await
+        .expect("prépaiement confirmé");
+    assert_eq!(bac.etat_commande(commande).await, "nouvelle");
+}
+
+/// FR-073 — le retrait du coursier par réassignation. La livraison reste
+/// `assignee` **sans coursier** (sémantique du cycle 006), le tronc revient
+/// `en_attente_coursier`, et la commande repart par l'entrée normale du
+/// pipeline : la file FIFO.
+#[sqlx::test(migrations = "../migrations")]
+async fn retrait_du_coursier_renvoie_la_commande_a_la_file(pool: sqlx::PgPool) {
+    use commandes::CommandesADispatcher;
+
+    let bac = Bac::nouveau(pool).await;
+    let course = bac.course_prete().await;
+    assert_eq!(bac.etat_commande(course.commande).await, "en_cours");
+    assert_eq!(
+        bac.commandes.course_active(bac.coursier).await.unwrap(),
+        Some(course.livraison),
+    );
+
+    bac.commandes
+        .retirer_coursier(course.livraison, chrono::Utc::now())
+        .await
+        .expect("le coursier n'avance pas : la course lui est retirée");
+
+    assert_eq!(bac.etat_commande(course.commande).await, "en_attente_coursier");
+    assert_eq!(
+        bac.etat_livraison(course.livraison).await,
+        "assignee",
+        "aucune transition de livraison n'est inventée (data-model §3)",
+    );
+    let coursier: Option<Uuid> =
+        sqlx::query_scalar("SELECT coursier_id FROM commandes.livraison WHERE id = $1")
+            .bind(course.livraison)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
+    assert_eq!(coursier, None);
+    assert_eq!(
+        bac.commandes.course_active(bac.coursier).await.unwrap(),
+        None,
+        "le coursier retiré redevient offreable",
+    );
+
+    // La commande est de retour dans la file FIFO, et réassignable.
+    let file = bac.commandes.en_attente_coursier(bac.ville).await.unwrap();
+    assert!(file.iter().any(|c| c.commande_id == course.commande));
+    let (autre, _) = bac.compte_avec_roles("+2250700000099", &["coursier"]).await;
+    bac.commandes
+        .affecter(course.commande, autre)
+        .await
+        .expect("une course reprise se réassigne comme une neuve");
+    assert_eq!(bac.etat_commande(course.commande).await, "en_cours");
+}
+
+/// Les deux refus SYMÉTRIQUES, contre le vrai dépôt : on ne remet pas une
+/// course en paiement une fois lancée, et une commande en file d'attente ne
+/// bascule pas en prépaiement (le prépaiement se décide sur le vivier).
+#[sqlx::test(migrations = "../migrations")]
+async fn les_refus_symetriques_du_cycle_dispatch(pool: sqlx::PgPool) {
+    use commandes::{CommandesADispatcher, MotifPrepaiementDispatch};
+
+    let bac = Bac::nouveau(pool).await;
+    let course = bac.course_prete().await;
+
+    let e = bac
+        .commandes
+        .exiger_prepaiement(
+            course.commande,
+            MotifPrepaiementDispatch::CapaciteAvanceCoursier,
+            chrono::Utc::now(),
+        )
+        .await
+        .expect_err("une course EN COURS ne repart pas en paiement");
+    assert_eq!(e.message_cle(), Some("transition_refusee"));
+    assert_eq!(
+        bac.etat_commande(course.commande).await,
+        "en_cours",
+        "un refus n'est pas une transition : rien n'a bougé",
+    );
+
+    // Et rien n'a été écrit au passage — pas même le mode de paiement.
+    let mode: String =
+        sqlx::query_scalar("SELECT mode_paiement::text FROM commandes.commande WHERE id = $1")
+            .bind(course.commande)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
+    assert_eq!(mode, "cash");
+
+    // Retirer deux fois : le second retrait est refusé, la commande n'est plus
+    // `en_cours`. C'est ce qui empêche une boucle de reprise.
+    bac.commandes
+        .retirer_coursier(course.livraison, chrono::Utc::now())
+        .await
+        .unwrap();
+    assert!(bac
+        .commandes
+        .retirer_coursier(course.livraison, chrono::Utc::now())
+        .await
+        .is_err());
 }

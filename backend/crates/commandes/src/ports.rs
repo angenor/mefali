@@ -109,7 +109,66 @@ pub struct CommandeADispatcher {
     pub premiere_collecte_lon: Option<f64>,
 }
 
-/// Contrat offert à **DSP** (dispatch — non construit ce cycle).
+/// Une capacité REQUISE par une course, ou DÉCLARÉE par un coursier.
+///
+/// Paire générique `(famille, valeur)` — MVP : famille `transport`, valeur =
+/// slug de `zones.type_transport`. FR-018 du cycle DSP exige que l'ajout d'une
+/// famille (qualification d'artisan, phase N) ne coûte ni migration ni
+/// réécriture du filtre : c'est pourquoi ce n'est pas une énum.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Capacite {
+    /// Famille de capacité (MVP : `transport`).
+    pub famille: String,
+    /// Valeur dans la famille (MVP : slug de transport).
+    pub valeur: String,
+}
+
+/// Ce que la réassignation doit savoir **avant** de retirer quoi que ce soit
+/// (cycle DSP 009, FR-072, FR-075).
+#[derive(Debug, Clone, PartialEq)]
+pub struct EtatProgression {
+    /// Commande de la livraison.
+    pub commande_id: Uuid,
+    /// Coursier assigné, ou `None` si la livraison n'en a plus.
+    pub coursier_id: Option<Uuid>,
+    /// Instant d'affectation — base du délai « sans scan ».
+    pub assignee_le: Option<DateTime<Utc>>,
+    /// Nombre d'arrêts de collecte **déjà collectés**. `> 0` interdit toute
+    /// reprise automatique : le coursier a engagé ses fonds propres (FR-075).
+    pub nb_arrets_collectes: i64,
+    /// Nombre total d'arrêts de collecte.
+    pub nb_arrets_collecte_total: i64,
+    /// Position du premier arrêt NON résolu — la cible contre laquelle le
+    /// rapprochement se mesure.
+    pub premier_arret_lat: Option<f64>,
+    /// Position du premier arrêt non résolu.
+    pub premier_arret_lon: Option<f64>,
+}
+
+/// Pourquoi un prépaiement est exigé APRÈS création (cycle DSP 009).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MotifPrepaiementDispatch {
+    /// Aucun coursier ne peut avancer le montant des articles, et c'est le SEUL
+    /// obstacle du vivier (FR-026). Le prépaiement lève exactement ce blocage —
+    /// il ne rapprocherait pas un coursier trop loin.
+    CapaciteAvanceCoursier,
+}
+
+impl MotifPrepaiementDispatch {
+    /// Représentation textuelle (payload d'événement).
+    pub fn comme_str(self) -> &'static str {
+        match self {
+            MotifPrepaiementDispatch::CapaciteAvanceCoursier => "capacite_avance_coursier",
+        }
+    }
+}
+
+/// Contrat offert à **DSP** (dispatch).
+///
+/// Créé au cycle 008 avec ses deux premières méthodes, **étendu** de six autres
+/// par le cycle 009 — plutôt qu'un second trait qui découperait le même contrat
+/// en deux. Aucune dépendance inverse : `commandes` ne dépendra jamais de
+/// `dispatch` (specs/009 research R19).
 #[async_trait]
 pub trait CommandesADispatcher: Send + Sync {
     /// File FIFO **par âge** des commandes sans coursier dans une zone (CMD-10).
@@ -122,6 +181,57 @@ pub trait CommandesADispatcher: Send + Sync {
     /// Affecte un coursier : crée la livraison `assignee` et passe le tronc
     /// `en_cours`. Reprend une commande en attente comme une commande neuve.
     async fn affecter(&self, commande: Uuid, coursier: Uuid) -> Result<Uuid, ErreurCommandes>;
+
+    // ── Ajouté par le cycle DSP 009 ───────────────────────────────────────
+
+    /// Course active d'un coursier (FR-007, FR-016). `None` = offreable.
+    ///
+    /// Le pool en garde une copie ; c'est CETTE lecture qui tranche (FR-009).
+    async fn course_active(&self, coursier: Uuid) -> Result<Option<Uuid>, ErreurCommandes>;
+
+    /// Fin de la dernière course LIVRÉE — base de l'inactivité (FR-036).
+    ///
+    /// `None` = jamais livré : l'inactivité part alors de l'entrée dans le pool,
+    /// pour qu'un nouvel arrivant ne soit pas traité comme quelqu'un qui vient
+    /// de finir.
+    async fn fin_derniere_course(
+        &self,
+        coursier: Uuid,
+    ) -> Result<Option<DateTime<Utc>>, ErreurCommandes>;
+
+    /// Capacités requises d'une commande, lues sur la LIVRAISON (research R9,
+    /// FR-017) — jamais sur le tronc, qui ne porte aucun champ logistique.
+    async fn capacites_requises(&self, commande: Uuid) -> Result<Vec<Capacite>, ErreurCommandes>;
+
+    /// Ce que la réassignation doit savoir avant de retirer quoi que ce soit.
+    async fn etat_progression(
+        &self,
+        livraison: Uuid,
+    ) -> Result<EtatProgression, ErreurCommandes>;
+
+    /// Retire le coursier et remet la commande dans le pipeline :
+    /// `livraison.coursier_id = NULL`, tronc `en_cours → en_attente_coursier`,
+    /// événement dans la MÊME transaction.
+    ///
+    /// La livraison reste `assignee` **sans coursier** — sémantique documentée
+    /// depuis le cycle 006 (« `coursier_id` est POSÉ par DSP — NULL tant que non
+    /// assignée »). Aucune transition de livraison n'est inventée.
+    async fn retirer_coursier(
+        &self,
+        livraison: Uuid,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes>;
+
+    /// Bascule cash → mobile money après création (FR-026) : tronc
+    /// `nouvelle → en_attente_paiement`, `mode_paiement = mobile_money`.
+    ///
+    /// AUCUN chemin partiel — un seul montant, un seul état (constitution III).
+    async fn exiger_prepaiement(
+        &self,
+        commande: Uuid,
+        motif: MotifPrepaiementDispatch,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes>;
 }
 
 /// Double de test du **dispatch** (DSP non construit, research R16).

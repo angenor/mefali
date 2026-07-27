@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT livree_le FROM commandes.livraison\n               WHERE coursier_id = $1 AND etat = 'livree' AND livree_le IS NOT NULL\n               ORDER BY livree_le DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "livree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "livree_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f800ce2898ded73bcba3ba6213be124744ad79fafd20784ca15f5d63f7836f29"
+}
