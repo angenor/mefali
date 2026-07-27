@@ -548,6 +548,14 @@ impl From<commandes::ErreurCommandes> for ErreurDispatch {
     }
 }
 
+impl From<socle::OutboxError> for ErreurDispatch {
+    fn from(e: socle::OutboxError) -> Self {
+        match e {
+            socle::OutboxError::Db(sql) => ErreurDispatch::Sql(sql),
+        }
+    }
+}
+
 impl From<comptes::ErreurComptes> for ErreurDispatch {
     fn from(e: comptes::ErreurComptes) -> Self {
         match e {

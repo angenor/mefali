@@ -16,8 +16,10 @@ doc/ArticlePublic.md
 doc/ArticleVendeur.md
 doc/Attente.md
 doc/AuthApi.md
+doc/BasculeDisponibilite.md
 doc/BasculeDisponibiliteDto.md
 doc/BoutiqueVendeur.md
+doc/CapaciteCoursier.md
 doc/CategorieDto.md
 doc/CharteAdminDto.md
 doc/Commande.md
@@ -58,13 +60,16 @@ doc/DevisPanier.md
 doc/DeviseDto.md
 doc/DiscriminantConsentement.md
 doc/DiscriminantSession.md
+doc/DispatchApi.md
 doc/DossierCoursier.md
 doc/DossierCoursierAdmin.md
 doc/DrapeauxZone.md
 doc/ErreurApi.md
 doc/EtatArretCourse.md
 doc/EtatCategorie.md
+doc/EtatDisponibilite.md
 doc/EtatEffectifBoutique.md
+doc/EtatPublicationPosition.md
 doc/EtatRoleDto.md
 doc/FichePublique.md
 doc/FileAttenteCoursier.md
@@ -104,6 +109,7 @@ doc/PrestataireAdminDetail.md
 doc/PrestatairePilotable.md
 doc/PrestatairesApi.md
 doc/ProgressionSuivi.md
+doc/PublicationPosition.md
 doc/QrApi.md
 doc/RattachementDto.md
 doc/RattacherCompteDto.md
@@ -146,6 +152,7 @@ lib/src/api/commandes_admin_api.dart
 lib/src/api/commandes_api.dart
 lib/src/api/courses_api.dart
 lib/src/api/coursier_api.dart
+lib/src/api/dispatch_api.dart
 lib/src/api/moi_api.dart
 lib/src/api/prestataires_api.dart
 lib/src/api/qr_api.dart
@@ -172,8 +179,10 @@ lib/src/model/arret_pre_provisionne.dart
 lib/src/model/article_public.dart
 lib/src/model/article_vendeur.dart
 lib/src/model/attente.dart
+lib/src/model/bascule_disponibilite.dart
 lib/src/model/bascule_disponibilite_dto.dart
 lib/src/model/boutique_vendeur.dart
+lib/src/model/capacite_coursier.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/charte_admin_dto.dart
 lib/src/model/commande.dart
@@ -217,7 +226,9 @@ lib/src/model/drapeaux_zone.dart
 lib/src/model/erreur_api.dart
 lib/src/model/etat_arret_course.dart
 lib/src/model/etat_categorie.dart
+lib/src/model/etat_disponibilite.dart
 lib/src/model/etat_effectif_boutique.dart
+lib/src/model/etat_publication_position.dart
 lib/src/model/etat_role_dto.dart
 lib/src/model/fiche_publique.dart
 lib/src/model/file_attente_coursier.dart
@@ -255,6 +266,7 @@ lib/src/model/prestataire_admin.dart
 lib/src/model/prestataire_admin_detail.dart
 lib/src/model/prestataire_pilotable.dart
 lib/src/model/progression_suivi.dart
+lib/src/model/publication_position.dart
 lib/src/model/rattachement_dto.dart
 lib/src/model/rattacher_compte_dto.dart
 lib/src/model/regle.dart
@@ -301,7 +313,9 @@ test/article_vendeur_test.dart
 test/attente_test.dart
 test/auth_api_test.dart
 test/bascule_disponibilite_dto_test.dart
+test/bascule_disponibilite_test.dart
 test/boutique_vendeur_test.dart
+test/capacite_coursier_test.dart
 test/categorie_dto_test.dart
 test/charte_admin_dto_test.dart
 test/commande_en_attente_test.dart
@@ -342,13 +356,16 @@ test/devis_test.dart
 test/devise_dto_test.dart
 test/discriminant_consentement_test.dart
 test/discriminant_session_test.dart
+test/dispatch_api_test.dart
 test/dossier_coursier_admin_test.dart
 test/dossier_coursier_test.dart
 test/drapeaux_zone_test.dart
 test/erreur_api_test.dart
 test/etat_arret_course_test.dart
 test/etat_categorie_test.dart
+test/etat_disponibilite_test.dart
 test/etat_effectif_boutique_test.dart
+test/etat_publication_position_test.dart
 test/etat_role_dto_test.dart
 test/fiche_publique_test.dart
 test/file_attente_coursier_test.dart
@@ -388,6 +405,7 @@ test/prestataire_admin_test.dart
 test/prestataire_pilotable_test.dart
 test/prestataires_api_test.dart
 test/progression_suivi_test.dart
+test/publication_position_test.dart
 test/qr_api_test.dart
 test/rattachement_dto_test.dart
 test/rattacher_compte_dto_test.dart

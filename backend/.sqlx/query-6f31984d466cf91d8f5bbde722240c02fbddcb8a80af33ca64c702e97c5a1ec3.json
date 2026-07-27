@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT distance_min_m, progresse_le FROM dispatch.suivi_progression\n             WHERE livraison_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "distance_min_m",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "dispatch.suivi_progression",
+            "name": "distance_min_m"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "progresse_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "dispatch.suivi_progression",
+            "name": "progresse_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6f31984d466cf91d8f5bbde722240c02fbddcb8a80af33ca64c702e97c5a1ec3"
+}

@@ -26,8 +26,10 @@ import 'package:mefali_api_client/src/model/arret_pre_provisionne.dart';
 import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/article_vendeur.dart';
 import 'package:mefali_api_client/src/model/attente.dart';
+import 'package:mefali_api_client/src/model/bascule_disponibilite.dart';
 import 'package:mefali_api_client/src/model/bascule_disponibilite_dto.dart';
 import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
+import 'package:mefali_api_client/src/model/capacite_coursier.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
@@ -70,7 +72,9 @@ import 'package:mefali_api_client/src/model/drapeaux_zone.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_arret_course.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
+import 'package:mefali_api_client/src/model/etat_disponibilite.dart';
 import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
+import 'package:mefali_api_client/src/model/etat_publication_position.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
@@ -108,6 +112,7 @@ import 'package:mefali_api_client/src/model/prestataire_admin.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
 import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
 import 'package:mefali_api_client/src/model/progression_suivi.dart';
+import 'package:mefali_api_client/src/model/publication_position.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
 import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
@@ -153,8 +158,10 @@ part 'serializers.g.dart';
   ArticlePublic,
   ArticleVendeur,
   Attente,
+  BasculeDisponibilite,
   BasculeDisponibiliteDto,
   BoutiqueVendeur,
+  CapaciteCoursier,
   CategorieDto,
   CharteAdminDto,
   Commande,
@@ -197,7 +204,9 @@ part 'serializers.g.dart';
   ErreurApi,
   EtatArretCourse,
   EtatCategorie,
+  EtatDisponibilite,
   EtatEffectifBoutique,
+  EtatPublicationPosition,
   EtatRoleDto,
   FichePublique,
   FileAttenteCoursier,
@@ -235,6 +244,7 @@ part 'serializers.g.dart';
   PrestataireAdminDetail,
   PrestatairePilotable,
   ProgressionSuivi,
+  PublicationPosition,
   RattachementDto,
   RattacherCompteDto,
   Regle,

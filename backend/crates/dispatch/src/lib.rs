@@ -42,6 +42,9 @@ pub mod tic;
 
 pub use config::{ConfigDispatch, GrilleAvance, PalierAvance, Poids, RangPalier};
 pub use depot::PgDispatch;
+pub use plafond::{resoudre as resoudre_plafond, PlafondDuJour, SourcePlafond};
+pub use pool::{EtatPublication, MotifDisponibilite};
+pub use reprise::Progression;
 pub use modele::{
     Candidat, Capacite, Composantes, EcartEligibilite, ErreurDispatch, Evaluation, InscriptionPool,
     IssueOffre, MesureProximite, ModeOffre, MotifEcart, MotifReassignation, Offre, Reprise,

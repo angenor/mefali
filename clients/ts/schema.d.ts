@@ -1120,6 +1120,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/disponibilite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /moi/disponibilite` — l'état courant, tel que K1 l'affiche. */
+        get: operations["lire_disponibilite"];
+        /**
+         * `PUT /moi/disponibilite` — se mettre en ligne ou hors ligne.
+         * @description ⚠ Le suffixe `_coursier` n'est pas décoratif : utoipa dérive l'`operationId`
+         *     du NOM DE LA FONCTION, et `vendeur_http::basculer_disponibilite` (bascule
+         *     d'un article en rupture) porte déjà le nom court. Deux `operationId`
+         *     identiques font échouer la génération des clients — donc la CI.
+         *
+         *     Passer `en_ligne: false` retire du pool **immédiatement**, sans attendre
+         *     l'expiration (FR-005) : un coursier qui a rangé sa moto ne doit pas voir son
+         *     téléphone sonner 90 s plus tard.
+         *
+         *     Se mettre en ligne exige un dossier valide et **au moins une capacité
+         *     déclarée** : sans véhicule, aucune course ne pourra jamais lui être proposée,
+         *     et le lui dire tout de suite vaut mieux qu'une attente muette.
+         */
+        put: operations["basculer_disponibilite_coursier"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/dossier-coursier": {
         parameters: {
             query?: never;
@@ -1135,6 +1167,33 @@ export interface paths {
          *     rôle (FR-015).
          */
         post: operations["soumettre_dossier_coursier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /moi/position` — publier sa position, et rester dans le pool.
+         * @description `204` si le coursier n'est pas en ligne : la position n'est pas **refusée**,
+         *     elle est **ignorée** — l'app peut être en retard d'un tic après un « hors
+         *     ligne », et lui rendre une erreur ferait clignoter un écran pour rien.
+         *
+         *     **Idempotence** : rejouer la même position repousse simplement la durée de
+         *     vie ; aucun événement n'est écrit dans les deux cas (une position est un fait
+         *     éphémère qui se répète toutes les 30 s, et elle porte une coordonnée que la
+         *     minimisation interdit de journaliser).
+         */
+        post: operations["publier_position"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1651,6 +1710,17 @@ export interface components {
              */
             scan: string;
         };
+        /** @description Bascule de disponibilité et déclaration du plafond d'avance du jour. */
+        BasculeDisponibilite: {
+            /** @description Vrai pour entrer dans le pool, faux pour en sortir **immédiatement**. */
+            en_ligne: boolean;
+            /**
+             * Format: int64
+             * @description Ce que le coursier peut avancer aujourd'hui (unités mineures).
+             *     Obligatoire pour se mettre en ligne, ignoré pour en sortir.
+             */
+            plafond_declare_unites?: number | null;
+        };
         /** @description Corps de la bascule. */
         BasculeDisponibiliteDto: {
             /** @description `false` = rupture, `true` = retour en vente. */
@@ -1676,6 +1746,13 @@ export interface components {
             rappel_ouverture: boolean;
             /** @description Statut DÉCLARÉ (l'effectif peut différer — FR-032). */
             statut: components["schemas"]["StatutBoutique"];
+        };
+        /** @description Une capacité déclarée, telle que l'app l'affiche. */
+        CapaciteCoursier: {
+            /** @description Famille de capacité (MVP : `transport`). */
+            famille: string;
+            /** @description Valeur dans la famille (slug de transport). */
+            valeur: string;
         };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
@@ -2543,6 +2620,51 @@ export interface components {
              */
             zone: string;
         };
+        /**
+         * @description État de disponibilité, tel que l'écran K1 l'affiche.
+         *
+         *     Les DEUX plafonds sont rendus : Yao voit toujours **lequel** s'applique
+         *     (`plafond_source`) et **pourquoi** (`palier_note_cle`). Un coursier à qui
+         *     l'on refuse une course sans lui dire que son palier le limite croira à un
+         *     bug.
+         */
+        EtatDisponibilite: {
+            /** @description Capacités déclarées au dossier coursier. */
+            capacites: components["schemas"]["CapaciteCoursier"][];
+            /** @description Vrai seulement après une position publiée : l'intention ne suffit pas. */
+            dans_le_pool: boolean;
+            /** @description Devise ISO 4217 de la zone. */
+            devise: string;
+            /** @description Intention déclarée aujourd'hui. */
+            en_ligne: boolean;
+            /** @description Jour civil de la déclaration. */
+            jour: string;
+            /**
+             * Format: int32
+             * @description Note du coursier, ou `null` tant qu'AVI n'existe pas.
+             */
+            note_centiemes?: number | null;
+            /** @description Clé i18n du palier appliqué. */
+            palier_note_cle: string;
+            /**
+             * Format: int64
+             * @description Période de publication attendue (paramètre de zone du cycle 008).
+             */
+            periode_position_s: number;
+            /**
+             * Format: int64
+             * @description Plafond déclaré du jour, ou `null` si rien n'a été déclaré (FR-011 :
+             *     jamais reporté — l'app le redemande au nouveau jour).
+             */
+            plafond_declare_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Ce qui s'applique : `min(déclaré, palier de la grille)`.
+             */
+            plafond_retenu_unites: number;
+            /** @description `grille_note` | `declaration`. */
+            plafond_source: string;
+        };
         /** @description État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032). */
         EtatEffectifBoutique: {
             /** @description La boutique reçoit-elle des commandes en cet instant ? */
@@ -2552,6 +2674,21 @@ export interface components {
              * @description Prochaine réouverture estimée quand fermée (FR-029).
              */
             reouverture_estimee?: string | null;
+        };
+        /** @description Ce que la publication rend à l'app. */
+        EtatPublicationPosition: {
+            /** @description Vrai si le coursier est (re)devenu membre du pool. */
+            dans_le_pool: boolean;
+            /**
+             * Format: int64
+             * @description Période attendue de la prochaine publication (secondes).
+             */
+            prochaine_publication_s: number;
+            /**
+             * Format: int64
+             * @description Durée de vie de l'inscription (secondes) — trois périodes manquées.
+             */
+            ttl_s: number;
         };
         /** @description État d'un rôle (contrat). */
         EtatRoleDto: {
@@ -3177,6 +3314,35 @@ export interface components {
              * @description Nombre total de collectes — **la remise n'en est pas une** (P1).
              */
             collectes_total: number;
+        };
+        /** @description Publication de position. */
+        PublicationPosition: {
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil. **Observation seulement** : le serveur écrit le
+             *     sien (FR-055).
+             */
+            horodatage_local: string;
+            /**
+             * Format: double
+             * @description Latitude.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            lon: number;
+            /**
+             * Format: int32
+             * @description Précision annoncée par le téléphone (mètres), informative.
+             */
+            precision_m?: number | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
         };
         /** @description Rattachement compte ↔ prestataire. */
         RattachementDto: {
@@ -7267,6 +7433,113 @@ export interface operations {
             };
         };
     };
+    lire_disponibilite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État courant : en ligne, plafond retenu et son palier, appartenance au pool. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatDisponibilite"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    basculer_disponibilite_coursier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BasculeDisponibilite"];
+            };
+        };
+        responses: {
+            /** @description Disponibilité à jour, avec le plafond RETENU et son palier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatDisponibilite"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide, ou course active (se mettre hors ligne en course est un abandon, pas une sortie de pool). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucun véhicule déclaré, ou plafond manquant à la mise en ligne. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     mon_dossier_coursier: {
         parameters: {
             query?: never;
@@ -7359,6 +7632,64 @@ export interface operations {
             };
             /** @description Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    publier_position: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicationPosition"];
+            };
+        };
+        responses: {
+            /** @description Position publiée ; l'inscription au pool est repoussée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatPublicationPosition"];
+                };
+            };
+            /** @description Coursier hors ligne — position ignorée, pas refusée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

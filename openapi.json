@@ -4849,6 +4849,137 @@
         ]
       }
     },
+    "/moi/disponibilite": {
+      "get": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`GET /moi/disponibilite` — l'état courant, tel que K1 l'affiche.",
+        "operationId": "lire_disponibilite",
+        "responses": {
+          "200": {
+            "description": "État courant : en ligne, plafond retenu et son palier, appartenance au pool.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatDisponibilite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`PUT /moi/disponibilite` — se mettre en ligne ou hors ligne.",
+        "description": "⚠ Le suffixe `_coursier` n'est pas décoratif : utoipa dérive l'`operationId`\ndu NOM DE LA FONCTION, et `vendeur_http::basculer_disponibilite` (bascule\nd'un article en rupture) porte déjà le nom court. Deux `operationId`\nidentiques font échouer la génération des clients — donc la CI.\n\nPasser `en_ligne: false` retire du pool **immédiatement**, sans attendre\nl'expiration (FR-005) : un coursier qui a rangé sa moto ne doit pas voir son\ntéléphone sonner 90 s plus tard.\n\nSe mettre en ligne exige un dossier valide et **au moins une capacité\ndéclarée** : sans véhicule, aucune course ne pourra jamais lui être proposée,\net le lui dire tout de suite vaut mieux qu'une attente muette.",
+        "operationId": "basculer_disponibilite_coursier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasculeDisponibilite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Disponibilité à jour, avec le plafond RETENU et son palier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatDisponibilite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide, ou course active (se mettre hors ligne en course est un abandon, pas une sortie de pool).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Aucun véhicule déclaré, ou plafond manquant à la mise en ligne.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/dossier-coursier": {
       "get": {
         "tags": [
@@ -4965,6 +5096,76 @@
           },
           "422": {
             "description": "Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/position": {
+      "post": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`POST /moi/position` — publier sa position, et rester dans le pool.",
+        "description": "`204` si le coursier n'est pas en ligne : la position n'est pas **refusée**,\nelle est **ignorée** — l'app peut être en retard d'un tic après un « hors\nligne », et lui rendre une erreur ferait clignoter un écran pour rien.\n\n**Idempotence** : rejouer la même position repousse simplement la durée de\nvie ; aucun événement n'est écrit dans les deux cas (une position est un fait\néphémère qui se répète toutes les 30 s, et elle porte une coordonnée que la\nminimisation interdit de journaliser).",
+        "operationId": "publier_position",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationPosition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Position publiée ; l'inscription au pool est repoussée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatPublicationPosition"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Coursier hors ligne — position ignorée, pas refusée."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6519,6 +6720,27 @@
           }
         }
       },
+      "BasculeDisponibilite": {
+        "type": "object",
+        "description": "Bascule de disponibilité et déclaration du plafond d'avance du jour.",
+        "required": [
+          "en_ligne"
+        ],
+        "properties": {
+          "en_ligne": {
+            "type": "boolean",
+            "description": "Vrai pour entrer dans le pool, faux pour en sortir **immédiatement**."
+          },
+          "plafond_declare_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Ce que le coursier peut avancer aujourd'hui (unités mineures).\nObligatoire pour se mettre en ligne, ignoré pour en sortir."
+          }
+        }
+      },
       "BasculeDisponibiliteDto": {
         "type": "object",
         "description": "Corps de la bascule.",
@@ -6573,6 +6795,24 @@
           "statut": {
             "$ref": "#/components/schemas/StatutBoutique",
             "description": "Statut DÉCLARÉ (l'effectif peut différer — FR-032)."
+          }
+        }
+      },
+      "CapaciteCoursier": {
+        "type": "object",
+        "description": "Une capacité déclarée, telle que l'app l'affiche.",
+        "required": [
+          "famille",
+          "valeur"
+        ],
+        "properties": {
+          "famille": {
+            "type": "string",
+            "description": "Famille de capacité (MVP : `transport`)."
+          },
+          "valeur": {
+            "type": "string",
+            "description": "Valeur dans la famille (slug de transport)."
           }
         }
       },
@@ -8189,6 +8429,80 @@
           }
         }
       },
+      "EtatDisponibilite": {
+        "type": "object",
+        "description": "État de disponibilité, tel que l'écran K1 l'affiche.\n\nLes DEUX plafonds sont rendus : Yao voit toujours **lequel** s'applique\n(`plafond_source`) et **pourquoi** (`palier_note_cle`). Un coursier à qui\nl'on refuse une course sans lui dire que son palier le limite croira à un\nbug.",
+        "required": [
+          "en_ligne",
+          "plafond_retenu_unites",
+          "plafond_source",
+          "palier_note_cle",
+          "devise",
+          "jour",
+          "capacites",
+          "dans_le_pool",
+          "periode_position_s"
+        ],
+        "properties": {
+          "capacites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapaciteCoursier"
+            },
+            "description": "Capacités déclarées au dossier coursier."
+          },
+          "dans_le_pool": {
+            "type": "boolean",
+            "description": "Vrai seulement après une position publiée : l'intention ne suffit pas."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217 de la zone."
+          },
+          "en_ligne": {
+            "type": "boolean",
+            "description": "Intention déclarée aujourd'hui."
+          },
+          "jour": {
+            "type": "string",
+            "description": "Jour civil de la déclaration."
+          },
+          "note_centiemes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Note du coursier, ou `null` tant qu'AVI n'existe pas."
+          },
+          "palier_note_cle": {
+            "type": "string",
+            "description": "Clé i18n du palier appliqué."
+          },
+          "periode_position_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Période de publication attendue (paramètre de zone du cycle 008)."
+          },
+          "plafond_declare_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Plafond déclaré du jour, ou `null` si rien n'a été déclaré (FR-011 :\njamais reporté — l'app le redemande au nouveau jour)."
+          },
+          "plafond_retenu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qui s'applique : `min(déclaré, palier de la grille)`."
+          },
+          "plafond_source": {
+            "type": "string",
+            "description": "`grille_note` | `declaration`."
+          }
+        }
+      },
       "EtatEffectifBoutique": {
         "type": "object",
         "description": "État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032).",
@@ -8207,6 +8521,31 @@
             ],
             "format": "date-time",
             "description": "Prochaine réouverture estimée quand fermée (FR-029)."
+          }
+        }
+      },
+      "EtatPublicationPosition": {
+        "type": "object",
+        "description": "Ce que la publication rend à l'app.",
+        "required": [
+          "dans_le_pool",
+          "ttl_s",
+          "prochaine_publication_s"
+        ],
+        "properties": {
+          "dans_le_pool": {
+            "type": "boolean",
+            "description": "Vrai si le coursier est (re)devenu membre du pool."
+          },
+          "prochaine_publication_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Période attendue de la prochaine publication (secondes)."
+          },
+          "ttl_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée de vie de l'inscription (secondes) — trois périodes manquées."
           }
         }
       },
@@ -9405,6 +9744,46 @@
             "type": "integer",
             "format": "int64",
             "description": "Nombre total de collectes — **la remise n'en est pas une** (P1)."
+          }
+        }
+      },
+      "PublicationPosition": {
+        "type": "object",
+        "description": "Publication de position.",
+        "required": [
+          "uuid_client",
+          "horodatage_local",
+          "lat",
+          "lon"
+        ],
+        "properties": {
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil. **Observation seulement** : le serveur écrit le\nsien (FR-055)."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
+          },
+          "precision_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Précision annoncée par le téléphone (mètres), informative."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V)."
           }
         }
       },

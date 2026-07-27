@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT plafond_unites FROM dispatch.plafond_jour\n             WHERE coursier_id = $1 AND jour = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "plafond_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "dispatch.plafond_jour",
+            "name": "plafond_unites"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "61a41318b00c5a55d44690f42d2afc8990c39d8ab34002b0fe4d1667e210eba4"
+}

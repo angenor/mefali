@@ -112,6 +112,9 @@ Class | Method | HTTP request | Description
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 [*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
+[*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
+[*DispatchApi*](doc/DispatchApi.md) | [**lireDisponibilite**](doc/DispatchApi.md#liredisponibilite) | **GET** /moi/disponibilite | &#x60;GET /moi/disponibilite&#x60; — l&#39;état courant, tel que K1 l&#39;affiche.
+[*DispatchApi*](doc/DispatchApi.md) | [**publierPosition**](doc/DispatchApi.md#publierposition) | **POST** /moi/position | &#x60;POST /moi/position&#x60; — publier sa position, et rester dans le pool.
 [*MoiApi*](doc/MoiApi.md) | [**ecouterRepereVocal**](doc/MoiApi.md#ecouterreperevocal) | **GET** /moi/adresses/{adresse_id}/repere-vocal | URL présignée de lecture du repère vocal (FR-020).
 [*MoiApi*](doc/MoiApi.md) | [**enregistrerAdresse**](doc/MoiApi.md#enregistreradresse) | **POST** /moi/adresses | Enregistre une adresse — proposition post-livraison acceptée (FR-019).
 [*MoiApi*](doc/MoiApi.md) | [**mesAdresses**](doc/MoiApi.md#mesadresses) | **GET** /moi/adresses | Adresses enregistrées du compte courant (FR-021).
@@ -164,8 +167,10 @@ Class | Method | HTTP request | Description
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
  - [Attente](doc/Attente.md)
+ - [BasculeDisponibilite](doc/BasculeDisponibilite.md)
  - [BasculeDisponibiliteDto](doc/BasculeDisponibiliteDto.md)
  - [BoutiqueVendeur](doc/BoutiqueVendeur.md)
+ - [CapaciteCoursier](doc/CapaciteCoursier.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
  - [Commande](doc/Commande.md)
@@ -208,7 +213,9 @@ Class | Method | HTTP request | Description
  - [ErreurApi](doc/ErreurApi.md)
  - [EtatArretCourse](doc/EtatArretCourse.md)
  - [EtatCategorie](doc/EtatCategorie.md)
+ - [EtatDisponibilite](doc/EtatDisponibilite.md)
  - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
+ - [EtatPublicationPosition](doc/EtatPublicationPosition.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
  - [FichePublique](doc/FichePublique.md)
  - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
@@ -246,6 +253,7 @@ Class | Method | HTTP request | Description
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
  - [PrestatairePilotable](doc/PrestatairePilotable.md)
  - [ProgressionSuivi](doc/ProgressionSuivi.md)
+ - [PublicationPosition](doc/PublicationPosition.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
  - [Regle](doc/Regle.md)

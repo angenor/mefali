@@ -16,6 +16,8 @@ pub mod comptes_http;
 pub mod course_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
+/// Surface HTTP coursier du cycle DSP (disponibilité, position, offres).
+pub mod dispatch_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
 pub mod erreurs_commandes;
 /// Mapping HTTP partagé des refus du domaine dispatch (cycle DSP 009, T021).
@@ -126,6 +128,9 @@ pub fn api_openapi() -> OpenApi {
         .service(commandes_http::annuler_commande)
         .service(admin_commandes_http::file_attente)
         .service(admin_commandes_http::annuler_commande_admin)
+        .service(dispatch_http::basculer_disponibilite_coursier)
+        .service(dispatch_http::lire_disponibilite)
+        .service(dispatch_http::publier_position)
         .service(admin_commandes_http::enregistrer_issue)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
@@ -317,6 +322,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut qr_opt: Option<qr::PgQr> = None;
     let mut tarification_opt: Option<tarification::PgTarification> = None;
     let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
+    let mut dispatch_opt: Option<dispatch::PgDispatch> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -404,6 +410,11 @@ pub async fn run() -> std::io::Result<()> {
                             Arc::new(tarification::CacheDesactive)
                         }
                     };
+                // Les deux poignées sont RETENUES : le pipeline de dispatch les
+                // réutilise pour sa matrice de proximité (research R5) — un
+                // second client OSRM doublerait le cache et les connexions.
+                let routage_dyn = routage.clone();
+                let cache_routage_dyn = cache_routage.clone();
                 let tarification = tarification::PgTarification::new(
                     pool.clone(),
                     routage,
@@ -457,6 +468,45 @@ pub async fn run() -> std::io::Result<()> {
                 tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
                 tokio::spawn(job_purge_photos_substitution(depot_commandes.clone()));
                 eprintln!("job d'expiration des substitutions démarré (toutes les 10 s)");
+
+                // DSP 009 — pipeline de dispatch. Câblé APRÈS `commandes` (dont
+                // il consomme le contrat offert) et après la tarification (dont
+                // il consomme la matrice routière). Six collaborateurs, aucun
+                // optionnel : une composition incomplète ne compilerait pas.
+                //
+                // Trois d'entre eux n'ont PAS d'implémentation réelle, et c'est
+                // l'état exact du monde, pas un manque : la note (AVI), les
+                // paires bloquées (CRS-07) et le transport des annonces
+                // (NTF-01). C'est parce que `AnnoncesJournalisees` n'ouvre
+                // aucune socket que l'app VA CHERCHER son offre (research R16).
+                let pool_coursiers: Arc<dyn dispatch::PoolCoursiers> = Arc::new(
+                    infra_redis::RedisPool::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis pool : {e}")))?,
+                );
+                let verrous: Arc<dyn dispatch::VerrouOffre> = Arc::new(
+                    infra_redis::RedisVerrouOffre::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis verrous : {e}")))?,
+                );
+                let depot_dispatch = dispatch::PgDispatch::new(
+                    pool.clone(),
+                    Arc::new(depot_commandes.clone()),
+                    Arc::new(depot.clone()),
+                    pool_coursiers,
+                    verrous,
+                    Arc::new(infra_dispatch::ProximiteTarification::nouvelle(
+                        tarification.clone(),
+                        routage_dyn.clone(),
+                        cache_routage_dyn.clone(),
+                    )),
+                    Arc::new(dispatch::NoteAbsente),
+                    Arc::new(dispatch::AucunePaireBloquee),
+                    Arc::new(dispatch::AnnoncesJournalisees),
+                );
+                eprintln!(
+                    "pipeline DSP câblé (pool Redis, double verrou Lua, proximité routière ; \
+                     note AVI, paires CRS-07 et transport NTF-01 non construits)"
+                );
+                dispatch_opt = Some(depot_dispatch);
 
                 commandes_domaine_opt = Some(depot_commandes);
                 tarification_opt = Some(tarification);
@@ -573,6 +623,9 @@ pub async fn run() -> std::io::Result<()> {
             .service(commandes_http::annuler_commande)
             .service(admin_commandes_http::file_attente)
             .service(admin_commandes_http::annuler_commande_admin)
+            .service(dispatch_http::basculer_disponibilite_coursier)
+            .service(dispatch_http::lire_disponibilite)
+            .service(dispatch_http::publier_position)
             .service(admin_commandes_http::enregistrer_issue)
             .split_for_parts();
         let mut app = app
@@ -600,6 +653,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = commandes_domaine_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = dispatch_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))

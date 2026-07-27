@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dispatch.plafond_jour (coursier_id, jour, plafond_unites, devise)\n             VALUES ($1, $2, $3, $4)\n             ON CONFLICT (coursier_id, jour)\n             DO UPDATE SET plafond_unites = EXCLUDED.plafond_unites,\n                           devise = EXCLUDED.devise,\n                           declare_le = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "94cc1894ef95723998f4154df744846d3656c11becd8c6868f83fee1f31f017f"
+}

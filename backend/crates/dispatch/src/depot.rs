@@ -112,6 +112,21 @@ impl PgDispatch {
         &self.notifications
     }
 
+    /// État exploitable d'un coursier — rôle validé, compte non bloqué,
+    /// véhicules déclarés. `None` = rien ne peut lui être offert.
+    pub async fn coursier_exploitable(
+        &self,
+        compte: Uuid,
+    ) -> Result<Option<crate::ports::CoursierExploitable>, ErreurDispatch> {
+        self.coursiers.coursier(compte).await
+    }
+
+    /// Course active d'un coursier, lue en base — le pool n'est qu'un index
+    /// (FR-009).
+    pub async fn course_active(&self, coursier: Uuid) -> Result<Option<Uuid>, ErreurDispatch> {
+        Ok(self.commandes.course_active(coursier).await?)
+    }
+
     /// Configuration de dispatch d'une zone, **validée** (SC-005).
     ///
     /// Rechargée à chaque passage plutôt que mémorisée : c'est ce qui donne

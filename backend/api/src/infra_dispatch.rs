@@ -27,39 +27,36 @@ use tarification::{
 };
 use uuid::Uuid;
 
-/// Proximité routière d'une zone, au-dessus du moteur de routage partagé.
+/// Proximité routière au-dessus du moteur de routage partagé.
 ///
-/// La zone est portée par l'instance parce que le facteur de dégradé, la
+/// La zone arrive en PARAMÈTRE d'appel, pas en champ : le facteur de dégradé, la
 /// vitesse d'estimation et les options de cache sont des **paramètres de zone**
-/// (constitution I) : les résoudre à chaque appel coûterait une lecture de
-/// configuration sur le chemin le plus sensible du produit.
+/// (constitution I), et un dispatch multi-villes partage le même client OSRM
+/// sans partager ses réglages.
 pub struct ProximiteTarification {
     tarification: PgTarification,
     routage: std::sync::Arc<dyn Routage>,
     cache: std::sync::Arc<dyn CacheRoutage>,
-    zone: Uuid,
 }
 
 impl ProximiteTarification {
-    /// Compose la proximité d'une zone.
+    /// Compose la proximité au-dessus du moteur de routage.
     pub fn nouvelle(
         tarification: PgTarification,
         routage: std::sync::Arc<dyn Routage>,
         cache: std::sync::Arc<dyn CacheRoutage>,
-        zone: Uuid,
     ) -> Self {
         Self {
             tarification,
             routage,
             cache,
-            zone,
         }
     }
 }
 
 #[async_trait]
 impl ProximiteRoutiere for ProximiteTarification {
-    async fn vers_point(&self, origines: &[Point], destination: Point) -> Trajets {
+    async fn vers_point(&self, zone: Uuid, origines: &[Point], destination: Point) -> Trajets {
         if origines.is_empty() {
             return Trajets {
                 trajets: Vec::new(),
@@ -71,12 +68,12 @@ impl ProximiteRoutiere for ProximiteTarification {
         // configuration est illisible, on prend les défauts du moteur plutôt que
         // de renoncer à classer : un classement dégradé vaut mieux qu'aucune
         // offre (constitution IV).
-        let knobs = self.tarification.knobs(self.zone).await.ok();
+        let knobs = self.tarification.knobs(zone).await.ok();
         let (facteur, vitesse, options) = match &knobs {
             Some(k) => (k.facteur_degrade, k.vitesse_degradee_kmh, k.cache),
             None => {
                 tracing::warn!(
-                    zone = %self.zone,
+                    zone = %zone,
                     "réglages de routage illisibles — dégradé aux défauts du moteur",
                 );
                 (
@@ -109,7 +106,7 @@ impl ProximiteRoutiere for ProximiteTarification {
 
         if matrice.degraded {
             tracing::warn!(
-                zone = %self.zone,
+                zone = %zone,
                 nb_origines = origines.len(),
                 facteur,
                 "proximité de dispatch en DÉGRADÉ vol d'oiseau (jamais bloquant)",

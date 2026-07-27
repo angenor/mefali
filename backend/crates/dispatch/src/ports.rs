@@ -252,8 +252,14 @@ pub trait ProximiteRoutiere: Send + Sync {
     /// l'implémentation s'appuie sur `tarification::routage::matrice_ou_degrade`,
     /// qui retombe sur le vol d'oiseau ×1,4 `degraded=true` journalisé. Une
     /// commande n'est jamais bloquée par le routage (constitution IV, FR-030).
+    ///
+    /// La `zone` porte les réglages de dégradé et de cache — hérités, jamais en
+    /// dur (constitution I). Elle est un PARAMÈTRE et non un champ de
+    /// l'implémentation : un dispatch multi-villes partage le même client de
+    /// routage, mais pas les mêmes facteurs.
     async fn vers_point(
         &self,
+        zone: Uuid,
         origines: &[tarification::Point],
         destination: tarification::Point,
     ) -> Trajets;
@@ -747,6 +753,7 @@ impl ProximiteFixe {
 impl ProximiteRoutiere for ProximiteFixe {
     async fn vers_point(
         &self,
+        _zone: Uuid,
         origines: &[tarification::Point],
         _destination: tarification::Point,
     ) -> Trajets {
@@ -1053,7 +1060,7 @@ mod tests {
         proximite.depuis(a, 500, 120);
         proximite.depuis(b, 2_000, 480);
 
-        let trajets = proximite.vers_point(&[b, a], cible).await;
+        let trajets = proximite.vers_point(Uuid::now_v7(), &[b, a], cible).await;
         assert_eq!(trajets.trajets[0].distance_m, 2_000);
         assert_eq!(trajets.trajets[1].duree_s, 120);
         assert!(!trajets.degraded);
