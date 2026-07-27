@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id,\n                      c.etat::text AS \"etat!\",\n                      EXTRACT(EPOCH FROM ($2::timestamptz - c.cree_le))::bigint AS \"age_s!\"\n               FROM commandes.commande c\n               WHERE c.etat IN ('en_attente_coursier', 'nouvelle')\n                 AND c.zone_id = $1\n                 AND EXTRACT(EPOCH FROM ($2::timestamptz - c.cree_le)) >= $3::bigint\n                 AND NOT EXISTS (\n                     SELECT 1 FROM outbox.evenement e\n                     WHERE e.type_evenement = 'commande.attente_coursier_escaladee'\n                       AND e.entite_id = c.id\n                 )\n               ORDER BY c.cree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "age_s!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "54c588eadc962a1a6ce2c935a784a93d63e59c52fecff9505a2e0b742119ecd3"
+}

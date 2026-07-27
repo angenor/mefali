@@ -109,6 +109,23 @@ pub trait VerrouOffre: Send + Sync {
         ttl: Duration,
     ) -> Result<PoseVerrou, ErreurDispatch>;
 
+    /// Pose le SEUL verrou de coursier — le mode **broadcast** (FR-062).
+    ///
+    /// Un broadcast offre la même course à plusieurs coursiers : verrouiller la
+    /// commande à chaque destinataire empêcherait le second d'exister, et
+    /// « demander à tout le monde » se réduirait à « demander à une personne de
+    /// plus ». Ce qui doit rester exclusif, c'est l'**écran du coursier** :
+    /// personne ne voit deux offres à la fois, et deux broadcasts concurrents se
+    /// sérialisent ainsi au lieu de se disputer les destinataires.
+    ///
+    /// Rend `false` si le coursier porte déjà une offre.
+    async fn poser_coursier(
+        &self,
+        coursier: Uuid,
+        jeton: Uuid,
+        ttl: Duration,
+    ) -> Result<bool, ErreurDispatch>;
+
     /// Libère les deux, et SEULEMENT si le jeton correspond : on ne libère
     /// jamais un verrou qu'on ne détient pas — une offre échue puis reprise par
     /// un autre passage ne doit pas se faire effacer sous les pieds.
@@ -552,6 +569,20 @@ impl VerrouOffre for VerrouMemoire {
         cmds.insert(commande, jeton);
         crss.insert(coursier, jeton);
         Ok(PoseVerrou::Obtenu)
+    }
+
+    async fn poser_coursier(
+        &self,
+        coursier: Uuid,
+        jeton: Uuid,
+        _ttl: Duration,
+    ) -> Result<bool, ErreurDispatch> {
+        let mut crss = self.coursiers.lock().expect("coursiers");
+        if crss.contains_key(&coursier) {
+            return Ok(false);
+        }
+        crss.insert(coursier, jeton);
+        Ok(true)
     }
 
     async fn liberer(

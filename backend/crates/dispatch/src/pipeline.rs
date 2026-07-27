@@ -289,11 +289,14 @@ impl PgDispatch {
                 .await?
             {
                 IssueEmission::Emise(_) => atteints += 1,
-                // Déjà porteur d'une offre : il verrait deux écrans, on passe.
+                // Déjà porteur d'une offre — la sienne ou celle d'un broadcast
+                // concurrent : il verrait deux écrans. On passe au suivant, et
+                // c'est ainsi que deux broadcasts se SÉRIALISENT (FR-062) au
+                // lieu de se disputer les destinataires.
                 IssueEmission::CoursierIndisponible => continue,
-                // Un autre broadcast tient déjà la commande : on se sérialise
-                // derrière lui plutôt que de lui disputer ses destinataires.
-                IssueEmission::CommandeDejaTenue => break,
+                // Ne peut plus survenir en broadcast (aucun verrou de commande
+                // n'y est posé) ; on reste exhaustif plutôt que d'ignorer.
+                IssueEmission::CommandeDejaTenue => continue,
             }
         }
 

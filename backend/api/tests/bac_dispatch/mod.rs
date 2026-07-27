@@ -157,6 +157,7 @@ impl Bac {
     /// Monte l'app Actix avec les routes des DEUX cycles : un test de dispatch
     /// crée de vraies commandes par `POST /commandes`.
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
+        use api::admin_dispatch_http as adm;
         use api::dispatch_http as dsp;
         let commandes = self.cmd.configurer();
         let dispatch = self.dispatch.clone();
@@ -165,7 +166,13 @@ impl Bac {
             cfg.app_data(web::Data::new(dispatch))
                 .service(dsp::basculer_disponibilite_coursier)
                 .service(dsp::lire_disponibilite)
-                .service(dsp::publier_position);
+                .service(dsp::publier_position)
+                .service(dsp::offre_courante)
+                .service(dsp::accepter_offre)
+                .service(dsp::refuser_offre)
+                .service(adm::alertes_dispatch)
+                .service(adm::pool_dispatch)
+                .service(adm::reprendre_course_admin);
         }
     }
 
@@ -253,6 +260,98 @@ impl Bac {
         let resp = actix_web::test::call_service(&app, req).await;
         let statut = resp.status().as_u16();
         (statut, corps_json(resp).await)
+    }
+
+    /// Crée une commande **par l'API réelle**, prête à dispatcher.
+    ///
+    /// Le vendeur 0 est à ~250 m du centre : la course tient dans le rayon de
+    /// 4 km, et le transport `moto` est celui des quatre coursiers du bac.
+    pub async fn commande_prete(&self) -> Uuid {
+        self.cmd
+            .creer_commande_api("marche", vec![self.cmd.vendeurs[0].ligne(1)])
+            .await
+    }
+
+    /// Déroule un passage de pipeline sur une commande.
+    pub async fn dispatcher(&self, commande: Uuid) -> dispatch::DecisionPipeline {
+        self.dispatch
+            .dispatcher(commande, chrono::Utc::now())
+            .await
+            .expect("le pipeline ne rend Err que sur une panne d'infrastructure")
+    }
+
+    /// Un passage de tic sur la zone du bac.
+    pub async fn tic(&self) -> dispatch::ResultatTic {
+        self.dispatch
+            .tic(self.cmd.ville, chrono::Utc::now())
+            .await
+            .expect("un incident de tic ne fait jamais tomber l'API")
+    }
+
+    /// L'offre en vol d'un coursier, telle que le domaine la voit.
+    pub async fn offre_en_vol(&self, index: usize) -> Option<dispatch::Offre> {
+        self.dispatch
+            .offre_courante(self.coursiers[index].id, chrono::Utc::now())
+            .await
+            .unwrap()
+    }
+
+    /// Vieillit une offre pour la rendre échue, **sans attendre 40 s** :
+    /// l'échéance est persistée, donc déplacer l'offre entière dans le passé est
+    /// exactement ce que le temps aurait fait.
+    ///
+    /// ⚠ Les DEUX horodatages reculent : `CHECK (echeance_le > emise_le)`
+    /// interdit une offre échue avant d'être émise — un état qui n'existe pas
+    /// dans la réalité, et que la base a raison de refuser.
+    pub async fn faire_expirer_offre(&self, offre: Uuid) {
+        sqlx::query(
+            "UPDATE dispatch.offre
+                SET emise_le    = now() - interval '60 seconds',
+                    echeance_le = now() - interval '20 seconds'
+              WHERE id = $1",
+        )
+        .bind(offre)
+        .execute(&self.cmd.pool)
+        .await
+        .unwrap();
+    }
+
+    /// Vieillit une commande — c'est ce que le passage du temps fait à un âge.
+    pub async fn vieillir_commande(&self, commande: Uuid, secondes: i64) {
+        sqlx::query("UPDATE commandes.commande SET cree_le = cree_le - ($2 || ' seconds')::interval WHERE id = $1")
+            .bind(commande)
+            .bind(secondes.to_string())
+            .execute(&self.cmd.pool)
+            .await
+            .unwrap();
+    }
+
+    /// Vieillit une affectation (base du critère « sans scan »).
+    pub async fn vieillir_assignation(&self, livraison: Uuid, secondes: i64) {
+        sqlx::query("UPDATE commandes.livraison SET assignee_le = assignee_le - ($2 || ' seconds')::interval WHERE id = $1")
+            .bind(livraison)
+            .bind(secondes.to_string())
+            .execute(&self.cmd.pool)
+            .await
+            .unwrap();
+    }
+
+    /// Vieillit le dernier rapprochement observé (base du « sans mouvement »).
+    pub async fn vieillir_progression(&self, livraison: Uuid, secondes: i64) {
+        sqlx::query("UPDATE dispatch.suivi_progression SET progresse_le = progresse_le - ($2 || ' seconds')::interval WHERE livraison_id = $1")
+            .bind(livraison)
+            .bind(secondes.to_string())
+            .execute(&self.cmd.pool)
+            .await
+            .unwrap();
+    }
+
+    /// Vrai si l'état de pool d'un coursier existe encore.
+    pub async fn pool_coursiers_etat_existe(&self, index: usize) -> bool {
+        dispatch::PoolCoursiers::etat(self.pool_coursiers.as_ref(), self.coursiers[index].id)
+            .await
+            .unwrap()
+            .is_some()
     }
 
     /// Nombre d'événements outbox d'un type.

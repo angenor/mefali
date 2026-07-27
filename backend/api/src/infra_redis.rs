@@ -844,6 +844,32 @@ impl VerrouOffre for RedisVerrouOffre {
         })
     }
 
+    async fn poser_coursier(
+        &self,
+        coursier: Uuid,
+        jeton: Uuid,
+        ttl: Duration,
+    ) -> Result<bool, ErreurDispatch> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| ErreurDispatch::Dependance(format!("Redis indisponible : {e}")))?;
+        // Un seul `SET NX EX` : pas de tout-ou-rien à assurer, il n'y a qu'une
+        // clé. C'est exactement ce qui rend le broadcast possible sans ouvrir
+        // deux écrans au même coursier.
+        let pose: Option<String> = redis::cmd("SET")
+            .arg(Self::cle_coursier(coursier))
+            .arg(jeton.to_string())
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl.as_secs().max(1))
+            .query_async(&mut conn)
+            .await
+            .map_err(|e| ErreurDispatch::Dependance(format!("pose du verrou coursier : {e}")))?;
+        Ok(pose.is_some())
+    }
+
     async fn liberer(
         &self,
         commande: Uuid,

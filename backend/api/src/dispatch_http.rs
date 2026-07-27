@@ -600,15 +600,19 @@ pub async fn refuser_offre(
             Utc::now(),
         )
         .await?;
-    // Le candidat suivant, TOUT DE SUITE : attendre le tic ferait perdre au
-    // client les secondes que le refus vient justement d'économiser.
-    let depot_relance = depot.clone();
-    let commande = offre.commande;
-    actix_web::rt::spawn(async move {
-        if let Err(e) = depot_relance.dispatcher(commande, Utc::now()).await {
-            tracing::warn!(commande = %commande, erreur = %e, "relance après refus impossible");
-        }
-    });
+    // Le candidat suivant, TOUT DE SUITE (FR-050) : attendre le tic ferait
+    // perdre au client les secondes que le refus vient justement d'économiser.
+    //
+    // ⚠ Relance EN LIGNE, pas détachée : une tâche détachée n'est pas
+    // observable (ni par un test, ni par un journal de requête), et le `spawn`
+    // d'Actix exige un contexte que tous les appelants n'ont pas. Le coursier
+    // attend quelques millisecondes de plus — le client, lui, gagne 40 s.
+    if let Err(e) = depot.dispatcher(offre.commande, Utc::now()).await {
+        tracing::warn!(
+            commande = %offre.commande, erreur = %e,
+            "relance après refus impossible — le tic reprendra la commande",
+        );
+    }
     Ok(HttpResponse::Ok().json(RefusDto {
         issue: offre.issue.comme_str().to_owned(),
     }))

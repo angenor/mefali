@@ -63,14 +63,32 @@ impl PgDispatch {
         // Le jeton du verrou EST l'identifiant de l'offre : une libération ne
         // peut donc pas viser une offre qu'on ne détient pas.
         let offre_id = Uuid::now_v7();
-        match self
-            .verrous
-            .poser(commande, coursier, offre_id, config.verrou_ttl())
-            .await?
-        {
-            PoseVerrou::CoursierDejaPorteur => return Ok(IssueEmission::CoursierIndisponible),
-            PoseVerrou::CommandeDejaOfferte => return Ok(IssueEmission::CommandeDejaTenue),
-            PoseVerrou::Obtenu => {}
+        match mode {
+            // CASCADE — double verrou : un seul destinataire pour la commande,
+            // et un seul écran pour le coursier.
+            ModeOffre::Cascade => match self
+                .verrous
+                .poser(commande, coursier, offre_id, config.verrou_ttl())
+                .await?
+            {
+                PoseVerrou::CoursierDejaPorteur => {
+                    return Ok(IssueEmission::CoursierIndisponible)
+                }
+                PoseVerrou::CommandeDejaOfferte => return Ok(IssueEmission::CommandeDejaTenue),
+                PoseVerrou::Obtenu => {}
+            },
+            // BROADCAST — verrou de COURSIER seul (FR-062). Verrouiller la
+            // commande à chaque destinataire empêcherait le second d'exister,
+            // et « demander à tout le monde » n'aurait plus de sens.
+            ModeOffre::Broadcast => {
+                if !self
+                    .verrous
+                    .poser_coursier(coursier, offre_id, config.verrou_ttl())
+                    .await?
+                {
+                    return Ok(IssueEmission::CoursierIndisponible);
+                }
+            }
         }
 
         let echeance = maintenant + Duration::seconds(config.timer_offre_s.max(1));
@@ -105,6 +123,8 @@ impl PgDispatch {
             self.verrous.liberer(commande, coursier, offre_id).await?;
             return Ok(IssueEmission::CoursierIndisponible);
         }
+        // ⚠ Le filet Postgres qui vient de jouer n'est plus l'unicité par
+        // commande en broadcast (migration 0014) : c'est celle par COURSIER.
 
         ecrire_evenement(
             &mut tx,

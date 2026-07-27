@@ -360,11 +360,24 @@ impl PgCommandes {
             .parametre_i64(zone_id, cles_attente::ESCALADE_ATTENTE_S)
             .await?;
 
+        // ⚠ Cycle DSP 009 — le `WHERE` couvre AUSSI les commandes en `nouvelle`.
+        // DSP-06 escalade *toute* commande non assignée : celle qui attend dans
+        // la file FIFO comme celle dont la cascade n'a trouvé personne. Sans
+        // cette extension, une commande que le dispatch n'arrive pas à placer
+        // resterait `nouvelle` et **muette** — personne ne serait alerté.
+        //
+        // Le `chemin` du payload dit laquelle des deux : `file` quand elle est
+        // formellement en attente, `pipeline` quand elle est encore `nouvelle`.
+        //
+        // Le `NOT EXISTS` sur l'outbox RESTE le marqueur d'idempotence : c'est
+        // lui qui livre « exactement une alerte par commande, quel que soit le
+        // chemin » (FR-066) — et aucune colonne ne peut s'en désynchroniser.
         let candidates = sqlx::query!(
             r#"SELECT c.id,
+                      c.etat::text AS "etat!",
                       EXTRACT(EPOCH FROM ($2::timestamptz - c.cree_le))::bigint AS "age_s!"
                FROM commandes.commande c
-               WHERE c.etat = 'en_attente_coursier'
+               WHERE c.etat IN ('en_attente_coursier', 'nouvelle')
                  AND c.zone_id = $1
                  AND EXTRACT(EPOCH FROM ($2::timestamptz - c.cree_le)) >= $3::bigint
                  AND NOT EXISTS (
@@ -382,6 +395,11 @@ impl PgCommandes {
 
         let mut escaladees = Vec::new();
         for candidate in candidates {
+            let chemin = if candidate.etat == "en_attente_coursier" {
+                "file"
+            } else {
+                "pipeline"
+            };
             let mut tx = self.pool.begin().await?;
             ecrire_evenement(
                 &mut tx,
@@ -393,6 +411,7 @@ impl PgCommandes {
                         "zone": zone_id,
                         "age_s": candidate.age_s,
                         "seuil_s": seuil_s,
+                        "chemin": chemin,
                     }),
                     survenu_le: horodatage,
                 },
