@@ -52,6 +52,25 @@ dependencies:
   # sha256 pour la validation d'empreinte HORS-LIGNE (R6) — match du jeton/code
   # scanné contre l'empreinte pré-provisionnée, sans réseau.
   crypto: ^3.0.6
+  # ── Cycle CRS (010) — service continu et réveil, US7 (research R12). ──
+  #
+  # DEUX plugins NATIFS, ajoutés EN UNE FOIS et figés. Shorebird ne patche que
+  # le Dart : toute correction qui les touche exigera un passage store. D'où la
+  # règle du cycle — les poser tôt, garder TOUTE la logique métier en Dart, et
+  # ne plus y revenir. Versions figées à l'ajout (constitution X), pas de `^` :
+  # une résolution fraîche casserait l'accord des trois lockfiles.
+  #
+  # Maintient le processus vivant écran éteint tant que Yao est en ligne :
+  # publication de position, interrogation d'offre, échantillonnage de présence.
+  # Un WorkManager périodique ne conviendrait pas — 15 min de granularité pour
+  # une offre qui dure 40 secondes.
+  flutter_foreground_task: 10.0.0
+  # Canal dédié de haute importance : son prolongé, ouverture directe de l'écran
+  # d'offre. C'est la sonnerie de K2 — sans elle, « téléphone en poche, écran
+  # éteint, Yao ne sait pas qu'une course lui est offerte » (constat du cycle
+  # 009). Le push de NTF-01 ne remplacerait pas ce canal : il ne maintient ni la
+  # position ni la mesure de présence.
+  flutter_local_notifications: 22.2.0
 
 dev_dependencies:
   flutter_test:
