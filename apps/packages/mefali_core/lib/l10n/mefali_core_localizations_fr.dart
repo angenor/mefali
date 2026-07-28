@@ -580,4 +580,22 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
   @override
   String get substitutionRetireeNonFacturee =>
       'Article retiré — rien à payer pour lui.';
+
+  @override
+  String get coreHorsLigneActionsEnregistrees =>
+      'Actions enregistrées, synchronisation auto';
+
+  @override
+  String get coreHorsLigneIndisponible => 'Indisponible hors connexion';
+
+  @override
+  String get coreNoteVocaleLire => 'Écouter';
+
+  @override
+  String get coreNoteVocaleArreter => 'Arrêter';
+
+  @override
+  String coreNoteVocaleDuree(int secondes) {
+    return '$secondes s';
+  }
 }

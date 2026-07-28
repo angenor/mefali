@@ -743,5 +743,27 @@
   "substitutionRetireeNonFacturee": "Article retiré — rien à payer pour lui.",
   "@substitutionRetireeNonFacturee": {
     "description": "Confirmation d'un retrait : seul le montant des articles bouge (FR-050)"
+  },
+
+  "coreHorsLigneActionsEnregistrees": "Actions enregistrées, synchronisation auto",
+  "@coreHorsLigneActionsEnregistrees": {
+    "description": "Bandeau hors-ligne PARTAGÉ (cycle CRS 010, K3-1b, FR-026). Dans core parce que les deux apps l'affichent — et parce qu'un même message écrit deux fois finit par différer"
+  },
+  "coreHorsLigneIndisponible": "Indisponible hors connexion",
+  "@coreHorsLigneIndisponible": {
+    "description": "Explication du grisage d'une action qui exige VRAIMENT le réseau (cycle CRS 010)"
+  },
+  "coreNoteVocaleLire": "Écouter",
+  "@coreNoteVocaleLire": {
+    "description": "Lecture d'une note vocale de repère (cycle CRS 010, K3-1c)"
+  },
+  "coreNoteVocaleArreter": "Arrêter",
+  "@coreNoteVocaleArreter": {
+    "description": "Arrêt de la lecture d'une note vocale"
+  },
+  "coreNoteVocaleDuree": "{secondes} s",
+  "@coreNoteVocaleDuree": {
+    "description": "Durée d'une note vocale de repère",
+    "placeholders": { "secondes": { "type": "int" } }
   }
 }

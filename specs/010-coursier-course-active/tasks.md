@@ -66,7 +66,7 @@ tâche qui les enfreint est incomplète, même si son code marche :
 - [X] T006 [P] Bac de test `backend/api/tests/bac_coursier/mod.rs` sur le patron de `bac_commandes/mod.rs` : app Actix réelle, zone Tiassalé, paramètres du cycle, 3 vendeurs, un coursier avec rôle valide, helpers « course assignée à 3 arrêts » et « avancer le temps »
 - [X] T007 [P] Ajouter les **deux plugins natifs** à `apps/mefali_pro/pubspec.yaml` (service de premier plan + notifications locales), déclarer permissions et service dans `apps/mefali_pro/android/app/src/main/AndroidManifest.xml`, figer les versions, puis `./scripts/verifier-accord-locks.sh` vert dans les trois paquets (`research.md` R12)
 - [X] T008 [P] Étendre la base locale dans `apps/packages/mefali_core/lib/src/offline/action_en_attente.dart` : 4 tables (`course_cache`, `lignes_checklist`, `essais_remise`, `releves_presence_locaux`), `schemaVersion` + 1 et **migration additive** (aucune action en vol perdue) ; `build_runner` puis `dart analyze`
-- [ ] T009 [P] Poser les clés i18n fr des 5 écrans dans `apps/mefali_pro/lib/l10n/app_localizations_fr.dart` et `apps/packages/mefali_core/lib/l10n/mefali_core_localizations_fr.dart` (aucune chaîne en dur ne sera écrite ensuite)
+- [X] T009 [P] Poser les clés i18n fr des 5 écrans dans `apps/mefali_pro/lib/l10n/app_localizations_fr.dart` et `apps/packages/mefali_core/lib/l10n/mefali_core_localizations_fr.dart` (aucune chaîne en dur ne sera écrite ensuite)
 
 **Checkpoint**: schéma en place, événements déclarés, crate qui compile, appareil prêt — aucune logique encore.
 
