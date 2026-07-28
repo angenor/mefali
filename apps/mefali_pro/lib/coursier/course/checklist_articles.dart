@@ -127,10 +127,22 @@ class _LigneArticle extends StatelessWidget {
           ),
           if (!retiree) ...[
             const SizedBox(width: MefaliTokens.space2),
-            OutlinedButton.icon(
-              onPressed: onIndisponible,
-              icon: const Icon(Symbols.block_rounded, size: 18),
-              label: Text(l10n.crsIndisponible),
+            // Compact et contraint : sur 360 dp — l'écran cible — la coche de
+            // 48 dp, un libellé d'article un peu long et un bouton à taille
+            // naturelle ne tiennent pas sur une ligne. Le bouton cède, pas le
+            // libellé : c'est le nom de l'article que Yao cherche des yeux.
+            Flexible(
+              child: OutlinedButton.icon(
+                onPressed: onIndisponible,
+                icon: const Icon(Symbols.block_rounded, size: 18),
+                label: Text(l10n.crsIndisponible, overflow: TextOverflow.ellipsis),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: MefaliTokens.space2,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             ),
           ],
         ],
