@@ -406,6 +406,10 @@ pub struct ClientDeCourse {
     pub repere_texte: Option<String>,
     /// Clé objet de la note vocale de repère — l'appelant la présigne.
     pub repere_vocal_cle: Option<String>,
+    /// Durée de la note vocale (s), lue sur l'adresse d'origine. `None` si la
+    /// commande a été créée sans adresse enregistrée (pin ponctuel) : l'app
+    /// affiche alors le lecteur sans compteur, plutôt qu'un « 0:00 » faux.
+    pub repere_vocal_duree_s: Option<i16>,
     /// Point de livraison.
     pub lieu_lat: f64,
     /// Point de livraison.
@@ -1052,6 +1056,7 @@ mod tests {
                 telephone: Some("+2250700000002".to_owned()),
                 repere_texte: Some("Cour verte après la pharmacie".to_owned()),
                 repere_vocal_cle: None,
+                repere_vocal_duree_s: None,
                 lieu_lat: 5.905,
                 lieu_lon: -4.830,
                 depot_autorise: false,

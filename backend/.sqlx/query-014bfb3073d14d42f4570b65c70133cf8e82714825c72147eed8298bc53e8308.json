@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT l.id AS livraison_id, l.commande_id, l.etat::text AS \"etat!\",\n                      c.zone_id, c.devise, c.client_id,\n                      c.lieu_lat, c.lieu_lon, c.repere_texte, c.repere_vocal_cle,\n                      c.depot_autorise,\n                      c.code_livraison_hash, c.jeton_reception_hash, c.essais_code,\n                      (c.code_bloque_le IS NOT NULL AND c.code_debloque_le IS NULL)\n                          AS \"code_bloque!\",\n                      c.total_unites, c.mode_paiement::text AS \"mode_paiement!\",\n                      cp.telephone_e164\n               FROM commandes.livraison l\n               JOIN commandes.commande c ON c.id = l.commande_id\n               JOIN comptes.compte cp ON cp.id = c.client_id\n               WHERE l.coursier_id = $1\n                 AND l.etat IN ('assignee', 'en_collecte', 'en_livraison')\n               ORDER BY l.assignee_le DESC NULLS LAST\n               LIMIT 1",
+  "query": "SELECT l.id AS livraison_id, l.commande_id, l.etat::text AS \"etat!\",\n                      c.zone_id, c.devise, c.client_id,\n                      c.lieu_lat, c.lieu_lon, c.repere_texte, c.repere_vocal_cle,\n                      c.depot_autorise,\n                      c.code_livraison_hash, c.jeton_reception_hash, c.essais_code,\n                      (c.code_bloque_le IS NOT NULL AND c.code_debloque_le IS NULL)\n                          AS \"code_bloque!\",\n                      c.total_unites, c.mode_paiement::text AS \"mode_paiement!\",\n                      cp.telephone_e164, ad.repere_vocal_duree_s\n               FROM commandes.livraison l\n               JOIN commandes.commande c ON c.id = l.commande_id\n               JOIN comptes.compte cp ON cp.id = c.client_id\n               LEFT JOIN comptes.adresse ad ON ad.id = c.adresse_id\n               WHERE l.coursier_id = $1\n                 AND l.etat IN ('assignee', 'en_collecte', 'en_livraison')\n               ORDER BY l.assignee_le DESC NULLS LAST\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -185,6 +185,17 @@
             "name": "telephone_e164"
           }
         }
+      },
+      {
+        "ordinal": 18,
+        "name": "repere_vocal_duree_s",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_vocal_duree_s"
+          }
+        }
       }
     ],
     "parameters": {
@@ -210,8 +221,9 @@
       null,
       false,
       null,
-      false
+      false,
+      true
     ]
   },
-  "hash": "05b7a400756fb5fa731db607dac81d5c6e8f2bc32e04de5d961d29bc3355faac"
+  "hash": "014bfb3073d14d42f4570b65c70133cf8e82714825c72147eed8298bc53e8308"
 }

@@ -416,10 +416,11 @@ impl crate::ports::CourseCoursier for PgCommandes {
                       (c.code_bloque_le IS NOT NULL AND c.code_debloque_le IS NULL)
                           AS "code_bloque!",
                       c.total_unites, c.mode_paiement::text AS "mode_paiement!",
-                      cp.telephone_e164
+                      cp.telephone_e164, ad.repere_vocal_duree_s
                FROM commandes.livraison l
                JOIN commandes.commande c ON c.id = l.commande_id
                JOIN comptes.compte cp ON cp.id = c.client_id
+               LEFT JOIN comptes.adresse ad ON ad.id = c.adresse_id
                WHERE l.coursier_id = $1
                  AND l.etat IN ('assignee', 'en_collecte', 'en_livraison')
                ORDER BY l.assignee_le DESC NULLS LAST
@@ -521,6 +522,7 @@ impl crate::ports::CourseCoursier for PgCommandes {
                 telephone: Some(e.telephone_e164),
                 repere_texte: e.repere_texte,
                 repere_vocal_cle: e.repere_vocal_cle,
+                repere_vocal_duree_s: e.repere_vocal_duree_s,
                 lieu_lat: e.lieu_lat,
                 lieu_lon: e.lieu_lon,
                 depot_autorise: e.depot_autorise,

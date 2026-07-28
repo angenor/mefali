@@ -21,9 +21,14 @@
 //! comme il ne dépend jamais de `dispatch`.
 
 pub mod config;
+pub mod course;
+pub mod depot;
 pub mod modele;
+pub mod ports;
 
 pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
+pub use depot::PgCoursier;
+pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
 pub use modele::{
     ActionRejouee, AppelJournalise, ArretComplet, CibleAppel, ClientCourse, CourseComplete,
     ErreurCoursier, EtatIndemnisation, EtatPreuves, ExpositionCash, IndemnisationVue, IssueAppel,

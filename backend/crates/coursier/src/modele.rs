@@ -114,8 +114,11 @@ impl ArretComplet {
 /// assignation (FR-104) et effacée du cache local à la clôture (R6).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClientCourse {
-    /// Nom d'usage — jamais l'état civil.
-    pub nom_usage: String,
+    /// Nom d'usage. `None` tant que le produit n'en porte aucun : le cycle CPT
+    /// 003 a posé « identité Mefali = un numéro vérifié, rien d'autre ». K4-1a
+    /// montre « Awa K. » ; l'app affiche le repère à la place plutôt qu'un nom
+    /// fabriqué depuis le numéro (voir `commandes::ClientDeCourse`).
+    pub nom_usage: Option<String>,
     /// Contact du client. Jamais journalisé.
     pub telephone: Option<String>,
     /// Repère écrit (« cour verte après la pharmacie »).

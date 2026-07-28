@@ -74,6 +74,26 @@ pub struct ArretPreProvisionne {
     pub distance_max_m: i64,
 }
 
+/// Plaque d'un prestataire, résolue pour un montant d'arrêt donné (cycle CRS
+/// 010, [`crate::PgQr::plaque_resolue`]).
+///
+/// Le sous-ensemble d'[`ArretPreProvisionne`] qui dépend du PRESTATAIRE et non
+/// de l'arrêt : empreintes, politique photo, rayon de scan. Ce que l'arrêt
+/// apporte (identité, position, montant) reste au domaine qui le porte.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaqueResolue {
+    /// Nom du prestataire (public — affiché sur la carte K3).
+    pub nom: String,
+    /// base16(sha256(jeton)) — match hors-ligne du QR scanné.
+    pub empreinte_jeton: String,
+    /// base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
+    pub empreinte_code: String,
+    /// Politique photo résolue pour ce montant (R4).
+    pub photo_exigee: bool,
+    /// Rayon max de scan (m) de la zone — validation de proximité HORS-LIGNE.
+    pub distance_max_m: i64,
+}
+
 /// Erreurs du domaine QR. Chaque variante métier porte une clé i18n fr
 /// (`message_cle`) et un statut HTTP (mappés dans `qr_http`).
 #[derive(Debug, thiserror::Error)]

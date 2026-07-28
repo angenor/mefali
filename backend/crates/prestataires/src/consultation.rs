@@ -233,4 +233,59 @@ impl PgPrestataires {
         );
         Ok(Some((site, horaires, effectif)))
     }
+
+    /// Contacts des vendeurs d'une course, pour le coursier **assigné**
+    /// (cycle CRS 010, FR-032).
+    ///
+    /// ⚠ Élargissement DOCUMENTÉ de SC-013 du cycle 005. Le commentaire de la
+    /// migration 0004 disait « servi UNIQUEMENT à l'admin » ; c'était vrai
+    /// alors. Le coursier assigné le reçoit désormais dans son
+    /// pré-provisionnement, parce que l'appel au vendeur doit fonctionner
+    /// **sans réseau** — et qu'un numéro qu'on va chercher au moment où l'on en
+    /// a besoin est un numéro qu'on n'a pas.
+    ///
+    /// La règle qui tient toujours est celle de SC-013 : **aucune consultation
+    /// non authentifiée ne révèle un contact**. Cette méthode ne garde rien
+    /// elle-même — c'est l'appelant qui doit prouver l'assignation, et le crate
+    /// `coursier` le fait avant de l'appeler.
+    pub async fn contacts_vendeurs(
+        &self,
+        prestataires: &[Uuid],
+    ) -> Result<Vec<ContactVendeur>, ErreurPrestataires> {
+        if prestataires.is_empty() {
+            return Ok(Vec::new());
+        }
+        let lignes = sqlx::query!(
+            r#"SELECT p.id, p.nom, p.contact_telephone
+               FROM prestataires.prestataire p
+               WHERE p.id = ANY($1)"#,
+            prestataires,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(lignes
+            .into_iter()
+            .map(|l| ContactVendeur {
+                prestataire_id: l.id,
+                nom: l.nom,
+                telephone: l.contact_telephone,
+            })
+            .collect())
+    }
+}
+
+/// Ce qu'un coursier assigné reçoit d'un vendeur de sa course.
+///
+/// Volontairement minimal : de quoi l'afficher et l'appeler, rien de plus. Ni
+/// horaires, ni catalogue, ni statut — le coursier n'en a pas besoin sur la
+/// route, et ce qui n'est pas servi ne fuit pas.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContactVendeur {
+    /// Prestataire.
+    pub prestataire_id: Uuid,
+    /// Nom affiché sur la carte K3.
+    pub nom: String,
+    /// Contact. **Jamais journalisé**, effacé du cache local à la clôture (R6).
+    pub telephone: String,
 }
