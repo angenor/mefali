@@ -44,6 +44,10 @@ tarification.workspace = true
 # (`infra_redis`), proximité routière au-dessus de `tarification`
 # (`infra_dispatch`).
 dispatch.workspace = true
+# Domaine coursier (PgCoursier) — cycle CRS 010. La couche `api` compose ici
+# `/moi/journee` à partir de `coursier` ET `dispatch`, précisément pour qu'aucun
+# des deux crates n'apprenne l'existence de l'autre (contracts/ports-coursier §2).
+coursier.workspace = true
 sqlx.workspace = true
 # Impls RÉELLES des ports du crate `comptes` : la composition racine connaît
 # l'infra, le domaine ne connaît que ses traits (constitution II). Consommées par

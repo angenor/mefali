@@ -342,6 +342,7 @@ dependencies = [
  "chrono-tz",
  "commandes",
  "comptes",
+ "coursier",
  "deadpool-redis",
  "dispatch",
  "prestataires",
