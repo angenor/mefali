@@ -1,5 +1,33 @@
-//! Crate `coursier` — Parcours coursier — actions idempotentes avec file hors-ligne.
+//! Crate `coursier` — parcours coursier : course active, cash et hors-ligne.
 //!
-//! Vide ce cycle (001-socle-monorepo) : seul le crate `socle` porte de la
-//! logique. Les entités et parcours de ce domaine arrivent dans son cycle
-//! dédié (constitution IX — « prêt ≠ construit »).
+//! Le cycle CRS 010 remplit le crate posé **vide au socle** (« prêt ≠
+//! construit », constitution IX). Il ne réécrit rien de ce que les cycles 006,
+//! 008 et 009 ont livré : il **branche**, **compose** et **comble** les trous
+//! que ces cycles ont explicitement laissés — au premier rang desquels le port
+//! `commandes::PreuvesEchec`, conçu au cycle 008 pour être implémenté ici.
+//!
+//! | Module | Rôle |
+//! |---|---|
+//! | [`modele`] | types purs du domaine, erreurs et leurs clés i18n |
+//! | [`config`] | les 7 paramètres de zone du cycle, et le seuil d'essais **réutilisé** |
+//!
+//! Conventions du dépôt : **lectures sur pool**, **écritures sur
+//! `&mut PgTransaction`** avec l'événement outbox dans la MÊME transaction
+//! (constitution VI). Montants en entiers d'unités mineures + devise ISO 4217
+//! (III) ; distances en **mètres entiers arrondis**, jamais de coordonnée
+//! persistée (IV, R8).
+//!
+//! ⚠ Aucune dépendance inverse : `commandes` ne dépend jamais de `coursier`,
+//! comme il ne dépend jamais de `dispatch`.
+
+pub mod config;
+pub mod modele;
+
+pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
+pub use modele::{
+    ActionRejouee, AppelJournalise, ArretComplet, CibleAppel, ClientCourse, CourseComplete,
+    ErreurCoursier, EtatIndemnisation, EtatPreuves, ExpositionCash, IndemnisationVue, IssueAppel,
+    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, LitigeVu, MotifAppel, PreuveAppels,
+    PreuvePhotos, PreuvePresence, RemisePreprovisionnee, SeuilsPreuves, TypeEcriture, VueCaisse,
+    VueJournee,
+};
