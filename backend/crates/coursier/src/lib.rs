@@ -10,6 +10,10 @@
 //! |---|---|
 //! | [`modele`] | types purs du domaine, erreurs et leurs clés i18n |
 //! | [`config`] | les 7 paramètres de zone du cycle, et le seuil d'essais **réutilisé** |
+//! | [`course`] | composition de la course active — trois domaines, une lecture |
+//! | [`appels`] | appels journalisés via l'app, sans jamais un numéro |
+//! | [`ports`] | traits consommés (litiges AVI-04) et leurs doubles |
+//! | [`depot`] | `PgCoursier` — racine de composition du domaine |
 //!
 //! Conventions du dépôt : **lectures sur pool**, **écritures sur
 //! `&mut PgTransaction`** avec l'événement outbox dans la MÊME transaction
@@ -20,6 +24,7 @@
 //! ⚠ Aucune dépendance inverse : `commandes` ne dépend jamais de `coursier`,
 //! comme il ne dépend jamais de `dispatch`.
 
+pub mod appels;
 pub mod config;
 pub mod course;
 pub mod depot;
@@ -27,6 +32,7 @@ pub mod modele;
 pub mod ports;
 
 pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
+pub use appels::{AppelEnregistre, DemandeAppel};
 pub use depot::PgCoursier;
 pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
 pub use modele::{

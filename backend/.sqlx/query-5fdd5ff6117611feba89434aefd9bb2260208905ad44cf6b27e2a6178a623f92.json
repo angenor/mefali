@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, vers, prestataire_id, motif::text AS \"motif!\",\n                      issue::text AS \"issue!\", passe_le, passe_le_local\n               FROM coursier.appel_coursier\n               WHERE livraison_id = $1\n               ORDER BY passe_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.appel_coursier",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "vers",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coursier.appel_coursier",
+            "name": "vers"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "prestataire_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.appel_coursier",
+            "name": "prestataire_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "motif!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "issue!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "passe_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.appel_coursier",
+            "name": "passe_le"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "passe_le_local",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.appel_coursier",
+            "name": "passe_le_local"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "5fdd5ff6117611feba89434aefd9bb2260208905ad44cf6b27e2a6178a623f92"
+}

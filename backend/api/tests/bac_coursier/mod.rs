@@ -536,6 +536,8 @@ impl Bac {
                 .app_data(web::Data::new(qr))
                 .app_data(web::Data::new(coursier))
                 .service(crs010::course_active)
+                .service(crs010::journaliser_appel)
+                .service(crs010::declarer_issue_appel)
                 .service(cmd::creer_commande)
                 .service(cmd::suivre_commande)
                 .service(cmd::decider_substitution)

@@ -759,6 +759,18 @@ impl ErreurCoursier {
     }
 }
 
+/// Une écriture d'outbox qui échoue est une erreur de BASE, pas un refus
+/// métier : la traduire en `Sql` garde le statut HTTP juste (500, pas 422) et
+/// évite d'exposer une clé i18n pour une panne (patron `ErreurCommandes`).
+impl From<socle::OutboxError> for ErreurCoursier {
+    fn from(erreur: socle::OutboxError) -> Self {
+        match erreur {
+            socle::OutboxError::Db(e) => ErreurCoursier::Sql(e),
+            autre => ErreurCoursier::ConfigurationInvalide(autre.to_string()),
+        }
+    }
+}
+
 /// Les refus du domaine coursier remontent tels quels dans `commandes` quand
 /// c'est ce crate qui les demande — c'est le cas du port `PreuvesEchec`, dont
 /// l'implémentation vit ici (contracts §1).

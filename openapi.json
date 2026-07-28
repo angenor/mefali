@@ -4133,6 +4133,172 @@
         ]
       }
     },
+    "/courses/{livraison_id}/appels": {
+      "post": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-03 — journalise un appel passé **via l'app** (FR-030, FR-031, FR-033).",
+        "description": "⚠ **Aucun numéro** n'est transmis ni journalisé : le serveur ne voit pas\nl'appel, il part du téléphone. Il en garde l'intention, la direction, le\nmotif et l'issue déclarée.\n\nIdempotent par `uuid_client` : le rejeu rend `200` et le même corps, sans\nseconde ligne ni second événement.",
+        "operationId": "journaliser_appel",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeAppel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu idempotent — même corps, aucune écriture.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppelEnregistre"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Appel journalisé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppelEnregistre"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Demande mal formée (appel vendeur sans prestataire).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).",
+        "description": "Le serveur ne peut pas l'observer : l'appel part du téléphone. Cette issue\nsert l'affichage de K4-1e et **n'est jamais un critère de preuve** — un\ncoursier qui déclarerait « sans réponse » à tort ne gagne rien.",
+        "operationId": "declarer_issue_appel",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueAppelDeclaree"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Issue mise à jour.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppelEnregistre"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Appel inconnu pour cette livraison.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
       "post": {
         "tags": [
@@ -6944,6 +7110,25 @@
           }
         }
       },
+      "AppelEnregistre": {
+        "type": "object",
+        "description": "Ce que le serveur rend après avoir journalisé un appel.",
+        "required": [
+          "appel_id",
+          "compte_pour_preuve"
+        ],
+        "properties": {
+          "appel_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Appel journalisé."
+          },
+          "compte_pour_preuve": {
+            "type": "boolean",
+            "description": "Cet appel compte-t-il pour la preuve d'échec ?"
+          }
+        }
+      },
       "ArretCourantSuivi": {
         "type": "object",
         "description": "L'arrêt où en est le coursier.",
@@ -8384,6 +8569,51 @@
           }
         }
       },
+      "DemandeAppel": {
+        "type": "object",
+        "description": "Corps de déclaration d'un appel passé via l'app.",
+        "required": [
+          "uuid_client",
+          "vers",
+          "motif",
+          "passe_le_local"
+        ],
+        "properties": {
+          "issue": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Issue DÉCLARÉE : `inconnue` | `sans_reponse` | `repondu`. Facultative —\nle serveur ne voit pas l'appel, il ne peut que la recevoir (R19)."
+          },
+          "motif": {
+            "type": "string",
+            "description": "`suivi` | `substitution` | `client_absent`. **Seul `client_absent`\ncompte** pour la preuve d'échec (FR-035)."
+          },
+          "passe_le_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil — observation seulement."
+          },
+          "prestataire_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Prestataire appelé — obligatoire si `vers = vendeur`."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 client, constitution V)."
+          },
+          "vers": {
+            "type": "string",
+            "description": "`client` | `vendeur`."
+          }
+        }
+      },
       "DemandeCollecte": {
         "type": "object",
         "description": "Corps de la demande de collecte (partie `demande` JSON du multipart).",
@@ -9799,6 +10029,25 @@
               "null"
             ],
             "description": "`suivi` (défaut) | `substitution` | `expiration`."
+          }
+        }
+      },
+      "IssueAppelDeclaree": {
+        "type": "object",
+        "description": "Corps de mise à jour de l'issue déclarée d'un appel.",
+        "required": [
+          "uuid_client",
+          "issue"
+        ],
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "`inconnue` | `sans_reponse` | `repondu`."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence de l'appel à mettre à jour."
           }
         }
       },

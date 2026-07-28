@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT commande_id FROM commandes.livraison WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "commande_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6482a1c0d8fad16608a77fbf338483e4040611470637eb8b8b796f3510262712"
+}

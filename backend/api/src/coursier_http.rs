@@ -10,10 +10,10 @@
 //! compris au REJEU d'une action venue de la file (FR-006).
 
 use actix_web::http::StatusCode;
-use actix_web::{get, web, HttpResponse, ResponseError};
+use actix_web::{get, patch, post, web, HttpResponse, ResponseError};
 use chrono::{DateTime, Utc};
 use coursier::{ErreurCoursier, PgCoursier};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -352,4 +352,140 @@ pub async fn course_active(
         Some(course) => Ok(HttpResponse::Ok().json(CourseActiveDto::from(course))),
         None => Ok(HttpResponse::NoContent().finish()),
     }
+}
+
+/// Corps de déclaration d'un appel passé via l'app.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandeAppel)]
+pub struct DemandeAppelDto {
+    /// Clé d'idempotence (UUIDv7 client, constitution V).
+    pub uuid_client: Uuid,
+    /// `client` | `vendeur`.
+    pub vers: String,
+    /// Prestataire appelé — obligatoire si `vers = vendeur`.
+    pub prestataire_id: Option<Uuid>,
+    /// `suivi` | `substitution` | `client_absent`. **Seul `client_absent`
+    /// compte** pour la preuve d'échec (FR-035).
+    pub motif: String,
+    /// Issue DÉCLARÉE : `inconnue` | `sans_reponse` | `repondu`. Facultative —
+    /// le serveur ne voit pas l'appel, il ne peut que la recevoir (R19).
+    pub issue: Option<String>,
+    /// Horodatage de l'appareil — observation seulement.
+    pub passe_le_local: DateTime<Utc>,
+}
+
+/// Corps de mise à jour de l'issue déclarée d'un appel.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = IssueAppelDeclaree)]
+pub struct IssueAppelDto {
+    /// Clé d'idempotence de l'appel à mettre à jour.
+    pub uuid_client: Uuid,
+    /// `inconnue` | `sans_reponse` | `repondu`.
+    pub issue: String,
+}
+
+/// Ce que le serveur rend après avoir journalisé un appel.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = AppelEnregistre)]
+pub struct AppelEnregistreDto {
+    /// Appel journalisé.
+    pub appel_id: Uuid,
+    /// Cet appel compte-t-il pour la preuve d'échec ?
+    pub compte_pour_preuve: bool,
+}
+
+/// CRS-03 — journalise un appel passé **via l'app** (FR-030, FR-031, FR-033).
+///
+/// ⚠ **Aucun numéro** n'est transmis ni journalisé : le serveur ne voit pas
+/// l'appel, il part du téléphone. Il en garde l'intention, la direction, le
+/// motif et l'issue déclarée.
+///
+/// Idempotent par `uuid_client` : le rejeu rend `200` et le même corps, sans
+/// seconde ligne ni second événement.
+#[utoipa::path(
+    post,
+    path = "/courses/{livraison_id}/appels",
+    tag = "coursier",
+    params(("livraison_id" = Uuid, Path, description = "Livraison de la course active du coursier.")),
+    request_body = DemandeAppelDto,
+    responses(
+        (status = 201, description = "Appel journalisé.", body = AppelEnregistreDto),
+        (status = 200, description = "Rejeu idempotent — même corps, aucune écriture.", body = AppelEnregistreDto),
+        (status = 422, description = "Demande mal formée (appel vendeur sans prestataire).", body = ErreurApiDto),
+        (status = 403, description = "Course d'un autre coursier, ou rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/{livraison_id}/appels")]
+pub async fn journaliser_appel(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DemandeAppelDto>,
+    coursier: web::Data<PgCoursier>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let dto = corps.into_inner();
+    let demande = coursier::DemandeAppel {
+        uuid_client: dto.uuid_client,
+        vers: dto.vers.parse()?,
+        prestataire_id: dto.prestataire_id,
+        motif: dto.motif.parse()?,
+        issue: dto.issue.as_deref().map(str::parse).transpose()?,
+        passe_le_local: dto.passe_le_local,
+    };
+    let fait = coursier
+        .journaliser_appel(auth.compte_id, chemin.into_inner(), demande)
+        .await?;
+    let corps = AppelEnregistreDto {
+        appel_id: fait.appel_id,
+        compte_pour_preuve: fait.compte_pour_preuve,
+    };
+    Ok(if fait.rejeu {
+        HttpResponse::Ok().json(corps)
+    } else {
+        HttpResponse::Created().json(corps)
+    })
+}
+
+/// CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).
+///
+/// Le serveur ne peut pas l'observer : l'appel part du téléphone. Cette issue
+/// sert l'affichage de K4-1e et **n'est jamais un critère de preuve** — un
+/// coursier qui déclarerait « sans réponse » à tort ne gagne rien.
+#[utoipa::path(
+    patch,
+    path = "/courses/{livraison_id}/appels",
+    tag = "coursier",
+    params(("livraison_id" = Uuid, Path, description = "Livraison de la course active du coursier.")),
+    request_body = IssueAppelDto,
+    responses(
+        (status = 200, description = "Issue mise à jour.", body = AppelEnregistreDto),
+        (status = 422, description = "Appel inconnu pour cette livraison.", body = ErreurApiDto),
+        (status = 403, description = "Course d'un autre coursier, ou rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[patch("/courses/{livraison_id}/appels")]
+pub async fn declarer_issue_appel(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<IssueAppelDto>,
+    coursier: web::Data<PgCoursier>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let dto = corps.into_inner();
+    let fait = coursier
+        .declarer_issue_appel(
+            auth.compte_id,
+            chemin.into_inner(),
+            dto.uuid_client,
+            dto.issue.parse()?,
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(AppelEnregistreDto {
+        appel_id: fait.appel_id,
+        compte_pour_preuve: fait.compte_pour_preuve,
+    }))
 }

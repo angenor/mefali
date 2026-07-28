@@ -1014,6 +1014,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{livraison_id}/appels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-03 — journalise un appel passé **via l'app** (FR-030, FR-031, FR-033).
+         * @description ⚠ **Aucun numéro** n'est transmis ni journalisé : le serveur ne voit pas
+         *     l'appel, il part du téléphone. Il en garde l'intention, la direction, le
+         *     motif et l'issue déclarée.
+         *
+         *     Idempotent par `uuid_client` : le rejeu rend `200` et le même corps, sans
+         *     seconde ligne ni second événement.
+         */
+        post: operations["journaliser_appel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).
+         * @description Le serveur ne peut pas l'observer : l'appel part du téléphone. Cette issue
+         *     sert l'affichage de K4-1e et **n'est jamais un critère de preuve** — un
+         *     coursier qui déclarerait « sans réponse » à tort ne gagne rien.
+         */
+        patch: operations["declarer_issue_appel"];
+        trace?: never;
+    };
     "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
         parameters: {
             query?: never;
@@ -1749,6 +1780,16 @@ export interface components {
             nom: string;
             /** @description Plateforme. */
             plateforme: components["schemas"]["PlateformeDto"];
+        };
+        /** @description Ce que le serveur rend après avoir journalisé un appel. */
+        AppelEnregistre: {
+            /**
+             * Format: uuid
+             * @description Appel journalisé.
+             */
+            appel_id: string;
+            /** @description Cet appel compte-t-il pour la preuve d'échec ? */
+            compte_pour_preuve: boolean;
         };
         /** @description L'arrêt où en est le coursier. */
         ArretCourantSuivi: {
@@ -2558,6 +2599,36 @@ export interface components {
              */
             motif_cle?: string | null;
         };
+        /** @description Corps de déclaration d'un appel passé via l'app. */
+        DemandeAppel: {
+            /**
+             * @description Issue DÉCLARÉE : `inconnue` | `sans_reponse` | `repondu`. Facultative —
+             *     le serveur ne voit pas l'appel, il ne peut que la recevoir (R19).
+             */
+            issue?: string | null;
+            /**
+             * @description `suivi` | `substitution` | `client_absent`. **Seul `client_absent`
+             *     compte** pour la preuve d'échec (FR-035).
+             */
+            motif: string;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil — observation seulement.
+             */
+            passe_le_local: string;
+            /**
+             * Format: uuid
+             * @description Prestataire appelé — obligatoire si `vers = vendeur`.
+             */
+            prestataire_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 client, constitution V).
+             */
+            uuid_client: string;
+            /** @description `client` | `vendeur`. */
+            vers: string;
+        };
         /** @description Corps de la demande de collecte (partie `demande` JSON du multipart). */
         DemandeCollecte: {
             /** @description Code à 4 chiffres saisi (mode `code_secours`). */
@@ -3294,6 +3365,16 @@ export interface components {
         IntentionAppel: {
             /** @description `suivi` (défaut) | `substitution` | `expiration`. */
             motif?: string | null;
+        };
+        /** @description Corps de mise à jour de l'issue déclarée d'un appel. */
+        IssueAppelDeclaree: {
+            /** @description `inconnue` | `sans_reponse` | `repondu`. */
+            issue: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence de l'appel à mettre à jour.
+             */
+            uuid_client: string;
         };
         /** @description Une issue de l'arbre §7.5, telle qu'elle est enregistrée. */
         IssueEchec: {
@@ -7531,6 +7612,123 @@ export interface operations {
             };
             /** @description Offre déjà conclue. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    journaliser_appel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeAppel"];
+            };
+        };
+        responses: {
+            /** @description Rejeu idempotent — même corps, aucune écriture. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppelEnregistre"];
+                };
+            };
+            /** @description Appel journalisé. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppelEnregistre"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Demande mal formée (appel vendeur sans prestataire). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    declarer_issue_appel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueAppelDeclaree"];
+            };
+        };
+        responses: {
+            /** @description Issue mise à jour. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppelEnregistre"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Appel inconnu pour cette livraison. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -12,6 +12,7 @@ doc/Adresse.md
 doc/AffichageRupture.md
 doc/AlertesDispatch.md
 doc/AppareilDto.md
+doc/AppelEnregistre.md
 doc/ArretCourantSuivi.md
 doc/ArretCourse.md
 doc/ArretOffre.md
@@ -53,6 +54,7 @@ doc/DecisionOffre.md
 doc/DecisionRole.md
 doc/DecisionSubstitution.md
 doc/DemandeAnnulation.md
+doc/DemandeAppel.md
 doc/DemandeCollecte.md
 doc/DemandeCreationCommande.md
 doc/DemandeDevisPanier.md
@@ -94,6 +96,7 @@ doc/HealthResponse.md
 doc/HorairesSemaineDto.md
 doc/Inscription.md
 doc/IntentionAppel.md
+doc/IssueAppelDeclaree.md
 doc/IssueEchec.md
 doc/IssueRupture.md
 doc/ItineraireSimule.md
@@ -197,6 +200,7 @@ lib/src/model/adresse.dart
 lib/src/model/affichage_rupture.dart
 lib/src/model/alertes_dispatch.dart
 lib/src/model/appareil_dto.dart
+lib/src/model/appel_enregistre.dart
 lib/src/model/arret_courant_suivi.dart
 lib/src/model/arret_course.dart
 lib/src/model/arret_offre.dart
@@ -234,6 +238,7 @@ lib/src/model/decision_offre.dart
 lib/src/model/decision_role.dart
 lib/src/model/decision_substitution.dart
 lib/src/model/demande_annulation.dart
+lib/src/model/demande_appel.dart
 lib/src/model/demande_collecte.dart
 lib/src/model/demande_creation_commande.dart
 lib/src/model/demande_devis_panier.dart
@@ -273,6 +278,7 @@ lib/src/model/health_response.dart
 lib/src/model/horaires_semaine_dto.dart
 lib/src/model/inscription.dart
 lib/src/model/intention_appel.dart
+lib/src/model/issue_appel_declaree.dart
 lib/src/model/issue_echec.dart
 lib/src/model/issue_rupture.dart
 lib/src/model/itineraire_simule.dart
@@ -348,6 +354,7 @@ test/adresse_test.dart
 test/affichage_rupture_test.dart
 test/alertes_dispatch_test.dart
 test/appareil_dto_test.dart
+test/appel_enregistre_test.dart
 test/arret_courant_suivi_test.dart
 test/arret_course_test.dart
 test/arret_offre_test.dart
@@ -389,6 +396,7 @@ test/decision_offre_test.dart
 test/decision_role_test.dart
 test/decision_substitution_test.dart
 test/demande_annulation_test.dart
+test/demande_appel_test.dart
 test/demande_collecte_test.dart
 test/demande_creation_commande_test.dart
 test/demande_devis_panier_test.dart
@@ -430,6 +438,7 @@ test/health_response_test.dart
 test/horaires_semaine_dto_test.dart
 test/inscription_test.dart
 test/intention_appel_test.dart
+test/issue_appel_declaree_test.dart
 test/issue_echec_test.dart
 test/issue_rupture_test.dart
 test/itineraire_simule_test.dart

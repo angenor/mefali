@@ -23,6 +23,7 @@ import 'package:mefali_api_client/src/model/adresse.dart';
 import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/alertes_dispatch.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
+import 'package:mefali_api_client/src/model/appel_enregistre.dart';
 import 'package:mefali_api_client/src/model/arret_courant_suivi.dart';
 import 'package:mefali_api_client/src/model/arret_course.dart';
 import 'package:mefali_api_client/src/model/arret_offre.dart';
@@ -59,6 +60,7 @@ import 'package:mefali_api_client/src/model/decision_offre.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/decision_substitution.dart';
 import 'package:mefali_api_client/src/model/demande_annulation.dart';
+import 'package:mefali_api_client/src/model/demande_appel.dart';
 import 'package:mefali_api_client/src/model/demande_collecte.dart';
 import 'package:mefali_api_client/src/model/demande_creation_commande.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
@@ -98,6 +100,7 @@ import 'package:mefali_api_client/src/model/health_response.dart';
 import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/intention_appel.dart';
+import 'package:mefali_api_client/src/model/issue_appel_declaree.dart';
 import 'package:mefali_api_client/src/model/issue_echec.dart';
 import 'package:mefali_api_client/src/model/issue_rupture.dart';
 import 'package:mefali_api_client/src/model/itineraire_simule.dart';
@@ -174,6 +177,7 @@ part 'serializers.g.dart';
   AffichageRupture,
   AlertesDispatch,
   AppareilDto,
+  AppelEnregistre,
   ArretCourantSuivi,
   ArretCourse,
   ArretOffre,
@@ -210,6 +214,7 @@ part 'serializers.g.dart';
   DecisionRole,
   DecisionSubstitution,
   DemandeAnnulation,
+  DemandeAppel,
   DemandeCollecte,
   DemandeCreationCommande,
   DemandeDevisPanier,
@@ -249,6 +254,7 @@ part 'serializers.g.dart';
   HorairesSemaineDto,
   Inscription,
   IntentionAppel,
+  IssueAppelDeclaree,
   IssueEchec,
   IssueRupture,
   ItineraireSimule,

@@ -112,6 +112,8 @@ Class | Method | HTTP request | Description
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 [*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 [*CoursierApi*](doc/CoursierApi.md) | [**courseActive**](doc/CoursierApi.md#courseactive) | **GET** /courses/active | CRS-03 — course active du coursier, **complète** et pré-provisionnée.
+[*CoursierApi*](doc/CoursierApi.md) | [**declarerIssueAppel**](doc/CoursierApi.md#declarerissueappel) | **PATCH** /courses/{livraison_id}/appels | CRS-03 — déclare (ou corrige) l&#39;issue d&#39;un appel (FR-036, R19).
+[*CoursierApi*](doc/CoursierApi.md) | [**journaliserAppel**](doc/CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*DispatchApi*](doc/DispatchApi.md) | [**accepterOffre**](doc/DispatchApi.md#accepteroffre) | **POST** /courses/offres/{offre_id}/accepter | &#x60;POST /courses/offres/{offre_id}/accepter&#x60; — prendre la course.
 [*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
@@ -170,6 +172,7 @@ Class | Method | HTTP request | Description
  - [AffichageRupture](doc/AffichageRupture.md)
  - [AlertesDispatch](doc/AlertesDispatch.md)
  - [AppareilDto](doc/AppareilDto.md)
+ - [AppelEnregistre](doc/AppelEnregistre.md)
  - [ArretCourantSuivi](doc/ArretCourantSuivi.md)
  - [ArretCourse](doc/ArretCourse.md)
  - [ArretOffre](doc/ArretOffre.md)
@@ -206,6 +209,7 @@ Class | Method | HTTP request | Description
  - [DecisionRole](doc/DecisionRole.md)
  - [DecisionSubstitution](doc/DecisionSubstitution.md)
  - [DemandeAnnulation](doc/DemandeAnnulation.md)
+ - [DemandeAppel](doc/DemandeAppel.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
@@ -245,6 +249,7 @@ Class | Method | HTTP request | Description
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
  - [Inscription](doc/Inscription.md)
  - [IntentionAppel](doc/IntentionAppel.md)
+ - [IssueAppelDeclaree](doc/IssueAppelDeclaree.md)
  - [IssueEchec](doc/IssueEchec.md)
  - [IssueRupture](doc/IssueRupture.md)
  - [ItineraireSimule](doc/ItineraireSimule.md)
