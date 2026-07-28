@@ -17,8 +17,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AlertesDispatch.serializer)
       ..add(AppareilDto.serializer)
       ..add(ArretCourantSuivi.serializer)
+      ..add(ArretCourse.serializer)
       ..add(ArretOffre.serializer)
-      ..add(ArretPreProvisionne.serializer)
       ..add(ArticlePublic.serializer)
       ..add(ArticleVendeur.serializer)
       ..add(Attente.serializer)
@@ -29,6 +29,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CapaciteCoursier.serializer)
       ..add(CategorieDto.serializer)
       ..add(CharteAdminDto.serializer)
+      ..add(ClientCourse.serializer)
       ..add(Commande.serializer)
       ..add(CommandeEnAttente.serializer)
       ..add(CommandeProposee.serializer)
@@ -41,7 +42,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CorpsActionBoutique.serializer)
       ..add(CorpsForcage.serializer)
       ..add(CorrigerDto.serializer)
-      ..add(CourseActive.serializer)
+      ..add(CourseActiveComplete.serializer)
       ..add(CourseBloquee.serializer)
       ..add(CoursierDuPool.serializer)
       ..add(CoursierSuivi.serializer)
@@ -95,6 +96,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ItineraireSimule.serializer)
       ..add(JetonsDto.serializer)
       ..add(Lieu.serializer)
+      ..add(LigneArret.serializer)
       ..add(LigneDevis.serializer)
       ..add(LignePanier.serializer)
       ..add(LivraisonCommande.serializer)
@@ -125,6 +127,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Regle.serializer)
       ..add(RegleRetenue.serializer)
       ..add(RegleUpsert.serializer)
+      ..add(RemisePreprovisionnee.serializer)
       ..add(RepriseFaite.serializer)
       ..add(ResolutionPlaque.serializer)
       ..add(ResultatAnnulation.serializer)
@@ -137,6 +140,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(SecretsRemise.serializer)
       ..add(SessionAppareil.serializer)
       ..add(SessionOuverte.serializer)
+      ..add(SeuilsPreuves.serializer)
       ..add(SignalementRecuDto.serializer)
       ..add(SignalerRuptureDto.serializer)
       ..add(SiteAdminDto.serializer)
@@ -151,12 +155,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ArretCourse)]),
+          () => ListBuilder<ArretCourse>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ArretOffre)]),
           () => ListBuilder<ArretOffre>())
-      ..addBuilderFactory(
-          const FullType(
-              BuiltList, const [const FullType(ArretPreProvisionne)]),
-          () => ListBuilder<ArretPreProvisionne>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ArticlePublic)]),
           () => ListBuilder<ArticlePublic>())
@@ -224,6 +227,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(GroupeVendeur)]),
           () => ListBuilder<GroupeVendeur>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneArret)]),
+          () => ListBuilder<LigneArret>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LigneDevis)]),
           () => ListBuilder<LigneDevis>())

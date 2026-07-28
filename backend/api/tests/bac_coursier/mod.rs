@@ -29,6 +29,7 @@ use commandes::{PgCommandes, PositionFixe, PreuvesFixes, RestrictionsSimulees, T
 use comptes::{MemoireEphemere, PgComptes, SmsTraces};
 use prestataires::modele::{HorairesSemaine, Plage};
 use prestataires::{AucuneCommandeActive, NouveauPrestataire, PgPrestataires};
+use coursier::PgCoursier;
 use qr::{CompteurMemoire, PgQr};
 use serde_json::{json, Value};
 use socle::{DepotObjets, MemoireObjets};
@@ -131,6 +132,8 @@ pub struct Bac {
     pub prestataires: PgPrestataires,
     pub commandes: PgCommandes,
     pub qr: PgQr,
+    /// Dépôt du domaine coursier — celui du cycle.
+    pub coursier_depot: PgCoursier,
     /// Double des preuves d'échec — **remplacé par `PgCoursier` en T058**.
     /// Il reste ici tant que le branchement réel n'est pas fait ; les tests de
     /// preuves l'ignorent et exercent le vrai calcul.
@@ -313,12 +316,21 @@ impl Bac {
             Arc::new(CompteurMemoire::nouveau()),
         );
 
+        let coursier_depot = PgCoursier::new(
+            pool.clone(),
+            commandes.clone(),
+            qr.clone(),
+            prestataires.clone(),
+            objets.clone(),
+        );
+
         let mut bac = Self {
             pool,
             comptes,
             prestataires,
             commandes,
             qr,
+            coursier_depot,
             preuves,
             positions,
             restrictions,
@@ -511,15 +523,19 @@ impl Bac {
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
         use api::commandes_http as cmd;
         use api::course_http as crs;
+        use api::coursier_http as crs010;
         let pool = self.pool.clone();
         let comptes = self.comptes.clone();
         let commandes = self.commandes.clone();
         let qr = self.qr.clone();
+        let coursier = self.coursier_depot.clone();
         move |cfg: &mut web::ServiceConfig| {
             cfg.app_data(web::Data::new(pool))
                 .app_data(web::Data::new(comptes))
                 .app_data(web::Data::new(commandes))
                 .app_data(web::Data::new(qr))
+                .app_data(web::Data::new(coursier))
+                .service(crs010::course_active)
                 .service(cmd::creer_commande)
                 .service(cmd::suivre_commande)
                 .service(cmd::decider_substitution)

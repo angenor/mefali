@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use commandes::ModeCollecte;
 use comptes::Role;
-use qr::{ArretPreProvisionne, DemandeCollecte, ErreurQr, PgQr, ResultatCollecte};
+use qr::{DemandeCollecte, ErreurQr, PgQr, ResultatCollecte};
 
 use crate::auth_http::{Auth, ErreurApi, ErreurApiDto};
 
@@ -102,62 +102,6 @@ pub struct PlaqueUrlDto {
     pub url: String,
     /// Expiration de l'URL.
     pub expire_le: DateTime<Utc>,
-}
-
-/// Arrêt pré-provisionné (empreintes, jamais de secret).
-#[derive(Debug, Serialize, ToSchema)]
-#[schema(as = ArretPreProvisionne)]
-pub struct ArretPreProvisionneDto {
-    /// Arrêt à collecter.
-    pub arret_id: Uuid,
-    /// Prestataire visé.
-    pub prestataire_id: Uuid,
-    /// Nom du prestataire (affiché sur la carte K3).
-    pub nom: String,
-    /// base16(sha256(jeton)) — match hors-ligne du QR scanné.
-    pub empreinte_jeton: String,
-    /// base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
-    pub empreinte_code: String,
-    /// Position attendue du site.
-    pub site_lat: f64,
-    /// Position attendue du site.
-    pub site_lon: f64,
-    /// Montant avancé (unités mineures).
-    pub montant_avance: i64,
-    /// Devise ISO 4217.
-    pub devise: String,
-    /// Photo exigée (politique résolue).
-    pub photo_exigee: bool,
-    /// Rayon max de scan (m) — validation de proximité hors-ligne.
-    pub distance_max_m: i64,
-}
-
-impl From<ArretPreProvisionne> for ArretPreProvisionneDto {
-    fn from(a: ArretPreProvisionne) -> Self {
-        Self {
-            arret_id: a.arret_id,
-            prestataire_id: a.prestataire_id,
-            nom: a.nom,
-            empreinte_jeton: a.empreinte_jeton,
-            empreinte_code: a.empreinte_code,
-            site_lat: a.site_lat,
-            site_lon: a.site_lon,
-            montant_avance: a.montant_avance,
-            devise: a.devise,
-            photo_exigee: a.photo_exigee,
-            distance_max_m: a.distance_max_m,
-        }
-    }
-}
-
-/// Course active du coursier + arrêts pré-provisionnés.
-#[derive(Debug, Serialize, ToSchema)]
-#[schema(as = CourseActive)]
-pub struct CourseActiveDto {
-    /// Livraison active (première des arrêts), `None` si aucune.
-    pub livraison_id: Option<Uuid>,
-    /// Arrêts à collecter, avec empreintes.
-    pub arrets: Vec<ArretPreProvisionneDto>,
 }
 
 /// Mode de collecte (contrat).
@@ -282,28 +226,16 @@ pub async fn telecharger_plaque(
     }))
 }
 
-/// QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
-#[utoipa::path(
-    get,
-    path = "/courses/active",
-    tag = "qr",
-    responses(
-        (status = 200, description = "Course active du coursier (vide si aucune assignée).", body = CourseActiveDto),
-        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
-        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
-    ),
-    security(("bearerAuth" = [])),
-)]
-#[get("/courses/active")]
-pub async fn course_active(auth: Auth, qr: web::Data<PgQr>) -> Result<HttpResponse, ErreurQrHttp> {
-    auth.exiger_role(Role::Coursier)?;
-    let arrets = qr.pre_provisionnement(auth.compte_id).await?;
-    let livraison_id = None; // posé par DSP ; les arrêts suffisent au client hors-ligne
-    Ok(HttpResponse::Ok().json(CourseActiveDto {
-        livraison_id,
-        arrets: arrets.into_iter().map(ArretPreProvisionneDto::from).collect(),
-    }))
-}
+// ⚠ `GET /courses/active` A DÉMÉNAGÉ dans `coursier_http` (cycle CRS 010).
+//
+// Le chemin et le rôle ne bougent pas ; c'est le CONTENU qui a changé de
+// domaine. La course sert désormais les lignes d'articles, le client (repère,
+// position, téléphone) et les empreintes de remise : rien de tout cela
+// n'appartient à `qr`, dont l'objet est la plaque. L'y garder aurait rendu `qr`
+// dépendant du client et des lignes de commande, c'est-à-dire de tout.
+//
+// `PgQr::pre_provisionnement` reste, et reste utile : c'est la brique que
+// `coursier` consomme. Seul le handler HTTP est parti.
 
 /// QRC-02/03/04 — collecte un arrêt (multipart : `demande` JSON + `photo`).
 #[utoipa::path(

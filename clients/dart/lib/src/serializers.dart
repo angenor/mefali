@@ -24,8 +24,8 @@ import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/alertes_dispatch.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/arret_courant_suivi.dart';
+import 'package:mefali_api_client/src/model/arret_course.dart';
 import 'package:mefali_api_client/src/model/arret_offre.dart';
-import 'package:mefali_api_client/src/model/arret_pre_provisionne.dart';
 import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/article_vendeur.dart';
 import 'package:mefali_api_client/src/model/attente.dart';
@@ -36,6 +36,7 @@ import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
 import 'package:mefali_api_client/src/model/capacite_coursier.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
+import 'package:mefali_api_client/src/model/client_course.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
 import 'package:mefali_api_client/src/model/commande_en_attente.dart';
 import 'package:mefali_api_client/src/model/commande_proposee.dart';
@@ -48,7 +49,7 @@ import 'package:mefali_api_client/src/model/consentement_requis.dart';
 import 'package:mefali_api_client/src/model/corps_action_boutique.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
 import 'package:mefali_api_client/src/model/corriger_dto.dart';
-import 'package:mefali_api_client/src/model/course_active.dart';
+import 'package:mefali_api_client/src/model/course_active_complete.dart';
 import 'package:mefali_api_client/src/model/course_bloquee.dart';
 import 'package:mefali_api_client/src/model/coursier_du_pool.dart';
 import 'package:mefali_api_client/src/model/coursier_suivi.dart';
@@ -102,6 +103,7 @@ import 'package:mefali_api_client/src/model/issue_rupture.dart';
 import 'package:mefali_api_client/src/model/itineraire_simule.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/lieu.dart';
+import 'package:mefali_api_client/src/model/ligne_arret.dart';
 import 'package:mefali_api_client/src/model/ligne_devis.dart';
 import 'package:mefali_api_client/src/model/ligne_panier.dart';
 import 'package:mefali_api_client/src/model/livraison_commande.dart';
@@ -132,6 +134,7 @@ import 'package:mefali_api_client/src/model/refus_offre.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
+import 'package:mefali_api_client/src/model/remise_preprovisionnee.dart';
 import 'package:mefali_api_client/src/model/reprise_faite.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_annulation.dart';
@@ -144,6 +147,7 @@ import 'package:mefali_api_client/src/model/scission_proposee.dart';
 import 'package:mefali_api_client/src/model/secrets_remise.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/seuils_preuves.dart';
 import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
 import 'package:mefali_api_client/src/model/signaler_rupture_dto.dart';
 import 'package:mefali_api_client/src/model/site_admin_dto.dart';
@@ -171,8 +175,8 @@ part 'serializers.g.dart';
   AlertesDispatch,
   AppareilDto,
   ArretCourantSuivi,
+  ArretCourse,
   ArretOffre,
-  ArretPreProvisionne,
   ArticlePublic,
   ArticleVendeur,
   Attente,
@@ -183,6 +187,7 @@ part 'serializers.g.dart';
   CapaciteCoursier,
   CategorieDto,
   CharteAdminDto,
+  ClientCourse,
   Commande,
   CommandeEnAttente,
   CommandeProposee,
@@ -195,7 +200,7 @@ part 'serializers.g.dart';
   CorpsActionBoutique,
   CorpsForcage,
   CorrigerDto,
-  CourseActive,
+  CourseActiveComplete,
   CourseBloquee,
   CoursierDuPool,
   CoursierSuivi,
@@ -249,6 +254,7 @@ part 'serializers.g.dart';
   ItineraireSimule,
   JetonsDto,
   Lieu,
+  LigneArret,
   LigneDevis,
   LignePanier,
   LivraisonCommande,
@@ -279,6 +285,7 @@ part 'serializers.g.dart';
   Regle,
   RegleRetenue,
   RegleUpsert,
+  RemisePreprovisionnee,
   RepriseFaite,
   ResolutionPlaque,
   ResultatAnnulation,
@@ -291,6 +298,7 @@ part 'serializers.g.dart';
   SecretsRemise,
   SessionAppareil,
   SessionOuverte,
+  SeuilsPreuves,
   SignalementRecuDto,
   SignalerRuptureDto,
   SiteAdminDto,

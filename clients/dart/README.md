@@ -111,6 +111,7 @@ Class | Method | HTTP request | Description
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerEchec**](doc/CoursesApi.md#declarerechec) | **POST** /courses/{livraison_id}/echec | CMD-08 — le coursier déclare l&#39;échec ; le serveur déroule l&#39;arbre §7.5.
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 [*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+[*CoursierApi*](doc/CoursierApi.md) | [**courseActive**](doc/CoursierApi.md#courseactive) | **GET** /courses/active | CRS-03 — course active du coursier, **complète** et pré-provisionnée.
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*DispatchApi*](doc/DispatchApi.md) | [**accepterOffre**](doc/DispatchApi.md#accepteroffre) | **POST** /courses/offres/{offre_id}/accepter | &#x60;POST /courses/offres/{offre_id}/accepter&#x60; — prendre la course.
 [*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
@@ -135,7 +136,6 @@ Class | Method | HTTP request | Description
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
-[*QrApi*](doc/QrApi.md) | [**courseActive**](doc/QrApi.md#courseactive) | **GET** /courses/active | QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
 [*QrApi*](doc/QrApi.md) | [**telechargerPlaque**](doc/QrApi.md#telechargerplaque) | **GET** /admin/prestataires/{id}/plaque | QRC-01 — télécharge (génère au besoin) le PDF de plaque d&#39;un prestataire.
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*TarificationApi*](doc/TarificationApi.md) | [**creerBrouillon**](doc/TarificationApi.md#creerbrouillon) | **POST** /admin/tarification/zones/{zone_id}/brouillon | Crée (ou rend) le brouillon de la zone — **idempotent**.
@@ -171,8 +171,8 @@ Class | Method | HTTP request | Description
  - [AlertesDispatch](doc/AlertesDispatch.md)
  - [AppareilDto](doc/AppareilDto.md)
  - [ArretCourantSuivi](doc/ArretCourantSuivi.md)
+ - [ArretCourse](doc/ArretCourse.md)
  - [ArretOffre](doc/ArretOffre.md)
- - [ArretPreProvisionne](doc/ArretPreProvisionne.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
  - [Attente](doc/Attente.md)
@@ -183,6 +183,7 @@ Class | Method | HTTP request | Description
  - [CapaciteCoursier](doc/CapaciteCoursier.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
+ - [ClientCourse](doc/ClientCourse.md)
  - [Commande](doc/Commande.md)
  - [CommandeEnAttente](doc/CommandeEnAttente.md)
  - [CommandeProposee](doc/CommandeProposee.md)
@@ -195,7 +196,7 @@ Class | Method | HTTP request | Description
  - [CorpsActionBoutique](doc/CorpsActionBoutique.md)
  - [CorpsForcage](doc/CorpsForcage.md)
  - [CorrigerDto](doc/CorrigerDto.md)
- - [CourseActive](doc/CourseActive.md)
+ - [CourseActiveComplete](doc/CourseActiveComplete.md)
  - [CourseBloquee](doc/CourseBloquee.md)
  - [CoursierDuPool](doc/CoursierDuPool.md)
  - [CoursierSuivi](doc/CoursierSuivi.md)
@@ -249,6 +250,7 @@ Class | Method | HTTP request | Description
  - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
  - [Lieu](doc/Lieu.md)
+ - [LigneArret](doc/LigneArret.md)
  - [LigneDevis](doc/LigneDevis.md)
  - [LignePanier](doc/LignePanier.md)
  - [LivraisonCommande](doc/LivraisonCommande.md)
@@ -279,6 +281,7 @@ Class | Method | HTTP request | Description
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
+ - [RemisePreprovisionnee](doc/RemisePreprovisionnee.md)
  - [RepriseFaite](doc/RepriseFaite.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatAnnulation](doc/ResultatAnnulation.md)
@@ -291,6 +294,7 @@ Class | Method | HTTP request | Description
  - [SecretsRemise](doc/SecretsRemise.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SeuilsPreuves](doc/SeuilsPreuves.md)
  - [SignalementRecuDto](doc/SignalementRecuDto.md)
  - [SignalerRuptureDto](doc/SignalerRuptureDto.md)
  - [SiteAdminDto](doc/SiteAdminDto.md)

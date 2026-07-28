@@ -19,6 +19,7 @@ pub mod course_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
 /// Surface HTTP coursier du cycle DSP (disponibilité, position, offres).
+pub mod coursier_http;
 pub mod dispatch_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
 pub mod erreurs_commandes;
@@ -107,8 +108,8 @@ pub fn api_openapi() -> OpenApi {
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
         .service(qr_http::telecharger_plaque)
-        .service(qr_http::course_active)
         .service(qr_http::collecter)
+        .service(coursier_http::course_active)
         .service(admin_tarification_http::grille_de_zone)
         .service(admin_tarification_http::creer_brouillon)
         .service(admin_tarification_http::ecrire_regle)
@@ -443,6 +444,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut tarification_opt: Option<tarification::PgTarification> = None;
     let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
     let mut dispatch_opt: Option<dispatch::PgDispatch> = None;
+    let mut coursier_opt: Option<coursier::PgCoursier> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -577,11 +579,32 @@ pub async fn run() -> std::io::Result<()> {
                     pool.clone(),
                     depot_commandes.clone(),
                     presta.clone(),
-                    objets,
+                    objets.clone(),
                     essais_qr,
                 ));
                 tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
                 eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+
+                // CRS 010 — domaine coursier. Câblé APRÈS `qr` (dont il
+                // consomme la plaque résolue) et AVANT le dispatch : aucune
+                // arête entre les deux, `/moi/journee` les compose ICI.
+                //
+                // ⚠ `PreuvesFixes` reste le port de preuves de `PgCommandes`
+                // jusqu'à T058 : tant que le calcul réel n'est pas branché,
+                // aucun échec n'est déclarable en production — exact et voulu.
+                let depot_coursier = coursier::PgCoursier::new(
+                    pool.clone(),
+                    depot_commandes.clone(),
+                    qr_opt.clone().expect("PgQr câblé"),
+                    presta.clone(),
+                    // Même client S3 que le reste : la photo de preuve suit le
+                    // chemin de la photo de récupération du cycle 006.
+                    objets,
+                );
+                eprintln!(
+                    "domaine CRS câblé (PgCoursier ; litiges AVI-04 non construits)"
+                );
+                coursier_opt = Some(depot_coursier);
 
                 tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
                 tokio::spawn(job_purge_photos_substitution(depot_commandes.clone()));
@@ -732,8 +755,8 @@ pub async fn run() -> std::io::Result<()> {
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .service(qr_http::telecharger_plaque)
-            .service(qr_http::course_active)
             .service(qr_http::collecter)
+            .service(coursier_http::course_active)
             .service(admin_tarification_http::grille_de_zone)
             .service(admin_tarification_http::creer_brouillon)
             .service(admin_tarification_http::ecrire_regle)
@@ -800,6 +823,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = dispatch_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = coursier_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))

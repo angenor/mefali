@@ -3759,20 +3759,24 @@
     "/courses/active": {
       "get": {
         "tags": [
-          "qr"
+          "coursier"
         ],
-        "summary": "QRC-02 — course active du coursier + pré-provisionnement hors-ligne.",
+        "summary": "CRS-03 — course active du coursier, **complète** et pré-provisionnée.",
+        "description": "Cet endpoint a déménagé de `qr_http` : son contenu n'a plus rien à faire\ndans un domaine dont l'objet est la plaque. Le chemin ne bouge pas, et les\nchamps du cycle 006 restent là — l'app livrée continue de fonctionner\npendant la transition.\n\n`204` sans course : ce n'est pas une erreur, c'est une journée qui commence.",
         "operationId": "course_active",
         "responses": {
           "200": {
-            "description": "Course active du coursier (vide si aucune assignée).",
+            "description": "Course active complète : arrêts, lignes, client, empreintes de remise.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CourseActive"
+                  "$ref": "#/components/schemas/CourseActiveComplete"
                 }
               }
             }
+          },
+          "204": {
+            "description": "Aucune course assignée."
           },
           "401": {
             "description": "Session absente/révoquée.",
@@ -6972,6 +6976,128 @@
           }
         }
       },
+      "ArretCourse": {
+        "type": "object",
+        "description": "Un arrêt de collecte, complet.",
+        "required": [
+          "arret_id",
+          "ordre",
+          "prestataire_id",
+          "nom",
+          "site_lat",
+          "site_lon",
+          "empreinte_jeton",
+          "empreinte_code",
+          "montant_avance",
+          "photo_exigee",
+          "distance_max_m",
+          "statut",
+          "lignes"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt de la course."
+          },
+          "arrive_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Arrivée sur l'arrêt."
+          },
+          "collecte_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Collecte validée."
+          },
+          "distance_max_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rayon max de scan (m)."
+          },
+          "distance_precedent_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Distance depuis l'arrêt précédent (m). **Absente** : le tronçon n'est pas\nfigé au devis et ce cycle ne recalcule aucun itinéraire (FR-009)."
+          },
+          "empreinte_code": {
+            "type": "string",
+            "description": "base16(sha256(prestataire ‖ code)) — mode dégradé hors-ligne."
+          },
+          "empreinte_jeton": {
+            "type": "string",
+            "description": "base16(sha256(jeton)) — match hors-ligne du QR de plaque."
+          },
+          "en_route_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Départ déclaré vers l'arrêt."
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneArret"
+            },
+            "description": "Articles à acheter chez ce vendeur."
+          },
+          "montant_avance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant à avancer à CE vendeur, lignes retirées exclues (FR-013)."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom du vendeur."
+          },
+          "ordre": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Rang dans l'ordre optimisé."
+          },
+          "photo_exigee": {
+            "type": "boolean",
+            "description": "Photo de récupération exigée (politique résolue)."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Prestataire visé."
+          },
+          "site_lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Position attendue du site."
+          },
+          "site_lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Position attendue du site."
+          },
+          "statut": {
+            "type": "string",
+            "description": "`a_collecter` | `en_route` | `arrive` | `collecte` | `indisponible`."
+          },
+          "telephone_vendeur": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Contact du vendeur — appel HORS LIGNE (R6). Jamais journalisé."
+          }
+        }
+      },
       "ArretOffre": {
         "type": "object",
         "description": "Un arrêt de l'offre, tel que K2 l'affiche.",
@@ -7002,75 +7128,6 @@
             ],
             "format": "uuid",
             "description": "Prestataire visé."
-          }
-        }
-      },
-      "ArretPreProvisionne": {
-        "type": "object",
-        "description": "Arrêt pré-provisionné (empreintes, jamais de secret).",
-        "required": [
-          "arret_id",
-          "prestataire_id",
-          "nom",
-          "empreinte_jeton",
-          "empreinte_code",
-          "site_lat",
-          "site_lon",
-          "montant_avance",
-          "devise",
-          "photo_exigee",
-          "distance_max_m"
-        ],
-        "properties": {
-          "arret_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Arrêt à collecter."
-          },
-          "devise": {
-            "type": "string",
-            "description": "Devise ISO 4217."
-          },
-          "distance_max_m": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Rayon max de scan (m) — validation de proximité hors-ligne."
-          },
-          "empreinte_code": {
-            "type": "string",
-            "description": "base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne."
-          },
-          "empreinte_jeton": {
-            "type": "string",
-            "description": "base16(sha256(jeton)) — match hors-ligne du QR scanné."
-          },
-          "montant_avance": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Montant avancé (unités mineures)."
-          },
-          "nom": {
-            "type": "string",
-            "description": "Nom du prestataire (affiché sur la carte K3)."
-          },
-          "photo_exigee": {
-            "type": "boolean",
-            "description": "Photo exigée (politique résolue)."
-          },
-          "prestataire_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Prestataire visé."
-          },
-          "site_lat": {
-            "type": "number",
-            "format": "double",
-            "description": "Position attendue du site."
-          },
-          "site_lon": {
-            "type": "number",
-            "format": "double",
-            "description": "Position attendue du site."
           }
         }
       },
@@ -7406,6 +7463,71 @@
           "version_charte": {
             "type": "string",
             "description": "Version de charte en vigueur à la signature."
+          }
+        }
+      },
+      "ClientCourse": {
+        "type": "object",
+        "description": "Le client et son repère (K3-1c, K4).",
+        "required": [
+          "depot_autorise"
+        ],
+        "properties": {
+          "depot_autorise": {
+            "type": "boolean",
+            "description": "La voie « dépôt » est-elle ouverte sur cette commande (FR-039) ?"
+          },
+          "lieu_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Point de livraison."
+          },
+          "lieu_lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Point de livraison."
+          },
+          "nom_usage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nom d'usage. **Absent** tant que le produit n'en porte aucun (cycle CPT\n003 : « un numéro vérifié, rien d'autre ») — l'app affiche le repère."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit."
+          },
+          "repere_vocal_duree_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Durée de la note vocale (s)."
+          },
+          "repere_vocal_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL **présignée** de la note vocale — à télécharger tout de suite pour\nla jouer hors ligne (FR-024)."
+          },
+          "telephone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Contact du client. Jamais journalisé, effacé du cache à la clôture (R6)."
           }
         }
       },
@@ -7929,27 +8051,51 @@
           }
         }
       },
-      "CourseActive": {
+      "CourseActiveComplete": {
         "type": "object",
-        "description": "Course active du coursier + arrêts pré-provisionnés.",
+        "description": "La course active, pré-provisionnée pour fonctionner hors ligne.",
         "required": [
-          "arrets"
+          "livraison_id",
+          "commande_id",
+          "etat",
+          "devise",
+          "arrets",
+          "client",
+          "remise"
         ],
         "properties": {
           "arrets": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ArretPreProvisionne"
+              "$ref": "#/components/schemas/ArretCourse"
             },
-            "description": "Arrêts à collecter, avec empreintes."
+            "description": "Arrêts de collecte, dans l'ordre de passage."
+          },
+          "client": {
+            "$ref": "#/components/schemas/ClientCourse",
+            "description": "Le client et son repère."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande portée."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`assignee` | `en_collecte` | `en_livraison`."
           },
           "livraison_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "format": "uuid",
-            "description": "Livraison active (première des arrêts), `None` si aucune."
+            "description": "Livraison active."
+          },
+          "remise": {
+            "$ref": "#/components/schemas/RemisePreprovisionnee",
+            "description": "De quoi confirmer la remise hors ligne."
           }
         }
       },
@@ -9858,6 +10004,47 @@
           }
         }
       },
+      "LigneArret": {
+        "type": "object",
+        "description": "Une ligne d'article à acheter chez un vendeur (K3).",
+        "required": [
+          "ligne_id",
+          "libelle",
+          "quantite",
+          "prix_unitaire_unites",
+          "preference_substitution",
+          "statut"
+        ],
+        "properties": {
+          "libelle": {
+            "type": "string",
+            "description": "Libellé de l'article."
+          },
+          "ligne_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ligne de commande."
+          },
+          "preference_substitution": {
+            "type": "string",
+            "description": "`remplacer` | `appeler` | `retirer`."
+          },
+          "prix_unitaire_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix unitaire VERROUILLÉ à la création (unités mineures)."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité commandée."
+          },
+          "statut": {
+            "type": "string",
+            "description": "`presente` | `remplacee` | `retiree`."
+          }
+        }
+      },
       "LigneDevis": {
         "type": "object",
         "description": "Une ligne résolue contre le catalogue.",
@@ -10966,6 +11153,57 @@
           }
         }
       },
+      "RemisePreprovisionnee": {
+        "type": "object",
+        "description": "De quoi confirmer la remise **sans réseau** (K4).",
+        "required": [
+          "empreinte_code",
+          "empreinte_jeton",
+          "essais_consommes",
+          "essais_max",
+          "code_bloque",
+          "montant_a_encaisser_unites",
+          "mode_paiement",
+          "preuves"
+        ],
+        "properties": {
+          "code_bloque": {
+            "type": "boolean",
+            "description": "Saisie du code bloquée (K4-1d)."
+          },
+          "empreinte_code": {
+            "type": "string",
+            "description": "Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037)."
+          },
+          "empreinte_jeton": {
+            "type": "string",
+            "description": "Empreinte du jeton de réception — **jamais le jeton**."
+          },
+          "essais_consommes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais faux déjà comptés côté serveur."
+          },
+          "essais_max": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Seuil de zone `commande.essais_code_livraison` (cycle 008, réutilisé)."
+          },
+          "mode_paiement": {
+            "type": "string",
+            "description": "`cash` | `mobile_money`."
+          },
+          "montant_a_encaisser_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à encaisser chez le client (unités mineures)."
+          },
+          "preuves": {
+            "$ref": "#/components/schemas/SeuilsPreuves",
+            "description": "Seuils de preuve de la zone."
+          }
+        }
+      },
       "RemplacementRepereVocal": {
         "type": "object",
         "description": "Nouveau repère parlé pour une adresse existante.",
@@ -11345,6 +11583,44 @@
           "resultat": {
             "$ref": "#/components/schemas/DiscriminantSession",
             "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
+      "SeuilsPreuves": {
+        "type": "object",
+        "description": "Les seuils de preuve d'échec de la zone.",
+        "required": [
+          "appels_min",
+          "espacement_s",
+          "presence_s",
+          "rayon_m",
+          "photos_min"
+        ],
+        "properties": {
+          "appels_min": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appels `client_absent` exigés."
+          },
+          "espacement_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Espacement minimal entre deux appels retenus (s)."
+          },
+          "photos_min": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Photos exigées."
+          },
+          "presence_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Présence continue exigée (s)."
+          },
+          "rayon_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rayon dans lequel un relevé compte (m)."
           }
         }
       },

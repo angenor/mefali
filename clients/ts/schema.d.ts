@@ -905,7 +905,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** QRC-02 — course active du coursier + pré-provisionnement hors-ligne. */
+        /**
+         * CRS-03 — course active du coursier, **complète** et pré-provisionnée.
+         * @description Cet endpoint a déménagé de `qr_http` : son contenu n'a plus rien à faire
+         *     dans un domaine dont l'objet est la plaque. Le chemin ne bouge pas, et les
+         *     champs du cycle 006 restent là — l'app livrée continue de fonctionner
+         *     pendant la transition.
+         *
+         *     `204` sans course : ce n'est pas une erreur, c'est une journée qui commence.
+         */
         get: operations["course_active"];
         put?: never;
         post?: never;
@@ -1759,6 +1767,79 @@ export interface components {
             /** @description Statut de l'arrêt. */
             statut: string;
         };
+        /** @description Un arrêt de collecte, complet. */
+        ArretCourse: {
+            /**
+             * Format: uuid
+             * @description Arrêt de la course.
+             */
+            arret_id: string;
+            /**
+             * Format: date-time
+             * @description Arrivée sur l'arrêt.
+             */
+            arrive_le?: string | null;
+            /**
+             * Format: date-time
+             * @description Collecte validée.
+             */
+            collecte_le?: string | null;
+            /**
+             * Format: int64
+             * @description Rayon max de scan (m).
+             */
+            distance_max_m: number;
+            /**
+             * Format: int64
+             * @description Distance depuis l'arrêt précédent (m). **Absente** : le tronçon n'est pas
+             *     figé au devis et ce cycle ne recalcule aucun itinéraire (FR-009).
+             */
+            distance_precedent_m?: number | null;
+            /** @description base16(sha256(prestataire ‖ code)) — mode dégradé hors-ligne. */
+            empreinte_code: string;
+            /** @description base16(sha256(jeton)) — match hors-ligne du QR de plaque. */
+            empreinte_jeton: string;
+            /**
+             * Format: date-time
+             * @description Départ déclaré vers l'arrêt.
+             */
+            en_route_le?: string | null;
+            /** @description Articles à acheter chez ce vendeur. */
+            lignes: components["schemas"]["LigneArret"][];
+            /**
+             * Format: int64
+             * @description Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+             */
+            montant_avance: number;
+            /** @description Nom du vendeur. */
+            nom: string;
+            /**
+             * Format: int32
+             * @description Rang dans l'ordre optimisé.
+             */
+            ordre: number;
+            /** @description Photo de récupération exigée (politique résolue). */
+            photo_exigee: boolean;
+            /**
+             * Format: uuid
+             * @description Prestataire visé.
+             */
+            prestataire_id: string;
+            /**
+             * Format: double
+             * @description Position attendue du site.
+             */
+            site_lat: number;
+            /**
+             * Format: double
+             * @description Position attendue du site.
+             */
+            site_lon: number;
+            /** @description `a_collecter` | `en_route` | `arrive` | `collecte` | `indisponible`. */
+            statut: string;
+            /** @description Contact du vendeur — appel HORS LIGNE (R6). Jamais journalisé. */
+            telephone_vendeur?: string | null;
+        };
         /** @description Un arrêt de l'offre, tel que K2 l'affiche. */
         ArretOffre: {
             /**
@@ -1778,49 +1859,6 @@ export interface components {
              * @description Prestataire visé.
              */
             prestataire_id?: string | null;
-        };
-        /** @description Arrêt pré-provisionné (empreintes, jamais de secret). */
-        ArretPreProvisionne: {
-            /**
-             * Format: uuid
-             * @description Arrêt à collecter.
-             */
-            arret_id: string;
-            /** @description Devise ISO 4217. */
-            devise: string;
-            /**
-             * Format: int64
-             * @description Rayon max de scan (m) — validation de proximité hors-ligne.
-             */
-            distance_max_m: number;
-            /** @description base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne. */
-            empreinte_code: string;
-            /** @description base16(sha256(jeton)) — match hors-ligne du QR scanné. */
-            empreinte_jeton: string;
-            /**
-             * Format: int64
-             * @description Montant avancé (unités mineures).
-             */
-            montant_avance: number;
-            /** @description Nom du prestataire (affiché sur la carte K3). */
-            nom: string;
-            /** @description Photo exigée (politique résolue). */
-            photo_exigee: boolean;
-            /**
-             * Format: uuid
-             * @description Prestataire visé.
-             */
-            prestataire_id: string;
-            /**
-             * Format: double
-             * @description Position attendue du site.
-             */
-            site_lat: number;
-            /**
-             * Format: double
-             * @description Position attendue du site.
-             */
-            site_lon: number;
         };
         /** @description Article du catalogue public. */
         ArticlePublic: {
@@ -1991,6 +2029,40 @@ export interface components {
             url: string;
             /** @description Version de charte en vigueur à la signature. */
             version_charte: string;
+        };
+        /** @description Le client et son repère (K3-1c, K4). */
+        ClientCourse: {
+            /** @description La voie « dépôt » est-elle ouverte sur cette commande (FR-039) ? */
+            depot_autorise: boolean;
+            /**
+             * Format: double
+             * @description Point de livraison.
+             */
+            lieu_lat?: number | null;
+            /**
+             * Format: double
+             * @description Point de livraison.
+             */
+            lieu_lon?: number | null;
+            /**
+             * @description Nom d'usage. **Absent** tant que le produit n'en porte aucun (cycle CPT
+             *     003 : « un numéro vérifié, rien d'autre ») — l'app affiche le repère.
+             */
+            nom_usage?: string | null;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+            /**
+             * Format: int32
+             * @description Durée de la note vocale (s).
+             */
+            repere_vocal_duree_s?: number | null;
+            /**
+             * @description URL **présignée** de la note vocale — à télécharger tout de suite pour
+             *     la jouer hors ligne (FR-024).
+             */
+            repere_vocal_url?: string | null;
+            /** @description Contact du client. Jamais journalisé, effacé du cache à la clôture (R6). */
+            telephone?: string | null;
         };
         /**
          * @description Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler
@@ -2296,15 +2368,28 @@ export interface components {
              */
             ville_id?: string | null;
         };
-        /** @description Course active du coursier + arrêts pré-provisionnés. */
-        CourseActive: {
-            /** @description Arrêts à collecter, avec empreintes. */
-            arrets: components["schemas"]["ArretPreProvisionne"][];
+        /** @description La course active, pré-provisionnée pour fonctionner hors ligne. */
+        CourseActiveComplete: {
+            /** @description Arrêts de collecte, dans l'ordre de passage. */
+            arrets: components["schemas"]["ArretCourse"][];
+            /** @description Le client et son repère. */
+            client: components["schemas"]["ClientCourse"];
             /**
              * Format: uuid
-             * @description Livraison active (première des arrêts), `None` si aucune.
+             * @description Commande portée.
              */
-            livraison_id?: string | null;
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description `assignee` | `en_collecte` | `en_livraison`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Livraison active.
+             */
+            livraison_id: string;
+            /** @description De quoi confirmer la remise hors ligne. */
+            remise: components["schemas"]["RemisePreprovisionnee"];
         };
         /** @description Une course assignée qui n'avance pas (FR-075). */
         CourseBloquee: {
@@ -3322,6 +3407,30 @@ export interface components {
              */
             lon: number;
         };
+        /** @description Une ligne d'article à acheter chez un vendeur (K3). */
+        LigneArret: {
+            /** @description Libellé de l'article. */
+            libelle: string;
+            /**
+             * Format: uuid
+             * @description Ligne de commande.
+             */
+            ligne_id: string;
+            /** @description `remplacer` | `appeler` | `retirer`. */
+            preference_substitution: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire VERROUILLÉ à la création (unités mineures).
+             */
+            prix_unitaire_unites: number;
+            /**
+             * Format: int32
+             * @description Quantité commandée.
+             */
+            quantite: number;
+            /** @description `presente` | `remplacee` | `retiree`. */
+            statut: string;
+        };
         /** @description Une ligne résolue contre le catalogue. */
         LigneDevis: {
             /**
@@ -3945,6 +4054,34 @@ export interface components {
             /** @description Slug du véhicule (référentiel `zones.type_transport`). */
             transport_slug: string;
         };
+        /** @description De quoi confirmer la remise **sans réseau** (K4). */
+        RemisePreprovisionnee: {
+            /** @description Saisie du code bloquée (K4-1d). */
+            code_bloque: boolean;
+            /** @description Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037). */
+            empreinte_code: string;
+            /** @description Empreinte du jeton de réception — **jamais le jeton**. */
+            empreinte_jeton: string;
+            /**
+             * Format: int32
+             * @description Essais faux déjà comptés côté serveur.
+             */
+            essais_consommes: number;
+            /**
+             * Format: int64
+             * @description Seuil de zone `commande.essais_code_livraison` (cycle 008, réutilisé).
+             */
+            essais_max: number;
+            /** @description `cash` | `mobile_money`. */
+            mode_paiement: string;
+            /**
+             * Format: int64
+             * @description Total à encaisser chez le client (unités mineures).
+             */
+            montant_a_encaisser_unites: number;
+            /** @description Seuils de preuve de la zone. */
+            preuves: components["schemas"]["SeuilsPreuves"];
+        };
         /** @description Nouveau repère parlé pour une adresse existante. */
         RemplacementRepereVocal: {
             /**
@@ -4157,6 +4294,34 @@ export interface components {
             jetons: components["schemas"]["JetonsDto"];
             /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
             resultat: components["schemas"]["DiscriminantSession"];
+        };
+        /** @description Les seuils de preuve d'échec de la zone. */
+        SeuilsPreuves: {
+            /**
+             * Format: int64
+             * @description Appels `client_absent` exigés.
+             */
+            appels_min: number;
+            /**
+             * Format: int64
+             * @description Espacement minimal entre deux appels retenus (s).
+             */
+            espacement_s: number;
+            /**
+             * Format: int64
+             * @description Photos exigées.
+             */
+            photos_min: number;
+            /**
+             * Format: int64
+             * @description Présence continue exigée (s).
+             */
+            presence_s: number;
+            /**
+             * Format: int64
+             * @description Rayon dans lequel un relevé compte (m).
+             */
+            rayon_m: number;
         };
         /** @description Issue du signalement. */
         SignalementRecuDto: {
@@ -7095,14 +7260,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Course active du coursier (vide si aucune assignée). */
+            /** @description Course active complète : arrêts, lignes, client, empreintes de remise. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CourseActive"];
+                    "application/json": components["schemas"]["CourseActiveComplete"];
                 };
+            };
+            /** @description Aucune course assignée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Session absente/révoquée. */
             401: {
