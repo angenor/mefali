@@ -1135,8 +1135,14 @@ mod tests {
         // `effort.plafond_eclatement_m` reste DORMANT) + 3 (ville, cycle 008 :
         // 2 plafonds cash et l'escalade d'attente coursier)
         // + 11 (ville, cycle 009 : rayon, grille d'avance, 4 poids, plafond
-        // d'inactivité, 2 seuils de broadcast, 2 seuils de réassignation).
-        assert_eq!(apres_un.4, 81, "43 (pays) + 38 (ville) paramètres");
+        // d'inactivité, 2 seuils de broadcast, 2 seuils de réassignation)
+        // + 7 (pays, cycle 010 : 2 seuils d'appels de preuve, 3 seuils de
+        // présence, rétention de la photo de preuve, période d'interrogation
+        // d'offre en arrière-plan). SEPT et pas huit : le nombre d'essais du
+        // code de remise EXISTE depuis le cycle 008 et est réutilisé tel quel —
+        // deux clés pour un même seuil divergeraient au premier réglage
+        // d'exploitation (research 010 R5, FR-106).
+        assert_eq!(apres_un.4, 88, "50 (pays) + 38 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),
