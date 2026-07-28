@@ -60,10 +60,11 @@ pub use panier::{
     CauseScission, DetailsVertical, GroupeVendeur, LignePanier, LigneValidee, PanierValide,
 };
 pub use ports::{
-    AffectationSimulee, ArretsDeCollecte, ArretsFixes, Capacite, CommandeADispatcher,
-    CommandesADispatcher, EtatProgression, MotifPrepaiementDispatch, PaiementSimule,
-    PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes, RestrictionsCompte,
-    RestrictionsSimulees, TarifFixe,
+    AffectationSimulee, ArretDeCourse, ArretsDeCollecte, ArretsFixes, Capacite, ClientDeCourse,
+    CommandeADispatcher, CommandesADispatcher, CourseCoursier, CourseDuCoursier, CourseFixe,
+    EtatProgression, LigneDeCourse, LivraisonLivree, Montant, MotifPrepaiementDispatch,
+    PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
+    RemiseDeCourse, RestrictionsCompte, RestrictionsSimulees, TarifFixe,
 };
 pub use substitution::{
     DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,

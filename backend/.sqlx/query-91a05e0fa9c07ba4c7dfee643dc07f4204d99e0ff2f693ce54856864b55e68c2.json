@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.id AS livraison_id, l.commande_id,\n                      l.devis_part_coursier, l.devis_devise,\n                      l.livree_le AS \"livree_le!\"\n               FROM commandes.livraison l\n               WHERE l.coursier_id = $1 AND l.etat = 'livree'\n                 AND l.livree_le >= $2 AND l.livree_le < $3\n               ORDER BY l.livree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "devis_part_coursier",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_part_coursier"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devis_devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_devise"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "livree_le!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "livree_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "91a05e0fa9c07ba4c7dfee643dc07f4204d99e0ff2f693ce54856864b55e68c2"
+}

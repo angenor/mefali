@@ -386,6 +386,212 @@ impl PgCommandes {
     }
 }
 
+// ── Port CourseCoursier (cycle CRS 010) ────────────────────────────────────
+
+/// La course active du coursier, servie au crate `coursier`.
+///
+/// **Une seule requête** pour les arrêts ET leurs lignes, une seconde pour
+/// l'entête. Ce n'est pas de l'optimisation prématurée : c'est le contrat de
+/// FR-011 — un aller-retour à l'assignation doit suffire à faire fonctionner
+/// toute la course hors ligne. Recoudre trois requêtes le ferait tenir aussi,
+/// mais au pire moment : celui où le réseau vacille.
+#[async_trait::async_trait]
+impl crate::ports::CourseCoursier for PgCommandes {
+    async fn course_active(
+        &self,
+        coursier: Uuid,
+    ) -> Result<Option<crate::ports::CourseDuCoursier>, ErreurCommandes> {
+        // Entête : la livraison, sa commande, son client et les empreintes de
+        // remise — écrites par le cycle 008, lues ici pour la première fois.
+        //
+        // « Active » couvre les trois états de TRAVAIL. Une livraison `livree`
+        // n'en est plus une : l'app doit basculer d'écran, pas garder une course
+        // close sous les yeux.
+        let Some(e) = sqlx::query!(
+            r#"SELECT l.id AS livraison_id, l.commande_id, l.etat::text AS "etat!",
+                      c.zone_id, c.devise, c.client_id,
+                      c.lieu_lat, c.lieu_lon, c.repere_texte, c.repere_vocal_cle,
+                      c.depot_autorise,
+                      c.code_livraison_hash, c.jeton_reception_hash, c.essais_code,
+                      (c.code_bloque_le IS NOT NULL AND c.code_debloque_le IS NULL)
+                          AS "code_bloque!",
+                      c.total_unites, c.mode_paiement::text AS "mode_paiement!",
+                      cp.telephone_e164
+               FROM commandes.livraison l
+               JOIN commandes.commande c ON c.id = l.commande_id
+               JOIN comptes.compte cp ON cp.id = c.client_id
+               WHERE l.coursier_id = $1
+                 AND l.etat IN ('assignee', 'en_collecte', 'en_livraison')
+               ORDER BY l.assignee_le DESC NULLS LAST
+               LIMIT 1"#,
+            coursier,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        else {
+            return Ok(None);
+        };
+
+        // Arrêts ET lignes d'un coup. Le `LEFT JOIN` garde les arrêts sans
+        // ligne — un arrêt dont toutes les lignes ont été retirées existe
+        // encore, et le masquer ferait disparaître une étape du parcours.
+        let lignes = sqlx::query!(
+            r#"SELECT a.id AS arret_id, a.ordre AS "arret_ordre!",
+                      a.prestataire_id AS "prestataire_id!",
+                      a.site_lat, a.site_lon, a.montant_avance,
+                      a.statut::text AS "statut!",
+                      a.en_route_le, a.arrive_le, a.collecte_le,
+                      lc.id AS "ligne_id?", art.nom AS "libelle?",
+                      lc.quantite AS "quantite?",
+                      COALESCE(lc.remplace_prix_unites, pf.prix_unites) AS "prix_unitaire?",
+                      lc.preference::text AS "preference?",
+                      lc.statut::text AS "ligne_statut?",
+                      lc.cree_le AS "ligne_cree_le?"
+               FROM commandes.arret a
+               JOIN commandes.segment s ON s.id = a.segment_id
+               LEFT JOIN commandes.ligne_commande lc ON lc.arret_id = a.id
+               LEFT JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
+               LEFT JOIN prestataires.article art
+                      ON art.id = COALESCE(lc.remplace_par_article_id, lc.article_id)
+               WHERE s.livraison_id = $1 AND a.type_arret = 'collecte'
+               ORDER BY s.ordre, a.ordre, lc.cree_le"#,
+            e.livraison_id,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut arrets: Vec<crate::ports::ArretDeCourse> = Vec::new();
+        for l in lignes {
+            if arrets.last().map(|a| a.arret_id) != Some(l.arret_id) {
+                arrets.push(crate::ports::ArretDeCourse {
+                    arret_id: l.arret_id,
+                    ordre: l.arret_ordre,
+                    prestataire_id: l.prestataire_id,
+                    site_lat: l.site_lat,
+                    site_lon: l.site_lon,
+                    // Le tronçon n'est pas figé au cycle 007, et ce cycle ne
+                    // recalcule aucun itinéraire (FR-009).
+                    distance_precedent_m: None,
+                    montant_avance: l.montant_avance,
+                    statut: l.statut.parse()?,
+                    en_route_le: l.en_route_le,
+                    arrive_le: l.arrive_le,
+                    collecte_le: l.collecte_le,
+                    lignes: Vec::new(),
+                });
+            }
+            // `ligne_id` absent = arrêt sans ligne (toutes retirées) : l'arrêt
+            // reste, la ligne n'existe pas.
+            let (Some(ligne_id), Some(libelle), Some(quantite), Some(prix), Some(pref), Some(st)) = (
+                l.ligne_id,
+                l.libelle,
+                l.quantite,
+                l.prix_unitaire,
+                l.preference,
+                l.ligne_statut,
+            ) else {
+                continue;
+            };
+            arrets
+                .last_mut()
+                .expect("un arrêt vient d'être poussé")
+                .lignes
+                .push(crate::ports::LigneDeCourse {
+                    ligne_id,
+                    libelle,
+                    quantite,
+                    prix_unitaire_unites: prix,
+                    preference: pref.parse()?,
+                    statut: st.parse()?,
+                });
+        }
+
+        Ok(Some(crate::ports::CourseDuCoursier {
+            livraison_id: e.livraison_id,
+            commande_id: e.commande_id,
+            zone_id: e.zone_id,
+            etat: e.etat.parse()?,
+            devise: e.devise,
+            arrets,
+            client: crate::ports::ClientDeCourse {
+                compte_id: e.client_id,
+                // Aucune colonne nominative n'existe (cycle CPT 003) — voir la
+                // documentation du champ. On ne fabrique rien depuis le numéro.
+                nom_usage: None,
+                telephone: Some(e.telephone_e164),
+                repere_texte: e.repere_texte,
+                repere_vocal_cle: e.repere_vocal_cle,
+                lieu_lat: e.lieu_lat,
+                lieu_lon: e.lieu_lon,
+                depot_autorise: e.depot_autorise,
+            },
+            remise: crate::ports::RemiseDeCourse {
+                empreinte_code: e.code_livraison_hash,
+                empreinte_jeton: e.jeton_reception_hash,
+                essais_consommes: e.essais_code,
+                code_bloque: e.code_bloque,
+                montant_a_encaisser_unites: e.total_unites,
+                mode_paiement: e.mode_paiement.parse()?,
+            },
+        }))
+    }
+
+    async fn montant_a_encaisser(
+        &self,
+        livraison: Uuid,
+    ) -> Result<crate::ports::Montant, ErreurCommandes> {
+        let m = sqlx::query!(
+            r#"SELECT c.total_unites, c.devise
+               FROM commandes.livraison l
+               JOIN commandes.commande c ON c.id = l.commande_id
+               WHERE l.id = $1"#,
+            livraison,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(ErreurCommandes::LivraisonInconnue(livraison))?;
+        Ok(crate::ports::Montant {
+            unites: m.total_unites,
+            devise: m.devise,
+        })
+    }
+
+    async fn livrees_du_jour(
+        &self,
+        coursier: Uuid,
+        debut: DateTime<Utc>,
+        fin: DateTime<Utc>,
+    ) -> Result<Vec<crate::ports::LivraisonLivree>, ErreurCommandes> {
+        // La fenêtre arrive DÉJÀ résolue dans le fuseau de la zone : calculer
+        // ici « aujourd'hui » ferait basculer les gains de Yao à minuit UTC.
+        let lignes = sqlx::query!(
+            r#"SELECT l.id AS livraison_id, l.commande_id,
+                      l.devis_part_coursier, l.devis_devise,
+                      l.livree_le AS "livree_le!"
+               FROM commandes.livraison l
+               WHERE l.coursier_id = $1 AND l.etat = 'livree'
+                 AND l.livree_le >= $2 AND l.livree_le < $3
+               ORDER BY l.livree_le"#,
+            coursier,
+            debut,
+            fin,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(lignes
+            .into_iter()
+            .map(|l| crate::ports::LivraisonLivree {
+                livraison_id: l.livraison_id,
+                commande_id: l.commande_id,
+                part_coursier_unites: l.devis_part_coursier,
+                devise: l.devis_devise,
+                livree_le: l.livree_le,
+            })
+            .collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
