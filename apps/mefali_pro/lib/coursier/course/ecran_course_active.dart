@@ -4,16 +4,27 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../../l10n/app_localizations.dart';
+import 'bandeau_livraison.dart';
+import 'carte_arret.dart';
+import 'checklist_articles.dart';
 import 'ecran_scan.dart';
 import 'etat_course.dart';
+import 'feuille_arret_indisponible.dart';
+import 'feuille_remplacement.dart';
 
-/// Écran K3 — course active du coursier : liste d'arrêts, arrêt courant, gros
-/// bouton de scan. Réf. `docs/design/png/K3-course-active.png`. Widgets M3
-/// thémés `mefali_core` (constitution XI), constructeurs `.adaptive`.
+/// Écran K3 — course active du coursier.
+///
+/// Réf. `docs/design/png/K3-course-active.png`. Widgets M3 thémés
+/// `mefali_core` (constitution XI), constructeurs `.adaptive`.
+///
+/// Trois états, un seul écran : l'arrêt courant développé avec sa checklist
+/// (1a), le même en mode hors-ligne (1b), et « en route vers le client » quand
+/// tout est collecté (1c). La bascule est automatique — aucune action de Yao
+/// n'est nécessaire pour passer de l'un à l'autre (FR-021).
 class EcranCourseActive extends ConsumerWidget {
   /// Crée l'écran de course active. [entete] (optionnel) est rendu en tête du
   /// corps, DANS l'unique Scaffold — la bascule de rôle du coursier bi-rôle y
-  /// passe sans imbriquer un second Scaffold (FR-046).
+  /// passe sans imbriquer un second Scaffold.
   const EcranCourseActive({super.key, this.entete});
 
   /// Widget d'entête optionnel (ex. bascule de rôle).
@@ -80,133 +91,232 @@ class _CorpsCourse extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    if (etat.arrets.isEmpty) {
+    if (!etat.aUneCourse && etat.arrets.isEmpty) {
       return Center(
         child: Text(l10n.courseAucune, style: Theme.of(context).textTheme.bodyLarge),
       );
     }
-    final courant = etat.arretCourant;
+    final enLigne = !etat.horsLigne;
 
     return Padding(
       padding: const EdgeInsets.all(MefaliTokens.screenMargin),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Bandeau hors-ligne (FR-026, K3-1b) : « Actions enregistrées,
+          // synchronisation auto ». Il dit ce qui CONTINUE de marcher, pas ce
+          // qui est cassé — c'est la différence entre rassurer et inquiéter.
           if (etat.horsLigne) ...[
-            BandeauHorsLigne(message: l10n.courseHorsLigne),
-            const SizedBox(height: MefaliTokens.space3),
+            BandeauHorsLigne(message: l10n.crsHorsLigneBandeau),
+            const SizedBox(height: MefaliTokens.space2),
           ],
-          if (etat.toutCollecte) ...[
-            BandeauSucces(message: l10n.courseSuccesEnLivraison),
-            const SizedBox(height: MefaliTokens.space3),
+          if (etat.actionsEnAttente > 0) ...[
+            _CompteurFile(etat: etat),
+            const SizedBox(height: MefaliTokens.space2),
           ],
           Expanded(
-            child: ListView.separated(
-              itemCount: etat.arrets.length,
-              separatorBuilder: (_, _) => const SizedBox(height: MefaliTokens.space2),
-              itemBuilder: (_, i) => _CarteArret(
-                arret: etat.arrets[i],
-                courant: courant?.arretId == etat.arrets[i].arretId,
-              ),
-            ),
+            child: etat.toutCollecte
+                ? BandeauLivraison(
+                    etat: etat,
+                    enLigne: enLigne,
+                    onArriveChezClient: () => _transition(ref, etat, 'arrive'),
+                  )
+                : _Collecte(etat: etat, enLigne: enLigne),
           ),
-          if (courant != null) ...[
-            const SizedBox(height: MefaliTokens.space3),
-            BoutonPrincipal(
-              libelle: l10n.courseScannerQr,
-              picto: Symbols.qr_code_scanner,
-              onPresse: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => EcranScan(arret: courant),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
-}
 
-class _CarteArret extends StatelessWidget {
-  const _CarteArret({required this.arret, required this.courant});
-
-  final ArretCourse arret;
-  final bool courant;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
-        side: courant
-            ? const BorderSide(color: MefaliTokens.primary, width: 2)
-            : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(MefaliTokens.space3),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(arret.nom, style: textTheme.titleMedium),
-                  const SizedBox(height: MefaliTokens.space1),
-                  Text(
-                    formaterMontant(arret.montantAvance, arret.devise),
-                    style: textTheme.bodyMedium?.copyWith(color: MefaliTokens.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            _PuceStatut(collecte: arret.collecte),
-          ],
-        ),
-      ),
-    );
+  Future<void> _transition(WidgetRef ref, EtatCourse etat, String action) async {
+    final livraison = etat.livraisonId;
+    final arret = etat.arretCourant;
+    if (livraison == null || arret == null) return;
+    await ref.read(etatCourseActiveProvider.notifier).transitionArret(
+          livraisonId: livraison,
+          arretId: arret.arretId,
+          action: action,
+        );
   }
 }
 
-class _PuceStatut extends StatelessWidget {
-  const _PuceStatut({required this.collecte});
+/// Le compteur d'actions en attente (FR-083) — nombre et poids des photos.
+///
+/// Yao doit pouvoir répondre à « est-ce que c'est parti ? » sans deviner. Le
+/// poids compte autant que le nombre : trois photos de 2 Mo sur un réseau de
+/// marché, ce n'est pas la même attente que trois transitions.
+class _CompteurFile extends StatelessWidget {
+  const _CompteurFile({required this.etat});
 
-  final bool collecte;
+  final EtatCourse etat;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final (fond, accent, libelle, icone) = collecte
-        ? (
-            MefaliTokens.successTint,
-            MefaliTokens.success,
-            l10n.courseArretCollecte,
-            Symbols.check_circle_rounded,
-          )
-        : (
-            MefaliTokens.warningTint,
-            MefaliTokens.warning,
-            l10n.courseArretACollecter,
-            Symbols.pending_rounded,
-          );
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MefaliTokens.space2,
-        vertical: MefaliTokens.space1,
-      ),
-      decoration: BoxDecoration(
-        color: fond,
-        borderRadius: BorderRadius.circular(MefaliTokens.radiusChip),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icone, size: 16, color: accent),
-          const SizedBox(width: MefaliTokens.space1),
-          Text(libelle, style: TextStyle(color: accent, fontWeight: FontWeight.w600)),
-        ],
-      ),
+    final ko = etat.octetsPhotosEnAttente ~/ 1024;
+    final texte = ko > 0
+        ? l10n.crsActionsEnAttentePhotos(etat.actionsEnAttente, ko)
+        : l10n.crsActionsEnAttente(etat.actionsEnAttente);
+    return Row(
+      children: [
+        const Icon(Symbols.cloud_upload_rounded,
+            size: 18, color: MefaliTokens.textMuted),
+        const SizedBox(width: MefaliTokens.space1),
+        Text(
+          texte,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: MefaliTokens.textMuted),
+        ),
+      ],
     );
+  }
+}
+
+/// La phase de collecte : arrêt courant développé, arrêts résolus repliés.
+class _Collecte extends ConsumerWidget {
+  const _Collecte({required this.etat, required this.enLigne});
+
+  final EtatCourse etat;
+  final bool enLigne;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final courant = etat.arretCourant;
+    if (courant == null) return const SizedBox.shrink();
+    final rang = etat.rangArretCourant;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            children: [
+              // Arrêts DÉJÀ résolus, repliés avec leur heure (K3-1b).
+              for (var i = 0; i < etat.arrets.length; i++)
+                if (etat.arrets[i].collecte ||
+                    etat.arrets[i].statut == 'indisponible') ...[
+                  CarteArretReplie(arret: etat.arrets[i], rang: i + 1),
+                  const SizedBox(height: MefaliTokens.space2),
+                ],
+              // L'arrêt COURANT, seul développé.
+              CarteArretCourant(
+                arret: courant,
+                rang: rang,
+                total: etat.arrets.length,
+                enLigne: enLigne,
+              ),
+              const SizedBox(height: MefaliTokens.space2),
+              if (courant.lignes.isNotEmpty) ...[
+                ChecklistArticles(
+                  lignes: courant.lignes,
+                  devise: etat.devise,
+                  onCocher: (ligne, cochee) => ref
+                      .read(etatCourseActiveProvider.notifier)
+                      .cocherArticle(ligne.ligneId, cochee: cochee),
+                  onIndisponible: (ligne) =>
+                      _declarerIndisponible(context, ref, ligne),
+                ),
+                const SizedBox(height: MefaliTokens.space2),
+              ],
+              MontantAPayer(
+                nomVendeur: courant.nom,
+                montantUnites: courant.montantAPayerUnites,
+                devise: etat.devise,
+                articlesPris: courant.lignes.any((l) => !l.aPayer)
+                    ? courant.articlesPris
+                    : null,
+              ),
+              const SizedBox(height: MefaliTokens.space2),
+              // Arrêts à venir, repliés eux aussi.
+              for (var i = 0; i < etat.arrets.length; i++)
+                if (!etat.arrets[i].collecte &&
+                    etat.arrets[i].statut != 'indisponible' &&
+                    etat.arrets[i].arretId != courant.arretId) ...[
+                  CarteArretReplie(arret: etat.arrets[i], rang: i + 1),
+                  const SizedBox(height: MefaliTokens.space2),
+                ],
+              TextButton.icon(
+                onPressed: () => _arretImpossible(context, ref, courant),
+                icon: const Icon(Symbols.block_rounded),
+                label: Text(l10n.crsArretIndisponibleTitre),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: MefaliTokens.space3),
+        // Le scan reste VISIBLEMENT actif hors ligne : c'est l'action la plus
+        // importante de l'écran, et elle n'a jamais eu besoin du réseau (R6).
+        BoutonPrincipal(
+          libelle: l10n.crsScannerQrVendeur,
+          picto: Symbols.qr_code_scanner,
+          onPresse: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => EcranScan(arret: courant)),
+          ),
+        ),
+        if (!enLigne) ...[
+          const SizedBox(height: MefaliTokens.space2),
+          Text(
+            l10n.crsHorsLigneScanEtCoches,
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: MefaliTokens.textMuted),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Déclare une ligne indisponible. La suite dépend de ce que le CLIENT a
+  /// choisi : proposer un remplacement (photo + prix), l'appeler, ou retirer.
+  Future<void> _declarerIndisponible(
+    BuildContext context,
+    WidgetRef ref,
+    LigneChecklistVue ligne,
+  ) async {
+    final livraison = etat.livraisonId;
+    if (livraison == null) return;
+    final notifier = ref.read(etatCourseActiveProvider.notifier);
+
+    if (ligne.preference == 'remplacer') {
+      final proposition =
+          await FeuilleRemplacement.ouvrir(context, ligne.libelle);
+      if (proposition == null) return;
+      await notifier.declarerLigneIndisponible(
+        livraisonId: livraison,
+        ligneId: ligne.ligneId,
+        resolution: 'remplacer',
+        prixProposeUnites: proposition.prixUnites,
+        photo: proposition.photo,
+      );
+      return;
+    }
+    // `appeler` et `retirer` : le serveur applique la préférence du client. On
+    // n'envoie PAS de résolution — le défaut sûr est le retrait, et on ne fait
+    // jamais payer par défaut.
+    await notifier.declarerLigneIndisponible(
+      livraisonId: livraison,
+      ligneId: ligne.ligneId,
+    );
+  }
+
+  Future<void> _arretImpossible(
+    BuildContext context,
+    WidgetRef ref,
+    ArretCourse arret,
+  ) async {
+    final livraison = etat.livraisonId;
+    if (livraison == null) return;
+    final motif = await FeuilleArretIndisponible.ouvrir(context, arret.nom);
+    if (motif == null) return;
+    await ref.read(etatCourseActiveProvider.notifier).declarerArretIndisponible(
+          livraisonId: livraison,
+          arretId: arret.arretId,
+          motif: motif,
+        );
   }
 }

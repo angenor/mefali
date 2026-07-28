@@ -664,6 +664,116 @@ class EtatCourseActive extends _$EtatCourseActive {
     ref.invalidateSelf();
   }
 
+  /// Envoie une action de course, ou l'enfile si le réseau manque.
+  ///
+  /// Le patron unique de TOUTES les actions du cycle (constitution V) : un
+  /// `uuid_client`, un passage par la file en cas de coupure, un rejeu
+  /// idempotent. Renvoie `null` en cas de succès ou de mise en file, sinon la
+  /// clé i18n du refus métier.
+  Future<String?> _envoyerOuEnfiler({
+    required String endpoint,
+    required Map<String, dynamic> payload,
+    List<int>? photo,
+  }) async {
+    final file = ref.read(fileActionsProvider);
+    try {
+      final dio = ref.read(clientSessionProvider).dio;
+      final form = FormData.fromMap({
+        'demande': jsonEncode(payload),
+        if (photo != null)
+          'photo': MultipartFile.fromBytes(photo, filename: 'photo.jpg'),
+      });
+      await dio.post<dynamic>(endpoint, data: form);
+      ref.invalidateSelf();
+      return null;
+    } on DioException catch (e) {
+      final reponse = e.response;
+      if (reponse == null) {
+        // Réseau coupé : l'action part dans la file et se rejouera. Yao ne doit
+        // jamais rester bloqué devant un vendeur parce que le réseau a sauté.
+        await file.enfiler(
+          uuidClient: payload['uuid_client'] as String,
+          endpoint: endpoint,
+          payloadJson: jsonEncode(payload),
+          photoOctets: photo,
+          creeLeLocal: DateTime.now(),
+        );
+        ref.invalidateSelf();
+        return null;
+      }
+      final corps = reponse.data;
+      if (corps is Map && corps['code'] is String) return corps['code'] as String;
+      return 'erreur_interne';
+    }
+  }
+
+  /// Transition déclarative d'un arrêt : « je pars » / « je suis arrivé »
+  /// (FR-020). Un tap, un `uuid_client`, la file en secours.
+  ///
+  /// L'horodatage local part avec, mais c'est le SERVEUR qui fait foi :
+  /// `arrive_le` fonde une prime d'attente (TRF-06), et une horloge d'appareil
+  /// se règle à la main.
+  Future<String?> transitionArret({
+    required String livraisonId,
+    required String arretId,
+    required String action,
+  }) {
+    return _envoyerOuEnfiler(
+      endpoint: '/courses/$livraisonId/arrets/$arretId/$action',
+      payload: {
+        'uuid_client': _uuid.v7(),
+        'horodatage_local': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  /// Déclare une LIGNE indisponible (FR-016, FR-017) — chemin de substitution
+  /// existant, aucune modification serveur.
+  ///
+  /// `resolution` absente = suivre la préférence du client, dont le défaut sûr
+  /// est le retrait : on ne fait jamais payer par défaut.
+  Future<String?> declarerLigneIndisponible({
+    required String livraisonId,
+    required String ligneId,
+    String? resolution,
+    String? articleProposeId,
+    int? prixProposeUnites,
+    List<int>? photo,
+  }) {
+    return _envoyerOuEnfiler(
+      endpoint: '/courses/$livraisonId/substitutions',
+      payload: {
+        'ligne_id': ligneId,
+        'uuid_client': _uuid.v7(),
+        // `?` plutôt qu'un `if` : la clé disparaît quand la valeur est nulle,
+        // et une `resolution: null` explicite serait lue par le serveur comme
+        // un choix — alors que son absence signifie « suivre la préférence du
+        // client », dont le défaut sûr est le retrait.
+        'resolution': ?resolution,
+        'article_propose_id': ?articleProposeId,
+        'prix_propose_unites': ?prixProposeUnites,
+      },
+      photo: photo,
+    );
+  }
+
+  /// Déclare un ARRÊT ENTIER impossible (FR-018) — vendeur fermé, plus rien en
+  /// stock. Le montant de l'arrêt tombe à zéro et la course passe au suivant.
+  Future<String?> declarerArretIndisponible({
+    required String livraisonId,
+    required String arretId,
+    required String motif,
+  }) {
+    return _envoyerOuEnfiler(
+      endpoint: '/courses/$livraisonId/arrets/$arretId/indisponible',
+      payload: {
+        'uuid_client': _uuid.v7(),
+        'horodatage_local': DateTime.now().toUtc().toIso8601String(),
+        'motif': motif,
+      },
+    );
+  }
+
   /// Collecte un arrêt. En ligne : POST multipart immédiat. Hors-ligne (échec
   /// réseau) : coche optimiste + mise en file idempotente (V). Renvoie `null`
   /// en cas de succès/offline, ou une clé d'erreur métier i18n à afficher.
