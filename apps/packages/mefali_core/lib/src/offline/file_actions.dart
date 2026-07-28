@@ -115,4 +115,133 @@ class FileActions {
       statutLocal: Value('a_collecter'),
     ));
   }
+
+  // ── Course complète (cycle CRS 010) ──────────────────────────────────────
+
+  /// Remplace le cache de course. Une seule course active à la fois : la
+  /// précédente est effacée, **numéro de téléphone compris** (R6).
+  Future<void> remplacerCourse(CourseCacheTableCompanion course) async {
+    await _base.transaction(() async {
+      await _base.delete(_base.courseCacheTable).go();
+      await _base.into(_base.courseCacheTable).insert(course);
+    });
+  }
+
+  /// La course en cache, ou `null` si aucune n'est active.
+  Future<CourseCache?> courseCache() {
+    return _base.select(_base.courseCacheTable).getSingleOrNull();
+  }
+
+  /// Remplace la checklist en **préservant les coches déjà posées**.
+  ///
+  /// C'est le point délicat : un rechargement de la course ne doit pas effacer
+  /// ce que Yao a coché dans l'allée du marché. Le statut serveur, lui, écrase —
+  /// c'est le serveur qui sait si une ligne a été retirée.
+  Future<void> remplacerChecklist(List<LignesChecklistCompanion> lignes) async {
+    await _base.transaction(() async {
+      final cochees = <String>{
+        for (final l in await _base.select(_base.lignesChecklist).get())
+          if (l.cochee) l.ligneId,
+      };
+      await _base.delete(_base.lignesChecklist).go();
+      await _base.batch((b) => b.insertAll(
+            _base.lignesChecklist,
+            [
+              for (final l in lignes)
+                if (cochees.contains(l.ligneId.value))
+                  l.copyWith(cochee: const Value(true))
+                else
+                  l,
+            ],
+          ));
+    });
+  }
+
+  /// Toutes les lignes de checklist, dans l'ordre d'affichage.
+  Future<List<LigneChecklist>> lignesChecklist() {
+    return (_base.select(_base.lignesChecklist)
+          ..orderBy([(l) => OrderingTerm(expression: l.ordre)]))
+        .get();
+  }
+
+  /// Coche (ou décoche) un article. **Jamais envoyé au serveur** (R11, FR-079).
+  Future<void> cocherLigne(String ligneId, {required bool cochee}) async {
+    await (_base.update(_base.lignesChecklist)
+          ..where((l) => l.ligneId.equals(ligneId)))
+        .write(LignesChecklistCompanion(cochee: Value(cochee)));
+  }
+
+  // ── Essais du code de remise consommés hors ligne (R5) ───────────────────
+
+  /// Essais faux comptés localement pour une livraison.
+  Future<int> essaisHorsLigne(String livraisonId) async {
+    final ligne = await (_base.select(_base.essaisRemise)
+          ..where((e) => e.livraisonId.equals(livraisonId)))
+        .getSingleOrNull();
+    return ligne?.essaisHorsLigne ?? 0;
+  }
+
+  /// Compte un essai faux de plus. Le total voyage AVEC la demande de remise,
+  /// jamais essai par essai : envoyer des codes faux au serveur les ferait
+  /// voyager sans aucun bénéfice (R5).
+  Future<int> ajouterEssaiHorsLigne(String livraisonId) async {
+    final courant = await essaisHorsLigne(livraisonId);
+    await _base.into(_base.essaisRemise).insertOnConflictUpdate(
+          EssaisRemiseCompanion.insert(
+            livraisonId: livraisonId,
+            essaisHorsLigne: Value(courant + 1),
+            dernierEssaiLocal: Value(DateTime.now()),
+          ),
+        );
+    return courant + 1;
+  }
+
+  /// Remet le compteur à zéro après consolidation serveur.
+  Future<void> consolidorEssais(String livraisonId) async {
+    await (_base.delete(_base.essaisRemise)
+          ..where((e) => e.livraisonId.equals(livraisonId)))
+        .go();
+  }
+
+  // ── Relevés de présence en attente (FR-061) ─────────────────────────────
+
+  /// Enregistre un échantillon de présence — une **distance arrondie**, jamais
+  /// une position (R8).
+  Future<void> enfilerPresence({
+    required String uuidClient,
+    required String livraisonId,
+    required int distanceM,
+    required DateTime releveLeLocal,
+  }) async {
+    await _base.into(_base.relevesPresenceLocaux).insert(
+          RelevesPresenceLocauxCompanion.insert(
+            uuidClient: uuidClient,
+            livraisonId: livraisonId,
+            distanceM: distanceM,
+            releveLeLocal: releveLeLocal,
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+
+  /// Relevés non encore transmis, les plus anciens d'abord — ils partent en LOT.
+  Future<List<RelevePresenceLocal>> presenceEnAttente(String livraisonId) {
+    return (_base.select(_base.relevesPresenceLocaux)
+          ..where((r) => r.livraisonId.equals(livraisonId) & r.envoye.equals(false))
+          ..orderBy([(r) => OrderingTerm(expression: r.releveLeLocal)]))
+        .get();
+  }
+
+  /// Marque un lot de relevés comme transmis.
+  Future<void> marquerPresenceEnvoyee(List<String> uuidsClient) async {
+    if (uuidsClient.isEmpty) return;
+    await (_base.update(_base.relevesPresenceLocaux)
+          ..where((r) => r.uuidClient.isIn(uuidsClient)))
+        .write(const RelevesPresenceLocauxCompanion(envoye: Value(true)));
+  }
+
+  /// Efface tout ce qui appartient à une course terminée — **numéros compris**
+  /// (R6, FR-034). Les actions ENCORE EN ATTENTE ne sont pas touchées.
+  Future<void> effacerCourse(String livraisonId) =>
+      _base.effacerCourse(livraisonId);
 }

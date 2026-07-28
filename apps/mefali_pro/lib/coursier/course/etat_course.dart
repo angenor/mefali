@@ -33,6 +33,125 @@ Stream<bool> connectiviteEnLigne(Ref ref) {
       .distinct();
 }
 
+/// Un article de la checklist (cycle CRS 010, K3-1a).
+///
+/// La **coche** est locale et ne quitte jamais l'appareil (R11, FR-079) : le
+/// serveur ne connaît que « présente / remplacée / retirée ». C'est un
+/// aide-mémoire d'achat, pas un fait métier.
+class LigneChecklistVue {
+  /// Crée une ligne de checklist.
+  const LigneChecklistVue({
+    required this.ligneId,
+    required this.libelle,
+    required this.quantite,
+    required this.prixUnitaireUnites,
+    required this.preference,
+    required this.statut,
+    required this.cochee,
+  });
+
+  /// Ligne de commande.
+  final String ligneId;
+
+  /// Libellé de l'article.
+  final String libelle;
+
+  /// Quantité commandée.
+  final int quantite;
+
+  /// Prix unitaire VERROUILLÉ à la création (unités mineures).
+  final int prixUnitaireUnites;
+
+  /// `remplacer` | `appeler` | `retirer`.
+  final String preference;
+
+  /// `presente` | `remplacee` | `retiree`.
+  final String statut;
+
+  /// Coche LOCALE.
+  final bool cochee;
+
+  /// La ligne est-elle encore à payer ?
+  bool get aPayer => statut != 'retiree';
+
+  /// Ce que cette ligne coûte — zéro si elle a été retirée (FR-013).
+  int get montantUnites => aPayer ? prixUnitaireUnites * quantite : 0;
+}
+
+/// Le client de la course, tel que Yao en a besoin devant la porte.
+class ClientCourseVue {
+  /// Crée la vue client.
+  const ClientCourseVue({
+    this.nomUsage,
+    this.telephone,
+    this.repereTexte,
+    this.repereVocalFichier,
+    this.repereVocalDureeS,
+    this.lieuLat,
+    this.lieuLon,
+    this.depotAutorise = false,
+  });
+
+  /// Nom d'usage — `null` tant que le produit n'en porte aucun.
+  final String? nomUsage;
+
+  /// Contact. Effacé du cache à la clôture (R6).
+  final String? telephone;
+
+  /// Repère écrit.
+  final String? repereTexte;
+
+  /// Chemin LOCAL du fichier audio téléchargé — pas l'URL, qui expire.
+  final String? repereVocalFichier;
+
+  /// Durée de la note vocale (s).
+  final int? repereVocalDureeS;
+
+  /// Point de livraison.
+  final double? lieuLat;
+
+  /// Point de livraison.
+  final double? lieuLon;
+
+  /// La voie « dépôt » est-elle ouverte sur cette commande (FR-039) ?
+  final bool depotAutorise;
+}
+
+/// De quoi confirmer la remise sans réseau (K4).
+class RemiseVue {
+  /// Crée la vue de remise.
+  const RemiseVue({
+    this.empreinteCode = '',
+    this.empreinteJeton = '',
+    this.essaisConsommes = 0,
+    this.essaisMax = 3,
+    this.codeBloque = false,
+    this.montantAEncaisserUnites = 0,
+    this.modePaiement = 'cash',
+  });
+
+  /// Empreinte salée du code — **jamais le code** (FR-037).
+  final String empreinteCode;
+
+  /// Empreinte du jeton de réception — **jamais le jeton**.
+  final String empreinteJeton;
+
+  /// Essais faux comptés côté serveur au dernier chargement.
+  final int essaisConsommes;
+
+  /// Seuil de zone (paramètre du cycle 008).
+  final int essaisMax;
+
+  /// Saisie bloquée côté serveur (K4-1d).
+  final bool codeBloque;
+
+  /// Total à encaisser chez le client (unités mineures).
+  final int montantAEncaisserUnites;
+
+  /// `cash` | `mobile_money`.
+  final String modePaiement;
+}
+
 /// Un arrêt de la course, fusion de la donnée serveur (pré-provisionnement) et
 /// de la coche optimiste locale (drift).
 class ArretCourse {
@@ -50,6 +169,10 @@ class ArretCourse {
     required this.photoExigee,
     required this.distanceMaxM,
     required this.collecte,
+    this.statut = 'a_collecter',
+    this.collecteLe,
+    this.telephoneVendeur,
+    this.lignes = const [],
   });
 
   /// Arrêt à collecter.
@@ -87,12 +210,68 @@ class ArretCourse {
 
   /// Coché (serveur ou optimiste local).
   final bool collecte;
+
+  /// Statut SERVEUR de l'arrêt (`a_collecter` | `en_route` | `arrive` |
+  /// `collecte` | `indisponible`).
+  final String statut;
+
+  /// Heure de collecte — affichée sur l'arrêt replié (K3-1b).
+  final DateTime? collecteLe;
+
+  /// Contact du vendeur — appel HORS LIGNE (R6). Jamais journalisé.
+  final String? telephoneVendeur;
+
+  /// Articles à acheter chez ce vendeur (K3-1a).
+  final List<LigneChecklistVue> lignes;
+
+  /// Ce que Yao doit sortir de sa poche à CET arrêt, après retraits (FR-013).
+  ///
+  /// Les lignes font autorité, pas [montantAvance] : celui-ci vient du dernier
+  /// chargement serveur et devient faux dès qu'une ligne est retirée hors ligne.
+  int get montantAPayerUnites => lignes.isEmpty
+      ? montantAvance
+      : lignes.fold(0, (somme, l) => somme + l.montantUnites);
+
+  /// Articles effectivement pris (cochés et non retirés) — le « (2 articles
+  /// pris) » de K3-1a.
+  int get articlesPris => lignes.where((l) => l.cochee && l.aPayer).length;
+
+  /// Copie avec substitution.
+  ArretCourse copieAvec({List<LigneChecklistVue>? lignes}) => ArretCourse(
+        arretId: arretId,
+        prestataireId: prestataireId,
+        nom: nom,
+        empreinteJeton: empreinteJeton,
+        empreinteCode: empreinteCode,
+        siteLat: siteLat,
+        siteLon: siteLon,
+        montantAvance: montantAvance,
+        devise: devise,
+        photoExigee: photoExigee,
+        distanceMaxM: distanceMaxM,
+        collecte: collecte,
+        statut: statut,
+        collecteLe: collecteLe,
+        telephoneVendeur: telephoneVendeur,
+        lignes: lignes ?? this.lignes,
+      );
 }
 
-/// État de la course active : arrêts + indicateur hors-ligne.
+/// État de la course active : arrêts, client, remise, indicateur hors-ligne.
 class EtatCourse {
   /// Crée l'état.
-  const EtatCourse({this.arrets = const [], this.horsLigne = false});
+  const EtatCourse({
+    this.arrets = const [],
+    this.horsLigne = false,
+    this.livraisonId,
+    this.commandeId,
+    this.etat = '',
+    this.devise = 'XOF',
+    this.client = const ClientCourseVue(),
+    this.remise = const RemiseVue(),
+    this.actionsEnAttente = 0,
+    this.octetsPhotosEnAttente = 0,
+  });
 
   /// Arrêts de la course, dans l'ordre.
   final List<ArretCourse> arrets;
@@ -100,21 +279,82 @@ class EtatCourse {
   /// Vrai si le dernier chargement/collecte s'est fait sans réseau.
   final bool horsLigne;
 
+  /// Livraison active — `null` si aucune course.
+  final String? livraisonId;
+
+  /// Commande portée.
+  final String? commandeId;
+
+  /// État serveur de la livraison.
+  final String etat;
+
+  /// Devise ISO 4217.
+  final String devise;
+
+  /// Le client et son repère.
+  final ClientCourseVue client;
+
+  /// De quoi confirmer la remise.
+  final RemiseVue remise;
+
+  /// Actions encore en file (FR-083).
+  final int actionsEnAttente;
+
+  /// Octets de photo restant à transmettre (FR-083).
+  final int octetsPhotosEnAttente;
+
+  /// Une course est-elle en cours ?
+  bool get aUneCourse => livraisonId != null;
+
   /// Prochain arrêt à collecter, ou `null` si tout est collecté.
   ArretCourse? get arretCourant {
     for (final a in arrets) {
-      if (!a.collecte) return a;
+      if (!a.collecte && a.statut != 'indisponible') return a;
     }
     return null;
   }
 
-  /// Tous les arrêts sont collectés (bascule EN_LIVRAISON perçue).
-  bool get toutCollecte => arrets.isNotEmpty && arrets.every((a) => a.collecte);
+  /// Rang de l'arrêt courant (1-based) — le « Arrêt 1 / 3 » de K3.
+  int get rangArretCourant {
+    final courant = arretCourant;
+    if (courant == null) return arrets.length;
+    return arrets.indexWhere((a) => a.arretId == courant.arretId) + 1;
+  }
+
+  /// Tous les arrêts sont résolus (bascule EN_LIVRAISON perçue).
+  bool get toutCollecte =>
+      arrets.isNotEmpty &&
+      arrets.every((a) => a.collecte || a.statut == 'indisponible');
+
+  /// Total à encaisser chez le client — vient du SERVEUR, jamais recalculé
+  /// localement : il inclut les frais de livraison, que l'app ne connaît pas.
+  int get montantAEncaisserUnites => remise.montantAEncaisserUnites;
 
   /// Copie avec substitution.
-  EtatCourse copieAvec({List<ArretCourse>? arrets, bool? horsLigne}) => EtatCourse(
+  EtatCourse copieAvec({
+    List<ArretCourse>? arrets,
+    bool? horsLigne,
+    String? livraisonId,
+    String? commandeId,
+    String? etat,
+    String? devise,
+    ClientCourseVue? client,
+    RemiseVue? remise,
+    int? actionsEnAttente,
+    int? octetsPhotosEnAttente,
+  }) =>
+      EtatCourse(
         arrets: arrets ?? this.arrets,
         horsLigne: horsLigne ?? this.horsLigne,
+        livraisonId: livraisonId ?? this.livraisonId,
+        commandeId: commandeId ?? this.commandeId,
+        etat: etat ?? this.etat,
+        devise: devise ?? this.devise,
+        client: client ?? this.client,
+        remise: remise ?? this.remise,
+        actionsEnAttente: actionsEnAttente ?? this.actionsEnAttente,
+        octetsPhotosEnAttente:
+            octetsPhotosEnAttente ?? this.octetsPhotosEnAttente,
       );
 }
 
@@ -150,38 +390,109 @@ class EtatCourseActive extends _$EtatCourseActive {
 
     // 2. Recharge la course active (post-drain).
     try {
-      final reponse = await ref.read(clientSessionProvider).getQrApi().courseActive();
-      final arrets = reponse.data?.arrets.toList() ?? const <ArretPreProvisionne>[];
-      // Arrêts encore EN ATTENTE de synchro = coches optimistes à PRÉSERVER
-      // (sinon `remplacerCache` les remettrait « à collecter » et le coursier
-      // re-scannerait — perte silencieuse corrigée).
-      final enAttente = <String>{
-        for (final a in await file.enAttente()) _arretDeEndpoint(a.endpoint),
-      };
-      await file.remplacerCache([
-        for (final a in arrets)
-          ArretsPreprovisionnesCompanion.insert(
-            arretId: a.arretId,
-            prestataireId: a.prestataireId,
-            nom: Value(a.nom),
-            empreinteJeton: a.empreinteJeton,
-            empreinteCode: a.empreinteCode,
-            siteLat: a.siteLat,
-            siteLon: a.siteLon,
-            montantAvance: a.montantAvance,
-            devise: a.devise,
-            photoExigee: a.photoExigee,
-            distanceMaxM: Value(a.distanceMaxM),
-          ),
-      ]);
-      for (final id in enAttente) {
-        await file.cocherOptimiste(id);
+      final reponse =
+          await ref.read(clientSessionProvider).getCoursierApi().courseActive();
+      final course = reponse.data;
+      if (course == null) {
+        // `204` — aucune course. La précédente est effacée, NUMÉROS COMPRIS
+        // (R6, FR-034) : une course finie ne laisse pas le téléphone du client
+        // sur l'appareil.
+        final derniere = await file.courseCache();
+        if (derniere != null) await file.effacerCourse(derniere.livraisonId);
+        return const EtatCourse();
       }
+      await _mettreEnCache(file, course);
       return _depuisCache(file);
     } on DioException {
       // Réseau coupé : on sert le cache pré-provisionné (offline-first, V).
       final etat = await _depuisCache(file);
       return etat.copieAvec(horsLigne: true);
+    }
+  }
+
+  /// Écrit la course reçue dans le cache local, coches optimistes PRÉSERVÉES.
+  ///
+  /// Deux préservations, pour deux raisons différentes :
+  ///
+  /// - les arrêts encore EN ATTENTE de synchro gardent leur coche, sinon le
+  ///   rechargement les remettrait « à collecter » et Yao re-scannerait (perte
+  ///   silencieuse corrigée au cycle 006) ;
+  /// - les coches d'ARTICLES sont préservées par `remplacerChecklist` : elles
+  ///   ne sont jamais envoyées au serveur, donc rien ne les rendrait.
+  Future<void> _mettreEnCache(FileActions file, CourseActiveComplete c) async {
+    final enAttente = <String>{
+      for (final a in await file.enAttente()) _arretDeEndpoint(a.endpoint),
+    };
+
+    await file.remplacerCourse(
+      CourseCacheTableCompanion.insert(
+        livraisonId: c.livraisonId,
+        commandeId: c.commandeId,
+        etat: c.etat,
+        majLeLocal: DateTime.now(),
+        devise: Value(c.devise),
+        clientNomUsage: Value(c.client.nomUsage ?? ''),
+        clientTelephone: Value(c.client.telephone),
+        repereTexte: Value(c.client.repereTexte),
+        repereVocalDureeS: Value(c.client.repereVocalDureeS),
+        lieuLat: Value(c.client.lieuLat),
+        lieuLon: Value(c.client.lieuLon),
+        depotAutorise: Value(c.client.depotAutorise),
+        empreinteCode: Value(c.remise.empreinteCode),
+        empreinteJeton: Value(c.remise.empreinteJeton),
+        essaisConsommes: Value(c.remise.essaisConsommes),
+        essaisMax: Value(c.remise.essaisMax),
+        codeBloque: Value(c.remise.codeBloque),
+        montantAEncaisserUnites: Value(c.remise.montantAEncaisserUnites),
+        modePaiement: Value(c.remise.modePaiement),
+        seuilsPreuvesJson: Value(jsonEncode({
+          'appels_min': c.remise.preuves.appelsMin,
+          'espacement_s': c.remise.preuves.espacementS,
+          'presence_s': c.remise.preuves.presenceS,
+          'rayon_m': c.remise.preuves.rayonM,
+          'photos_min': c.remise.preuves.photosMin,
+        })),
+      ),
+    );
+
+    await file.remplacerCache([
+      for (final a in c.arrets)
+        ArretsPreprovisionnesCompanion.insert(
+          arretId: a.arretId,
+          prestataireId: a.prestataireId,
+          nom: Value(a.nom),
+          empreinteJeton: a.empreinteJeton,
+          empreinteCode: a.empreinteCode,
+          siteLat: a.siteLat,
+          siteLon: a.siteLon,
+          montantAvance: a.montantAvance,
+          devise: c.devise,
+          photoExigee: a.photoExigee,
+          distanceMaxM: Value(a.distanceMaxM),
+          statutLocal: Value(a.statut == 'collecte' ? 'collecte' : 'a_collecter'),
+        ),
+    ]);
+
+    final lignes = <LignesChecklistCompanion>[];
+    var ordre = 0;
+    for (final a in c.arrets) {
+      for (final l in a.lignes) {
+        lignes.add(LignesChecklistCompanion.insert(
+          ligneId: l.ligneId,
+          arretId: a.arretId,
+          libelle: l.libelle,
+          quantite: Value(l.quantite),
+          prixUnitaireUnites: Value(l.prixUnitaireUnites),
+          preference: Value(l.preferenceSubstitution),
+          statut: Value(l.statut),
+          ordre: Value(ordre++),
+        ));
+      }
+    }
+    await file.remplacerChecklist(lignes);
+
+    for (final id in enAttente) {
+      await file.cocherOptimiste(id);
     }
   }
 
@@ -271,12 +582,61 @@ class EtatCourseActive extends _$EtatCourseActive {
       octets.map((o) => o.toRadixString(16).padLeft(2, '0')).join();
 
   /// Reconstitue l'état depuis le cache drift (coches optimistes comprises).
+  ///
+  /// **Tout se lit d'ici**, y compris en ligne : le cache est la seule vérité
+  /// que l'écran consulte, et c'est ce qui rend le passage hors ligne
+  /// invisible — il n'y a pas deux chemins de rendu à garder d'accord.
   Future<EtatCourse> _depuisCache(FileActions file, {bool horsLigne = false}) async {
-    final lignes = await file.arretsCache();
+    final arretsCache = await file.arretsCache();
+    final checklist = await file.lignesChecklist();
+    final course = await file.courseCache();
+    final enAttente = await file.enAttente();
+
+    final parArret = <String, List<LigneChecklistVue>>{};
+    for (final l in checklist) {
+      parArret.putIfAbsent(l.arretId, () => []).add(LigneChecklistVue(
+            ligneId: l.ligneId,
+            libelle: l.libelle,
+            quantite: l.quantite,
+            prixUnitaireUnites: l.prixUnitaireUnites,
+            preference: l.preference,
+            statut: l.statut,
+            cochee: l.cochee,
+          ));
+    }
+
     return EtatCourse(
       horsLigne: horsLigne,
+      livraisonId: course?.livraisonId,
+      commandeId: course?.commandeId,
+      etat: course?.etat ?? '',
+      devise: course?.devise ?? 'XOF',
+      actionsEnAttente: enAttente.length,
+      octetsPhotosEnAttente:
+          enAttente.fold(0, (n, a) => n + (a.photoOctets?.length ?? 0)),
+      client: ClientCourseVue(
+        nomUsage: (course?.clientNomUsage ?? '').isEmpty
+            ? null
+            : course!.clientNomUsage,
+        telephone: course?.clientTelephone,
+        repereTexte: course?.repereTexte,
+        repereVocalFichier: course?.repereVocalFichier,
+        repereVocalDureeS: course?.repereVocalDureeS,
+        lieuLat: course?.lieuLat,
+        lieuLon: course?.lieuLon,
+        depotAutorise: course?.depotAutorise ?? false,
+      ),
+      remise: RemiseVue(
+        empreinteCode: course?.empreinteCode ?? '',
+        empreinteJeton: course?.empreinteJeton ?? '',
+        essaisConsommes: course?.essaisConsommes ?? 0,
+        essaisMax: course?.essaisMax ?? 3,
+        codeBloque: course?.codeBloque ?? false,
+        montantAEncaisserUnites: course?.montantAEncaisserUnites ?? 0,
+        modePaiement: course?.modePaiement ?? 'cash',
+      ),
       arrets: [
-        for (final l in lignes)
+        for (final l in arretsCache)
           ArretCourse(
             arretId: l.arretId,
             prestataireId: l.prestataireId,
@@ -290,9 +650,18 @@ class EtatCourseActive extends _$EtatCourseActive {
             photoExigee: l.photoExigee,
             distanceMaxM: l.distanceMaxM,
             collecte: l.statutLocal == 'collecte',
+            statut: l.statutLocal,
+            lignes: parArret[l.arretId] ?? const [],
           ),
       ],
     );
+  }
+
+  /// Coche (ou décoche) un article de la checklist — **strictement local**
+  /// (R11, FR-079). Aucun appel réseau, aucune entrée dans la file.
+  Future<void> cocherArticle(String ligneId, {required bool cochee}) async {
+    await ref.read(fileActionsProvider).cocherLigne(ligneId, cochee: cochee);
+    ref.invalidateSelf();
   }
 
   /// Collecte un arrêt. En ligne : POST multipart immédiat. Hors-ligne (échec

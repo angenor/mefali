@@ -44,7 +44,7 @@ final class DisponibiliteProvider
   }
 }
 
-String _$disponibiliteHash() => r'ff1ac37a78776f915f1788bbf2d2810209d0607f';
+String _$disponibiliteHash() => r'e97a59894d83c5652d79aad54c83880582fc4577';
 
 /// Porteur de la disponibilité — **vit tant que l'app vit**.
 

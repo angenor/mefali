@@ -84,9 +84,9 @@ tâche qui les enfreint est incomplète, même si son code marche :
 - [X] T013 Endpoint `GET /courses/active` dans `backend/api/src/coursier_http.rs` (nouveau module) rendant la structure de `data-model.md` §3 ; **retirer** le handler de `backend/api/src/qr_http.rs` ; garde de rôle **et** de propriété ; note vocale servie en **URL présignée** — puis annotations `#[utoipa::path]` à jour, `./scripts/generate-clients.sh`, `git diff --exit-code clients/` vide, `cargo build` vert
 - [X] T014 Câbler `PgCoursier` dans `backend/api/src/lib.rs` (après `PgQr`, avant le dispatch), enregistrer `coursier_http` dans les deux points de montage de routes ; `PreuvesFixes` **reste** câblé jusqu'à T058
 - [X] T015 Test d'intégration `backend/api/tests/coursier_course_active.rs` : structure complète servie, `204` sans course, `403` pour un autre coursier, **aucun secret** dans la réponse (assertion explicite sur `code_livraison` et `jeton_reception`), lignes correctement groupées par arrêt
-- [ ] T016 Adapter `apps/mefali_pro/lib/coursier/course/etat_course.dart` au nouveau contrat : `ArretCourse` gagne ses lignes, `EtatCourse` gagne `client` et `remise`, écriture dans `course_cache` et `lignes_checklist`, préservation des coches optimistes existantes ; `build_runner` + `dart analyze`
-- [ ] T017 [P] Non-régression de l'existant : mettre à jour `apps/mefali_pro/test/coursier/course/` (scan, coche optimiste, drain de file) pour le nouveau contrat — les tests du cycle 006 doivent rester verts
-- [ ] T018 [P] Effacement du cache local (dont **les deux numéros de téléphone**) à la clôture de la course dans `apps/packages/mefali_core/lib/src/offline/file_actions.dart` + test de la base locale (`research.md` R6)
+- [X] T016 Adapter `apps/mefali_pro/lib/coursier/course/etat_course.dart` au nouveau contrat : `ArretCourse` gagne ses lignes, `EtatCourse` gagne `client` et `remise`, écriture dans `course_cache` et `lignes_checklist`, préservation des coches optimistes existantes ; `build_runner` + `dart analyze`
+- [X] T017 [P] Non-régression de l'existant : mettre à jour `apps/mefali_pro/test/coursier/course/` (scan, coche optimiste, drain de file) pour le nouveau contrat — les tests du cycle 006 doivent rester verts
+- [X] T018 [P] Effacement du cache local (dont **les deux numéros de téléphone**) à la clôture de la course dans `apps/packages/mefali_core/lib/src/offline/file_actions.dart` + test de la base locale (`research.md` R6)
 
 **Checkpoint**: l'app détient toute la course dès l'assignation, hors ligne comprise. Les stories peuvent démarrer.
 
