@@ -757,6 +757,54 @@ class EtatCourseActive extends _$EtatCourseActive {
     );
   }
 
+  /// Journalise un appel passé via l'app (FR-030 → FR-033) et rend son
+  /// `uuid_client`, avec lequel l'issue sera déclarée au retour.
+  ///
+  /// **Aucun numéro ne part au serveur** : il ne voit pas l'appel, il en garde
+  /// l'intention, la direction et le motif (R6).
+  ///
+  /// Comme toute action du cycle, elle passe par la file si le réseau manque —
+  /// un appel passé sous un pont compte autant qu'un autre pour la preuve.
+  Future<String> journaliserAppel({
+    required String livraisonId,
+    required String vers,
+    required String motif,
+    String? prestataireId,
+  }) async {
+    final uuidClient = _uuid.v7();
+    await _envoyerOuEnfiler(
+      endpoint: '/courses/$livraisonId/appels',
+      payload: {
+        'uuid_client': uuidClient,
+        'vers': vers,
+        'motif': motif,
+        'prestataire_id': ?prestataireId,
+        'passe_le_local': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+    return uuidClient;
+  }
+
+  /// Déclare l'issue d'un appel au RETOUR (R19). Réseau seulement : une issue
+  /// est une observation, pas un fait métier — la perdre ne coûte qu'un
+  /// affichage, et l'enfiler encombrerait la file pour rien.
+  Future<void> declarerIssueAppel({
+    required String livraisonId,
+    required String uuidClient,
+    required String issue,
+  }) async {
+    try {
+      await ref.read(clientSessionProvider).dio.patch<dynamic>(
+        '/courses/$livraisonId/appels',
+        data: {'uuid_client': uuidClient, 'issue': issue},
+      );
+      ref.invalidateSelf();
+    } on DioException {
+      // Sans réseau, l'issue reste `inconnue` côté serveur. Ce n'est pas une
+      // perte : elle n'est JAMAIS un critère de preuve (R19).
+    }
+  }
+
   /// Déclare un ARRÊT ENTIER impossible (FR-018) — vendeur fermé, plus rien en
   /// stock. Le montant de l'arrêt tombe à zéro et la course passe au suivant.
   Future<String?> declarerArretIndisponible({

@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../../l10n/app_localizations.dart';
+import 'appels_course.dart';
 import 'bandeau_livraison.dart';
 import 'carte_arret.dart';
 import 'checklist_articles.dart';
@@ -119,6 +120,8 @@ class _CorpsCourse extends ConsumerWidget {
                 ? BandeauLivraison(
                     etat: etat,
                     enLigne: enLigne,
+                    onAppelerClient: () => ActionsAppel(ref: ref)
+                        .appelerClient(context, etat: etat, motif: 'suivi'),
                     onArriveChezClient: () => _transition(ref, etat, 'arrive'),
                   )
                 : _Collecte(etat: etat, enLigne: enLigne),
@@ -207,6 +210,8 @@ class _Collecte extends ConsumerWidget {
                 rang: rang,
                 total: etat.arrets.length,
                 enLigne: enLigne,
+                onAppeler: () => ActionsAppel(ref: ref)
+                    .appelerVendeur(context, etat: etat, arret: courant),
               ),
               const SizedBox(height: MefaliTokens.space2),
               if (courant.lignes.isNotEmpty) ...[

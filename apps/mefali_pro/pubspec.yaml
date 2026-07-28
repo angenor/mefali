@@ -71,6 +71,17 @@ dependencies:
   # 009). Le push de NTF-01 ne remplacerait pas ce canal : il ne maintient ni la
   # position ni la mesure de présence.
   flutter_local_notifications: 22.2.0
+  # Composition d'un numéro (`tel:`) et ouverture d'un itinéraire (`geo:`).
+  #
+  # ⚠ TROISIÈME plugin natif, là où research.md R12 en prévoyait deux. L'écart
+  # est assumé et documenté : sans lui, les boutons « Appeler » de K3 et le
+  # numéro d'agence de K4-1d n'ouvrent rien — et FR-033 exige que les appels
+  # passent PAR L'APP pour compter comme preuve. Un bouton inerte aurait été le
+  # pire des deux mondes : la preuve exigée, le moyen absent.
+  #
+  # Il ne change rien à la règle de R12 (les ajouter tôt, en une fois, garder la
+  # logique en Dart) : il arrive dans le même lot, avant tout code d'appel.
+  url_launcher: 6.3.2
 
 dev_dependencies:
   flutter_test:
