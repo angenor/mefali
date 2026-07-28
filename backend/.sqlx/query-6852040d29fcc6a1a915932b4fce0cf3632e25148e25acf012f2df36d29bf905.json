@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dispatch.offre\n                 (id, commande_id, coursier_id, zone_id, mode, rang, score,\n                  montant_a_avancer, devise, emise_le, echeance_le)\n             VALUES ($1, $2, $3, $4, $5::text::dispatch.mode_offre, $6, $7, $8, $9, $10, $11)\n             ON CONFLICT DO NOTHING\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int2",
+        "Int4",
+        "Int8",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6852040d29fcc6a1a915932b4fce0cf3632e25148e25acf012f2df36d29bf905"
+}

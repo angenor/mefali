@@ -15,6 +15,8 @@ import 'package:mefali_api_client/src/api/commandes_api.dart';
 import 'package:mefali_api_client/src/api/commandes_admin_api.dart';
 import 'package:mefali_api_client/src/api/courses_api.dart';
 import 'package:mefali_api_client/src/api/coursier_api.dart';
+import 'package:mefali_api_client/src/api/dispatch_api.dart';
+import 'package:mefali_api_client/src/api/dispatch_admin_api.dart';
 import 'package:mefali_api_client/src/api/moi_api.dart';
 import 'package:mefali_api_client/src/api/prestataires_api.dart';
 import 'package:mefali_api_client/src/api/qr_api.dart';
@@ -151,6 +153,18 @@ class MefaliApiClient {
   /// by doing that all interceptors will not be executed
   CoursierApi getCoursierApi() {
     return CoursierApi(dio, serializers);
+  }
+
+  /// Get DispatchApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  DispatchApi getDispatchApi() {
+    return DispatchApi(dio, serializers);
+  }
+
+  /// Get DispatchAdminApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  DispatchAdminApi getDispatchAdminApi() {
+    return DispatchAdminApi(dio, serializers);
   }
 
   /// Get MoiApi instance, base route and serializer can be overridden by a given but be careful,

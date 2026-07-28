@@ -46,6 +46,15 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   riverpod_generator: ^4.0.4
   build_runner: ^2.15.1
+  # Transitive de riverpod_generator, épinglée à l'IDENTIQUE dans les TROIS
+  # paquets : SC-008 exige qu'ils génèrent avec la MÊME version — deux `.g.dart`
+  # produits par deux générateurs différents divergent sans que rien ne le
+  # signale. Ce lockfile l'avait résolue en 4.2.4 contre 4.2.3 ailleurs.
+  #
+  # ⚠ Le rattrapage précédent n'avait aligné que le LOCKFILE, sans poser de
+  # contrainte : la prochaine résolution l'aurait défait, par l'accident exact
+  # qui l'avait cassé. `verifier-accord-locks.sh` serait resté vert entre-temps.
+  source_gen: 4.2.3
 
 flutter:
   uses-material-design: true

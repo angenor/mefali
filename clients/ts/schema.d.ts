@@ -123,6 +123,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/dispatch/alertes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/dispatch/alertes` — ce qui demande un humain. */
+        get: operations["alertes_dispatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/dispatch/courses/{livraison_id}/reprendre": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/dispatch/courses/{livraison_id}/reprendre` — la seule voie de
+         *     reprise d'une course dont un arrêt est **déjà collecté**.
+         * @description L'automatisme s'y refuse par construction (FR-075), parce que le coursier a
+         *     engagé ses fonds propres. Cet endpoint n'annule aucune dette et n'écrit
+         *     aucune caisse : il émet `dispatch.reassignation` avec `acteur: admin` et
+         *     laisse la caisse (CRS-06) et le litige (AVI-04) à leurs cycles.
+         *
+         *     `422` si aucun arrêt n'est collecté — dans ce cas l'automatisme suffit, et
+         *     une action manuelle masquerait un défaut de pipeline.
+         */
+        post: operations["reprendre_course_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/dispatch/pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /admin/dispatch/pool` — les coursiers en ligne d'une zone.
+         * @description Matière de la « carte des coursiers » d'ADM-02. Le rôle `Admin` est la garde :
+         *     c'est le seul endroit du cycle où une position sort du serveur.
+         *
+         *     **Une zone, rien d'autre** (contrat §2.2). L'exploitation demande « qui est en
+         *     ligne », pas « qui est près d'ici » : elle n'a aucun centre à proposer, et
+         *     l'approcher par un rayon très large écarterait en silence le coursier qui le
+         *     dépasse. Le port [`dispatch::PoolCoursiers::membres`] répond exactement à
+         *     cette question — l'index GEO de Redis est un zset, qui sait s'énumérer.
+         *
+         *     Les **fantômes** de l'index (membre survivant à son état, research R2) sont
+         *     omis : la carte ne montre que ce dont on connaît la position et l'âge.
+         */
+        get: operations["pool_dispatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires": {
         parameters: {
             query?: never;
@@ -858,6 +932,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/offre-courante": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /courses/offre-courante` — l'offre en vol de CE coursier, ou `204`.
+         * @description Une offre **échue** rend `204` **même si le tic n'a pas encore passé** :
+         *     l'échéance persistée est l'autorité, et le tic ne fait qu'écrire ce que la
+         *     lecture savait déjà (research R1).
+         *
+         *     C'est l'app qui **va chercher** son offre (toutes les 2 s tant qu'un écran de
+         *     dispatch est monté) : le push haute priorité appartient à NTF-01, et le jour
+         *     où il arrivera il réveillera l'app, qui appellera ce même endpoint — aucun
+         *     contrat à refaire (research R16).
+         */
+        get: operations["offre_courante"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/offres/{offre_id}/accepter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /courses/offres/{offre_id}/accepter` — prendre la course.
+         * @description **Idempotent** (FR-054) : un rejeu avec le même `uuid_client` rend le même
+         *     `200` et le même corps ; il ne crée ni seconde affectation ni second
+         *     événement.
+         *
+         *     Un `409 deja_prise` n'est **pas** un échec technique : l'app l'affiche comme
+         *     l'état K2-1b, ton neutre, sans blâme et **sans pénalité** (FR-049).
+         */
+        post: operations["accepter_offre"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/offres/{offre_id}/refuser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /courses/offres/{offre_id}/refuser` — passer son tour.
+         * @description Le candidat suivant est sollicité **immédiatement**, sans attendre la fin du
+         *     compte à rebours (FR-050). Un refus compte dans le taux d'acceptation ; il
+         *     n'entraîne **aucune** sanction — l'anti-abus (DSP-08) est hors périmètre.
+         */
+        post: operations["refuser_offre"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
         parameters: {
             query?: never;
@@ -1120,6 +1268,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/disponibilite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /moi/disponibilite` — l'état courant, tel que K1 l'affiche. */
+        get: operations["lire_disponibilite"];
+        /**
+         * `PUT /moi/disponibilite` — se mettre en ligne ou hors ligne.
+         * @description ⚠ Le suffixe `_coursier` n'est pas décoratif : utoipa dérive l'`operationId`
+         *     du NOM DE LA FONCTION, et `vendeur_http::basculer_disponibilite` (bascule
+         *     d'un article en rupture) porte déjà le nom court. Deux `operationId`
+         *     identiques font échouer la génération des clients — donc la CI.
+         *
+         *     Passer `en_ligne: false` retire du pool **immédiatement**, sans attendre
+         *     l'expiration (FR-005) : un coursier qui a rangé sa moto ne doit pas voir son
+         *     téléphone sonner 90 s plus tard.
+         *
+         *     Se mettre en ligne exige un dossier valide et **au moins une capacité
+         *     déclarée** : sans véhicule, aucune course ne pourra jamais lui être proposée,
+         *     et le lui dire tout de suite vaut mieux qu'une attente muette.
+         */
+        put: operations["basculer_disponibilite_coursier"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/dossier-coursier": {
         parameters: {
             query?: never;
@@ -1135,6 +1315,33 @@ export interface paths {
          *     rôle (FR-015).
          */
         post: operations["soumettre_dossier_coursier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /moi/position` — publier sa position, et rester dans le pool.
+         * @description `204` si le coursier n'est pas en ligne : la position n'est pas **refusée**,
+         *     elle est **ignorée** — l'app peut être en retard d'un tic après un « hors
+         *     ligne », et lui rendre une erreur ferait clignoter un écran pour rien.
+         *
+         *     **Idempotence** : rejouer la même position repousse simplement la durée de
+         *     vie ; aucun événement n'est écrit dans les deux cas (une position est un fait
+         *     éphémère qui se répète toutes les 30 s, et elle porte une coordonnée que la
+         *     minimisation interdit de journaliser).
+         */
+        post: operations["publier_position"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1413,6 +1620,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Résultat d'une acceptation. */
+        AcceptationOffre: {
+            /**
+             * Format: uuid
+             * @description Commande affectée.
+             */
+            commande_id: string;
+            /** @description État de la livraison après affectation. */
+            etat_livraison: string;
+            /**
+             * Format: uuid
+             * @description Livraison assignée.
+             */
+            livraison_id: string;
+            /** @description Vrai si l'appel était un rejeu — même corps, aucune seconde affectation. */
+            rejeu: boolean;
+        };
         /** @description Réponse UNIQUE de `/auth/otp/demander`. */
         Accepte: {
             /**
@@ -1504,6 +1728,13 @@ export interface components {
          * @enum {string}
          */
         AffichageRupture: "grise" | "masque";
+        /** @description Le tableau d'alertes de l'exploitation. */
+        AlertesDispatch: {
+            /** @description Courses assignées sans progression. */
+            courses_bloquees: components["schemas"]["CourseBloquee"][];
+            /** @description Commandes escaladées, **les plus anciennes d'abord**. */
+            escalades: components["schemas"]["EscaladeDispatch"][];
+        };
         /** @description Appareil déclaré par l'app à l'ouverture de session. */
         AppareilDto: {
             /** @description Nom lisible (« Pixel 7 de poche »), affiché tel quel dans la liste. */
@@ -1527,6 +1758,26 @@ export interface components {
             prestataire_nom?: string | null;
             /** @description Statut de l'arrêt. */
             statut: string;
+        };
+        /** @description Un arrêt de l'offre, tel que K2 l'affiche. */
+        ArretOffre: {
+            /**
+             * Format: int64
+             * @description Distance INTER-ARRÊTS (mètres) — « + 40 m » de la maquette.
+             */
+            distance_m: number;
+            /** @description Nom affiché sur la carte. */
+            nom: string;
+            /**
+             * Format: int32
+             * @description Rang d'affichage (1 = premier arrêt).
+             */
+            ordre: number;
+            /**
+             * Format: uuid
+             * @description Prestataire visé.
+             */
+            prestataire_id?: string | null;
         };
         /** @description Arrêt pré-provisionné (empreintes, jamais de secret). */
         ArretPreProvisionne: {
@@ -1651,6 +1902,32 @@ export interface components {
              */
             scan: string;
         };
+        /** @description Ce que le coursier devra avancer, avec son plafond. */
+        AvanceOffre: {
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Montant à avancer (unités mineures).
+             */
+            montant_unites: number;
+            /**
+             * Format: int64
+             * @description Plafond RETENU du coursier — pourquoi il peut la prendre.
+             */
+            plafond_retenu_unites: number;
+        };
+        /** @description Bascule de disponibilité et déclaration du plafond d'avance du jour. */
+        BasculeDisponibilite: {
+            /** @description Vrai pour entrer dans le pool, faux pour en sortir **immédiatement**. */
+            en_ligne: boolean;
+            /**
+             * Format: int64
+             * @description Ce que le coursier peut avancer aujourd'hui (unités mineures).
+             *     Obligatoire pour se mettre en ligne, ignoré pour en sortir.
+             */
+            plafond_declare_unites?: number | null;
+        };
         /** @description Corps de la bascule. */
         BasculeDisponibiliteDto: {
             /** @description `false` = rupture, `true` = retour en vente. */
@@ -1676,6 +1953,13 @@ export interface components {
             rappel_ouverture: boolean;
             /** @description Statut DÉCLARÉ (l'effectif peut différer — FR-032). */
             statut: components["schemas"]["StatutBoutique"];
+        };
+        /** @description Une capacité déclarée, telle que l'app l'affiche. */
+        CapaciteCoursier: {
+            /** @description Famille de capacité (MVP : `transport`). */
+            famille: string;
+            /** @description Valeur dans la famille (slug de transport). */
+            valeur: string;
         };
         /** @description Catégorie active (contrat). */
         CategorieDto: {
@@ -2022,6 +2306,79 @@ export interface components {
              */
             livraison_id?: string | null;
         };
+        /** @description Une course assignée qui n'avance pas (FR-075). */
+        CourseBloquee: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /**
+             * Format: uuid
+             * @description Coursier assigné.
+             */
+            coursier_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Livraison concernée.
+             */
+            livraison_id: string;
+            /** @description Critère constaté : `sans_mouvement` | `sans_scan`. */
+            motif: string;
+            /**
+             * Format: int64
+             * @description Arrêts déjà collectés. **`> 0` ⇒ aucune reprise automatique possible.**
+             */
+            nb_arrets_collectes: number;
+            /**
+             * @description Faux quand un arrêt est collecté : seule une décision humaine motivée
+             *     peut alors trancher, parce que le coursier a engagé ses fonds propres.
+             */
+            reprise_automatique_possible: boolean;
+            /**
+             * Format: int64
+             * @description Durée de stagnation constatée (secondes).
+             */
+            stagnation_s: number;
+        };
+        /** @description Un coursier du pool, tel que la carte d'ADM-02 le montrera. */
+        CoursierDuPool: {
+            /**
+             * Format: int64
+             * @description Âge de la dernière publication (secondes) — l'exploitation doit savoir
+             *     si elle regarde une position fraîche ou un point figé.
+             */
+            age_s: number;
+            /** @description Capacités déclarées (slugs). */
+            capacites: string[];
+            /**
+             * Format: uuid
+             * @description Course en cours, s'il y en a une.
+             */
+            course_active?: string | null;
+            /**
+             * Format: uuid
+             * @description Compte du coursier.
+             */
+            coursier_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: double
+             * @description Dernière latitude publiée.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Dernière longitude publiée.
+             */
+            lon: number;
+            /**
+             * Format: int64
+             * @description Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`.
+             */
+            plafond_unites: number;
+        };
         /** @description Le coursier affecté, tel que l'écran de suivi le montre. */
         CoursierSuivi: {
             /** @description Vrai si l'app peut proposer d'appeler. */
@@ -2079,6 +2436,19 @@ export interface components {
              * @description Ville de rattachement — type `ville` exigé (FR-002).
              */
             ville_id: string;
+        };
+        /** @description Décision sur une offre — accepter ou refuser. */
+        DecisionOffre: {
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil — **observation seulement**.
+             */
+            horodatage_local: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
         };
         /** @description Corps de la décision. */
         DecisionRole: {
@@ -2212,6 +2582,11 @@ export interface components {
             /** @description Clé de la photo déposée sur place (mode `depot`). */
             photo_cle?: string | null;
         };
+        /** @description Demande de reprise manuelle — **motif obligatoire**. */
+        DemandeReprise: {
+            /** @description Pourquoi l'exploitation reprend cette course. Journalisé avec son auteur. */
+            motif: string;
+        };
         /** @description Partie JSON `demande` du multipart de rupture. */
         DemandeRupture: {
             /**
@@ -2296,6 +2671,18 @@ export interface components {
              * @description La photo.
              */
             fichier: string;
+        };
+        /** @description La destination, **avant** acceptation : jamais de coordonnée (ARTCI). */
+        DestinationOffre: {
+            /**
+             * Format: int64
+             * @description Distance approximative depuis le dernier arrêt (mètres arrondis).
+             */
+            distance_m: number;
+            /** @description Clé i18n de la mention « adresse exacte après acceptation ». */
+            mention_cle: string;
+            /** @description Nom de la zone de livraison. */
+            zone_nom: string;
         };
         /** @description Devis figé. */
         Devis: {
@@ -2483,6 +2870,38 @@ export interface components {
             /** @description Clé i18n fr — aucune chaîne UI en dur (constitution VII). */
             message_cle: string;
         };
+        /** @description Une commande escaladée : personne ne l'a prise au seuil de zone (FR-064). */
+        EscaladeDispatch: {
+            /**
+             * Format: int64
+             * @description Ancienneté au moment de l'escalade (secondes).
+             */
+            age_s: number;
+            /** @description Par quel chemin elle est arrivée là : `file` | `pipeline`. */
+            chemin: string;
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description État courant du tronc. */
+            etat: string;
+            /**
+             * Format: int64
+             * @description Nombre d'offres déjà émises pour elle.
+             */
+            nb_offres_emises: number;
+            /**
+             * Format: int64
+             * @description Seuil de zone franchi (secondes).
+             */
+            seuil_s: number;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
+        };
         /** @description État de l'arrêt et de sa course après la transition. */
         EtatArretCourse: {
             /**
@@ -2543,6 +2962,51 @@ export interface components {
              */
             zone: string;
         };
+        /**
+         * @description État de disponibilité, tel que l'écran K1 l'affiche.
+         *
+         *     Les DEUX plafonds sont rendus : Yao voit toujours **lequel** s'applique
+         *     (`plafond_source`) et **pourquoi** (`palier_note_cle`). Un coursier à qui
+         *     l'on refuse une course sans lui dire que son palier le limite croira à un
+         *     bug.
+         */
+        EtatDisponibilite: {
+            /** @description Capacités déclarées au dossier coursier. */
+            capacites: components["schemas"]["CapaciteCoursier"][];
+            /** @description Vrai seulement après une position publiée : l'intention ne suffit pas. */
+            dans_le_pool: boolean;
+            /** @description Devise ISO 4217 de la zone. */
+            devise: string;
+            /** @description Intention déclarée aujourd'hui. */
+            en_ligne: boolean;
+            /** @description Jour civil de la déclaration. */
+            jour: string;
+            /**
+             * Format: int32
+             * @description Note du coursier, ou `null` tant qu'AVI n'existe pas.
+             */
+            note_centiemes?: number | null;
+            /** @description Clé i18n du palier appliqué. */
+            palier_note_cle: string;
+            /**
+             * Format: int64
+             * @description Période de publication attendue (paramètre de zone du cycle 008).
+             */
+            periode_position_s: number;
+            /**
+             * Format: int64
+             * @description Plafond déclaré du jour, ou `null` si rien n'a été déclaré (FR-011 :
+             *     jamais reporté — l'app le redemande au nouveau jour).
+             */
+            plafond_declare_unites?: number | null;
+            /**
+             * Format: int64
+             * @description Ce qui s'applique : `min(déclaré, palier de la grille)`.
+             */
+            plafond_retenu_unites: number;
+            /** @description `grille_note` | `declaration`. */
+            plafond_source: string;
+        };
         /** @description État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032). */
         EtatEffectifBoutique: {
             /** @description La boutique reçoit-elle des commandes en cet instant ? */
@@ -2552,6 +3016,21 @@ export interface components {
              * @description Prochaine réouverture estimée quand fermée (FR-029).
              */
             reouverture_estimee?: string | null;
+        };
+        /** @description Ce que la publication rend à l'app. */
+        EtatPublicationPosition: {
+            /** @description Vrai si le coursier est (re)devenu membre du pool. */
+            dans_le_pool: boolean;
+            /**
+             * Format: int64
+             * @description Période attendue de la prochaine publication (secondes).
+             */
+            prochaine_publication_s: number;
+            /**
+             * Format: int64
+             * @description Durée de vie de l'inscription (secondes) — trois périodes manquées.
+             */
+            ttl_s: number;
         };
         /** @description État d'un rôle (contrat). */
         EtatRoleDto: {
@@ -2609,6 +3088,31 @@ export interface components {
          * @enum {string}
          */
         ForcageDto: "automatique" | "force_actif" | "force_inactif";
+        /** @description Le gain, détaillé comme sur K2. */
+        GainOffre: {
+            /**
+             * Format: int64
+             * @description Part des arrêts supplémentaires.
+             */
+            arrets_unites: number;
+            /**
+             * Format: int64
+             * @description Part de déplacement.
+             */
+            deplacement_unites: number;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Part d'effort.
+             */
+            effort_unites: number;
+            /**
+             * Format: int64
+             * @description Gain total (unités mineures).
+             */
+            total_unites: number;
+        };
         /** @description Grille servie à l'admin (en-tête + règles + statut de simulation). */
         Grille: {
             /**
@@ -2979,6 +3483,46 @@ export interface components {
             /** @description Repère écrit. */
             repere_texte?: string | null;
         };
+        /** @description L'offre en vol, telle que l'écran K2 la rend. */
+        OffreCourante: {
+            /** @description Arrêts dans l'ordre optimisé du devis FIGÉ. */
+            arrets: components["schemas"]["ArretOffre"][];
+            /** @description Avance et plafond. */
+            avance: components["schemas"]["AvanceOffre"];
+            /**
+             * Format: uuid
+             * @description Commande offerte.
+             */
+            commande_id: string;
+            /** @description Vrai si les distances viennent du repli vol d'oiseau (constitution IV). */
+            degraded: boolean;
+            /** @description Destination approximative. */
+            destination: components["schemas"]["DestinationOffre"];
+            /**
+             * Format: date-time
+             * @description **AUTORITÉ** du compte à rebours : le widget compte, le serveur tranche.
+             */
+            echeance_le: string;
+            /** @description Gain détaillé. */
+            gain: components["schemas"]["GainOffre"];
+            /** @description `cascade` | `broadcast`. */
+            mode: string;
+            /**
+             * Format: uuid
+             * @description Offre concernée.
+             */
+            offre_id: string;
+            /**
+             * Format: int64
+             * @description Secondes restantes à l'instant de la lecture.
+             */
+            restant_s: number;
+            /**
+             * Format: int64
+             * @description Durée totale du compte à rebours (secondes).
+             */
+            timer_s: number;
+        };
         /**
          * @description Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa
          *     configuration relève de VND, son financement de PAY (hors périmètre).
@@ -3076,6 +3620,16 @@ export interface components {
              * @description Longitude en degrés décimaux.
              */
             lon: number;
+        };
+        /** @description Le pool d'une zone. */
+        PoolDeZone: {
+            /** @description Coursiers présents dans le pool. */
+            coursiers: components["schemas"]["CoursierDuPool"][];
+            /**
+             * Format: uuid
+             * @description Zone interrogée.
+             */
+            zone_id: string;
         };
         /** @description Position du coursier, **toujours accompagnée de son âge**. */
         PositionSuivi: {
@@ -3178,6 +3732,35 @@ export interface components {
              */
             collectes_total: number;
         };
+        /** @description Publication de position. */
+        PublicationPosition: {
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil. **Observation seulement** : le serveur écrit le
+             *     sien (FR-055).
+             */
+            horodatage_local: string;
+            /**
+             * Format: double
+             * @description Latitude.
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude.
+             */
+            lon: number;
+            /**
+             * Format: int32
+             * @description Précision annoncée par le téléphone (mètres), informative.
+             */
+            precision_m?: number | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
+        };
         /** @description Rattachement compte ↔ prestataire. */
         RattachementDto: {
             /**
@@ -3198,6 +3781,11 @@ export interface components {
              * @description Compte vérifié à rattacher.
              */
             compte_id: string;
+        };
+        /** @description Résultat d'un refus. */
+        RefusOffre: {
+            /** @description Issue de l'offre après refus. */
+            issue: string;
         };
         /** @description Règle servie à l'admin. */
         Regle: {
@@ -3369,6 +3957,21 @@ export interface components {
              * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
              */
             note_vocale: string;
+        };
+        /** @description Résultat d'une reprise manuelle. */
+        RepriseFaite: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description État du tronc après reprise. */
+            etat_commande: string;
+            /**
+             * Format: uuid
+             * @description Incident tracé.
+             */
+            incident_id: string;
         };
         /** @description Résolution d'un jeton de plaque (contrat). */
         ResolutionPlaque: {
@@ -4110,6 +4713,148 @@ export interface operations {
             };
             /** @description Motif absent pour un refus ou une suspension. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    alertes_dispatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Escalades et courses bloquées, plus anciennes d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertesDispatch"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    reprendre_course_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Course à reprendre. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeReprise"];
+            };
+        };
+        responses: {
+            /** @description Coursier retiré, incident tracé avec son auteur. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepriseFaite"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Livraison inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent, ou aucun arrêt collecté (l'automatisme suffit). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    pool_dispatch: {
+        parameters: {
+            query: {
+                /** @description Zone dont on lit le pool. */
+                zone_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Coursiers du pool, avec l'âge de leur position. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolDeZone"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6452,6 +7197,177 @@ export interface operations {
             };
         };
     };
+    offre_courante: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offre en vol : arrêts, gain, avance, échéance. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffreCourante"];
+                };
+            };
+            /** @description Aucune offre en vol (ou offre échue). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    accepter_offre: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Offre adressée à l'appelant. */
+                offre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionOffre"];
+            };
+        };
+        responses: {
+            /** @description Course affectée (idempotent au rejeu). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptationOffre"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Offre inconnue, ou adressée à un autre coursier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course déjà prise (sans pénalité), offre échue, ou course active. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    refuser_offre: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Offre adressée à l'appelant. */
+                offre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionOffre"];
+            };
+        };
+        responses: {
+            /** @description Offre refusée ; le suivant est sollicité aussitôt. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefusOffre"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Offre inconnue, ou adressée à un autre coursier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Offre déjà conclue. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     arret_arrive: {
         parameters: {
             query?: never;
@@ -7267,6 +8183,113 @@ export interface operations {
             };
         };
     };
+    lire_disponibilite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État courant : en ligne, plafond retenu et son palier, appartenance au pool. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatDisponibilite"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    basculer_disponibilite_coursier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BasculeDisponibilite"];
+            };
+        };
+        responses: {
+            /** @description Disponibilité à jour, avec le plafond RETENU et son palier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatDisponibilite"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide, ou course active (se mettre hors ligne en course est un abandon, pas une sortie de pool). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucun véhicule déclaré, ou plafond manquant à la mise en ligne. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     mon_dossier_coursier: {
         parameters: {
             query?: never;
@@ -7359,6 +8382,64 @@ export interface operations {
             };
             /** @description Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    publier_position: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicationPosition"];
+            };
+        };
+        responses: {
+            /** @description Position publiée ; l'inscription au pool est repoussée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatPublicationPosition"];
+                };
+            };
+            /** @description Coursier hors ligne — position ignorée, pas refusée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

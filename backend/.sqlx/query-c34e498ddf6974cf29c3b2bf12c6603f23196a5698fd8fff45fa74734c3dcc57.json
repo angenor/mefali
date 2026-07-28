@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.livraison SET coursier_id = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c34e498ddf6974cf29c3b2bf12c6603f23196a5698fd8fff45fa74734c3dcc57"
+}

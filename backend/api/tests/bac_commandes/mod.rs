@@ -240,11 +240,28 @@ impl Bac {
             Arc::new(AucuneCommandeActive),
             Arc::from(SECRET_PLAQUE),
         );
-        let tarif = Arc::new(TarifFixe::simple(
-            DEVIS_PRIX_CLIENT,
-            DEVIS_PART_COURSIER,
-            0,
-        ));
+        // Les COMPOSANTES ne sont pas décoratives : le détail du gain que
+        // l'écran d'offre affiche à Yao s'en déduit. Toutes à zéro (le défaut de
+        // `simple`), le bac rendait un devis impossible — part coursier de
+        // 2 500 sans une seule composante — et tout contrôle du détail y
+        // passait, même faux.
+        //
+        // Elles tiennent l'invariant du modèle :
+        // 1 500 (base, marge nulle) + 700 (km) + 300 (effort) = 2 500.
+        let tarif = Arc::new(
+            TarifFixe::simple(DEVIS_PRIX_CLIENT, DEVIS_PART_COURSIER, 0).avec_composantes(
+                tarification::Composantes {
+                    base: 1_500,
+                    km: 700,
+                    supplements: 0,
+                    effort_paliers: 50,
+                    effort_attente: 100,
+                    effort_arrets: 150,
+                    arrondi: 0,
+                    retenue_vendeur: 0,
+                },
+            ),
+        );
         let restrictions = Arc::new(RestrictionsSimulees::nouveau());
         let positions = Arc::new(PositionFixe::nouveau());
         let preuves = Arc::new(PreuvesFixes::nouveau());

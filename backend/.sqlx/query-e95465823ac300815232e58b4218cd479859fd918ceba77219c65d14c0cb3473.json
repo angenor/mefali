@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.capacite_requise (livraison_id, famille, valeur)\n             VALUES ($1, 'transport', $2)\n             ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e95465823ac300815232e58b4218cd479859fd918ceba77219c65d14c0cb3473"
+}

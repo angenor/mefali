@@ -7,20 +7,26 @@ part of 'serializers.dart';
 // **************************************************************************
 
 Serializers _$serializers = (Serializers().toBuilder()
+      ..add(AcceptationOffre.serializer)
       ..add(Accepte.serializer)
       ..add(ActionArret.serializer)
       ..add(ActionBoutiqueDto.serializer)
       ..add(ActionRoleDto.serializer)
       ..add(Adresse.serializer)
       ..add(AffichageRupture.serializer)
+      ..add(AlertesDispatch.serializer)
       ..add(AppareilDto.serializer)
       ..add(ArretCourantSuivi.serializer)
+      ..add(ArretOffre.serializer)
       ..add(ArretPreProvisionne.serializer)
       ..add(ArticlePublic.serializer)
       ..add(ArticleVendeur.serializer)
       ..add(Attente.serializer)
+      ..add(AvanceOffre.serializer)
+      ..add(BasculeDisponibilite.serializer)
       ..add(BasculeDisponibiliteDto.serializer)
       ..add(BoutiqueVendeur.serializer)
+      ..add(CapaciteCoursier.serializer)
       ..add(CategorieDto.serializer)
       ..add(CharteAdminDto.serializer)
       ..add(Commande.serializer)
@@ -36,9 +42,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CorpsForcage.serializer)
       ..add(CorrigerDto.serializer)
       ..add(CourseActive.serializer)
+      ..add(CourseBloquee.serializer)
+      ..add(CoursierDuPool.serializer)
       ..add(CoursierSuivi.serializer)
       ..add(CreerArticleDto.serializer)
       ..add(CreerPrestataireDto.serializer)
+      ..add(DecisionOffre.serializer)
       ..add(DecisionRole.serializer)
       ..add(DecisionSubstitution.serializer)
       ..add(DemandeAnnulation.serializer)
@@ -49,8 +58,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DemandeOtp.serializer)
       ..add(DemandeRafraichissement.serializer)
       ..add(DemandeRemise.serializer)
+      ..add(DemandeReprise.serializer)
       ..add(DemandeRupture.serializer)
       ..add(DemandeSimulation.serializer)
+      ..add(DestinationOffre.serializer)
       ..add(Devis.serializer)
       ..add(DevisLivraison.serializer)
       ..add(DevisPanier.serializer)
@@ -61,13 +72,17 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DossierCoursierAdmin.serializer)
       ..add(DrapeauxZone.serializer)
       ..add(ErreurApi.serializer)
+      ..add(EscaladeDispatch.serializer)
       ..add(EtatArretCourse.serializer)
       ..add(EtatCategorie.serializer)
+      ..add(EtatDisponibilite.serializer)
       ..add(EtatEffectifBoutique.serializer)
+      ..add(EtatPublicationPosition.serializer)
       ..add(EtatRoleDto.serializer)
       ..add(FichePublique.serializer)
       ..add(FileAttenteCoursier.serializer)
       ..add(ForcageDto.serializer)
+      ..add(GainOffre.serializer)
       ..add(Grille.serializer)
       ..add(GrillesZone.serializer)
       ..add(GroupeVendeur.serializer)
@@ -88,6 +103,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ModifierAdresse.serializer)
       ..add(ModifierArticleDto.serializer)
       ..add(ModifierPrestataireDto.serializer)
+      ..add(OffreCourante.serializer)
       ..add(OffreLivraisonVendeur.serializer)
       ..add(PaiementCommande.serializer)
       ..add(PaiementPanier.serializer)
@@ -96,16 +112,20 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PlaqueUrl.serializer)
       ..add(PlateformeDto.serializer)
       ..add(Point.serializer)
+      ..add(PoolDeZone.serializer)
       ..add(PositionSuivi.serializer)
       ..add(PrestataireAdmin.serializer)
       ..add(PrestataireAdminDetail.serializer)
       ..add(PrestatairePilotable.serializer)
       ..add(ProgressionSuivi.serializer)
+      ..add(PublicationPosition.serializer)
       ..add(RattachementDto.serializer)
       ..add(RattacherCompteDto.serializer)
+      ..add(RefusOffre.serializer)
       ..add(Regle.serializer)
       ..add(RegleRetenue.serializer)
       ..add(RegleUpsert.serializer)
+      ..add(RepriseFaite.serializer)
       ..add(ResolutionPlaque.serializer)
       ..add(ResultatAnnulation.serializer)
       ..add(ResultatCollecte.serializer)
@@ -131,6 +151,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ArretOffre)]),
+          () => ListBuilder<ArretOffre>())
+      ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType(ArretPreProvisionne)]),
           () => ListBuilder<ArretPreProvisionne>())
@@ -151,6 +174,9 @@ Serializers _$serializers = (Serializers().toBuilder()
             const FullType(BuiltList, const [const FullType(PlageDto)])
           ]),
           () => ListBuilder<BuiltList<PlageDto>>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CapaciteCoursier)]),
+          () => ListBuilder<CapaciteCoursier>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CategorieDto)]),
           () => ListBuilder<CategorieDto>())
@@ -184,6 +210,15 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(CommandeResumee)]),
           () => ListBuilder<CommandeResumee>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CourseBloquee)]),
+          () => ListBuilder<CourseBloquee>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(EscaladeDispatch)]),
+          () => ListBuilder<EscaladeDispatch>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CoursierDuPool)]),
+          () => ListBuilder<CoursierDuPool>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
           () => ListBuilder<EtatRoleDto>())
       ..addBuilderFactory(
@@ -204,6 +239,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Regle)]),
           () => ListBuilder<Regle>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())

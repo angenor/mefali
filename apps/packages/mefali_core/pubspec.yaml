@@ -76,6 +76,10 @@ dev_dependencies:
   build_runner: ^2.15.1
   # Codegen des tables drift (.g.dart) — QRC file offline.
   drift_dev: ^2.28.0
+  # Transitive de riverpod_generator, épinglée à l'IDENTIQUE dans les trois
+  # paquets (SC-008) : deux `.g.dart` produits par deux versions différentes du
+  # générateur divergent sans que rien ne le signale.
+  source_gen: 4.2.3
 
 flutter:
   uses-material-design: true

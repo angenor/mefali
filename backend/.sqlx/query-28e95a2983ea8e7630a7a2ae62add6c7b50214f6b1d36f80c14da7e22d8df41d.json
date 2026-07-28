@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.commande SET mode_paiement = 'mobile_money' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "28e95a2983ea8e7630a7a2ae62add6c7b50214f6b1d36f80c14da7e22d8df41d"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM dispatch.suivi_progression WHERE livraison_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "efb015843515ce461727f3255290b38be8e5f0bf6e471b0490fbe607677b3f53"
+}

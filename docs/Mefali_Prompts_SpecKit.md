@@ -408,7 +408,7 @@ Points d'attention : l'optimisation de l'ordre des arrêts (permutations ≤ 4)
 vit ici et est exposée au dispatch et aux commandes ; maquette : docs/design/png/A3.
 ```
 
-### Cycle 7 — CMD(en cours)
+### Cycle 7 — CMD
 
 ```
 /speckit-specify
@@ -442,7 +442,7 @@ Points d'attention : dépendances = zones, comptes, prestataires, tarification
 (devis figé), QR (scan par arrêt) ; maquettes : docs/design/png/C3, C4.
 ```
 
-### Cycle 8 — DSP
+### Cycle 8 — DSP(en cours)
 
 ```
 /speckit-specify

@@ -500,6 +500,200 @@
         ]
       }
     },
+    "/admin/dispatch/alertes": {
+      "get": {
+        "tags": [
+          "dispatch-admin"
+        ],
+        "summary": "`GET /admin/dispatch/alertes` — ce qui demande un humain.",
+        "operationId": "alertes_dispatch",
+        "responses": {
+          "200": {
+            "description": "Escalades et courses bloquées, plus anciennes d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertesDispatch"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/dispatch/courses/{livraison_id}/reprendre": {
+      "post": {
+        "tags": [
+          "dispatch-admin"
+        ],
+        "summary": "`POST /admin/dispatch/courses/{livraison_id}/reprendre` — la seule voie de\nreprise d'une course dont un arrêt est **déjà collecté**.",
+        "description": "L'automatisme s'y refuse par construction (FR-075), parce que le coursier a\nengagé ses fonds propres. Cet endpoint n'annule aucune dette et n'écrit\naucune caisse : il émet `dispatch.reassignation` avec `acteur: admin` et\nlaisse la caisse (CRS-06) et le litige (AVI-04) à leurs cycles.\n\n`422` si aucun arrêt n'est collecté — dans ce cas l'automatisme suffit, et\nune action manuelle masquerait un défaut de pipeline.",
+        "operationId": "reprendre_course_admin",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Course à reprendre.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeReprise"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Coursier retiré, incident tracé avec son auteur.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepriseFaite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Livraison inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent, ou aucun arrêt collecté (l'automatisme suffit).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/dispatch/pool": {
+      "get": {
+        "tags": [
+          "dispatch-admin"
+        ],
+        "summary": "`GET /admin/dispatch/pool` — les coursiers en ligne d'une zone.",
+        "description": "Matière de la « carte des coursiers » d'ADM-02. Le rôle `Admin` est la garde :\nc'est le seul endroit du cycle où une position sort du serveur.\n\n**Une zone, rien d'autre** (contrat §2.2). L'exploitation demande « qui est en\nligne », pas « qui est près d'ici » : elle n'a aucun centre à proposer, et\nl'approcher par un rayon très large écarterait en silence le coursier qui le\ndépasse. Le port [`dispatch::PoolCoursiers::membres`] répond exactement à\ncette question — l'index GEO de Redis est un zset, qui sait s'énumérer.\n\nLes **fantômes** de l'index (membre survivant à son état, research R2) sont\nomis : la carte ne montre que ce dont on connaît la position et l'âge.",
+        "operationId": "pool_dispatch",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "description": "Zone dont on lit le pool.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coursiers du pool, avec l'âge de leur position.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolDeZone"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires": {
       "get": {
         "tags": [
@@ -3707,6 +3901,234 @@
         ]
       }
     },
+    "/courses/offre-courante": {
+      "get": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`GET /courses/offre-courante` — l'offre en vol de CE coursier, ou `204`.",
+        "description": "Une offre **échue** rend `204` **même si le tic n'a pas encore passé** :\nl'échéance persistée est l'autorité, et le tic ne fait qu'écrire ce que la\nlecture savait déjà (research R1).\n\nC'est l'app qui **va chercher** son offre (toutes les 2 s tant qu'un écran de\ndispatch est monté) : le push haute priorité appartient à NTF-01, et le jour\noù il arrivera il réveillera l'app, qui appellera ce même endpoint — aucun\ncontrat à refaire (research R16).",
+        "operationId": "offre_courante",
+        "responses": {
+          "200": {
+            "description": "Offre en vol : arrêts, gain, avance, échéance.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffreCourante"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Aucune offre en vol (ou offre échue)."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/offres/{offre_id}/accepter": {
+      "post": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`POST /courses/offres/{offre_id}/accepter` — prendre la course.",
+        "description": "**Idempotent** (FR-054) : un rejeu avec le même `uuid_client` rend le même\n`200` et le même corps ; il ne crée ni seconde affectation ni second\névénement.\n\nUn `409 deja_prise` n'est **pas** un échec technique : l'app l'affiche comme\nl'état K2-1b, ton neutre, sans blâme et **sans pénalité** (FR-049).",
+        "operationId": "accepter_offre",
+        "parameters": [
+          {
+            "name": "offre_id",
+            "in": "path",
+            "description": "Offre adressée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionOffre"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Course affectée (idempotent au rejeu).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptationOffre"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Offre inconnue, ou adressée à un autre coursier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Course déjà prise (sans pénalité), offre échue, ou course active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/offres/{offre_id}/refuser": {
+      "post": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`POST /courses/offres/{offre_id}/refuser` — passer son tour.",
+        "description": "Le candidat suivant est sollicité **immédiatement**, sans attendre la fin du\ncompte à rebours (FR-050). Un refus compte dans le taux d'acceptation ; il\nn'entraîne **aucune** sanction — l'anti-abus (DSP-08) est hors périmètre.",
+        "operationId": "refuser_offre",
+        "parameters": [
+          {
+            "name": "offre_id",
+            "in": "path",
+            "description": "Offre adressée à l'appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionOffre"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Offre refusée ; le suivant est sollicité aussitôt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefusOffre"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Offre inconnue, ou adressée à un autre coursier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offre déjà conclue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
       "post": {
         "tags": [
@@ -4849,6 +5271,137 @@
         ]
       }
     },
+    "/moi/disponibilite": {
+      "get": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`GET /moi/disponibilite` — l'état courant, tel que K1 l'affiche.",
+        "operationId": "lire_disponibilite",
+        "responses": {
+          "200": {
+            "description": "État courant : en ligne, plafond retenu et son palier, appartenance au pool.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatDisponibilite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`PUT /moi/disponibilite` — se mettre en ligne ou hors ligne.",
+        "description": "⚠ Le suffixe `_coursier` n'est pas décoratif : utoipa dérive l'`operationId`\ndu NOM DE LA FONCTION, et `vendeur_http::basculer_disponibilite` (bascule\nd'un article en rupture) porte déjà le nom court. Deux `operationId`\nidentiques font échouer la génération des clients — donc la CI.\n\nPasser `en_ligne: false` retire du pool **immédiatement**, sans attendre\nl'expiration (FR-005) : un coursier qui a rangé sa moto ne doit pas voir son\ntéléphone sonner 90 s plus tard.\n\nSe mettre en ligne exige un dossier valide et **au moins une capacité\ndéclarée** : sans véhicule, aucune course ne pourra jamais lui être proposée,\net le lui dire tout de suite vaut mieux qu'une attente muette.",
+        "operationId": "basculer_disponibilite_coursier",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasculeDisponibilite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Disponibilité à jour, avec le plafond RETENU et son palier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatDisponibilite"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide, ou course active (se mettre hors ligne en course est un abandon, pas une sortie de pool).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Aucun véhicule déclaré, ou plafond manquant à la mise en ligne.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/dossier-coursier": {
       "get": {
         "tags": [
@@ -4965,6 +5518,76 @@
           },
           "422": {
             "description": "Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/position": {
+      "post": {
+        "tags": [
+          "dispatch"
+        ],
+        "summary": "`POST /moi/position` — publier sa position, et rester dans le pool.",
+        "description": "`204` si le coursier n'est pas en ligne : la position n'est pas **refusée**,\nelle est **ignorée** — l'app peut être en retard d'un tic après un « hors\nligne », et lui rendre une erreur ferait clignoter un écran pour rien.\n\n**Idempotence** : rejouer la même position repousse simplement la durée de\nvie ; aucun événement n'est écrit dans les deux cas (une position est un fait\néphémère qui se répète toutes les 30 s, et elle porte une coordonnée que la\nminimisation interdit de journaliser).",
+        "operationId": "publier_position",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationPosition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Position publiée ; l'inscription au pool est repoussée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatPublicationPosition"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Coursier hors ligne — position ignorée, pas refusée."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6104,6 +6727,36 @@
   },
   "components": {
     "schemas": {
+      "AcceptationOffre": {
+        "type": "object",
+        "description": "Résultat d'une acceptation.",
+        "required": [
+          "commande_id",
+          "livraison_id",
+          "etat_livraison",
+          "rejeu"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande affectée."
+          },
+          "etat_livraison": {
+            "type": "string",
+            "description": "État de la livraison après affectation."
+          },
+          "livraison_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Livraison assignée."
+          },
+          "rejeu": {
+            "type": "boolean",
+            "description": "Vrai si l'appel était un rejeu — même corps, aucune seconde affectation."
+          }
+        }
+      },
       "Accepte": {
         "type": "object",
         "description": "Réponse UNIQUE de `/auth/otp/demander`.",
@@ -6244,6 +6897,30 @@
           "masque"
         ]
       },
+      "AlertesDispatch": {
+        "type": "object",
+        "description": "Le tableau d'alertes de l'exploitation.",
+        "required": [
+          "escalades",
+          "courses_bloquees"
+        ],
+        "properties": {
+          "courses_bloquees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseBloquee"
+            },
+            "description": "Courses assignées sans progression."
+          },
+          "escalades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EscaladeDispatch"
+            },
+            "description": "Commandes escaladées, **les plus anciennes d'abord**."
+          }
+        }
+      },
       "AppareilDto": {
         "type": "object",
         "description": "Appareil déclaré par l'app à l'ouverture de session.",
@@ -6292,6 +6969,39 @@
           "statut": {
             "type": "string",
             "description": "Statut de l'arrêt."
+          }
+        }
+      },
+      "ArretOffre": {
+        "type": "object",
+        "description": "Un arrêt de l'offre, tel que K2 l'affiche.",
+        "required": [
+          "ordre",
+          "nom",
+          "distance_m"
+        ],
+        "properties": {
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distance INTER-ARRÊTS (mètres) — « + 40 m » de la maquette."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom affiché sur la carte."
+          },
+          "ordre": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Rang d'affichage (1 = premier arrêt)."
+          },
+          "prestataire_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Prestataire visé."
           }
         }
       },
@@ -6519,6 +7229,52 @@
           }
         }
       },
+      "AvanceOffre": {
+        "type": "object",
+        "description": "Ce que le coursier devra avancer, avec son plafond.",
+        "required": [
+          "montant_unites",
+          "plafond_retenu_unites",
+          "devise"
+        ],
+        "properties": {
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant à avancer (unités mineures)."
+          },
+          "plafond_retenu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Plafond RETENU du coursier — pourquoi il peut la prendre."
+          }
+        }
+      },
+      "BasculeDisponibilite": {
+        "type": "object",
+        "description": "Bascule de disponibilité et déclaration du plafond d'avance du jour.",
+        "required": [
+          "en_ligne"
+        ],
+        "properties": {
+          "en_ligne": {
+            "type": "boolean",
+            "description": "Vrai pour entrer dans le pool, faux pour en sortir **immédiatement**."
+          },
+          "plafond_declare_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Ce que le coursier peut avancer aujourd'hui (unités mineures).\nObligatoire pour se mettre en ligne, ignoré pour en sortir."
+          }
+        }
+      },
       "BasculeDisponibiliteDto": {
         "type": "object",
         "description": "Corps de la bascule.",
@@ -6573,6 +7329,24 @@
           "statut": {
             "$ref": "#/components/schemas/StatutBoutique",
             "description": "Statut DÉCLARÉ (l'effectif peut différer — FR-032)."
+          }
+        }
+      },
+      "CapaciteCoursier": {
+        "type": "object",
+        "description": "Une capacité déclarée, telle que l'app l'affiche.",
+        "required": [
+          "famille",
+          "valeur"
+        ],
+        "properties": {
+          "famille": {
+            "type": "string",
+            "description": "Famille de capacité (MVP : `transport`)."
+          },
+          "valeur": {
+            "type": "string",
+            "description": "Valeur dans la famille (slug de transport)."
           }
         }
       },
@@ -7179,6 +7953,115 @@
           }
         }
       },
+      "CourseBloquee": {
+        "type": "object",
+        "description": "Une course assignée qui n'avance pas (FR-075).",
+        "required": [
+          "commande_id",
+          "livraison_id",
+          "motif",
+          "stagnation_s",
+          "nb_arrets_collectes",
+          "reprise_automatique_possible"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "coursier_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Coursier assigné."
+          },
+          "livraison_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Livraison concernée."
+          },
+          "motif": {
+            "type": "string",
+            "description": "Critère constaté : `sans_mouvement` | `sans_scan`."
+          },
+          "nb_arrets_collectes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Arrêts déjà collectés. **`> 0` ⇒ aucune reprise automatique possible.**"
+          },
+          "reprise_automatique_possible": {
+            "type": "boolean",
+            "description": "Faux quand un arrêt est collecté : seule une décision humaine motivée\npeut alors trancher, parce que le coursier a engagé ses fonds propres."
+          },
+          "stagnation_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée de stagnation constatée (secondes)."
+          }
+        }
+      },
+      "CoursierDuPool": {
+        "type": "object",
+        "description": "Un coursier du pool, tel que la carte d'ADM-02 le montrera.",
+        "required": [
+          "coursier_id",
+          "lat",
+          "lon",
+          "age_s",
+          "capacites",
+          "plafond_unites",
+          "devise"
+        ],
+        "properties": {
+          "age_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Âge de la dernière publication (secondes) — l'exploitation doit savoir\nsi elle regarde une position fraîche ou un point figé."
+          },
+          "capacites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Capacités déclarées (slugs)."
+          },
+          "course_active": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Course en cours, s'il y en a une."
+          },
+          "coursier_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Compte du coursier."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Dernière latitude publiée."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Dernière longitude publiée."
+          },
+          "plafond_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Plafond d'avance RETENU du jour — `min(palier de la grille, déclaré)`."
+          }
+        }
+      },
       "CoursierSuivi": {
         "type": "object",
         "description": "Le coursier affecté, tel que l'écran de suivi le montre.",
@@ -7285,6 +8168,26 @@
             "type": "string",
             "format": "uuid",
             "description": "Ville de rattachement — type `ville` exigé (FR-002)."
+          }
+        }
+      },
+      "DecisionOffre": {
+        "type": "object",
+        "description": "Décision sur une offre — accepter ou refuser.",
+        "required": [
+          "uuid_client",
+          "horodatage_local"
+        ],
+        "properties": {
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil — **observation seulement**."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V)."
           }
         }
       },
@@ -7585,6 +8488,19 @@
           }
         }
       },
+      "DemandeReprise": {
+        "type": "object",
+        "description": "Demande de reprise manuelle — **motif obligatoire**.",
+        "required": [
+          "motif"
+        ],
+        "properties": {
+          "motif": {
+            "type": "string",
+            "description": "Pourquoi l'exploitation reprend cette course. Journalisé avec son auteur."
+          }
+        }
+      },
       "DemandeRupture": {
         "type": "object",
         "description": "Partie JSON `demande` du multipart de rupture.",
@@ -7743,6 +8659,30 @@
             "type": "string",
             "format": "binary",
             "description": "La photo."
+          }
+        }
+      },
+      "DestinationOffre": {
+        "type": "object",
+        "description": "La destination, **avant** acceptation : jamais de coordonnée (ARTCI).",
+        "required": [
+          "zone_nom",
+          "distance_m",
+          "mention_cle"
+        ],
+        "properties": {
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distance approximative depuis le dernier arrêt (mètres arrondis)."
+          },
+          "mention_cle": {
+            "type": "string",
+            "description": "Clé i18n de la mention « adresse exacte après acceptation »."
+          },
+          "zone_nom": {
+            "type": "string",
+            "description": "Nom de la zone de livraison."
           }
         }
       },
@@ -8096,6 +9036,54 @@
           }
         }
       },
+      "EscaladeDispatch": {
+        "type": "object",
+        "description": "Une commande escaladée : personne ne l'a prise au seuil de zone (FR-064).",
+        "required": [
+          "commande_id",
+          "zone_id",
+          "age_s",
+          "seuil_s",
+          "chemin",
+          "nb_offres_emises",
+          "etat"
+        ],
+        "properties": {
+          "age_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ancienneté au moment de l'escalade (secondes)."
+          },
+          "chemin": {
+            "type": "string",
+            "description": "Par quel chemin elle est arrivée là : `file` | `pipeline`."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État courant du tronc."
+          },
+          "nb_offres_emises": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Nombre d'offres déjà émises pour elle."
+          },
+          "seuil_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Seuil de zone franchi (secondes)."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
+          }
+        }
+      },
       "EtatArretCourse": {
         "type": "object",
         "description": "État de l'arrêt et de sa course après la transition.",
@@ -8189,6 +9177,80 @@
           }
         }
       },
+      "EtatDisponibilite": {
+        "type": "object",
+        "description": "État de disponibilité, tel que l'écran K1 l'affiche.\n\nLes DEUX plafonds sont rendus : Yao voit toujours **lequel** s'applique\n(`plafond_source`) et **pourquoi** (`palier_note_cle`). Un coursier à qui\nl'on refuse une course sans lui dire que son palier le limite croira à un\nbug.",
+        "required": [
+          "en_ligne",
+          "plafond_retenu_unites",
+          "plafond_source",
+          "palier_note_cle",
+          "devise",
+          "jour",
+          "capacites",
+          "dans_le_pool",
+          "periode_position_s"
+        ],
+        "properties": {
+          "capacites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapaciteCoursier"
+            },
+            "description": "Capacités déclarées au dossier coursier."
+          },
+          "dans_le_pool": {
+            "type": "boolean",
+            "description": "Vrai seulement après une position publiée : l'intention ne suffit pas."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217 de la zone."
+          },
+          "en_ligne": {
+            "type": "boolean",
+            "description": "Intention déclarée aujourd'hui."
+          },
+          "jour": {
+            "type": "string",
+            "description": "Jour civil de la déclaration."
+          },
+          "note_centiemes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Note du coursier, ou `null` tant qu'AVI n'existe pas."
+          },
+          "palier_note_cle": {
+            "type": "string",
+            "description": "Clé i18n du palier appliqué."
+          },
+          "periode_position_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Période de publication attendue (paramètre de zone du cycle 008)."
+          },
+          "plafond_declare_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Plafond déclaré du jour, ou `null` si rien n'a été déclaré (FR-011 :\njamais reporté — l'app le redemande au nouveau jour)."
+          },
+          "plafond_retenu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qui s'applique : `min(déclaré, palier de la grille)`."
+          },
+          "plafond_source": {
+            "type": "string",
+            "description": "`grille_note` | `declaration`."
+          }
+        }
+      },
       "EtatEffectifBoutique": {
         "type": "object",
         "description": "État EFFECTIF de la boutique — dérivé, jamais stocké (FR-032).",
@@ -8207,6 +9269,31 @@
             ],
             "format": "date-time",
             "description": "Prochaine réouverture estimée quand fermée (FR-029)."
+          }
+        }
+      },
+      "EtatPublicationPosition": {
+        "type": "object",
+        "description": "Ce que la publication rend à l'app.",
+        "required": [
+          "dans_le_pool",
+          "ttl_s",
+          "prochaine_publication_s"
+        ],
+        "properties": {
+          "dans_le_pool": {
+            "type": "boolean",
+            "description": "Vrai si le coursier est (re)devenu membre du pool."
+          },
+          "prochaine_publication_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Période attendue de la prochaine publication (secondes)."
+          },
+          "ttl_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée de vie de l'inscription (secondes) — trois périodes manquées."
           }
         }
       },
@@ -8333,6 +9420,43 @@
           "force_actif",
           "force_inactif"
         ]
+      },
+      "GainOffre": {
+        "type": "object",
+        "description": "Le gain, détaillé comme sur K2.",
+        "required": [
+          "total_unites",
+          "deplacement_unites",
+          "arrets_unites",
+          "effort_unites",
+          "devise"
+        ],
+        "properties": {
+          "arrets_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part des arrêts supplémentaires."
+          },
+          "deplacement_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part de déplacement."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "effort_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part d'effort."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Gain total (unités mineures)."
+          }
+        }
       },
       "Grille": {
         "type": "object",
@@ -9020,6 +10144,77 @@
           }
         }
       },
+      "OffreCourante": {
+        "type": "object",
+        "description": "L'offre en vol, telle que l'écran K2 la rend.",
+        "required": [
+          "offre_id",
+          "commande_id",
+          "mode",
+          "echeance_le",
+          "timer_s",
+          "restant_s",
+          "arrets",
+          "destination",
+          "gain",
+          "avance",
+          "degraded"
+        ],
+        "properties": {
+          "arrets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArretOffre"
+            },
+            "description": "Arrêts dans l'ordre optimisé du devis FIGÉ."
+          },
+          "avance": {
+            "$ref": "#/components/schemas/AvanceOffre",
+            "description": "Avance et plafond."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande offerte."
+          },
+          "degraded": {
+            "type": "boolean",
+            "description": "Vrai si les distances viennent du repli vol d'oiseau (constitution IV)."
+          },
+          "destination": {
+            "$ref": "#/components/schemas/DestinationOffre",
+            "description": "Destination approximative."
+          },
+          "echeance_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "**AUTORITÉ** du compte à rebours : le widget compte, le serveur tranche."
+          },
+          "gain": {
+            "$ref": "#/components/schemas/GainOffre",
+            "description": "Gain détaillé."
+          },
+          "mode": {
+            "type": "string",
+            "description": "`cascade` | `broadcast`."
+          },
+          "offre_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Offre concernée."
+          },
+          "restant_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Secondes restantes à l'instant de la lecture."
+          },
+          "timer_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée totale du compte à rebours (secondes)."
+          }
+        }
+      },
       "OffreLivraisonVendeur": {
         "type": "object",
         "description": "Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa\nconfiguration relève de VND, son financement de PAY (hors périmètre).",
@@ -9180,6 +10375,28 @@
             "type": "number",
             "format": "double",
             "description": "Longitude en degrés décimaux."
+          }
+        }
+      },
+      "PoolDeZone": {
+        "type": "object",
+        "description": "Le pool d'une zone.",
+        "required": [
+          "zone_id",
+          "coursiers"
+        ],
+        "properties": {
+          "coursiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoursierDuPool"
+            },
+            "description": "Coursiers présents dans le pool."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone interrogée."
           }
         }
       },
@@ -9408,6 +10625,46 @@
           }
         }
       },
+      "PublicationPosition": {
+        "type": "object",
+        "description": "Publication de position.",
+        "required": [
+          "uuid_client",
+          "horodatage_local",
+          "lat",
+          "lon"
+        ],
+        "properties": {
+          "horodatage_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil. **Observation seulement** : le serveur écrit le\nsien (FR-055)."
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Latitude."
+          },
+          "lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Longitude."
+          },
+          "precision_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Précision annoncée par le téléphone (mètres), informative."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V)."
+          }
+        }
+      },
       "RattachementDto": {
         "type": "object",
         "description": "Rattachement compte ↔ prestataire.",
@@ -9439,6 +10696,19 @@
             "type": "string",
             "format": "uuid",
             "description": "Compte vérifié à rattacher."
+          }
+        }
+      },
+      "RefusOffre": {
+        "type": "object",
+        "description": "Résultat d'un refus.",
+        "required": [
+          "issue"
+        ],
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue de l'offre après refus."
           }
         }
       },
@@ -9713,6 +10983,31 @@
             "type": "string",
             "format": "binary",
             "description": "Repère parlé — ≤ 1,5 Mo, m4a/aac."
+          }
+        }
+      },
+      "RepriseFaite": {
+        "type": "object",
+        "description": "Résultat d'une reprise manuelle.",
+        "required": [
+          "commande_id",
+          "etat_commande",
+          "incident_id"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "etat_commande": {
+            "type": "string",
+            "description": "État du tronc après reprise."
+          },
+          "incident_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Incident tracé."
           }
         }
       },

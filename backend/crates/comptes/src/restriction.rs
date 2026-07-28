@@ -164,6 +164,85 @@ impl PgComptes {
     }
 }
 
+// ── Coursier EXPLOITABLE (cycle DSP 009, port `EtatCoursier`) ──────────────
+
+/// Ce que le dispatch a besoin de savoir d'un coursier, en UNE lecture.
+///
+/// Ce type existe parce que le dispatch ne cite jamais `comptes.*` : il pose sa
+/// question, le crate propriétaire du schéma y répond. Les trois faits sont
+/// indissociables — un rôle valide sans véhicule déclaré ne permet d'offrir
+/// aucune course, et un véhicule déclaré sur un compte bloqué non plus.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoursierEnLigne {
+    /// Compte du coursier.
+    pub compte: Uuid,
+    /// Zone de rattachement du compte.
+    pub zone_id: Uuid,
+    /// Slugs des types de transport déclarés au dossier.
+    pub transports: Vec<String>,
+}
+
+/// Lecture de l'état exploitable d'un coursier — offerte au dispatch (DSP-02).
+#[async_trait]
+pub trait CoursierExploitablePar: Send + Sync {
+    /// `None` = pas un coursier exploitable : rôle `coursier` non VALIDE, ou
+    /// compte bloqué. Un compte inconnu rend `None` lui aussi — pour un filtre
+    /// d'éligibilité, « ce compte n'existe pas » et « ce compte ne peut pas
+    /// travailler » conduisent à la même décision, et distinguer les deux
+    /// ferait tomber un pipeline sur une donnée effacée entre-temps.
+    async fn coursier_exploitable(
+        &self,
+        compte: Uuid,
+    ) -> Result<Option<CoursierEnLigne>, ErreurComptes>;
+}
+
+#[async_trait]
+impl CoursierExploitablePar for PgComptes {
+    async fn coursier_exploitable(
+        &self,
+        compte: Uuid,
+    ) -> Result<Option<CoursierEnLigne>, ErreurComptes> {
+        let ligne = sqlx::query!(
+            r#"SELECT c.zone_id, c.bloque,
+                      EXISTS (
+                          SELECT 1 FROM comptes.attribution_role a
+                          WHERE a.compte_id = c.id
+                            AND a.role = 'coursier'::comptes.role
+                            AND a.statut = 'valide'::comptes.statut_role
+                      ) AS "role_valide!"
+               FROM comptes.compte c
+               WHERE c.id = $1"#,
+            compte,
+        )
+        .fetch_optional(self.pool())
+        .await?;
+
+        let Some(ligne) = ligne else {
+            return Ok(None);
+        };
+        if ligne.bloque || !ligne.role_valide {
+            return Ok(None);
+        }
+
+        let transports = sqlx::query_scalar!(
+            r#"SELECT t.slug
+               FROM comptes.vehicule_declare v
+               JOIN zones.type_transport t ON t.id = v.type_transport_id
+               WHERE v.compte_id = $1
+               ORDER BY t.ordre"#,
+            compte,
+        )
+        .fetch_all(self.pool())
+        .await?;
+
+        Ok(Some(CoursierEnLigne {
+            compte,
+            zone_id: ligne.zone_id,
+            transports,
+        }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -277,6 +356,72 @@ mod tests {
             ],
             "un événement par POSE effective — le rejeu n'en émet aucun",
         );
+    }
+
+    /// Cycle DSP 009 — le port `EtatCoursier` répond depuis CE crate, dont le
+    /// schéma porte les trois faits. Les trois refus sont indissociables : un
+    /// rôle non validé, un compte bloqué et un compte inconnu conduisent tous à
+    /// « pas un coursier exploitable ».
+    #[sqlx::test(migrations = "../../migrations")]
+    async fn un_coursier_est_exploitable_seulement_valide_et_non_bloque(pool: sqlx::PgPool) {
+        let (depot, compte) = bac(&pool).await;
+
+        // Aucune attribution : rien.
+        assert!(depot.coursier_exploitable(compte).await.unwrap().is_none());
+
+        // Rôle coursier EN ATTENTE : toujours rien — un dossier déposé n'ouvre
+        // aucun droit (FR-011).
+        poser_role(&pool, compte, "en_attente").await;
+        assert!(
+            depot.coursier_exploitable(compte).await.unwrap().is_none(),
+            "un rôle en attente n'ouvre rien",
+        );
+
+        // Rôle VALIDE : exploitable, avec sa zone de rattachement.
+        poser_role(&pool, compte, "valide").await;
+        let exploitable = depot.coursier_exploitable(compte).await.unwrap().unwrap();
+        assert_eq!(exploitable.compte, compte);
+        assert!(
+            exploitable.transports.is_empty(),
+            "aucun véhicule déclaré : rien ne pourra lui être offert, et c'est \
+             au filtre d'éligibilité de le dire",
+        );
+
+        // Compte BLOQUÉ : le rôle valide ne suffit plus (FR-009). C'est le cas
+        // qui compte — un état de pool survit à une suspension.
+        let mut tx = pool.begin().await.unwrap();
+        depot
+            .poser_restriction(&mut tx, compte, SanctionCompte::Bloque, "test.blocage")
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        assert!(depot.coursier_exploitable(compte).await.unwrap().is_none());
+
+        // Compte INCONNU : `None`, pas une erreur — pour un filtre d'éligibilité
+        // la décision est la même, et une donnée effacée entre-temps ne doit pas
+        // faire tomber un pipeline.
+        assert!(depot
+            .coursier_exploitable(Uuid::now_v7())
+            .await
+            .unwrap()
+            .is_none());
+    }
+
+    /// Pose (ou remplace) l'attribution du rôle coursier à un statut donné.
+    /// SQL brute assumée : le test porte sur la LECTURE du port, pas sur la
+    /// machine à états des rôles, qui a ses propres tests.
+    async fn poser_role(pool: &PgPool, compte: Uuid, statut: &str) {
+        sqlx::query(
+            "INSERT INTO comptes.attribution_role (compte_id, role, statut)
+             VALUES ($1, 'coursier'::comptes.role, $2::comptes.statut_role)
+             ON CONFLICT (compte_id, role)
+             DO UPDATE SET statut = EXCLUDED.statut",
+        )
+        .bind(compte)
+        .bind(statut)
+        .execute(pool)
+        .await
+        .unwrap();
     }
 
     #[sqlx::test(migrations = "../../migrations")]

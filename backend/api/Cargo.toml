@@ -39,6 +39,11 @@ qr.workspace = true
 # fournit les impls réelles de ses ports : client OSRM (`RoutageOsrm`) et cache
 # de routage Redis (`infra_redis::RedisCacheRoutage`).
 tarification.workspace = true
+# Pipeline de dispatch (PgDispatch) — cycle DSP 009. La couche `api` fournit les
+# impls réelles de ses ports : pool temps réel et double verrou sur Redis
+# (`infra_redis`), proximité routière au-dessus de `tarification`
+# (`infra_dispatch`).
+dispatch.workspace = true
 sqlx.workspace = true
 # Impls RÉELLES des ports du crate `comptes` : la composition racine connaît
 # l'infra, le domaine ne connaît que ses traits (constitution II). Consommées par

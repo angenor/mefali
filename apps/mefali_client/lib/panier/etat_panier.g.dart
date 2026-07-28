@@ -49,7 +49,7 @@ final class PanierProvider extends $NotifierProvider<Panier, EtatPanier> {
   }
 }
 
-String _$panierHash() => r'd97215408ba9faa05dd442e8c6e793123ed57bb4';
+String _$panierHash() => r'64826041998debda8050bc5a5c60edcaa79d9628';
 
 /// Porteur du panier en cours de composition.
 ///

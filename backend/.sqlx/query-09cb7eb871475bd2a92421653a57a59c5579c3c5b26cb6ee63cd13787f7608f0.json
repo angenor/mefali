@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dispatch.incident_reassignation\n                 (id, commande_id, livraison_id, coursier_retire_id, motif, constate_le)\n             VALUES ($1, $2, $3, $4, $5::text::dispatch.motif_reassignation, $6)\n             ON CONFLICT (livraison_id, coursier_retire_id, motif) DO NOTHING\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.incident_reassignation",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "09cb7eb871475bd2a92421653a57a59c5579c3c5b26cb6ee63cd13787f7608f0"
+}

@@ -6,6 +6,8 @@
 
 /// Surface HTTP admin du cycle CMD (file d'attente, annulation, issues).
 pub mod admin_commandes_http;
+/// Surface HTTP admin du cycle DSP (alertes, pool, reprise manuelle).
+pub mod admin_dispatch_http;
 pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
@@ -16,9 +18,15 @@ pub mod comptes_http;
 pub mod course_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
+/// Surface HTTP coursier du cycle DSP (disponibilité, position, offres).
+pub mod dispatch_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
 pub mod erreurs_commandes;
+/// Mapping HTTP partagé des refus du domaine dispatch (cycle DSP 009, T021).
+pub mod erreurs_dispatch;
 pub mod health;
+/// Impl RÉELLE du port `ProximiteRoutiere` au-dessus du moteur de routage (T020).
+pub mod infra_dispatch;
 pub mod infra_redis;
 pub mod infra_s3;
 pub mod prestataires_http;
@@ -122,6 +130,15 @@ pub fn api_openapi() -> OpenApi {
         .service(commandes_http::annuler_commande)
         .service(admin_commandes_http::file_attente)
         .service(admin_commandes_http::annuler_commande_admin)
+        .service(dispatch_http::basculer_disponibilite_coursier)
+        .service(dispatch_http::lire_disponibilite)
+        .service(dispatch_http::publier_position)
+        .service(dispatch_http::offre_courante)
+        .service(dispatch_http::accepter_offre)
+        .service(dispatch_http::refuser_offre)
+        .service(admin_dispatch_http::alertes_dispatch)
+        .service(admin_dispatch_http::pool_dispatch)
+        .service(admin_dispatch_http::reprendre_course_admin)
         .service(admin_commandes_http::enregistrer_issue)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
@@ -226,6 +243,118 @@ async fn job_purge_reperes(depot: PgComptes) {
 /// d'argent ne dépend pas de la vie d'un processus.
 const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// **PREMIER consommateur outbox réel du produit.**
+///
+/// `WorkerOutbox::new(pool, Vec::new())` tournait jusqu'ici avec zéro
+/// consommateur : le trait `ConsommateurOutbox` était le point d'extension
+/// prévu, et le dispatch est le premier à s'y brancher. Son intervalle par
+/// défaut (1 s) donne une latence d'assignation d'environ une seconde après la
+/// création — très en dessous des 2 min de SC-002.
+///
+/// ⚠ **Ne rend `Err` QUE sur une panne d'infrastructure récupérable.** Le worker
+/// ne marque l'événement publié que si TOUS les consommateurs rendent `Ok` ; un
+/// `Err` incrémente `tentatives` et l'événement est rejoué **indéfiniment**.
+/// Toute issue MÉTIER — aucun éligible, bascule prépaiement, pool vide — est
+/// donc un succès écrit en base : sinon une commande sans coursier bloquerait sa
+/// propre ligne d'outbox pour toujours (research R1).
+struct DispatchOutbox {
+    depot: dispatch::PgDispatch,
+}
+
+#[async_trait::async_trait]
+impl socle::ConsommateurOutbox for DispatchOutbox {
+    fn nom(&self) -> &'static str {
+        "dispatch"
+    }
+
+    async fn consommer(
+        &self,
+        evenement: &socle::EvenementPublie,
+    ) -> Result<(), socle::ConsommationError> {
+        // Indifférent au reste du journal : un consommateur reçoit TOUT, et ne
+        // doit réagir qu'à ce qui le concerne (idempotent par construction).
+        match evenement.type_evenement.as_str() {
+            // Une commande prête, ou un prépaiement confirmé qui la rend
+            // dispatchable à nouveau — la reprise se fait SANS le critère
+            // d'avance, puisque le client a payé.
+            "commande.prete_a_dispatcher" | "commande.paiement_confirme" => {
+                match self
+                    .depot
+                    .dispatcher(evenement.entite_id, chrono::Utc::now())
+                    .await
+                {
+                    Ok(decision) => {
+                        tracing::info!(
+                            commande = %evenement.entite_id,
+                            decision = ?decision,
+                            "pipeline de dispatch exécuté",
+                        );
+                        Ok(())
+                    }
+                    // Panne d'infrastructure : on laisse le worker rejouer.
+                    Err(dispatch::ErreurDispatch::Sql(e)) => {
+                        Err(socle::ConsommationError(format!("base de données : {e}")))
+                    }
+                    Err(dispatch::ErreurDispatch::Dependance(detail)) => {
+                        Err(socle::ConsommationError(detail))
+                    }
+                    // Refus métier ou configuration : journalisé, JAMAIS rejoué
+                    // — rejouer ne changerait rien et bloquerait la ligne.
+                    Err(e) => {
+                        tracing::warn!(
+                            commande = %evenement.entite_id, erreur = %e,
+                            "dispatch sans effet — l'événement reste consommé",
+                        );
+                        Ok(())
+                    }
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Pas du tic de dispatch. Tout ce qui est TEMPOREL y passe : expiration
+/// d'offre, broadcast, escalade, réassignation, reprise FIFO, élagage.
+///
+/// 5 s : une offre dure 40 s, et un compte à rebours résolu à la minute
+/// laisserait le coursier suivant attendre pour rien. Comme
+/// [`BALAYAGE_SUBSTITUTIONS`], ce job n'est PAS la source de vérité de
+/// l'expiration — l'échéance est persistée et toute lecture la respecte déjà.
+const TIC_DISPATCH: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Le tic de dispatch, par zone active.
+///
+/// Une erreur est journalisée et retentée au passage suivant : un incident de
+/// tic ne doit **jamais** faire tomber l'API.
+async fn job_tic_dispatch(depot: dispatch::PgDispatch, pool: sqlx::PgPool) {
+    let mut horloge = tokio::time::interval(TIC_DISPATCH);
+    loop {
+        horloge.tick().await;
+        // Les zones qui ont de l'activité : celles où vit au moins une commande
+        // non close. Balayer tout l'arbre coûterait une requête par ville pour
+        // rien.
+        let zones: Vec<uuid::Uuid> = match sqlx::query_scalar(
+            "SELECT DISTINCT zone_id FROM commandes.commande
+             WHERE etat IN ('nouvelle', 'en_attente_coursier', 'en_cours')",
+        )
+        .fetch_all(&pool)
+        .await
+        {
+            Ok(z) => z,
+            Err(e) => {
+                tracing::error!(erreur = %e, "tic de dispatch : zones illisibles");
+                continue;
+            }
+        };
+        for zone in zones {
+            if let Err(e) = depot.tic(zone, chrono::Utc::now()).await {
+                tracing::error!(zone = %zone, erreur = %e, "tic de dispatch échoué");
+            }
+        }
+    }
+}
+
 /// Résolution périodique des propositions de remplacement échues (FR-046).
 ///
 /// À l'expiration on APPELLE, puis l'article est retiré et non facturé. Une
@@ -313,6 +442,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut qr_opt: Option<qr::PgQr> = None;
     let mut tarification_opt: Option<tarification::PgTarification> = None;
     let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
+    let mut dispatch_opt: Option<dispatch::PgDispatch> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -322,9 +452,7 @@ pub async fn run() -> std::io::Result<()> {
                 if let Err(e) = sqlx::migrate!("../migrations").run(&pool).await {
                     return Err(std::io::Error::other(format!("migrations : {e}")));
                 }
-                let worker = socle::WorkerOutbox::new(pool.clone(), Vec::new());
-                tokio::spawn(worker.run());
-                eprintln!("migrations appliquées ; worker outbox démarré");
+                eprintln!("migrations appliquées");
 
                 let ephemere = infra_redis::RedisEphemere::nouveau(&config.redis_url)
                     .map_err(|e| std::io::Error::other(format!("Redis : {e}")))?;
@@ -400,6 +528,11 @@ pub async fn run() -> std::io::Result<()> {
                             Arc::new(tarification::CacheDesactive)
                         }
                     };
+                // Les deux poignées sont RETENUES : le pipeline de dispatch les
+                // réutilise pour sa matrice de proximité (research R5) — un
+                // second client OSRM doublerait le cache et les connexions.
+                let routage_dyn = routage.clone();
+                let cache_routage_dyn = cache_routage.clone();
                 let tarification = tarification::PgTarification::new(
                     pool.clone(),
                     routage,
@@ -453,6 +586,59 @@ pub async fn run() -> std::io::Result<()> {
                 tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
                 tokio::spawn(job_purge_photos_substitution(depot_commandes.clone()));
                 eprintln!("job d'expiration des substitutions démarré (toutes les 10 s)");
+
+                // DSP 009 — pipeline de dispatch. Câblé APRÈS `commandes` (dont
+                // il consomme le contrat offert) et après la tarification (dont
+                // il consomme la matrice routière). Six collaborateurs, aucun
+                // optionnel : une composition incomplète ne compilerait pas.
+                //
+                // Trois d'entre eux n'ont PAS d'implémentation réelle, et c'est
+                // l'état exact du monde, pas un manque : la note (AVI), les
+                // paires bloquées (CRS-07) et le transport des annonces
+                // (NTF-01). C'est parce que `AnnoncesJournalisees` n'ouvre
+                // aucune socket que l'app VA CHERCHER son offre (research R16).
+                let pool_coursiers: Arc<dyn dispatch::PoolCoursiers> = Arc::new(
+                    infra_redis::RedisPool::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis pool : {e}")))?,
+                );
+                let verrous: Arc<dyn dispatch::VerrouOffre> = Arc::new(
+                    infra_redis::RedisVerrouOffre::nouveau(&config.redis_url)
+                        .map_err(|e| std::io::Error::other(format!("Redis verrous : {e}")))?,
+                );
+                let depot_dispatch = dispatch::PgDispatch::new(
+                    pool.clone(),
+                    Arc::new(depot_commandes.clone()),
+                    Arc::new(depot.clone()),
+                    pool_coursiers,
+                    verrous,
+                    Arc::new(infra_dispatch::ProximiteTarification::nouvelle(
+                        tarification.clone(),
+                        routage_dyn.clone(),
+                        cache_routage_dyn.clone(),
+                    )),
+                    Arc::new(dispatch::NoteAbsente),
+                    Arc::new(dispatch::AucunePaireBloquee),
+                    Arc::new(dispatch::AnnoncesJournalisees),
+                );
+                eprintln!(
+                    "pipeline DSP câblé (pool Redis, double verrou Lua, proximité routière ; \
+                     note AVI, paires CRS-07 et transport NTF-01 non construits)"
+                );
+                // Le worker outbox démarre ICI, et pas plus tôt : il attendait
+                // son premier consommateur réel (research R1).
+                let worker = socle::WorkerOutbox::new(
+                    pool.clone(),
+                    vec![Arc::new(DispatchOutbox {
+                        depot: depot_dispatch.clone(),
+                    })],
+                );
+                tokio::spawn(worker.run());
+                tokio::spawn(job_tic_dispatch(depot_dispatch.clone(), pool.clone()));
+                eprintln!(
+                    "worker outbox démarré avec son premier consommateur (dispatch) ; \
+                     tic de dispatch toutes les 5 s"
+                );
+                dispatch_opt = Some(depot_dispatch);
 
                 commandes_domaine_opt = Some(depot_commandes);
                 tarification_opt = Some(tarification);
@@ -569,6 +755,21 @@ pub async fn run() -> std::io::Result<()> {
             .service(commandes_http::annuler_commande)
             .service(admin_commandes_http::file_attente)
             .service(admin_commandes_http::annuler_commande_admin)
+            .service(dispatch_http::basculer_disponibilite_coursier)
+            .service(dispatch_http::lire_disponibilite)
+            .service(dispatch_http::publier_position)
+            .service(dispatch_http::offre_courante)
+            .service(dispatch_http::accepter_offre)
+            .service(dispatch_http::refuser_offre)
+            .service(admin_dispatch_http::alertes_dispatch)
+            .service(admin_dispatch_http::pool_dispatch)
+            .service(admin_dispatch_http::reprendre_course_admin)
+        .service(dispatch_http::offre_courante)
+        .service(dispatch_http::accepter_offre)
+        .service(dispatch_http::refuser_offre)
+        .service(admin_dispatch_http::alertes_dispatch)
+        .service(admin_dispatch_http::pool_dispatch)
+        .service(admin_dispatch_http::reprendre_course_admin)
             .service(admin_commandes_http::enregistrer_issue)
             .split_for_parts();
         let mut app = app
@@ -596,6 +797,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = commandes_domaine_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = dispatch_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
@@ -890,12 +1094,17 @@ mod tests {
         // de collecte) + 13 (pays, cycle 008 : 6 « périssable » de catégorie,
         // longueur du repère écrit, essais du code, seuil d'historique, délai et
         // écart de substitution, rétention des photos, période de position)
+        // + 7 (pays, cycle 009 : durée de vie du pool, compte à rebours d'offre
+        // et son exclusivité, non-réponses franches, fenêtre d'acceptation,
+        // valeur neutre, bruit GPS)
         // + 10 (ville, cycles 002/003) + 2 (ville, cycle 005 : seuil et fenêtre
         // du masquage automatique) + 12 (ville, cycle 007 : 2 bornes de marge,
         // arrondi, supplément pluie, 4 knobs de routage, 4 knobs d'effort —
         // `effort.plafond_eclatement_m` reste DORMANT) + 3 (ville, cycle 008 :
-        // 2 plafonds cash et l'escalade d'attente coursier).
-        assert_eq!(apres_un.4, 63, "36 (pays) + 27 (ville) paramètres");
+        // 2 plafonds cash et l'escalade d'attente coursier)
+        // + 11 (ville, cycle 009 : rayon, grille d'avance, 4 poids, plafond
+        // d'inactivité, 2 seuils de broadcast, 2 seuils de réassignation).
+        assert_eq!(apres_un.4, 81, "43 (pays) + 38 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

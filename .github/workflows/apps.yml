@@ -26,12 +26,14 @@ jobs:
             codegen: true
           - package: apps/mefali_pro
             codegen: true
-          # mefali_client n'a ni riverpod_annotation ni riverpod_generator :
-          # riverpod_generator/build.yaml déclare `auto_apply: dependents`, donc
-          # aucun builder ne s'y active. Il porte flutter_riverpod pour
-          # ProviderScope (FR-010) et le pin riverpod_lint, rien d'autre (R1).
+          # ⚠ `codegen: false` était FAUX : mefali_client porte bien
+          # `riverpod_annotation` en dépendance, `riverpod_generator` en
+          # dev-dépendance et SIX `.g.dart` commités. Le contrôle de dérive
+          # comparait donc un arbre que rien n'avait régénéré — deux `.g.dart`
+          # (`etat_panier`, `etat_confirmation`) sont restés périmés dans le
+          # dépôt depuis le cycle CMD 008 sans que la CI bronche.
           - package: apps/mefali_client
-            codegen: false
+            codegen: true
     defaults:
       run:
         working-directory: ${{ matrix.package }}

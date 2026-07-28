@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cr.famille, cr.valeur\n               FROM commandes.capacite_requise cr\n               JOIN commandes.livraison l ON l.id = cr.livraison_id\n               WHERE l.commande_id = $1\n               ORDER BY cr.famille, cr.valeur",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "famille",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.capacite_requise",
+            "name": "famille"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "valeur",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.capacite_requise",
+            "name": "valeur"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "b26868b708e4b6c378f2e2ef5bdf965603b0adb9688c97b2f595519d422650d0"
+}

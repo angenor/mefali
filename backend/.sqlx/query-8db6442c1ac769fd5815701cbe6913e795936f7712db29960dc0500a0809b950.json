@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dispatch.incident_reassignation\n                 (id, commande_id, livraison_id, coursier_retire_id, motif,\n                  motif_admin, auteur_id, constate_le)\n             VALUES ($1, $2, $3, $4, 'sans_mouvement', $5, $6, $7)\n             ON CONFLICT (livraison_id, coursier_retire_id, motif)\n             DO UPDATE SET motif_admin = EXCLUDED.motif_admin,\n                           auteur_id = EXCLUDED.auteur_id,\n                           constate_le = EXCLUDED.constate_le",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8db6442c1ac769fd5815701cbe6913e795936f7712db29960dc0500a0809b950"
+}

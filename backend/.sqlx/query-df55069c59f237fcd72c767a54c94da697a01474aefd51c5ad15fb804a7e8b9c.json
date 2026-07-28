@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE dispatch.offre\n             SET issue = 'refusee', repondue_le = $2, reponse_uuid_client = $3\n             WHERE id = $1 AND issue = 'en_vol'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df55069c59f237fcd72c767a54c94da697a01474aefd51c5ad15fb804a7e8b9c"
+}

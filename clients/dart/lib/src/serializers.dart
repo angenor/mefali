@@ -14,20 +14,26 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:mefali_api_client/src/date_serializer.dart';
 import 'package:mefali_api_client/src/model/date.dart';
 
+import 'package:mefali_api_client/src/model/acceptation_offre.dart';
 import 'package:mefali_api_client/src/model/accepte.dart';
 import 'package:mefali_api_client/src/model/action_arret.dart';
 import 'package:mefali_api_client/src/model/action_boutique_dto.dart';
 import 'package:mefali_api_client/src/model/action_role_dto.dart';
 import 'package:mefali_api_client/src/model/adresse.dart';
 import 'package:mefali_api_client/src/model/affichage_rupture.dart';
+import 'package:mefali_api_client/src/model/alertes_dispatch.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/arret_courant_suivi.dart';
+import 'package:mefali_api_client/src/model/arret_offre.dart';
 import 'package:mefali_api_client/src/model/arret_pre_provisionne.dart';
 import 'package:mefali_api_client/src/model/article_public.dart';
 import 'package:mefali_api_client/src/model/article_vendeur.dart';
 import 'package:mefali_api_client/src/model/attente.dart';
+import 'package:mefali_api_client/src/model/avance_offre.dart';
+import 'package:mefali_api_client/src/model/bascule_disponibilite.dart';
 import 'package:mefali_api_client/src/model/bascule_disponibilite_dto.dart';
 import 'package:mefali_api_client/src/model/boutique_vendeur.dart';
+import 'package:mefali_api_client/src/model/capacite_coursier.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
@@ -43,9 +49,12 @@ import 'package:mefali_api_client/src/model/corps_action_boutique.dart';
 import 'package:mefali_api_client/src/model/corps_forcage.dart';
 import 'package:mefali_api_client/src/model/corriger_dto.dart';
 import 'package:mefali_api_client/src/model/course_active.dart';
+import 'package:mefali_api_client/src/model/course_bloquee.dart';
+import 'package:mefali_api_client/src/model/coursier_du_pool.dart';
 import 'package:mefali_api_client/src/model/coursier_suivi.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/decision_offre.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/decision_substitution.dart';
 import 'package:mefali_api_client/src/model/demande_annulation.dart';
@@ -56,8 +65,10 @@ import 'package:mefali_api_client/src/model/demande_echec.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/demande_remise.dart';
+import 'package:mefali_api_client/src/model/demande_reprise.dart';
 import 'package:mefali_api_client/src/model/demande_rupture.dart';
 import 'package:mefali_api_client/src/model/demande_simulation.dart';
+import 'package:mefali_api_client/src/model/destination_offre.dart';
 import 'package:mefali_api_client/src/model/devis.dart';
 import 'package:mefali_api_client/src/model/devis_livraison.dart';
 import 'package:mefali_api_client/src/model/devis_panier.dart';
@@ -68,13 +79,17 @@ import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
 import 'package:mefali_api_client/src/model/drapeaux_zone.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
+import 'package:mefali_api_client/src/model/escalade_dispatch.dart';
 import 'package:mefali_api_client/src/model/etat_arret_course.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
+import 'package:mefali_api_client/src/model/etat_disponibilite.dart';
 import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
+import 'package:mefali_api_client/src/model/etat_publication_position.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
+import 'package:mefali_api_client/src/model/gain_offre.dart';
 import 'package:mefali_api_client/src/model/grille.dart';
 import 'package:mefali_api_client/src/model/grilles_zone.dart';
 import 'package:mefali_api_client/src/model/groupe_vendeur.dart';
@@ -95,6 +110,7 @@ import 'package:mefali_api_client/src/model/mode_collecte.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/offre_courante.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
 import 'package:mefali_api_client/src/model/paiement_commande.dart';
 import 'package:mefali_api_client/src/model/paiement_panier.dart';
@@ -103,16 +119,20 @@ import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plaque_url.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/point.dart';
+import 'package:mefali_api_client/src/model/pool_de_zone.dart';
 import 'package:mefali_api_client/src/model/position_suivi.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
 import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
 import 'package:mefali_api_client/src/model/progression_suivi.dart';
+import 'package:mefali_api_client/src/model/publication_position.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
 import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
+import 'package:mefali_api_client/src/model/refus_offre.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
+import 'package:mefali_api_client/src/model/reprise_faite.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_annulation.dart';
 import 'package:mefali_api_client/src/model/resultat_collecte.dart';
@@ -141,20 +161,26 @@ import 'package:mefali_api_client/src/model/verification_otp.dart';
 part 'serializers.g.dart';
 
 @SerializersFor([
+  AcceptationOffre,
   Accepte,
   ActionArret,
   ActionBoutiqueDto,
   ActionRoleDto,
   Adresse,
   AffichageRupture,
+  AlertesDispatch,
   AppareilDto,
   ArretCourantSuivi,
+  ArretOffre,
   ArretPreProvisionne,
   ArticlePublic,
   ArticleVendeur,
   Attente,
+  AvanceOffre,
+  BasculeDisponibilite,
   BasculeDisponibiliteDto,
   BoutiqueVendeur,
+  CapaciteCoursier,
   CategorieDto,
   CharteAdminDto,
   Commande,
@@ -170,9 +196,12 @@ part 'serializers.g.dart';
   CorpsForcage,
   CorrigerDto,
   CourseActive,
+  CourseBloquee,
+  CoursierDuPool,
   CoursierSuivi,
   CreerArticleDto,
   CreerPrestataireDto,
+  DecisionOffre,
   DecisionRole,
   DecisionSubstitution,
   DemandeAnnulation,
@@ -183,8 +212,10 @@ part 'serializers.g.dart';
   DemandeOtp,
   DemandeRafraichissement,
   DemandeRemise,
+  DemandeReprise,
   DemandeRupture,
   DemandeSimulation,
+  DestinationOffre,
   Devis,
   DevisLivraison,
   DevisPanier,
@@ -195,13 +226,17 @@ part 'serializers.g.dart';
   DossierCoursierAdmin,
   DrapeauxZone,
   ErreurApi,
+  EscaladeDispatch,
   EtatArretCourse,
   EtatCategorie,
+  EtatDisponibilite,
   EtatEffectifBoutique,
+  EtatPublicationPosition,
   EtatRoleDto,
   FichePublique,
   FileAttenteCoursier,
   ForcageDto,
+  GainOffre,
   Grille,
   GrillesZone,
   GroupeVendeur,
@@ -222,6 +257,7 @@ part 'serializers.g.dart';
   ModifierAdresse,
   ModifierArticleDto,
   ModifierPrestataireDto,
+  OffreCourante,
   OffreLivraisonVendeur,
   PaiementCommande,
   PaiementPanier,
@@ -230,16 +266,20 @@ part 'serializers.g.dart';
   PlaqueUrl,
   PlateformeDto,
   Point,
+  PoolDeZone,
   PositionSuivi,
   PrestataireAdmin,
   PrestataireAdminDetail,
   PrestatairePilotable,
   ProgressionSuivi,
+  PublicationPosition,
   RattachementDto,
   RattacherCompteDto,
+  RefusOffre,
   Regle,
   RegleRetenue,
   RegleUpsert,
+  RepriseFaite,
   ResolutionPlaque,
   ResultatAnnulation,
   ResultatCollecte,

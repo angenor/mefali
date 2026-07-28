@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
+import 'package:mefali_pro/coursier/disponibilite/emetteur_position.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
 import 'package:mefali_pro/roles/etat_roles.dart';
 import 'package:mefali_pro/roles/routeur_roles.dart';
+import 'package:riverpod_annotation/experimental/scope.dart';
 
 ResponseBody _json(Object corps, {int statut = 200}) => reponseJson(corps, statut: statut);
 
@@ -59,6 +61,7 @@ Future<void> _fin(WidgetTester tester, ProviderContainer container) async {
   container.dispose();
 }
 
+@Dependencies([EmetteurPosition])
 void main() {
   group('RouteurRoles — porte de Mefali Pro (FR-013)', () {
     testWidgets(
@@ -78,7 +81,7 @@ void main() {
           reason: 'un compte purement client n\'a aucune fonction pro (FR-011)',
         );
         expect(
-          find.text('Espace coursier'),
+          find.text('Ma course'),
           findsNothing,
           reason: 'aucune interface pro ne doit fuiter sans rôle validé',
         );
@@ -106,7 +109,7 @@ void main() {
       expect(find.text('En attente'), findsOneWidget, reason: 'puce de statut du rôle');
       expect(find.text('Coursier'), findsOneWidget, reason: 'carte du rôle demandé');
       expect(
-        find.text('Espace coursier'),
+        find.text('Ma course'),
         findsNothing,
         reason: 'SC-005 — « en attente » ne franchit pas la porte',
       );
@@ -153,7 +156,7 @@ void main() {
 
       expect(find.text('Rôle suspendu'), findsOneWidget);
       expect(find.text('Plaintes répétées'), findsOneWidget);
-      expect(find.text('Espace coursier'), findsNothing);
+      expect(find.text('Ma course'), findsNothing);
       await _fin(tester, container);
     });
 
@@ -196,7 +199,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Espace coursier'),
+        find.text('Tableau de bord'),
         findsOneWidget,
         reason: 'le réseau revenu, l\'écran se répare sans redémarrage',
       );
@@ -221,8 +224,10 @@ void main() {
       await tester.pumpWidget(_monter(container, const RouteurRoles()));
       await tester.pumpAndSettle();
 
-      // Le premier rôle validé (ordre de l'énum backend) ouvre l'app.
-      expect(find.text('Espace coursier'), findsOneWidget);
+      // Le premier rôle validé (ordre de l'énum backend) ouvre l'app. Sans
+      // course ni offre, l'espace coursier ouvre K1 — c'est là que Yao décide
+      // s'il travaille (cycle DSP 009).
+      expect(find.text('Tableau de bord'), findsOneWidget);
       final appelsApresChargement = transport.recues.length;
 
       await tester.tap(find.text('Vendeur'));
@@ -254,7 +259,7 @@ void main() {
 
       await tester.tap(find.text('Coursier'));
       await tester.pumpAndSettle();
-      expect(find.text('Espace coursier'), findsOneWidget, reason: 'et retour');
+      expect(find.text('Tableau de bord'), findsOneWidget, reason: 'et retour');
       await _fin(tester, container);
     });
 

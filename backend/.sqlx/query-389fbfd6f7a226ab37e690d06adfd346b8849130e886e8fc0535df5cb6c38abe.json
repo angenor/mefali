@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.devis_part_coursier, l.devis_distance_m, l.devis_degraded,\n                      l.devis_composantes,\n                      z.nom AS \"zone_nom!\"\n               FROM commandes.livraison l\n               JOIN commandes.commande c ON c.id = l.commande_id\n               JOIN zones.zone z ON z.id = c.zone_id\n               WHERE l.commande_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "devis_part_coursier",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_part_coursier"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "devis_distance_m",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_distance_m"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "devis_degraded",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_degraded"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devis_composantes",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_composantes"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "zone_nom!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "zones.zone",
+            "name": "nom"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "389fbfd6f7a226ab37e690d06adfd346b8849130e886e8fc0535df5cb6c38abe"
+}

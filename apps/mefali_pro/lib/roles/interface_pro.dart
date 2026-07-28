@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
+import 'package:riverpod_annotation/experimental/scope.dart';
 
+import '../coursier/disponibilite/emetteur_position.dart';
 import '../coursier/interface_coursier.dart';
 import '../l10n/app_localizations.dart';
 import '../vendeur/interface_vendeur.dart';
@@ -16,8 +18,14 @@ import 'pied_pro.dart';
 /// coursier seul ne doit pas voir un sélecteur à une case.
 ///
 /// Le rôle VENDEUR est servi par l'espace du cycle 005 (`InterfaceVendeur` —
-/// écrans V1/V2) ; le rôle coursier reste un placeholder jusqu'au cycle CRS
-/// (K1..K5). Porte et routeur inchangés (FR-046).
+/// écrans V1/V2) ; le rôle COURSIER par l'aiguillage du cycle DSP 009
+/// (`InterfaceCoursier` — K1, K2, course active). Porte et routeur inchangés
+/// (FR-046).
+///
+/// `@Dependencies` remonte celle de l'espace coursier : la déclaration doit
+/// suivre la chaîne de montage jusqu'ici, sinon un point de montage qui
+/// surcharge la source de positions verrait son override ignoré.
+@Dependencies([EmetteurPosition])
 class InterfacePro extends StatelessWidget {
   /// Crée l'interface du rôle actif.
   const InterfacePro({super.key, required this.etat});
@@ -37,8 +45,8 @@ class InterfacePro extends StatelessWidget {
       return InterfaceVendeur(etat: etat);
     }
 
-    // L'espace coursier du cycle QRC 006 (tranche « scanner & collecter » de K3)
-    // remplace le placeholder pour le rôle coursier (FR-046, porte inchangée).
+    // L'espace coursier aiguille entre K1 (disponibilité), K2 (offre) et la
+    // course active du cycle QRC 006 (FR-046, porte inchangée).
     if (actif == RolePro.coursier) {
       return InterfaceCoursier(etat: etat);
     }

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT en_ligne FROM dispatch.plafond_jour\n             WHERE coursier_id = $1 AND jour = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "en_ligne",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "dispatch.plafond_jour",
+            "name": "en_ligne"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "17864e3cb1994996f47f14d19110db3b6594571c23eb9ef29ca9e3699af92ec8"
+}

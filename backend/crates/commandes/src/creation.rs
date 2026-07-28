@@ -647,6 +647,23 @@ impl PgCommandes {
         .execute(&mut *tx)
         .await?;
 
+        // CAPACITÉ REQUISE — sur la LIVRAISON, jamais sur le tronc (constitution
+        // II : le tronc ne porte aucun champ logistique ; quel véhicule il faut
+        // EST logistique). Table `(famille, valeur)` et non colonne : l'ajout
+        // d'une famille (qualification d'artisan, phase N) ne doit coûter ni
+        // migration ni réécriture du filtre de dispatch (specs/009 R9, FR-018).
+        //
+        // Effet INTERNE : le corps de `POST /commandes` ne change pas.
+        sqlx::query!(
+            "INSERT INTO commandes.capacite_requise (livraison_id, famille, valeur)
+             VALUES ($1, 'transport', $2)
+             ON CONFLICT DO NOTHING",
+            livraison_id,
+            demande.transport_slug,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         // 13/14. Segment, puis arrêts : collectes dans l'ORDRE OPTIMISÉ, puis
         // la REMISE en dernier ; chaque ligne est rattachée à son arrêt.
         let segment_id = Uuid::now_v7();

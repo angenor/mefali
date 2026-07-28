@@ -1,0 +1,174 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, commande_id, coursier_id, zone_id, mode::text AS \"mode!\",\n                      rang, score, montant_a_avancer, devise, emise_le, echeance_le,\n                      issue::text AS \"issue!\", repondue_le, franche\n               FROM dispatch.offre\n               WHERE issue = 'en_vol' AND echeance_le <= $1\n               ORDER BY echeance_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "mode!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "rang",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "rang"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "score",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "score"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "montant_a_avancer",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "montant_a_avancer"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "emise_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "emise_le"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "echeance_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "echeance_le"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "issue!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "repondue_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "repondue_le"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "franche",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "dispatch.offre",
+            "name": "franche"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      false
+    ]
+  },
+  "hash": "aed53c4a3f5d2033643566cf478926e475d2bc948c98af4fa2e97ca281849c99"
+}
