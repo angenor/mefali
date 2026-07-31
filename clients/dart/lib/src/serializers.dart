@@ -24,6 +24,7 @@ import 'package:mefali_api_client/src/model/affichage_rupture.dart';
 import 'package:mefali_api_client/src/model/alertes_dispatch.dart';
 import 'package:mefali_api_client/src/model/appareil_dto.dart';
 import 'package:mefali_api_client/src/model/appel_enregistre.dart';
+import 'package:mefali_api_client/src/model/appel_journalise.dart';
 import 'package:mefali_api_client/src/model/arret_courant_suivi.dart';
 import 'package:mefali_api_client/src/model/arret_course.dart';
 import 'package:mefali_api_client/src/model/arret_offre.dart';
@@ -70,6 +71,7 @@ import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/demande_echec.dart';
 import 'package:mefali_api_client/src/model/demande_issue_admin.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
+import 'package:mefali_api_client/src/model/demande_photo_preuve.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/demande_remise.dart';
 import 'package:mefali_api_client/src/model/demande_reprise.dart';
@@ -91,6 +93,7 @@ import 'package:mefali_api_client/src/model/etat_arret_course.dart';
 import 'package:mefali_api_client/src/model/etat_categorie.dart';
 import 'package:mefali_api_client/src/model/etat_disponibilite.dart';
 import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
+import 'package:mefali_api_client/src/model/etat_preuves.dart';
 import 'package:mefali_api_client/src/model/etat_publication_position.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
@@ -114,6 +117,7 @@ import 'package:mefali_api_client/src/model/ligne_arret.dart';
 import 'package:mefali_api_client/src/model/ligne_devis.dart';
 import 'package:mefali_api_client/src/model/ligne_panier.dart';
 import 'package:mefali_api_client/src/model/livraison_commande.dart';
+import 'package:mefali_api_client/src/model/lot_de_presence.dart';
 import 'package:mefali_api_client/src/model/mes_commandes.dart';
 import 'package:mefali_api_client/src/model/mode_collecte.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
@@ -124,15 +128,22 @@ import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
 import 'package:mefali_api_client/src/model/paiement_commande.dart';
 import 'package:mefali_api_client/src/model/paiement_panier.dart';
 import 'package:mefali_api_client/src/model/photo_admin_dto.dart';
+import 'package:mefali_api_client/src/model/photo_preuve.dart';
+import 'package:mefali_api_client/src/model/photo_preuve_deposee.dart';
 import 'package:mefali_api_client/src/model/plage_dto.dart';
 import 'package:mefali_api_client/src/model/plaque_url.dart';
 import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/point.dart';
 import 'package:mefali_api_client/src/model/pool_de_zone.dart';
 import 'package:mefali_api_client/src/model/position_suivi.dart';
+import 'package:mefali_api_client/src/model/presence_enregistree.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
 import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
+import 'package:mefali_api_client/src/model/preuve_appels.dart';
+import 'package:mefali_api_client/src/model/preuve_photos.dart';
+import 'package:mefali_api_client/src/model/preuve_presence.dart';
+import 'package:mefali_api_client/src/model/preuves_exploitation.dart';
 import 'package:mefali_api_client/src/model/progression_suivi.dart';
 import 'package:mefali_api_client/src/model/publication_position.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
@@ -141,6 +152,7 @@ import 'package:mefali_api_client/src/model/refus_offre.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
+import 'package:mefali_api_client/src/model/releve_de_presence.dart';
 import 'package:mefali_api_client/src/model/remise_bloquee.dart';
 import 'package:mefali_api_client/src/model/remise_preprovisionnee.dart';
 import 'package:mefali_api_client/src/model/remises_bloquees.dart';
@@ -184,6 +196,7 @@ part 'serializers.g.dart';
   AlertesDispatch,
   AppareilDto,
   AppelEnregistre,
+  AppelJournalise,
   ArretCourantSuivi,
   ArretCourse,
   ArretOffre,
@@ -230,6 +243,7 @@ part 'serializers.g.dart';
   DemandeEchec,
   DemandeIssueAdmin,
   DemandeOtp,
+  DemandePhotoPreuve,
   DemandeRafraichissement,
   DemandeRemise,
   DemandeReprise,
@@ -251,6 +265,7 @@ part 'serializers.g.dart';
   EtatCategorie,
   EtatDisponibilite,
   EtatEffectifBoutique,
+  EtatPreuves,
   EtatPublicationPosition,
   EtatRoleDto,
   FichePublique,
@@ -274,6 +289,7 @@ part 'serializers.g.dart';
   LigneDevis,
   LignePanier,
   LivraisonCommande,
+  LotDePresence,
   MesCommandes,
   ModeCollecte,
   ModifierAdresse,
@@ -284,15 +300,22 @@ part 'serializers.g.dart';
   PaiementCommande,
   PaiementPanier,
   PhotoAdminDto,
+  PhotoPreuve,
+  PhotoPreuveDeposee,
   PlageDto,
   PlaqueUrl,
   PlateformeDto,
   Point,
   PoolDeZone,
   PositionSuivi,
+  PresenceEnregistree,
   PrestataireAdmin,
   PrestataireAdminDetail,
   PrestatairePilotable,
+  PreuveAppels,
+  PreuvePhotos,
+  PreuvePresence,
+  PreuvesExploitation,
   ProgressionSuivi,
   PublicationPosition,
   RattachementDto,
@@ -301,6 +324,7 @@ part 'serializers.g.dart';
   Regle,
   RegleRetenue,
   RegleUpsert,
+  ReleveDePresence,
   RemiseBloquee,
   RemisePreprovisionnee,
   RemisesBloquees,

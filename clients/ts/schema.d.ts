@@ -245,6 +245,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/livraisons/{livraison_id}/preuves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-05 (exploitation) — le dossier de preuves d'une livraison (FR-063).
+         * @description C'est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles
+         *     existeraient en base sans que personne ne puisse répondre à un client qui
+         *     conteste un échec — et une preuve que personne ne lit ne protège personne.
+         *
+         *     ⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.
+         */
+        get: operations["preuves_de_livraison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires": {
         parameters: {
             query?: never;
@@ -1204,6 +1228,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{livraison_id}/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
+         * @description L'app envoie des **échantillons**, jamais une durée : c'est le serveur qui
+         *     compte, en ignorant tout intervalle supérieur au « trou » de la zone. Sans
+         *     cette règle, deux relevés espacés de dix minutes vaudraient dix minutes de
+         *     présence, et un aller-retour vaudrait une attente (R8).
+         *
+         *     Idempotent par `uuid_client` : un lot rejoué par la file rend le même corps.
+         */
+        post: operations["enregistrer_presence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/preuves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
+         * @description C'est la **même fonction** que celle qui garde `POST /courses/{id}/echec` :
+         *     l'écran et le serveur ne peuvent pas diverger (FR-059, FR-060). Un bouton
+         *     actif dont la déclaration serait refusée serait pire qu'un bouton inactif.
+         */
+        get: operations["etat_preuves"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/preuves/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-05 — dépose une photo de preuve d'échec (FR-056, FR-064).
+         * @description **Multipart** pour la même raison que la remise (R18) : la photo voyage AVEC
+         *     la demande, donc dans la file hors-ligne. Une preuve qui exigerait du réseau
+         *     au moment de la prise serait une preuve qu'on ne peut pas réunir là où elle
+         *     sert — devant une porte close, dans un quartier sans couverture.
+         *
+         *     Idempotent par `uuid_client` : le rejeu ne redépose rien et ne compte pas une
+         *     seconde photo.
+         */
+        post: operations["deposer_photo_preuve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses/{livraison_id}/remise": {
         parameters: {
             query?: never;
@@ -1867,6 +1964,35 @@ export interface components {
             appel_id: string;
             /** @description Cet appel compte-t-il pour la preuve d'échec ? */
             compte_pour_preuve: boolean;
+        };
+        /** @description Un appel journalisé, tel que l'exploitation le lit. */
+        AppelJournalise: {
+            /**
+             * Format: uuid
+             * @description Appel.
+             */
+            id: string;
+            /** @description Issue DÉCLARÉE par le coursier — affichée, jamais un critère (R19). */
+            issue: string;
+            /** @description `suivi` | `substitution` | `client_absent`. */
+            motif: string;
+            /**
+             * Format: date-time
+             * @description Horodatage **serveur** — celui qui fonde l'espacement.
+             */
+            passe_le: string;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil — observation seulement.
+             */
+            passe_le_local: string;
+            /**
+             * Format: uuid
+             * @description Prestataire appelé (si `vers = vendeur`).
+             */
+            prestataire_id?: string | null;
+            /** @description `client` | `vendeur`. **Aucun numéro** — le serveur n'en a jamais vu. */
+            vers: string;
         };
         /** @description L'arrêt où en est le coursier. */
         ArretCourantSuivi: {
@@ -2851,6 +2977,20 @@ export interface components {
              */
             zone: string;
         };
+        /** @description Partie `demande` du multipart de photo de preuve. */
+        DemandePhotoPreuve: {
+            /**
+             * Format: date-time
+             * @description Horodatage de la prise de vue sur l'appareil. **Observation** — retenu
+             *     comme date de prise pour que l'ordre des photos reste celui du terrain.
+             */
+            prise_le_local?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
+        };
         /** @description Corps de `POST /auth/rafraichir`. */
         DemandeRafraichissement: {
             /** @description Jeton de renouvellement opaque courant. */
@@ -3339,6 +3479,27 @@ export interface components {
              */
             reouverture_estimee?: string | null;
         };
+        /** @description L'état des trois preuves, et **ce qui manque** (contrat §1.4). */
+        EtatPreuves: {
+            /** @description Preuve « appels ». */
+            appels: components["schemas"]["PreuveAppels"];
+            /** @description Preuve « photo ». */
+            photos: components["schemas"]["PreuvePhotos"];
+            /** @description Preuve « présence ». */
+            presence: components["schemas"]["PreuvePresence"];
+            /** @description Les trois sont réunies — l'échec devient déclarable. */
+            reunies: boolean;
+            /**
+             * Format: int32
+             * @description Compteur « N sur 3 » de K4-1e.
+             */
+            reunies_sur: number;
+            /**
+             * Format: int32
+             * @description Toujours 3 — le compteur n'a de sens que si le total est explicite.
+             */
+            total: number;
+        };
         /** @description Ce que la publication rend à l'app. */
         EtatPublicationPosition: {
             /** @description Vrai si le coursier est (re)devenu membre du pool. */
@@ -3745,6 +3906,11 @@ export interface components {
              */
             nb_arrets: number;
         };
+        /** @description Lot de relevés — la file peut en avoir accumulé plusieurs minutes. */
+        LotDePresence: {
+            /** @description Les échantillons du lot. */
+            releves: components["schemas"]["ReleveDePresence"][];
+        };
         /** @description La liste des commandes du compte. */
         MesCommandes: {
             /** @description Commandes, les plus récentes d'abord. */
@@ -3936,6 +4102,51 @@ export interface components {
             /** @description URL présignée (TTL 10 min). */
             url: string;
         };
+        /** @description Une photo de preuve, présignée. */
+        PhotoPreuve: {
+            /**
+             * Format: uuid
+             * @description Photo.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Prise le.
+             */
+            prise_le: string;
+            /**
+             * Format: date-time
+             * @description Purgée le — la preuve reste **datée**, ses octets sont partis.
+             */
+            purgee_le?: string | null;
+            /** @description URL présignée de courte durée. Absente si purgée ou indisponible. */
+            url?: string | null;
+        };
+        /** @description Ce que le serveur rend après le dépôt d'une photo de preuve. */
+        PhotoPreuveDeposee: {
+            /**
+             * Format: uuid
+             * @description Photo enregistrée.
+             */
+            photo_id: string;
+            /**
+             * Format: int64
+             * @description Photos de preuve de cette livraison après dépôt.
+             */
+            photos: number;
+            /** @description `true` si la photo existait déjà (rejeu de la file) — rien n'a été redéposé. */
+            rejeu: boolean;
+        };
+        /** @description Schéma OpenAPI du multipart de photo de preuve (partie `demande` + `photo`). */
+        PhotoPreuveMultipart: {
+            /** @description Partie JSON `demande`. */
+            demande: components["schemas"]["DemandePhotoPreuve"];
+            /**
+             * Format: binary
+             * @description Photo de la porte close.
+             */
+            photo: string;
+        };
         /** @description Une plage d'ouverture, heures locales `HH:MM` (FR-031). */
         PlageDto: {
             /**
@@ -4006,6 +4217,24 @@ export interface components {
              */
             lon: number;
         };
+        /** @description Ce que le serveur rend après avoir enregistré un lot de présence. */
+        PresenceEnregistree: {
+            /**
+             * Format: int64
+             * @description Présence **recalculée par le serveur**, en secondes (FR-060).
+             */
+            presence_s: number;
+            /**
+             * Format: int64
+             * @description Durée exigée par la zone.
+             */
+            requis_s: number;
+            /**
+             * Format: int64
+             * @description Relevés du lot connus du serveur — identique au rejeu (constitution V).
+             */
+            retenus: number;
+        };
         /** @description Résumé admin d'un prestataire. */
         PrestataireAdmin: {
             /** @description Slug de la catégorie de service. */
@@ -4073,6 +4302,78 @@ export interface components {
             nom: string;
             /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
             statut: components["schemas"]["StatutPrestataire"];
+        };
+        /** @description Preuve « appels » — nombre ET espacement (FR-056). */
+        PreuveAppels: {
+            /** @description Faux dès qu'un appel a été écarté pour cause d'espacement. */
+            espacement_ok: boolean;
+            /**
+             * Format: int64
+             * @description Appels `client_absent` **retenus** (espacement respecté).
+             */
+            faits: number;
+            /** @description Horodatages **serveur** des appels retenus (affichage K4-1e). */
+            horodatages: string[];
+            /** @description Issues DÉCLARÉES par le coursier — affichées, jamais un critère (R19). */
+            issues: string[];
+            /** @description Pourquoi elle ne l'est pas — clé i18n. */
+            motif_cle?: string | null;
+            /** @description Preuve réunie. */
+            ok: boolean;
+            /**
+             * Format: int64
+             * @description Appels exigés par la zone.
+             */
+            requis: number;
+        };
+        /** @description Preuve « photo » (FR-056). */
+        PreuvePhotos: {
+            /**
+             * Format: int64
+             * @description Photos déposées.
+             */
+            faites: number;
+            /** @description Preuve réunie. */
+            ok: boolean;
+            /**
+             * Format: int64
+             * @description Photos exigées.
+             */
+            requis: number;
+        };
+        /** @description Preuve « présence » — durée mesurée, trous exclus (FR-056). */
+        PreuvePresence: {
+            /** @description Pourquoi elle ne l'est pas — clé i18n. */
+            motif_cle?: string | null;
+            /** @description Preuve réunie. */
+            ok: boolean;
+            /**
+             * Format: int64
+             * @description Durée exigée par la zone.
+             */
+            requis: number;
+            /**
+             * Format: int64
+             * @description Durée retenue (s), recalculée par le serveur.
+             */
+            secondes: number;
+        };
+        /** @description Le dossier de preuves d'une livraison (FR-063). */
+        PreuvesExploitation: {
+            /**
+             * @description **Tous** les appels — ceux qui ne comptent pas éclairent autant que les
+             *     autres quand un client conteste.
+             */
+            appels: components["schemas"]["AppelJournalise"][];
+            /** @description L'état recalculé des trois preuves, et ce qui manque. */
+            etat: components["schemas"]["EtatPreuves"];
+            /** @description Photos de preuve. */
+            photos: components["schemas"]["PhotoPreuve"][];
+            /**
+             * Format: date-time
+             * @description Instant du basculement — absent si les trois preuves ne l'ont jamais été.
+             */
+            reunies_le?: string | null;
         };
         /** @description Progression de la course, en ARRÊTS DE COLLECTE. */
         ProgressionSuivi: {
@@ -4300,6 +4601,27 @@ export interface components {
             seuil_km_m: number;
             /** @description Slug du véhicule (référentiel `zones.type_transport`). */
             transport_slug: string;
+        };
+        /** @description Un échantillon de présence tel que l'app le déclare. */
+        ReleveDePresence: {
+            /**
+             * Format: int64
+             * @description Éloignement du point de livraison, en mètres **arrondis**.
+             *
+             *     ⚠ Une distance, **jamais une position** : le serveur ne stocke aucune
+             *     coordonnée, donc n'en fuite aucune (R8, patron ARTCI du cycle 006).
+             */
+            distance_m: number;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'échantillon sur l'appareil.
+             */
+            releve_le_local: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence du relevé (UUIDv7 client, constitution V).
+             */
+            uuid_client: string;
         };
         /** @description Une commande dont le code de remise est bloqué. */
         RemiseBloquee: {
@@ -5455,6 +5777,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PoolDeZone"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    preuves_de_livraison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison dont on lit les preuves. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossier de preuves complet. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreuvesExploitation"];
                 };
             };
             /** @description Session absente, invalide ou révoquée. */
@@ -8395,6 +8758,165 @@ export interface operations {
             };
             /** @description Preuves incomplètes (FR-056), ou état incompatible. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    enregistrer_presence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotDePresence"];
+            };
+        };
+        responses: {
+            /** @description Lot enregistré, présence recalculée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceEnregistree"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Lot vide, trop grand, ou distance invalide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    etat_preuves: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État détaillé des trois preuves. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatPreuves"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    deposer_photo_preuve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Partie `demande` (JSON) + `photo` binaire. */
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PhotoPreuveMultipart"];
+            };
+        };
+        responses: {
+            /** @description Rejeu idempotent — aucune écriture. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoPreuveDeposee"];
+                };
+            };
+            /** @description Photo déposée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoPreuveDeposee"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Photo vide ou partie `demande` illisible. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

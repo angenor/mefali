@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT distance_m, releve_le_local, releve_le\n                 FROM coursier.releve_presence\n                WHERE livraison_id = $1\n                ORDER BY releve_le_local",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "distance_m",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "coursier.releve_presence",
+            "name": "distance_m"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "releve_le_local",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.releve_presence",
+            "name": "releve_le_local"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "releve_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.releve_presence",
+            "name": "releve_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8286722d12c4b642ae5474fce09c8e1db99c2cc133b9bbbd510668d8d278505b"
+}

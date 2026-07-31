@@ -123,6 +123,13 @@ impl PgCoursier {
         .await?;
         tx.commit().await?;
 
+        // Un appel `client_absent` peut être celui qui réunit les trois preuves
+        // (FR-057). L'évaluation est hors transaction : elle a sa propre garde
+        // d'unicité, et un échec ici ne doit pas annuler un appel bien journalisé.
+        if demande.motif.compte_pour_preuve() {
+            self.evaluer_basculement(livraison).await?;
+        }
+
         Ok(AppelEnregistre {
             appel_id,
             compte_pour_preuve: demande.motif.compte_pour_preuve(),

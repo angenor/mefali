@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE coursier.preuve_photo SET purgee_le = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "062ca6c432f5d312a62b5a35eaeae33b8c99f0cdec3f27b6dc40057e0dc83797"
+}

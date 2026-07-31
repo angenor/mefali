@@ -25,6 +25,33 @@ void main() {
       // TODO
     });
 
+    // CRS-05 — dépose une photo de preuve d'échec (FR-056, FR-064).
+    //
+    // **Multipart** pour la même raison que la remise (R18) : la photo voyage AVEC la demande, donc dans la file hors-ligne. Une preuve qui exigerait du réseau au moment de la prise serait une preuve qu'on ne peut pas réunir là où elle sert — devant une porte close, dans un quartier sans couverture.  Idempotent par `uuid_client` : le rejeu ne redépose rien et ne compte pas une seconde photo.
+    //
+    //Future<PhotoPreuveDeposee> deposerPhotoPreuve(String livraisonId, DemandePhotoPreuve demande, MultipartFile photo) async
+    test('test deposerPhotoPreuve', () async {
+      // TODO
+    });
+
+    // CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
+    //
+    // L'app envoie des **échantillons**, jamais une durée : c'est le serveur qui compte, en ignorant tout intervalle supérieur au « trou » de la zone. Sans cette règle, deux relevés espacés de dix minutes vaudraient dix minutes de présence, et un aller-retour vaudrait une attente (R8).  Idempotent par `uuid_client` : un lot rejoué par la file rend le même corps.
+    //
+    //Future<PresenceEnregistree> enregistrerPresence(String livraisonId, LotDePresence lotDePresence) async
+    test('test enregistrerPresence', () async {
+      // TODO
+    });
+
+    // CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
+    //
+    // C'est la **même fonction** que celle qui garde `POST /courses/{id}/echec` : l'écran et le serveur ne peuvent pas diverger (FR-059, FR-060). Un bouton actif dont la déclaration serait refusée serait pire qu'un bouton inactif.
+    //
+    //Future<EtatPreuves> etatPreuves(String livraisonId) async
+    test('test etatPreuves', () async {
+      // TODO
+    });
+
     // CRS-03 — journalise un appel passé **via l'app** (FR-030, FR-031, FR-033).
     //
     // ⚠ **Aucun numéro** n'est transmis ni journalisé : le serveur ne voit pas l'appel, il part du téléphone. Il en garde l'intention, la direction, le motif et l'issue déclarée.  Idempotent par `uuid_client` : le rejeu rend `200` et le même corps, sans seconde ligne ni second événement.

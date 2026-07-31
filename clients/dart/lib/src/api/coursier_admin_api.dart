@@ -13,6 +13,7 @@ import 'package:mefali_api_client/src/model/decision_depot.dart';
 import 'package:mefali_api_client/src/model/demande_deblocage.dart';
 import 'package:mefali_api_client/src/model/demande_depot.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
+import 'package:mefali_api_client/src/model/preuves_exploitation.dart';
 import 'package:mefali_api_client/src/model/remises_bloquees.dart';
 
 class CoursierAdminApi {
@@ -199,6 +200,87 @@ class CoursierAdminApi {
     );
 
     return _response;
+  }
+
+  /// CRS-05 (exploitation) — le dossier de preuves d&#39;une livraison (FR-063).
+  /// C&#39;est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles existeraient en base sans que personne ne puisse répondre à un client qui conteste un échec — et une preuve que personne ne lit ne protège personne.  ⚠ Aucun numéro de téléphone n&#39;en sort : le serveur n&#39;en a jamais journalisé.
+  ///
+  /// Parameters:
+  /// * [livraisonId] - Livraison dont on lit les preuves.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [PreuvesExploitation] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<PreuvesExploitation>> preuvesDeLivraison({ 
+    required String livraisonId,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/admin/livraisons/{livraison_id}/preuves'.replaceAll('{' r'livraison_id' '}', encodeQueryParameter(_serializers, livraisonId, const FullType(String)).toString());
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    PreuvesExploitation? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PreuvesExploitation),
+      ) as PreuvesExploitation;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<PreuvesExploitation>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
   }
 
   /// **FR-044** — les remises dont le code est épuisé et le blocage non levé.

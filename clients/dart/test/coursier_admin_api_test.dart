@@ -25,6 +25,15 @@ void main() {
       // TODO
     });
 
+    // CRS-05 (exploitation) — le dossier de preuves d'une livraison (FR-063).
+    //
+    // C'est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles existeraient en base sans que personne ne puisse répondre à un client qui conteste un échec — et une preuve que personne ne lit ne protège personne.  ⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.
+    //
+    //Future<PreuvesExploitation> preuvesDeLivraison(String livraisonId) async
+    test('test preuvesDeLivraison', () async {
+      // TODO
+    });
+
     // **FR-044** — les remises dont le code est épuisé et le blocage non levé.
     //
     // Le verrou du code protège un secret à quatre chiffres, mais il laisse une commande à la porte du client. Sans cette lecture, l'alerte `remise.code_epuise` partirait dans l'outbox sans que personne ne puisse répondre — et un humain ne s'abonne pas à un journal.

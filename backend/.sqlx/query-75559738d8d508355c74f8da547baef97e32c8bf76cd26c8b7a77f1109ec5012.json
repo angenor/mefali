@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coursier.preuves_reunies (livraison_id, reunies_le)\n               VALUES ($1, $2)\n               ON CONFLICT (livraison_id) DO NOTHING\n               RETURNING reunies_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reunies_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuves_reunies",
+            "name": "reunies_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "75559738d8d508355c74f8da547baef97e32c8bf76cd26c8b7a77f1109ec5012"
+}

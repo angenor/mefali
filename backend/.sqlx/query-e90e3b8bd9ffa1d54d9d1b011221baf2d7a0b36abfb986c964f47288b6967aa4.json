@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT reunies_le FROM coursier.preuves_reunies WHERE livraison_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reunies_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuves_reunies",
+            "name": "reunies_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e90e3b8bd9ffa1d54d9d1b011221baf2d7a0b36abfb986c964f47288b6967aa4"
+}

@@ -79,7 +79,7 @@ impl PgCoursier {
     /// Une livraison qui n'existe pas et une livraison qui appartient à
     /// quelqu'un d'autre rendent la MÊME erreur : un identifiant deviné ne doit
     /// rien révéler (patron `suivi` du cycle 008).
-    pub(crate) async fn exiger_proprietaire(
+    pub async fn exiger_proprietaire(
         &self,
         livraison: uuid::Uuid,
         coursier: uuid::Uuid,

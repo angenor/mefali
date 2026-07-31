@@ -12,6 +12,8 @@
 //! | [`config`] | les 7 paramètres de zone du cycle, et le seuil d'essais **réutilisé** |
 //! | [`course`] | composition de la course active — trois domaines, une lecture |
 //! | [`appels`] | appels journalisés via l'app, sans jamais un numéro |
+//! | [`presence`] | présence mesurée sur place — une distance, jamais une position |
+//! | [`preuves`] | les trois preuves d'un client absent, et leur basculement |
 //! | [`ports`] | traits consommés (litiges AVI-04) et leurs doubles |
 //! | [`depot`] | `PgCoursier` — racine de composition du domaine |
 //!
@@ -30,9 +32,13 @@ pub mod course;
 pub mod depot;
 pub mod modele;
 pub mod ports;
+pub mod presence;
+pub mod preuves;
 
 pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
 pub use appels::{AppelEnregistre, DemandeAppel};
+pub use presence::{PresenceEnregistree, ReleveDePresence};
+pub use preuves::{PhotoPreuveDeposee, PhotoPreuveVue, PreuvesExploitation};
 pub use depot::PgCoursier;
 pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
 pub use modele::{

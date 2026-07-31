@@ -17,6 +17,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AlertesDispatch.serializer)
       ..add(AppareilDto.serializer)
       ..add(AppelEnregistre.serializer)
+      ..add(AppelJournalise.serializer)
       ..add(ArretCourantSuivi.serializer)
       ..add(ArretCourse.serializer)
       ..add(ArretOffre.serializer)
@@ -63,6 +64,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DemandeEchec.serializer)
       ..add(DemandeIssueAdmin.serializer)
       ..add(DemandeOtp.serializer)
+      ..add(DemandePhotoPreuve.serializer)
       ..add(DemandeRafraichissement.serializer)
       ..add(DemandeRemise.serializer)
       ..add(DemandeReprise.serializer)
@@ -84,6 +86,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(EtatCategorie.serializer)
       ..add(EtatDisponibilite.serializer)
       ..add(EtatEffectifBoutique.serializer)
+      ..add(EtatPreuves.serializer)
       ..add(EtatPublicationPosition.serializer)
       ..add(EtatRoleDto.serializer)
       ..add(FichePublique.serializer)
@@ -107,6 +110,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(LigneDevis.serializer)
       ..add(LignePanier.serializer)
       ..add(LivraisonCommande.serializer)
+      ..add(LotDePresence.serializer)
       ..add(MesCommandes.serializer)
       ..add(ModeCollecte.serializer)
       ..add(ModifierAdresse.serializer)
@@ -117,15 +121,22 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PaiementCommande.serializer)
       ..add(PaiementPanier.serializer)
       ..add(PhotoAdminDto.serializer)
+      ..add(PhotoPreuve.serializer)
+      ..add(PhotoPreuveDeposee.serializer)
       ..add(PlageDto.serializer)
       ..add(PlaqueUrl.serializer)
       ..add(PlateformeDto.serializer)
       ..add(Point.serializer)
       ..add(PoolDeZone.serializer)
       ..add(PositionSuivi.serializer)
+      ..add(PresenceEnregistree.serializer)
       ..add(PrestataireAdmin.serializer)
       ..add(PrestataireAdminDetail.serializer)
       ..add(PrestatairePilotable.serializer)
+      ..add(PreuveAppels.serializer)
+      ..add(PreuvePhotos.serializer)
+      ..add(PreuvePresence.serializer)
+      ..add(PreuvesExploitation.serializer)
       ..add(ProgressionSuivi.serializer)
       ..add(PublicationPosition.serializer)
       ..add(RattachementDto.serializer)
@@ -134,6 +145,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Regle.serializer)
       ..add(RegleRetenue.serializer)
       ..add(RegleUpsert.serializer)
+      ..add(ReleveDePresence.serializer)
       ..add(RemiseBloquee.serializer)
       ..add(RemisePreprovisionnee.serializer)
       ..add(RemisesBloquees.serializer)
@@ -163,6 +175,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(UrlPresignee.serializer)
       ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(AppelJournalise)]),
+          () => ListBuilder<AppelJournalise>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PhotoPreuve)]),
+          () => ListBuilder<PhotoPreuve>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ArretCourse)]),
           () => ListBuilder<ArretCourse>())
@@ -231,6 +249,12 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(CoursierDuPool)]),
           () => ListBuilder<CoursierDuPool>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(DateTime)]),
+          () => ListBuilder<DateTime>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
           () => ListBuilder<EtatRoleDto>())
       ..addBuilderFactory(
@@ -254,6 +278,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Regle)]),
           () => ListBuilder<Regle>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ReleveDePresence)]),
+          () => ListBuilder<ReleveDePresence>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RemiseBloquee)]),
           () => ListBuilder<RemiseBloquee>())

@@ -9,6 +9,7 @@
 //! n'écrit que sa propre course, sa propre caisse, ses propres preuves — y
 //! compris au REJEU d'une action venue de la file (FR-006).
 
+use actix_multipart::form::{bytes::Bytes as ChampFichier, text::Text, MultipartForm};
 use actix_web::http::StatusCode;
 use actix_web::{get, patch, post, web, HttpResponse, ResponseError};
 use chrono::{DateTime, Utc};
@@ -456,6 +457,323 @@ pub async fn journaliser_appel(
     } else {
         HttpResponse::Created().json(corps)
     })
+}
+
+/// Un échantillon de présence tel que l'app le déclare.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = ReleveDePresence)]
+pub struct ReleveDePresenceDto {
+    /// Clé d'idempotence du relevé (UUIDv7 client, constitution V).
+    pub uuid_client: Uuid,
+    /// Éloignement du point de livraison, en mètres **arrondis**.
+    ///
+    /// ⚠ Une distance, **jamais une position** : le serveur ne stocke aucune
+    /// coordonnée, donc n'en fuite aucune (R8, patron ARTCI du cycle 006).
+    pub distance_m: i64,
+    /// Horodatage de l'échantillon sur l'appareil.
+    pub releve_le_local: DateTime<Utc>,
+}
+
+/// Lot de relevés — la file peut en avoir accumulé plusieurs minutes.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = LotDePresence)]
+pub struct LotPresenceDto {
+    /// Les échantillons du lot.
+    pub releves: Vec<ReleveDePresenceDto>,
+}
+
+/// Ce que le serveur rend après avoir enregistré un lot de présence.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PresenceEnregistree)]
+pub struct PresenceEnregistreeDto {
+    /// Relevés du lot connus du serveur — identique au rejeu (constitution V).
+    pub retenus: i64,
+    /// Présence **recalculée par le serveur**, en secondes (FR-060).
+    pub presence_s: i64,
+    /// Durée exigée par la zone.
+    pub requis_s: i64,
+}
+
+/// CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
+///
+/// L'app envoie des **échantillons**, jamais une durée : c'est le serveur qui
+/// compte, en ignorant tout intervalle supérieur au « trou » de la zone. Sans
+/// cette règle, deux relevés espacés de dix minutes vaudraient dix minutes de
+/// présence, et un aller-retour vaudrait une attente (R8).
+///
+/// Idempotent par `uuid_client` : un lot rejoué par la file rend le même corps.
+#[utoipa::path(
+    post,
+    path = "/courses/{livraison_id}/presence",
+    tag = "coursier",
+    params(("livraison_id" = Uuid, Path, description = "Livraison de la course active du coursier.")),
+    request_body = LotPresenceDto,
+    responses(
+        (status = 200, description = "Lot enregistré, présence recalculée.", body = PresenceEnregistreeDto),
+        (status = 422, description = "Lot vide, trop grand, ou distance invalide.", body = ErreurApiDto),
+        (status = 403, description = "Course d'un autre coursier, ou rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/{livraison_id}/presence")]
+pub async fn enregistrer_presence(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<LotPresenceDto>,
+    coursier: web::Data<PgCoursier>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let lot = corps
+        .into_inner()
+        .releves
+        .into_iter()
+        .map(|r| coursier::ReleveDePresence {
+            uuid_client: r.uuid_client,
+            distance_m: r.distance_m,
+            releve_le_local: r.releve_le_local,
+        })
+        .collect();
+    let fait = coursier
+        .enregistrer_presence(auth.compte_id, chemin.into_inner(), lot)
+        .await?;
+    Ok(HttpResponse::Ok().json(PresenceEnregistreeDto {
+        retenus: fait.retenus,
+        presence_s: fait.presence.secondes,
+        requis_s: fait.presence.requis,
+    }))
+}
+
+/// Partie `demande` du multipart de photo de preuve.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandePhotoPreuve)]
+pub struct DemandePhotoPreuveDto {
+    /// Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+    pub uuid_client: Uuid,
+    /// Horodatage de la prise de vue sur l'appareil. **Observation** — retenu
+    /// comme date de prise pour que l'ordre des photos reste celui du terrain.
+    pub prise_le_local: Option<DateTime<Utc>>,
+}
+
+/// Schéma OpenAPI du multipart de photo de preuve (partie `demande` + `photo`).
+#[derive(Debug, ToSchema)]
+#[schema(as = PhotoPreuveMultipart)]
+pub struct PhotoPreuveMultipartDto {
+    /// Partie JSON `demande`.
+    pub demande: DemandePhotoPreuveDto,
+    /// Photo de la porte close.
+    #[schema(value_type = String, format = Binary)]
+    pub photo: Vec<u8>,
+}
+
+/// Multipart de photo de preuve : partie `demande` (JSON) + `photo` binaire.
+#[derive(Debug, MultipartForm)]
+pub struct PhotoPreuveForm {
+    /// Partie JSON `demande`.
+    demande: Text<String>,
+    /// Photo — 5 Mo max, même plafond que la collecte et la rupture.
+    #[multipart(limit = "5MB")]
+    photo: ChampFichier,
+}
+
+/// Ce que le serveur rend après le dépôt d'une photo de preuve.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PhotoPreuveDeposee)]
+pub struct PhotoPreuveDeposeeDto {
+    /// Photo enregistrée.
+    pub photo_id: Uuid,
+    /// Photos de preuve de cette livraison après dépôt.
+    pub photos: i64,
+    /// `true` si la photo existait déjà (rejeu de la file) — rien n'a été redéposé.
+    pub rejeu: bool,
+}
+
+/// CRS-05 — dépose une photo de preuve d'échec (FR-056, FR-064).
+///
+/// **Multipart** pour la même raison que la remise (R18) : la photo voyage AVEC
+/// la demande, donc dans la file hors-ligne. Une preuve qui exigerait du réseau
+/// au moment de la prise serait une preuve qu'on ne peut pas réunir là où elle
+/// sert — devant une porte close, dans un quartier sans couverture.
+///
+/// Idempotent par `uuid_client` : le rejeu ne redépose rien et ne compte pas une
+/// seconde photo.
+#[utoipa::path(
+    post,
+    path = "/courses/{livraison_id}/preuves/photo",
+    tag = "coursier",
+    params(("livraison_id" = Uuid, Path, description = "Livraison de la course active du coursier.")),
+    request_body(content = PhotoPreuveMultipartDto, content_type = "multipart/form-data",
+                 description = "Partie `demande` (JSON) + `photo` binaire."),
+    responses(
+        (status = 201, description = "Photo déposée.", body = PhotoPreuveDeposeeDto),
+        (status = 200, description = "Rejeu idempotent — aucune écriture.", body = PhotoPreuveDeposeeDto),
+        (status = 422, description = "Photo vide ou partie `demande` illisible.", body = ErreurApiDto),
+        (status = 403, description = "Course d'un autre coursier, ou rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/courses/{livraison_id}/preuves/photo")]
+pub async fn deposer_photo_preuve(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    form: MultipartForm<PhotoPreuveForm>,
+    coursier: web::Data<PgCoursier>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let form = form.into_inner();
+    let dto: DemandePhotoPreuveDto = serde_json::from_str(&form.demande)
+        .map_err(|_| ErreurCoursier::DemandeInvalide("partie `demande` illisible"))?;
+    let fait = coursier
+        .deposer_photo_preuve(
+            auth.compte_id,
+            chemin.into_inner(),
+            dto.uuid_client,
+            form.photo.data.to_vec(),
+            dto.prise_le_local,
+        )
+        .await?;
+    let corps = PhotoPreuveDeposeeDto {
+        photo_id: fait.photo_id,
+        photos: fait.photos,
+        rejeu: fait.rejeu,
+    };
+    Ok(if fait.rejeu {
+        HttpResponse::Ok().json(corps)
+    } else {
+        HttpResponse::Created().json(corps)
+    })
+}
+
+/// Preuve « appels » — nombre ET espacement (FR-056).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PreuveAppels)]
+pub struct PreuveAppelsDto {
+    /// Appels `client_absent` **retenus** (espacement respecté).
+    pub faits: i64,
+    /// Appels exigés par la zone.
+    pub requis: i64,
+    /// Faux dès qu'un appel a été écarté pour cause d'espacement.
+    pub espacement_ok: bool,
+    /// Horodatages **serveur** des appels retenus (affichage K4-1e).
+    pub horodatages: Vec<DateTime<Utc>>,
+    /// Issues DÉCLARÉES par le coursier — affichées, jamais un critère (R19).
+    pub issues: Vec<String>,
+    /// Preuve réunie.
+    pub ok: bool,
+    /// Pourquoi elle ne l'est pas — clé i18n.
+    pub motif_cle: Option<String>,
+}
+
+/// Preuve « présence » — durée mesurée, trous exclus (FR-056).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PreuvePresence)]
+pub struct PreuvePresenceDto {
+    /// Durée retenue (s), recalculée par le serveur.
+    pub secondes: i64,
+    /// Durée exigée par la zone.
+    pub requis: i64,
+    /// Preuve réunie.
+    pub ok: bool,
+    /// Pourquoi elle ne l'est pas — clé i18n.
+    pub motif_cle: Option<String>,
+}
+
+/// Preuve « photo » (FR-056).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PreuvePhotos)]
+pub struct PreuvePhotosDto {
+    /// Photos déposées.
+    pub faites: i64,
+    /// Photos exigées.
+    pub requis: i64,
+    /// Preuve réunie.
+    pub ok: bool,
+}
+
+/// L'état des trois preuves, et **ce qui manque** (contrat §1.4).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = EtatPreuves)]
+pub struct EtatPreuvesDto {
+    /// Preuve « appels ».
+    pub appels: PreuveAppelsDto,
+    /// Preuve « présence ».
+    pub presence: PreuvePresenceDto,
+    /// Preuve « photo ».
+    pub photos: PreuvePhotosDto,
+    /// Les trois sont réunies — l'échec devient déclarable.
+    pub reunies: bool,
+    /// Compteur « N sur 3 » de K4-1e.
+    pub reunies_sur: u8,
+    /// Toujours 3 — le compteur n'a de sens que si le total est explicite.
+    pub total: u8,
+}
+
+impl From<coursier::EtatPreuves> for EtatPreuvesDto {
+    fn from(e: coursier::EtatPreuves) -> Self {
+        Self {
+            appels: PreuveAppelsDto {
+                faits: e.appels.faits,
+                requis: e.appels.requis,
+                espacement_ok: e.appels.espacement_ok,
+                horodatages: e.appels.horodatages,
+                issues: e
+                    .appels
+                    .issues
+                    .iter()
+                    .map(|i| i.comme_str().to_owned())
+                    .collect(),
+                ok: e.appels.ok,
+                motif_cle: e.appels.motif_cle.map(str::to_owned),
+            },
+            presence: PreuvePresenceDto {
+                secondes: e.presence.secondes,
+                requis: e.presence.requis,
+                ok: e.presence.ok,
+                motif_cle: e.presence.motif_cle.map(str::to_owned),
+            },
+            photos: PreuvePhotosDto {
+                faites: e.photos.faites,
+                requis: e.photos.requis,
+                ok: e.photos.ok,
+            },
+            reunies: e.reunies,
+            reunies_sur: e.reunies_sur,
+            total: coursier::EtatPreuves::TOTAL,
+        }
+    }
+}
+
+/// CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
+///
+/// C'est la **même fonction** que celle qui garde `POST /courses/{id}/echec` :
+/// l'écran et le serveur ne peuvent pas diverger (FR-059, FR-060). Un bouton
+/// actif dont la déclaration serait refusée serait pire qu'un bouton inactif.
+#[utoipa::path(
+    get,
+    path = "/courses/{livraison_id}/preuves",
+    tag = "coursier",
+    params(("livraison_id" = Uuid, Path, description = "Livraison de la course active du coursier.")),
+    responses(
+        (status = 200, description = "État détaillé des trois preuves.", body = EtatPreuvesDto),
+        (status = 403, description = "Course d'un autre coursier, ou rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/courses/{livraison_id}/preuves")]
+pub async fn etat_preuves(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    coursier: web::Data<PgCoursier>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let livraison = chemin.into_inner();
+    // `etat_preuves` sert aussi le port `PreuvesEchec`, qui n'a pas d'acteur :
+    // la garde de propriété est donc explicite ici (FR-006).
+    coursier.exiger_proprietaire(livraison, auth.compte_id).await?;
+    let etat = coursier.etat_preuves(livraison).await?;
+    Ok(HttpResponse::Ok().json(EtatPreuvesDto::from(etat)))
 }
 
 /// CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).

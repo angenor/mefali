@@ -11,6 +11,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**autoriserDepot**](CoursierAdminApi.md#autoriserdepot) | **POST** /admin/commandes/{commande_id}/depot | **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
 [**debloquerCode**](CoursierAdminApi.md#debloquercode) | **POST** /admin/commandes/{commande_id}/code/debloquer | **FR-055** — l&#39;exploitation lève le blocage du code, avec motif tracé.
+[**preuvesDeLivraison**](CoursierAdminApi.md#preuvesdelivraison) | **GET** /admin/livraisons/{livraison_id}/preuves | CRS-05 (exploitation) — le dossier de preuves d&#39;une livraison (FR-063).
 [**remisesBloquees**](CoursierAdminApi.md#remisesbloquees) | **GET** /admin/remises/bloquees | **FR-044** — les remises dont le code est épuisé et le blocage non levé.
 
 
@@ -99,6 +100,49 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **preuvesDeLivraison**
+> PreuvesExploitation preuvesDeLivraison(livraisonId)
+
+CRS-05 (exploitation) — le dossier de preuves d'une livraison (FR-063).
+
+C'est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles existeraient en base sans que personne ne puisse répondre à un client qui conteste un échec — et une preuve que personne ne lit ne protège personne.  ⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCoursierAdminApi();
+final String livraisonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Livraison dont on lit les preuves.
+
+try {
+    final response = api.preuvesDeLivraison(livraisonId);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CoursierAdminApi->preuvesDeLivraison: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **livraisonId** | **String**| Livraison dont on lit les preuves. | 
+
+### Return type
+
+[**PreuvesExploitation**](PreuvesExploitation.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

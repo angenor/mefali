@@ -164,17 +164,17 @@ tâche qui les enfreint est incomplète, même si son code marche :
 
 **Independent Test**: arriver chez un client absent, constater le bouton inactif, réunir les preuves une à une, vérifier que le bouton s'active exactement à la troisième, déclarer, et retrouver les preuves attachées.
 
-- [ ] T052 [US4] `backend/crates/coursier/src/presence.rs` : enregistrement des relevés (distance arrondie, jamais de coordonnées) et **calcul de la durée** avec la règle du « trou » de zone ; tests unitaires (présence continue, aller-retour, trou de 5 min, position absente)
-- [ ] T053 [US4] Endpoint `POST /courses/{livraison_id}/presence` (lot, idempotent par `uuid_client`) dans `backend/api/src/coursier_http.rs` ; utoipa + clients + build vert
-- [ ] T054 [US4] Endpoint `POST /courses/{livraison_id}/preuves/photo` (multipart, dépôt Garage, clé en base) dans `backend/api/src/coursier_http.rs` + `backend/crates/coursier/src/preuves.rs` ; utoipa + clients + build vert
-- [ ] T055 [US4] `backend/crates/coursier/src/preuves.rs` : agrégation des trois preuves (appels `client_absent` avec espacement, présence, photos) selon les paramètres de zone, et émission de `preuves_echec.reunies` au basculement
-- [ ] T056 [US4] Endpoint `GET /courses/{livraison_id}/preuves` (coursier) rendant l'état détaillé et **ce qui manque** (`contracts/coursier-openapi.md` §1.4) ; utoipa + clients + build vert
-- [ ] T057 [US4] Endpoint d'exploitation `GET /admin/livraisons/{id}/preuves` dans `backend/api/src/admin_coursier_http.rs` : appels avec leurs heures et leur issue, présence mesurée, URL présignées des photos — c'est ce qui rend les preuves **lisibles par l'exploitation** (FR-063) ; utoipa + clients + build vert
-- [ ] T058 [US4] Implémenter `commandes::PreuvesEchec` pour `PgCoursier` et **remplacer `PreuvesFixes` dans la composition de production** (`backend/api/src/lib.rs`) — la même fonction garde l'écran et l'endpoint (FR-059/FR-060)
+- [X] T052 [US4] `backend/crates/coursier/src/presence.rs` : enregistrement des relevés (distance arrondie, jamais de coordonnées) et **calcul de la durée** avec la règle du « trou » de zone ; tests unitaires (présence continue, aller-retour, trou de 5 min, position absente)
+- [X] T053 [US4] Endpoint `POST /courses/{livraison_id}/presence` (lot, idempotent par `uuid_client`) dans `backend/api/src/coursier_http.rs` ; utoipa + clients + build vert
+- [X] T054 [US4] Endpoint `POST /courses/{livraison_id}/preuves/photo` (multipart, dépôt Garage, clé en base) dans `backend/api/src/coursier_http.rs` + `backend/crates/coursier/src/preuves.rs` ; utoipa + clients + build vert
+- [X] T055 [US4] `backend/crates/coursier/src/preuves.rs` : agrégation des trois preuves (appels `client_absent` avec espacement, présence, photos) selon les paramètres de zone, et émission de `preuves_echec.reunies` au basculement
+- [X] T056 [US4] Endpoint `GET /courses/{livraison_id}/preuves` (coursier) rendant l'état détaillé et **ce qui manque** (`contracts/coursier-openapi.md` §1.4) ; utoipa + clients + build vert
+- [X] T057 [US4] Endpoint d'exploitation `GET /admin/livraisons/{id}/preuves` dans `backend/api/src/admin_coursier_http.rs` : appels avec leurs heures et leur issue, présence mesurée, URL présignées des photos — c'est ce qui rend les preuves **lisibles par l'exploitation** (FR-063) ; utoipa + clients + build vert
+- [X] T058 [US4] Implémenter `commandes::PreuvesEchec` pour `PgCoursier` et **remplacer `PreuvesFixes` dans la composition de production** (`backend/api/src/lib.rs`) — la même fonction garde l'écran et l'endpoint (FR-059/FR-060)
 - [ ] T059 [US4] Écran des preuves dans `apps/mefali_pro/lib/coursier/preuves/ecran_preuves.dart` : trois lignes avec leur état (faite + horodatages + issue déclarée / en cours + décompte / à faire), compteur « N sur 3 », bouton **grisé**, action « Rappeler le client » — réf. `docs/design/png/K4-confirmation-livraison.png` 1e
 - [ ] T060 [US4] Porteur `EtatPreuves` (`Notifier`, `keepAlive` pendant la course) dans `apps/mefali_pro/lib/coursier/preuves/etat_preuves.dart` : échantillonnage de présence, motifs de non-progression (GPS absent, appels trop rapprochés), file hors ligne ; minuteries d'affichage **locales au widget** (constitution XII, piège du cycle 004)
 - [ ] T061 [US4] Tests d'intégration `backend/api/tests/coursier_preuves.rs` : les **7 combinaisons** de preuves manquantes refusées, espacement < 3 min refusé, trou de présence, refus serveur d'une déclaration hors app, lecture admin complète (SC-007, SC-008) + tests widget d'activation du bouton
-- [ ] T062 [US4] Job de purge des photos de preuve (rétention de zone) dans `backend/api/src/lib.rs`, patron `job_purge_photos_collecte` du cycle 006 + test
+- [X] T062 [US4] Job de purge des photos de preuve (rétention de zone) dans `backend/api/src/lib.rs`, patron `job_purge_photos_collecte` du cycle 006 + test
 
 **Checkpoint**: US4 complète — un échec ne se déclare plus jamais sans preuves, en test comme en production.
 

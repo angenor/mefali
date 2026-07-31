@@ -220,3 +220,119 @@ pub async fn autoriser_depot(
         motif_cle: decision.motif_cle,
     }))
 }
+
+// ── Lecture des preuves d'échec (T057 — FR-063) ────────────────────────────
+
+/// Durée de vie des URL présignées servies à l'exploitation.
+///
+/// Le temps de regarder une photo et de répondre au client, pas davantage : une
+/// URL qui traînerait une heure dans un onglet serait une heure d'accès à la
+/// porte d'un domicile.
+const TTL_PHOTOS_PREUVE: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
+/// Un appel journalisé, tel que l'exploitation le lit.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = AppelJournalise)]
+pub struct AppelJournaliseDto {
+    /// Appel.
+    pub id: Uuid,
+    /// `client` | `vendeur`. **Aucun numéro** — le serveur n'en a jamais vu.
+    pub vers: String,
+    /// Prestataire appelé (si `vers = vendeur`).
+    pub prestataire_id: Option<Uuid>,
+    /// `suivi` | `substitution` | `client_absent`.
+    pub motif: String,
+    /// Issue DÉCLARÉE par le coursier — affichée, jamais un critère (R19).
+    pub issue: String,
+    /// Horodatage **serveur** — celui qui fonde l'espacement.
+    pub passe_le: chrono::DateTime<Utc>,
+    /// Horodatage de l'appareil — observation seulement.
+    pub passe_le_local: chrono::DateTime<Utc>,
+}
+
+/// Une photo de preuve, présignée.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PhotoPreuve)]
+pub struct PhotoPreuveDto {
+    /// Photo.
+    pub id: Uuid,
+    /// Prise le.
+    pub prise_le: chrono::DateTime<Utc>,
+    /// Purgée le — la preuve reste **datée**, ses octets sont partis.
+    pub purgee_le: Option<chrono::DateTime<Utc>>,
+    /// URL présignée de courte durée. Absente si purgée ou indisponible.
+    pub url: Option<String>,
+}
+
+/// Le dossier de preuves d'une livraison (FR-063).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PreuvesExploitation)]
+pub struct PreuvesExploitationDto {
+    /// **Tous** les appels — ceux qui ne comptent pas éclairent autant que les
+    /// autres quand un client conteste.
+    pub appels: Vec<AppelJournaliseDto>,
+    /// Photos de preuve.
+    pub photos: Vec<PhotoPreuveDto>,
+    /// Instant du basculement — absent si les trois preuves ne l'ont jamais été.
+    pub reunies_le: Option<chrono::DateTime<Utc>>,
+    /// L'état recalculé des trois preuves, et ce qui manque.
+    pub etat: crate::coursier_http::EtatPreuvesDto,
+}
+
+/// CRS-05 (exploitation) — le dossier de preuves d'une livraison (FR-063).
+///
+/// C'est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles
+/// existeraient en base sans que personne ne puisse répondre à un client qui
+/// conteste un échec — et une preuve que personne ne lit ne protège personne.
+///
+/// ⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.
+#[utoipa::path(
+    get,
+    path = "/admin/livraisons/{livraison_id}/preuves",
+    tag = "coursier-admin",
+    params(("livraison_id" = Uuid, Path, description = "Livraison dont on lit les preuves.")),
+    responses(
+        (status = 200, description = "Dossier de preuves complet.", body = PreuvesExploitationDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/admin/livraisons/{livraison_id}/preuves")]
+pub async fn preuves_de_livraison(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    coursier: web::Data<coursier::PgCoursier>,
+) -> Result<HttpResponse, crate::coursier_http::ErreurCoursierHttp> {
+    auth.exiger_role(Role::Admin)?;
+    let dossier = coursier
+        .preuves_pour_exploitation(chemin.into_inner(), TTL_PHOTOS_PREUVE)
+        .await?;
+    Ok(HttpResponse::Ok().json(PreuvesExploitationDto {
+        appels: dossier
+            .appels
+            .into_iter()
+            .map(|a| AppelJournaliseDto {
+                id: a.id,
+                vers: a.vers.comme_str().to_owned(),
+                prestataire_id: a.prestataire_id,
+                motif: a.motif.comme_str().to_owned(),
+                issue: a.issue.comme_str().to_owned(),
+                passe_le: a.passe_le,
+                passe_le_local: a.passe_le_local,
+            })
+            .collect(),
+        photos: dossier
+            .photos
+            .into_iter()
+            .map(|p| PhotoPreuveDto {
+                id: p.id,
+                prise_le: p.prise_le,
+                purgee_le: p.purgee_le,
+                url: p.url,
+            })
+            .collect(),
+        reunies_le: dossier.reunies_le,
+        etat: dossier.etat.into(),
+    }))
+}

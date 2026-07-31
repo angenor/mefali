@@ -114,9 +114,13 @@ pub fn api_openapi() -> OpenApi {
         .service(coursier_http::course_active)
         .service(coursier_http::journaliser_appel)
         .service(coursier_http::declarer_issue_appel)
+        .service(coursier_http::enregistrer_presence)
+        .service(coursier_http::deposer_photo_preuve)
+        .service(coursier_http::etat_preuves)
         .service(admin_coursier_http::remises_bloquees)
         .service(admin_coursier_http::debloquer_code)
         .service(admin_coursier_http::autoriser_depot)
+        .service(admin_coursier_http::preuves_de_livraison)
         .service(admin_tarification_http::grille_de_zone)
         .service(admin_tarification_http::creer_brouillon)
         .service(admin_tarification_http::ecrire_regle)
@@ -409,6 +413,24 @@ async fn job_purge_photos_collecte(depot: qr::PgQr) {
     }
 }
 
+/// Purge périodique des photos de **preuve d'échec** échues (CRS-05, FR-064).
+///
+/// Même patron que [`job_purge_photos_collecte`], à une différence près : la
+/// LIGNE survit à la purge de ses octets. Un échec déclaré il y a un an ne doit
+/// pas redevenir « non prouvé » le jour où la rétention expire — seule la photo
+/// disparaît, la preuve reste datée.
+async fn job_purge_photos_preuve(depot: coursier::PgCoursier) {
+    let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
+    loop {
+        horloge.tick().await;
+        match depot.purger_photos_preuve().await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(purgees = n, "photos de preuve purgées (rétention de zone)"),
+            Err(e) => tracing::error!(erreur = %e, "purge des photos de preuve échouée"),
+        }
+    }
+}
+
 /// Supprime du stockage objet une donnée personnelle que la transaction qui
 /// vient d'être COMMITÉE a rendue orpheline (constitution VIII).
 ///
@@ -571,9 +593,10 @@ pub async fn run() -> std::io::Result<()> {
                     Arc::new(depot.clone()),
                     objets.clone(),
                     positions,
-                    // CRS-05 n'existe pas : aucune preuve n'est réunie en
-                    // production, donc AUCUN échec n'est déclarable — exact et
-                    // voulu, comme l'affectation avant DSP (research R10/R16).
+                    // Port PROVISOIRE : `PgCoursier` le remplace quelques lignes
+                    // plus bas, dès qu'il existe. Les deux ne peuvent pas se
+                    // construire l'un dans l'autre — `coursier` dépend de
+                    // `commandes`, jamais l'inverse (constitution II).
                     Arc::new(commandes::PreuvesFixes::nouveau()),
                 );
                 // Le compteur d'essais du code dégradé passe par Redis
@@ -595,10 +618,6 @@ pub async fn run() -> std::io::Result<()> {
                 // CRS 010 — domaine coursier. Câblé APRÈS `qr` (dont il
                 // consomme la plaque résolue) et AVANT le dispatch : aucune
                 // arête entre les deux, `/moi/journee` les compose ICI.
-                //
-                // ⚠ `PreuvesFixes` reste le port de preuves de `PgCommandes`
-                // jusqu'à T058 : tant que le calcul réel n'est pas branché,
-                // aucun échec n'est déclarable en production — exact et voulu.
                 let depot_coursier = coursier::PgCoursier::new(
                     pool.clone(),
                     depot_commandes.clone(),
@@ -608,8 +627,17 @@ pub async fn run() -> std::io::Result<()> {
                     // chemin de la photo de récupération du cycle 006.
                     objets,
                 );
+                // ⭐ LE branchement du cycle (T058) : le port `PreuvesEchec`,
+                // conçu au cycle 008 pour être implémenté ailleurs, reçoit son
+                // implémentation réelle. `PreuvesFixes` quitte la production —
+                // à partir d'ici, un échec exige ses trois preuves mesurées, et
+                // l'écran K4-1e lit exactement la même fonction que la garde.
+                let depot_commandes =
+                    depot_commandes.avec_preuves(Arc::new(depot_coursier.clone()));
+                tokio::spawn(job_purge_photos_preuve(depot_coursier.clone()));
                 eprintln!(
-                    "domaine CRS câblé (PgCoursier ; litiges AVI-04 non construits)"
+                    "domaine CRS câblé (PgCoursier ; preuves d'échec RÉELLES ; \
+                     litiges AVI-04 non construits) ; job de purge des photos de preuve démarré"
                 );
                 coursier_opt = Some(depot_coursier);
 
@@ -766,9 +794,13 @@ pub async fn run() -> std::io::Result<()> {
             .service(coursier_http::course_active)
             .service(coursier_http::journaliser_appel)
             .service(coursier_http::declarer_issue_appel)
+            .service(coursier_http::enregistrer_presence)
+            .service(coursier_http::deposer_photo_preuve)
+            .service(coursier_http::etat_preuves)
             .service(admin_coursier_http::remises_bloquees)
             .service(admin_coursier_http::debloquer_code)
             .service(admin_coursier_http::autoriser_depot)
+            .service(admin_coursier_http::preuves_de_livraison)
             .service(admin_tarification_http::grille_de_zone)
             .service(admin_tarification_http::creer_brouillon)
             .service(admin_tarification_http::ecrire_regle)

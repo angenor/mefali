@@ -94,6 +94,24 @@ impl PgCommandes {
         }
     }
 
+    /// Remplace la source de preuves d'échec **après** construction.
+    ///
+    /// Nécessaire parce que le calcul réel des preuves vit dans `coursier`, qui
+    /// dépend de `commandes` : les deux ne peuvent pas se construire l'un dans
+    /// l'autre. La racine `api` construit donc `PgCommandes` avec le double,
+    /// puis `PgCoursier` par-dessus, puis rebranche le vrai port ici — patron
+    /// `PgCoursier::avec_litiges`.
+    ///
+    /// ⚠ Le `PgCommandes` **déjà cloné** dans `PgCoursier` conserve l'ancien
+    /// port. C'est sans effet : `coursier` ne déclare aucun échec, il ne lit que
+    /// la course. Et l'inverse — laisser `coursier` déclarer un échec dont il
+    /// fournit lui-même la preuve — serait un circuit que ce découpage évite.
+    #[must_use]
+    pub fn avec_preuves(mut self, preuves: Arc<dyn PreuvesEchec>) -> Self {
+        self.preuves = preuves;
+        self
+    }
+
     /// Accès au pool (racine de composition `qr`).
     pub fn pool(&self) -> &PgPool {
         &self.pool
