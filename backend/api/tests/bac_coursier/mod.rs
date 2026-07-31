@@ -134,9 +134,10 @@ pub struct Bac {
     pub qr: PgQr,
     /// Dépôt du domaine coursier — celui du cycle.
     pub coursier_depot: PgCoursier,
-    /// Double des preuves d'échec — **remplacé par `PgCoursier` en T058**.
-    /// Il reste ici tant que le branchement réel n'est pas fait ; les tests de
-    /// preuves l'ignorent et exercent le vrai calcul.
+    /// Ancien double des preuves d'échec. **Plus câblé** depuis T058 : il est
+    /// retenu pour que les tests qui le posaient compilent encore, mais il ne
+    /// décide plus rien — le port est `PgCoursier`, et les preuves se
+    /// fabriquent désormais avec `poser_presence`, des appels et une photo.
     pub preuves: Arc<PreuvesFixes>,
     /// Double de la position coursier (Redis en production).
     pub positions: Arc<PositionFixe>,
@@ -323,6 +324,11 @@ impl Bac {
             prestataires.clone(),
             objets.clone(),
         );
+        // ⭐ T058 — le bac compose comme la PRODUCTION : le port `PreuvesEchec`
+        // est le calcul réel, plus le double. Un bac qui garderait `PreuvesFixes`
+        // laisserait passer un échec sans preuve dans tous les tests du dépôt,
+        // et personne ne verrait la différence avant la mise en service.
+        let commandes = commandes.avec_preuves(Arc::new(coursier_depot.clone()));
 
         let mut bac = Self {
             pool,
@@ -539,6 +545,9 @@ impl Bac {
                 .service(crs010::course_active)
                 .service(crs010::journaliser_appel)
                 .service(crs010::declarer_issue_appel)
+                .service(crs010::enregistrer_presence)
+                .service(crs010::deposer_photo_preuve)
+                .service(crs010::etat_preuves)
                 .service(cmd::creer_commande)
                 .service(cmd::suivre_commande)
                 .service(cmd::decider_substitution)
@@ -550,7 +559,8 @@ impl Bac {
                 .service(crs::declarer_echec)
                 .service(adm010::remises_bloquees)
                 .service(adm010::debloquer_code)
-                .service(adm010::autoriser_depot);
+                .service(adm010::autoriser_depot)
+                .service(adm010::preuves_de_livraison);
         }
     }
 
@@ -874,6 +884,99 @@ impl Bac {
             avec_photo,
         )
         .await
+    }
+
+    /// Déclare « je pars » puis « je suis arrivé » sur l'arrêt de REMISE.
+    ///
+    /// C'est la transition que K3-1c déclenche, et elle n'est pas décorative
+    /// pour les preuves : `arrive_le` est l'horodatage **serveur** depuis lequel
+    /// se mesure le délai d'un échec (FR-052). Sans elle, une preuve réunie ne
+    /// saurait pas dire depuis combien de temps Yao attend.
+    pub async fn arriver_chez_le_client(&self, course: &Course) {
+        for action in ["en-route", "arrive"] {
+            let (statut, corps) = self
+                .post(
+                    &format!(
+                        "/courses/{}/arrets/{}/{action}",
+                        course.livraison, course.remise
+                    ),
+                    &self.jeton_coursier,
+                    json!({ "uuid_client": Uuid::now_v7(), "horodatage_local": Utc::now() }),
+                )
+                .await;
+            assert_eq!(statut, 200, "transition {action} refusée : {corps}");
+        }
+    }
+
+    // ── Les trois preuves, fabriquées une par une ─────────────────────────
+
+    /// Passe un appel `client_absent` par la VOIE HTTP (T030).
+    pub async fn appeler_client_absent(&self, livraison: Uuid) -> (u16, Value) {
+        self.post(
+            &format!("/courses/{livraison}/appels"),
+            &self.jeton_coursier,
+            json!({
+                "uuid_client": Uuid::now_v7(),
+                "vers": "client",
+                "motif": "client_absent",
+                "passe_le_local": Utc::now(),
+            }),
+        )
+        .await
+    }
+
+    /// Réunit la preuve « appels » : `PREUVE_APPELS_MIN` appels, chacun reculé
+    /// d'un espacement complet pour que le suivant compte.
+    ///
+    /// Le recul se fait APRÈS chaque appel, sinon le second tomberait dans
+    /// l'espacement du premier et serait écarté — ce que le test
+    /// [`des_appels_trop_rapproches_ne_valent_qu_une_preuve`] vérifie exprès.
+    pub async fn reunir_preuve_appels(&self, livraison: Uuid) {
+        for _ in 0..PREUVE_APPELS_MIN {
+            let (statut, _) = self.appeler_client_absent(livraison).await;
+            assert_eq!(statut, 201, "appel client_absent refusé");
+            self.reculer_appels(
+                livraison,
+                Duration::seconds(PREUVE_APPELS_ESPACEMENT_S + 10),
+            )
+            .await;
+        }
+    }
+
+    /// Réunit la preuve « présence » : de quoi couvrir la durée exigée sans
+    /// jamais dépasser le trou de zone entre deux relevés.
+    pub async fn reunir_preuve_presence(&self, livraison: Uuid) {
+        let pas = Duration::seconds(PREUVE_PRESENCE_TROU_MAX_S / 2);
+        let nb = PREUVE_PRESENCE_S / (PREUVE_PRESENCE_TROU_MAX_S / 2) + 1;
+        self.poser_presence(livraison, nb, pas, 10).await;
+    }
+
+    /// Dépose une photo de preuve par la VOIE HTTP (T054, multipart).
+    pub async fn deposer_photo_preuve(&self, livraison: Uuid) -> (u16, Value) {
+        self.post_multipart(
+            &format!("/courses/{livraison}/preuves/photo"),
+            &self.jeton_coursier,
+            json!({ "uuid_client": Uuid::now_v7() }),
+            true,
+        )
+        .await
+    }
+
+    /// Réunit les **trois** preuves — le point de départ d'un échec déclarable.
+    pub async fn reunir_les_trois_preuves(&self, livraison: Uuid) {
+        self.reunir_preuve_appels(livraison).await;
+        self.reunir_preuve_presence(livraison).await;
+        let (statut, _) = self.deposer_photo_preuve(livraison).await;
+        assert_eq!(statut, 201, "dépôt de photo de preuve refusé");
+    }
+
+    /// `GET /courses/{livraison}/preuves` — l'état vu par le coursier.
+    pub async fn lire_preuves(&self, livraison: Uuid) -> Value {
+        let (statut, corps) = self
+            .get(&format!("/courses/{livraison}/preuves"), &self.jeton_coursier)
+            .await;
+        assert_eq!(statut, 200, "lecture des preuves refusée : {corps}");
+        corps
     }
 
     /// Ouvre (ou referme) la voie dépôt par la VOIE ADMIN — jamais par un

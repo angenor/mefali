@@ -325,7 +325,9 @@ async fn un_echec_rejoue_par_un_coursier_desassigne_ne_deroule_pas_l_arbre(
     let bac = Bac::nouveau(pool).await;
     let course = bac.course_prete().await;
     bac.collecter_tout(&course).await;
-    bac.preuves.definir(course.livraison, true);
+    // Preuves RÉELLES depuis T058 : `PreuvesFixes` n'est plus câblé, ici pas
+    // plus qu'en production. Un échec se prépare donc comme sur le terrain.
+    bac.reunir_les_trois_preuves(course.livraison).await;
 
     sqlx::query("UPDATE commandes.livraison SET coursier_id = $2 WHERE id = $1")
         .bind(course.livraison)
@@ -368,7 +370,9 @@ async fn le_rejeu_d_un_echec_ne_deroule_l_arbre_qu_une_fois(pool: sqlx::PgPool) 
     let bac = Bac::nouveau(pool).await;
     let course = bac.course_prete().await;
     bac.collecter_tout(&course).await;
-    bac.preuves.definir(course.livraison, true);
+    // Preuves RÉELLES depuis T058 : `PreuvesFixes` n'est plus câblé, ici pas
+    // plus qu'en production. Un échec se prépare donc comme sur le terrain.
+    bac.reunir_les_trois_preuves(course.livraison).await;
 
     let uuid = Uuid::now_v7();
     let demande = json!({
