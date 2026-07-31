@@ -81,6 +81,7 @@ export 'package:mefali_api_client/src/model/demande_deblocage.dart';
 export 'package:mefali_api_client/src/model/demande_depot.dart';
 export 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 export 'package:mefali_api_client/src/model/demande_echec.dart';
+export 'package:mefali_api_client/src/model/demande_issue_admin.dart';
 export 'package:mefali_api_client/src/model/demande_otp.dart';
 export 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 export 'package:mefali_api_client/src/model/demande_remise.dart';

@@ -6,17 +6,16 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'demande_echec.g.dart';
+part 'demande_issue_admin.g.dart';
 
-/// Déclaration d'un échec (arbre §7.5).
+/// Enregistrement d'une issue §7.5 **par l'exploitation**.  Volontairement distinct du DTO coursier : celui-ci exige un `uuid_client` (sa file hors-ligne rejoue), l'admin n'en a pas — chaque clic est une action neuve, sur un écran connecté. Partager le DTO aurait obligé l'exploitation à fabriquer un identifiant d'idempotence qui ne correspond à rien chez elle.
 ///
 /// Properties:
 /// * [arretId] - Arrêt concerné — absent = à la remise.
 /// * [motifCle] - Clé i18n du motif — jamais du texte libre.
 /// * [typeIssue] - Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…).
-/// * [uuidClient] - Clé d'idempotence (UUIDv7 produit par l'app, constitution V).  **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois — deux sanctions, deux indemnisations, deux litiges (R4).
 @BuiltValue()
-abstract class DemandeEchec implements Built<DemandeEchec, DemandeEchecBuilder> {
+abstract class DemandeIssueAdmin implements Built<DemandeIssueAdmin, DemandeIssueAdminBuilder> {
   /// Arrêt concerné — absent = à la remise.
   @BuiltValueField(wireName: r'arret_id')
   String? get arretId;
@@ -29,31 +28,27 @@ abstract class DemandeEchec implements Built<DemandeEchec, DemandeEchecBuilder> 
   @BuiltValueField(wireName: r'type_issue')
   String get typeIssue;
 
-  /// Clé d'idempotence (UUIDv7 produit par l'app, constitution V).  **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois — deux sanctions, deux indemnisations, deux litiges (R4).
-  @BuiltValueField(wireName: r'uuid_client')
-  String get uuidClient;
+  DemandeIssueAdmin._();
 
-  DemandeEchec._();
-
-  factory DemandeEchec([void updates(DemandeEchecBuilder b)]) = _$DemandeEchec;
+  factory DemandeIssueAdmin([void updates(DemandeIssueAdminBuilder b)]) = _$DemandeIssueAdmin;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(DemandeEchecBuilder b) => b;
+  static void _defaults(DemandeIssueAdminBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DemandeEchec> get serializer => _$DemandeEchecSerializer();
+  static Serializer<DemandeIssueAdmin> get serializer => _$DemandeIssueAdminSerializer();
 }
 
-class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
+class _$DemandeIssueAdminSerializer implements PrimitiveSerializer<DemandeIssueAdmin> {
   @override
-  final Iterable<Type> types = const [DemandeEchec, _$DemandeEchec];
+  final Iterable<Type> types = const [DemandeIssueAdmin, _$DemandeIssueAdmin];
 
   @override
-  final String wireName = r'DemandeEchec';
+  final String wireName = r'DemandeIssueAdmin';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    DemandeEchec object, {
+    DemandeIssueAdmin object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     if (object.arretId != null) {
@@ -73,17 +68,12 @@ class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
       object.typeIssue,
       specifiedType: const FullType(String),
     );
-    yield r'uuid_client';
-    yield serializers.serialize(
-      object.uuidClient,
-      specifiedType: const FullType(String),
-    );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    DemandeEchec object, {
+    DemandeIssueAdmin object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -94,7 +84,7 @@ class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required DemandeEchecBuilder result,
+    required DemandeIssueAdminBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -123,13 +113,6 @@ class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
           ) as String;
           result.typeIssue = valueDes;
           break;
-        case r'uuid_client':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.uuidClient = valueDes;
-          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -139,12 +122,12 @@ class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
   }
 
   @override
-  DemandeEchec deserialize(
+  DemandeIssueAdmin deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = DemandeEchecBuilder();
+    final result = DemandeIssueAdminBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

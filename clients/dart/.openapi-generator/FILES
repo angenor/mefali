@@ -63,6 +63,7 @@ doc/DemandeDeblocage.md
 doc/DemandeDepot.md
 doc/DemandeDevisPanier.md
 doc/DemandeEchec.md
+doc/DemandeIssueAdmin.md
 doc/DemandeOtp.md
 doc/DemandeRafraichissement.md
 doc/DemandeRemise.md
@@ -253,6 +254,7 @@ lib/src/model/demande_deblocage.dart
 lib/src/model/demande_depot.dart
 lib/src/model/demande_devis_panier.dart
 lib/src/model/demande_echec.dart
+lib/src/model/demande_issue_admin.dart
 lib/src/model/demande_otp.dart
 lib/src/model/demande_rafraichissement.dart
 lib/src/model/demande_remise.dart
@@ -417,6 +419,7 @@ test/demande_deblocage_test.dart
 test/demande_depot_test.dart
 test/demande_devis_panier_test.dart
 test/demande_echec_test.dart
+test/demande_issue_admin_test.dart
 test/demande_otp_test.dart
 test/demande_rafraichissement_test.dart
 test/demande_remise_test.dart

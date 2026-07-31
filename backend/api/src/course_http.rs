@@ -614,6 +614,12 @@ pub async fn remise(
 #[derive(Debug, Deserialize, ToSchema)]
 #[schema(as = DemandeEchec)]
 pub struct DemandeEchecDto {
+    /// Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+    ///
+    /// **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue
+    /// jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois
+    /// — deux sanctions, deux indemnisations, deux litiges (R4).
+    pub uuid_client: Uuid,
     /// Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…).
     pub type_issue: String,
     /// Arrêt concerné — absent = à la remise.
@@ -705,6 +711,10 @@ pub async fn declarer_echec(
                 arret_id: corps.arret_id,
                 type_issue: corps.type_issue.parse()?,
                 motif_cle: corps.motif_cle,
+                uuid_client: corps.uuid_client,
+                // Surface COURSIER : la course doit être la sienne, y compris
+                // au rejeu d'une action venue de la file (FR-006).
+                exiger_proprietaire: true,
             },
             Utc::now(),
         )

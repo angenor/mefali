@@ -173,10 +173,63 @@ impl PgCommandes {
             return Err(ErreurCommandes::ArretInconnu(demande.arret_id));
         }
 
+        let resultat = match self.transiter_sous_verrou(&mut tx, coursier, &demande, horodatage_serveur).await {
+            Ok(resultat) => resultat,
+            // ── Refus de PROPRIÉTÉ au rejeu (FR-006, FR-088) ─────────────
+            // La course a changé de porteur pendant la coupure. On abandonne la
+            // transaction (rien n'a été écrit) et on TRACE : l'exploitation doit
+            // voir passer ce cas — derrière lui, il y a une avance engagée par
+            // quelqu'un qui n'est plus assigné (SC-016).
+            Err(ErreurCommandes::NonProprietaire) => {
+                drop(tx);
+                self.tracer_refus_de_transition(demande.livraison_id, coursier, horodatage_serveur)
+                    .await?;
+                return Err(ErreurCommandes::NonProprietaire);
+            }
+            Err(autre) => return Err(autre),
+        };
+
+        tx.commit().await?;
+        Ok(resultat)
+    }
+
+    /// Le corps de [`Self::transiter_arret`], sous verrou — séparé pour que la
+    /// garde de propriété puisse être interceptée sans dupliquer les trois bras.
+    async fn transiter_sous_verrou(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        coursier: Uuid,
+        demande: &DemandeTransitionArret,
+        horodatage_serveur: DateTime<Utc>,
+    ) -> Result<TransitionArret, ErreurCommandes> {
+        // ── Rejeu d'une transition DÉJÀ appliquée, quel que soit son rang ──
+        // La file rejoue un LOT dans l'ordre, et le rejoue en entier tant
+        // qu'elle n'a pas pu retirer ses actions acquittées. Comparer au seul
+        // DERNIER `uuid_client` (cycle 008) faisait échouer le rejeu d'un
+        // « en-route » suivi d'un « arrivé » — sur la table fermée, donc en
+        // 409, donc classé « refus définitif » par l'app : Yao aurait vu une
+        // action réussie affichée comme rejetée (FR-089).
+        let ctx = self
+            .charger_arret_du_coursier(tx, demande.arret_id, coursier)
+            .await?;
+        let deja = sqlx::query_scalar!(
+            "SELECT EXISTS (
+                 SELECT 1 FROM commandes.transition_arret_rejouee WHERE uuid_client = $1
+             ) AS \"existe!\"",
+            demande.uuid_client,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+        if deja {
+            return self
+                .resultat_transition(tx, &ctx, ctx.statut, ctx.livraison_etat, true)
+                .await;
+        }
+
         let resultat = match demande.action {
             ActionArret::EnRoute => {
                 self.marquer_arret_en_route(
-                    &mut tx,
+                    tx,
                     demande.arret_id,
                     coursier,
                     demande.uuid_client,
@@ -187,7 +240,7 @@ impl PgCommandes {
             }
             ActionArret::Arrive => {
                 self.marquer_arret_arrive(
-                    &mut tx,
+                    tx,
                     demande.arret_id,
                     coursier,
                     demande.uuid_client,
@@ -198,7 +251,7 @@ impl PgCommandes {
             }
             ActionArret::Indisponible(motif) => {
                 self.marquer_arret_indisponible(
-                    &mut tx,
+                    tx,
                     demande.arret_id,
                     coursier,
                     demande.uuid_client,
@@ -210,8 +263,50 @@ impl PgCommandes {
             }
         };
 
-        tx.commit().await?;
+        // Mémorise l'UUID accepté — dans la MÊME transaction que la transition :
+        // une transition écrite dont l'UUID ne serait pas mémorisé se rejouerait
+        // et se ferait refuser.
+        sqlx::query!(
+            "INSERT INTO commandes.transition_arret_rejouee (uuid_client, arret_id, action)
+             VALUES ($1, $2, $3) ON CONFLICT (uuid_client) DO NOTHING",
+            demande.uuid_client,
+            demande.arret_id,
+            match demande.action {
+                ActionArret::EnRoute => "en_route",
+                ActionArret::Arrive => "arrive",
+                ActionArret::Indisponible(_) => "indisponible",
+            },
+        )
+        .execute(&mut **tx)
+        .await?;
+
         Ok(resultat)
+    }
+
+    /// Trace le refus d'une transition d'arrêt au rejeu (FR-088).
+    async fn tracer_refus_de_transition(
+        &self,
+        livraison_id: Uuid,
+        coursier: Uuid,
+        maintenant: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        let commande_id = sqlx::query_scalar!(
+            "SELECT commande_id FROM commandes.livraison WHERE id = $1",
+            livraison_id,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        let Some(commande_id) = commande_id else {
+            return Ok(());
+        };
+        self.tracer_action_refusee(
+            livraison_id,
+            commande_id,
+            coursier,
+            "transition",
+            maintenant,
+        )
+        .await
     }
 
     /// Charge et VERROUILLE un arrêt en vue d'une transition, en vérifiant que
@@ -865,6 +960,18 @@ impl PgCommandes {
         // réassignée pendant une coupure ne se laisse pas clore par son ancien
         // porteur, même s'il rejoue un UUID qu'il avait bien émis.
         if contexte.coursier_id != Some(coursier) {
+            // La transaction est abandonnée (rien n'a été écrit) ; la trace part
+            // dans la sienne — c'est un événement d'OPÉRATIONS, il ne partage
+            // pas le sort d'une mutation qui n'a pas eu lieu (FR-088).
+            drop(tx);
+            self.tracer_action_refusee(
+                livraison_id,
+                contexte.commande_id,
+                coursier,
+                "remise",
+                horodatage,
+            )
+            .await?;
             return Err(ErreurCommandes::NonProprietaire);
         }
 

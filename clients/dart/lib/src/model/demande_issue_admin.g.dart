@@ -1,45 +1,41 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'demande_echec.dart';
+part of 'demande_issue_admin.dart';
 
 // **************************************************************************
 // BuiltValueGenerator
 // **************************************************************************
 
-class _$DemandeEchec extends DemandeEchec {
+class _$DemandeIssueAdmin extends DemandeIssueAdmin {
   @override
   final String? arretId;
   @override
   final String motifCle;
   @override
   final String typeIssue;
-  @override
-  final String uuidClient;
 
-  factory _$DemandeEchec([void Function(DemandeEchecBuilder)? updates]) =>
-      (DemandeEchecBuilder()..update(updates))._build();
+  factory _$DemandeIssueAdmin(
+          [void Function(DemandeIssueAdminBuilder)? updates]) =>
+      (DemandeIssueAdminBuilder()..update(updates))._build();
 
-  _$DemandeEchec._(
-      {this.arretId,
-      required this.motifCle,
-      required this.typeIssue,
-      required this.uuidClient})
+  _$DemandeIssueAdmin._(
+      {this.arretId, required this.motifCle, required this.typeIssue})
       : super._();
   @override
-  DemandeEchec rebuild(void Function(DemandeEchecBuilder) updates) =>
+  DemandeIssueAdmin rebuild(void Function(DemandeIssueAdminBuilder) updates) =>
       (toBuilder()..update(updates)).build();
 
   @override
-  DemandeEchecBuilder toBuilder() => DemandeEchecBuilder()..replace(this);
+  DemandeIssueAdminBuilder toBuilder() =>
+      DemandeIssueAdminBuilder()..replace(this);
 
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is DemandeEchec &&
+    return other is DemandeIssueAdmin &&
         arretId == other.arretId &&
         motifCle == other.motifCle &&
-        typeIssue == other.typeIssue &&
-        uuidClient == other.uuidClient;
+        typeIssue == other.typeIssue;
   }
 
   @override
@@ -48,25 +44,23 @@ class _$DemandeEchec extends DemandeEchec {
     _$hash = $jc(_$hash, arretId.hashCode);
     _$hash = $jc(_$hash, motifCle.hashCode);
     _$hash = $jc(_$hash, typeIssue.hashCode);
-    _$hash = $jc(_$hash, uuidClient.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
 
   @override
   String toString() {
-    return (newBuiltValueToStringHelper(r'DemandeEchec')
+    return (newBuiltValueToStringHelper(r'DemandeIssueAdmin')
           ..add('arretId', arretId)
           ..add('motifCle', motifCle)
-          ..add('typeIssue', typeIssue)
-          ..add('uuidClient', uuidClient))
+          ..add('typeIssue', typeIssue))
         .toString();
   }
 }
 
-class DemandeEchecBuilder
-    implements Builder<DemandeEchec, DemandeEchecBuilder> {
-  _$DemandeEchec? _$v;
+class DemandeIssueAdminBuilder
+    implements Builder<DemandeIssueAdmin, DemandeIssueAdminBuilder> {
+  _$DemandeIssueAdmin? _$v;
 
   String? _arretId;
   String? get arretId => _$this._arretId;
@@ -80,49 +74,42 @@ class DemandeEchecBuilder
   String? get typeIssue => _$this._typeIssue;
   set typeIssue(String? typeIssue) => _$this._typeIssue = typeIssue;
 
-  String? _uuidClient;
-  String? get uuidClient => _$this._uuidClient;
-  set uuidClient(String? uuidClient) => _$this._uuidClient = uuidClient;
-
-  DemandeEchecBuilder() {
-    DemandeEchec._defaults(this);
+  DemandeIssueAdminBuilder() {
+    DemandeIssueAdmin._defaults(this);
   }
 
-  DemandeEchecBuilder get _$this {
+  DemandeIssueAdminBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
       _arretId = $v.arretId;
       _motifCle = $v.motifCle;
       _typeIssue = $v.typeIssue;
-      _uuidClient = $v.uuidClient;
       _$v = null;
     }
     return this;
   }
 
   @override
-  void replace(DemandeEchec other) {
-    _$v = other as _$DemandeEchec;
+  void replace(DemandeIssueAdmin other) {
+    _$v = other as _$DemandeIssueAdmin;
   }
 
   @override
-  void update(void Function(DemandeEchecBuilder)? updates) {
+  void update(void Function(DemandeIssueAdminBuilder)? updates) {
     if (updates != null) updates(this);
   }
 
   @override
-  DemandeEchec build() => _build();
+  DemandeIssueAdmin build() => _build();
 
-  _$DemandeEchec _build() {
+  _$DemandeIssueAdmin _build() {
     final _$result = _$v ??
-        _$DemandeEchec._(
+        _$DemandeIssueAdmin._(
           arretId: arretId,
           motifCle: BuiltValueNullFieldError.checkNotNull(
-              motifCle, r'DemandeEchec', 'motifCle'),
+              motifCle, r'DemandeIssueAdmin', 'motifCle'),
           typeIssue: BuiltValueNullFieldError.checkNotNull(
-              typeIssue, r'DemandeEchec', 'typeIssue'),
-          uuidClient: BuiltValueNullFieldError.checkNotNull(
-              uuidClient, r'DemandeEchec', 'uuidClient'),
+              typeIssue, r'DemandeIssueAdmin', 'typeIssue'),
         );
     replace(_$result);
     return _$result;

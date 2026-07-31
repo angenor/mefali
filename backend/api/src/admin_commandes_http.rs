@@ -58,6 +58,23 @@ pub struct FileAttenteDto {
     pub commandes: Vec<CommandeEnAttenteDto>,
 }
 
+/// Enregistrement d'une issue §7.5 **par l'exploitation**.
+///
+/// Volontairement distinct du DTO coursier : celui-ci exige un `uuid_client`
+/// (sa file hors-ligne rejoue), l'admin n'en a pas — chaque clic est une action
+/// neuve, sur un écran connecté. Partager le DTO aurait obligé l'exploitation à
+/// fabriquer un identifiant d'idempotence qui ne correspond à rien chez elle.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DemandeIssueAdmin)]
+pub struct DemandeIssueAdminDto {
+    /// Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…).
+    pub type_issue: String,
+    /// Arrêt concerné — absent = à la remise.
+    pub arret_id: Option<Uuid>,
+    /// Clé i18n du motif — jamais du texte libre.
+    pub motif_cle: String,
+}
+
 /// CMD-10 — file FIFO des commandes sans coursier d'une zone.
 ///
 /// L'ordre est l'âge, du plus ancien au plus récent : c'est la promesse
@@ -167,7 +184,7 @@ pub async fn annuler_commande_admin(
     path = "/admin/commandes/{id}/issues",
     tag = "commandes-admin",
     params(("id" = Uuid, Path, description = "Commande concernée.")),
-    request_body = crate::course_http::DemandeEchecDto,
+    request_body = DemandeIssueAdminDto,
     responses(
         (status = 200, description = "Issue enregistrée avec ses deux détenteurs.",
          body = crate::course_http::IssueEchecDto),
@@ -182,7 +199,7 @@ pub async fn annuler_commande_admin(
 pub async fn enregistrer_issue(
     auth: Auth,
     chemin: web::Path<Uuid>,
-    corps: web::Json<crate::course_http::DemandeEchecDto>,
+    corps: web::Json<DemandeIssueAdminDto>,
     depot: web::Data<PgCommandes>,
 ) -> Result<HttpResponse, ErreurCommandesHttp> {
     auth.exiger_role(Role::Admin)?;
@@ -209,6 +226,13 @@ pub async fn enregistrer_issue(
                 arret_id: corps.arret_id,
                 type_issue: corps.type_issue.parse()?,
                 motif_cle: corps.motif_cle,
+                // L'admin n'a pas de file hors-ligne : chaque appel est une
+                // action neuve, et son idempotence est celle de l'écran.
+                uuid_client: Uuid::now_v7(),
+                // L'admin enregistre une issue POUR le coursier assigné — c'est
+                // l'objet même de sa surface. La garde de propriété n'y aurait
+                // pas de sens ; sa garde à lui est le rôle.
+                exiger_proprietaire: false,
             },
             chrono::Utc::now(),
         )

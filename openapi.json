@@ -368,7 +368,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DemandeEchec"
+                "$ref": "#/components/schemas/DemandeIssueAdmin"
               }
             }
           },
@@ -9074,6 +9074,38 @@
       "DemandeEchec": {
         "type": "object",
         "description": "Déclaration d'un échec (arbre §7.5).",
+        "required": [
+          "uuid_client",
+          "type_issue",
+          "motif_cle"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt concerné — absent = à la remise."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif — jamais du texte libre."
+          },
+          "type_issue": {
+            "type": "string",
+            "description": "Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…)."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V).\n\n**Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue\njusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois\n— deux sanctions, deux indemnisations, deux litiges (R4)."
+          }
+        }
+      },
+      "DemandeIssueAdmin": {
+        "type": "object",
+        "description": "Enregistrement d'une issue §7.5 **par l'exploitation**.\n\nVolontairement distinct du DTO coursier : celui-ci exige un `uuid_client`\n(sa file hors-ligne rejoue), l'admin n'en a pas — chaque clic est une action\nneuve, sur un écran connecté. Partager le DTO aurait obligé l'exploitation à\nfabriquer un identifiant d'idempotence qui ne correspond à rien chez elle.",
         "required": [
           "type_issue",
           "motif_cle"

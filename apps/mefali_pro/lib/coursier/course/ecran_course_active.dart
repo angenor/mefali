@@ -12,6 +12,7 @@ import 'ecran_scan.dart';
 import 'etat_course.dart';
 import 'feuille_arret_indisponible.dart';
 import 'feuille_remplacement.dart';
+import 'journal_reconciliation.dart';
 import '../remise/ecran_confirmation.dart';
 import '../remise/ecran_scan_remise.dart';
 
@@ -113,7 +114,7 @@ class _CorpsCourse extends ConsumerWidget {
             BandeauHorsLigne(message: l10n.crsHorsLigneBandeau),
             const SizedBox(height: MefaliTokens.space2),
           ],
-          if (etat.actionsEnAttente > 0) ...[
+          if (etat.actionsEnAttente > 0 || etat.refus.isNotEmpty) ...[
             _CompteurFile(etat: etat),
             const SizedBox(height: MefaliTokens.space2),
           ],
@@ -157,11 +158,21 @@ class _CorpsCourse extends ConsumerWidget {
     final livraison = etat.livraisonId;
     final arret = etat.remise.arretRemiseId;
     if (livraison == null || arret == null) return;
-    await ref.read(etatCourseActiveProvider.notifier).transitionArret(
-          livraisonId: livraison,
-          arretId: arret,
-          action: 'arrive',
-        );
+    final notifier = ref.read(etatCourseActiveProvider.notifier);
+    // DEUX transitions, dans cet ordre : `arrive` n'est atteignable que depuis
+    // `en_route` (table fermée du cycle 008). Yao ne tape qu'une fois — c'est
+    // l'app qui déclare le trajet vers le client, qu'il vient précisément de
+    // faire. Les deux sont idempotentes et passent par la file.
+    await notifier.transitionArret(
+      livraisonId: livraison,
+      arretId: arret,
+      action: 'en-route',
+    );
+    await notifier.transitionArret(
+      livraisonId: livraison,
+      arretId: arret,
+      action: 'arrive',
+    );
   }
 }
 
@@ -182,18 +193,42 @@ class _CompteurFile extends StatelessWidget {
     final texte = ko > 0
         ? l10n.crsActionsEnAttentePhotos(etat.actionsEnAttente, ko)
         : l10n.crsActionsEnAttente(etat.actionsEnAttente);
+    final refuses = etat.refus.length;
+
     return Row(
       children: [
-        const Icon(Symbols.cloud_upload_rounded,
-            size: 18, color: MefaliTokens.textMuted),
-        const SizedBox(width: MefaliTokens.space1),
-        Text(
-          texte,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: MefaliTokens.textMuted),
-        ),
+        if (etat.actionsEnAttente > 0) ...[
+          const Icon(Symbols.cloud_upload_rounded,
+              size: 18, color: MefaliTokens.textMuted),
+          const SizedBox(width: MefaliTokens.space1),
+          Flexible(
+            child: Text(
+              texte,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: MefaliTokens.textMuted),
+            ),
+          ),
+        ],
+        // Les refus DÉFINITIFS ne sont pas une attente : ils ne partiront
+        // jamais. Ils portent leur propre entrée, en avertissement, et ouvrent
+        // la trace (FR-086) — c'est ce que Yao montrera à l'exploitation.
+        if (refuses > 0) ...[
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => JournalReconciliation.ouvrir(context),
+            icon: const Icon(Symbols.sync_problem_rounded,
+                size: 18, color: MefaliTokens.warning),
+            label: Text(
+              l10n.crsReconciliationRefuses(refuses),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: MefaliTokens.warning),
+            ),
+          ),
+        ],
       ],
     );
   }

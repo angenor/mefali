@@ -165,6 +165,19 @@ pub struct DemandeEchec {
     pub type_issue: TypeIssueEchec,
     /// Clé i18n du motif — jamais du texte libre.
     pub motif_cle: String,
+    /// Clé d'idempotence de la file hors-ligne (R4, constitution V).
+    ///
+    /// Un échec déclaré sans réseau se rejoue jusqu'à acquittement ; sans cette
+    /// clé, deux rejeux dérouleraient l'arbre §7.5 deux fois — deux sanctions,
+    /// deux indemnisations, deux litiges pour un seul incident.
+    pub uuid_client: Uuid,
+    /// L'appelant est-il le COURSIER assigné ?
+    ///
+    /// `true` depuis la surface coursier, `false` depuis l'admin (qui enregistre
+    /// une issue pour le compte de quelqu'un d'autre — c'est tout l'objet de sa
+    /// surface). La garde de propriété n'a de sens que dans le premier cas
+    /// (FR-006).
+    pub exiger_proprietaire: bool,
 }
 
 /// Une issue enregistrée.
@@ -198,6 +211,14 @@ impl PgCommandes {
         demande: DemandeEchec,
         maintenant: DateTime<Utc>,
     ) -> Result<IssueEnregistree, ErreurCommandes> {
+        // ── Rejeu du MÊME uuid_client (R4) ────────────────────────────────
+        // AVANT la garde de preuves : une issue déjà enregistrée l'a été avec
+        // ses preuves ; les redemander au rejeu ferait échouer une déclaration
+        // qui a pourtant abouti, et l'app réessaierait indéfiniment.
+        if let Some(deja) = self.issue_deja_enregistree(demande.uuid_client).await? {
+            return Ok(deja);
+        }
+
         if !self.preuves.preuves_reunies(demande.livraison_id).await? {
             return Err(ErreurCommandes::PreuvesIncompletes);
         }
@@ -217,6 +238,23 @@ impl PgCommandes {
         .fetch_optional(&self.pool)
         .await?
         .ok_or(ErreurCommandes::LivraisonInconnue(demande.livraison_id))?;
+
+        // ── Propriété, au REJEU comme à la première fois (FR-006) ─────────
+        // Une déclaration d'échec partie de la file d'un coursier désassigné
+        // entre-temps ne doit pas dérouler l'arbre §7.5 : ce serait sanctionner
+        // un client et indemniser quelqu'un sur la foi d'une action périmée.
+        // C'était la dette relevée au cycle 008.
+        if demande.exiger_proprietaire && contexte.coursier_id != Some(acteur) {
+            self.tracer_action_refusee(
+                demande.livraison_id,
+                contexte.commande_id,
+                acteur,
+                "echec",
+                maintenant,
+            )
+            .await?;
+            return Err(ErreurCommandes::NonProprietaire);
+        }
 
         // La nature de la marchandise décide de la moitié de l'arbre : c'est un
         // paramètre de ZONE, jamais une liste en dur (constitution I).
@@ -260,14 +298,15 @@ impl PgCommandes {
             "INSERT INTO commandes.issue_echec
                  (id, commande_id, arret_id, type_issue, detenteur_argent,
                   detenteur_marchandise, montant_en_jeu_unites, devise,
-                  indemnisation_due, litige_ouvert, sanction, motif_cle, acteur)
+                  indemnisation_due, litige_ouvert, sanction, motif_cle, acteur,
+                  issue_uuid_client)
              VALUES ($1, $2, $3,
                      $4::text::commandes.type_issue_echec,
                      $5::text::commandes.detenteur,
                      $6::text::commandes.detenteur,
                      $7, $8, $9, $10,
                      $11::text::commandes.sanction,
-                     $12, $13)",
+                     $12, $13, $14)",
             issue_id,
             contexte.commande_id,
             demande.arret_id,
@@ -281,6 +320,7 @@ impl PgCommandes {
             sanction_posee.comme_str(),
             demande.motif_cle,
             acteur,
+            demande.uuid_client,
         )
         .execute(&mut *tx)
         .await?;
@@ -483,6 +523,99 @@ impl PgCommandes {
         )
         .await?;
         Ok(relivraison_id)
+    }
+
+    /// Rejeu d'un `uuid_client` déjà enregistré : rend l'issue TELLE QUELLE.
+    ///
+    /// Rien n'est réécrit, rien n'est ré-émis — l'arbre §7.5 n'est pas rejoué.
+    /// Le dérouler deux fois produirait deux sanctions, deux indemnisations et
+    /// deux litiges pour un seul incident (R4).
+    async fn issue_deja_enregistree(
+        &self,
+        uuid_client: Uuid,
+    ) -> Result<Option<IssueEnregistree>, ErreurCommandes> {
+        let Some(l) = sqlx::query!(
+            r#"SELECT i.id, i.commande_id, i.type_issue::text AS "type_issue!",
+                      i.detenteur_argent::text AS "detenteur_argent!",
+                      i.detenteur_marchandise::text AS "detenteur_marchandise!",
+                      i.montant_en_jeu_unites, i.devise,
+                      i.indemnisation_due, i.litige_ouvert,
+                      i.sanction::text AS "sanction!",
+                      (SELECT r.id FROM commandes.commande r
+                        WHERE r.relivraison_de = i.commande_id LIMIT 1) AS "relivraison_id?"
+               FROM commandes.issue_echec i
+               WHERE i.issue_uuid_client = $1"#,
+            uuid_client,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        else {
+            return Ok(None);
+        };
+
+        Ok(Some(IssueEnregistree {
+            issue_id: l.id,
+            commande_id: l.commande_id,
+            resolution: ResolutionIssue {
+                detenteur_argent: l.detenteur_argent.parse()?,
+                detenteur_marchandise: l.detenteur_marchandise.parse()?,
+                litige_ouvert: l.litige_ouvert,
+                indemnisation_due: l.indemnisation_due,
+                // La sanction DEMANDÉE par l'arbre est reconstituée depuis le
+                // type d'issue : la colonne stockée porte celle qui a été
+                // EFFECTIVEMENT posée après arbitrage du rang, et les deux ne
+                // se confondent pas.
+                sanction: resoudre(l.type_issue.parse()?, true, true).sanction,
+            },
+            montant_en_jeu_unites: l.montant_en_jeu_unites,
+            devise: l.devise,
+            sanction_posee: l.sanction.parse()?,
+            relivraison_id: l.relivraison_id,
+        }))
+    }
+
+    /// Trace une action de course **refusée définitivement** au rejeu (FR-088).
+    ///
+    /// L'événement `coursier.action_reconciliee` est un événement
+    /// d'**opérations** : il mesure la santé de la file hors-ligne. Il est
+    /// écrit hors de toute transaction métier — précisément parce qu'aucune
+    /// mutation métier n'a lieu : l'action a été refusée.
+    ///
+    /// Il porte le coursier et l'action, jamais un secret ni un numéro.
+    pub(crate) async fn tracer_action_refusee(
+        &self,
+        livraison_id: Uuid,
+        commande_id: Uuid,
+        coursier: Uuid,
+        action: &str,
+        maintenant: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        let mut tx = self.pool.begin().await?;
+        ecrire_evenement(
+            &mut tx,
+            NouvelEvenement {
+                type_evenement: "coursier.action_reconciliee",
+                entite_type: "livraison",
+                entite_id: livraison_id,
+                payload: json!({
+                    "commande": commande_id,
+                    "coursier": coursier,
+                    "action": action,
+                    "issue": "refusee_definitivement",
+                    "motif_cle": "non_proprietaire",
+                }),
+                survenu_le: maintenant,
+            },
+        )
+        .await?;
+        tx.commit().await?;
+        tracing::warn!(
+            livraison = %livraison_id,
+            coursier = %coursier,
+            action,
+            "action de course REFUSÉE au rejeu — la course a changé de porteur",
+        );
+        Ok(())
     }
 }
 

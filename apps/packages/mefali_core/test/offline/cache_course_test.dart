@@ -196,14 +196,15 @@ void main() {
   });
 
   group('schemaVersion (migration additive)', () {
-    test('la version monte à 5 et les huit tables sont déclarées', () async {
+    test('la version monte à 7 et les huit tables sont déclarées', () async {
       final base = BaseOffline.memoire();
       addTearDown(base.close);
 
-      // v5 : trois colonnes de plus sur `course_cache` (l'arrêt de REMISE,
-      // découvert en branchant K4). Migration strictement ADDITIVE — aucune
-      // table retirée, aucune action en vol perdue au passage de version.
-      expect(base.schemaVersion, 5);
+      // v5 : l'arrêt de REMISE dans `course_cache` (découvert en branchant K4).
+      // v6 : le classement d'issue d'un rejeu (`statut`, `refuse_le_local`).
+      // v7 : le mode d'envoi (`multipart`) — les transitions sont du JSON.
+      // Toutes ADDITIVES : aucune table retirée, aucune action en vol perdue.
+      expect(base.schemaVersion, 7);
       final tables = base.allTables.map((t) => t.actualTableName).toSet();
       expect(
         tables,

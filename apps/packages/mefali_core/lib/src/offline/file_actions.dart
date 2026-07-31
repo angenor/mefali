@@ -42,6 +42,7 @@ class FileActions {
     required String payloadJson,
     List<int>? photoOctets,
     required DateTime creeLeLocal,
+    bool multipart = true,
   }) async {
     await _base.into(_base.actionsEnAttente).insert(
           ActionsEnAttenteCompanion.insert(
@@ -50,16 +51,72 @@ class FileActions {
             payloadJson: payloadJson,
             photoOctets: Value(photoOctets == null ? null : Uint8List.fromList(photoOctets)),
             creeLeLocal: creeLeLocal,
+            multipart: Value(multipart),
           ),
           mode: InsertMode.insertOrIgnore,
         );
   }
 
-  /// Actions en attente de rejeu, les plus anciennes d'abord.
+  /// Actions en attente de rejeu, dans leur ordre de création **strict**
+  /// (FR-087).
+  ///
+  /// L'horodatage local seul ne suffit pas : deux actions créées dans la même
+  /// milliseconde — deux taps rapides, un scan suivi d'une transition — se
+  /// départageraient au hasard, et rejouer « arrivé » avant « en route » se
+  /// ferait refuser par la machine à états du serveur. L'`uuid_client` est un
+  /// UUIDv7, donc **chronologique** : il tranche les égalités sans rien
+  /// stocker de plus.
+  ///
+  /// Les actions REFUSÉES définitivement n'y figurent plus : les rejouer ne
+  /// changerait rien et masquerait les autres (FR-085).
   Future<List<ActionEnAttente>> enAttente() {
     return (_base.select(_base.actionsEnAttente)
-          ..orderBy([(a) => OrderingTerm(expression: a.creeLeLocal)]))
+          ..where((a) => a.statut.equals('en_attente'))
+          ..orderBy([
+            (a) => OrderingTerm(expression: a.creeLeLocal),
+            (a) => OrderingTerm(expression: a.uuidClient),
+          ]))
         .get();
+  }
+
+  /// Refus DÉFINITIF du serveur : l'action quitte la file et rejoint la trace.
+  ///
+  /// Elle n'est pas supprimée (FR-086) : derrière une collecte refusée, il y a
+  /// une avance que Yao a réellement engagée. Effacer la ligne effacerait la
+  /// seule preuve qu'il en parle à l'exploitation.
+  Future<void> marquerRefusDefinitif(String uuidClient, String motifCle) async {
+    await (_base.update(_base.actionsEnAttente)
+          ..where((a) => a.uuidClient.equals(uuidClient)))
+        .write(ActionsEnAttenteCompanion(
+      statut: const Value('refuse'),
+      dernierMotif: Value(motifCle),
+      refuseLeLocal: Value(DateTime.now()),
+    ));
+  }
+
+  /// Refus définitifs consultables, le plus récent d'abord (FR-086).
+  Future<List<ActionEnAttente>> refusDefinitifs() {
+    return (_base.select(_base.actionsEnAttente)
+          ..where((a) => a.statut.equals('refuse'))
+          ..orderBy([
+            (a) => OrderingTerm(
+                expression: a.refuseLeLocal, mode: OrderingMode.desc),
+          ]))
+        .get();
+  }
+
+  /// Vide la trace des refus — Yao l'a lue, elle a fait son travail.
+  Future<void> effacerRefus() async {
+    await (_base.delete(_base.actionsEnAttente)
+          ..where((a) => a.statut.equals('refuse')))
+        .go();
+  }
+
+  /// Octets de photo restant à transmettre (FR-083) — l'attente de Yao ne se
+  /// mesure pas en nombre d'actions quand l'une d'elles pèse 2 Mo.
+  Future<int> octetsEnAttente() async {
+    final actions = await enAttente();
+    return actions.fold<int>(0, (n, a) => n + (a.photoOctets?.length ?? 0));
   }
 
   /// Retire une action de la file (rejeu abouti ou refus définitif réconcilié).

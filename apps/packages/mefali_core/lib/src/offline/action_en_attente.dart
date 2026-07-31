@@ -66,6 +66,28 @@ class ActionsEnAttente extends Table {
   /// Dernier motif d'échec (clé i18n ou message serveur), le cas échéant.
   TextColumn get dernierMotif => text().nullable()();
 
+  /// L'action voyage-t-elle en `multipart/form-data` ?
+  ///
+  /// **Toutes ne le sont pas, et c'est le contrat qui le dit** : seules celles
+  /// qui peuvent porter une photo (collecte, substitution, remise, preuve) sont
+  /// multipart ; les transitions d'arrêt attendent du JSON. Envoyer tout de la
+  /// même façon faisait échouer la moitié des endpoints au drain — bug attrapé
+  /// par le test qui fait foi du module.
+  BoolColumn get multipart => boolean().withDefault(const Constant(true))();
+
+  /// `en_attente` (rejouable) ou `refuse` (refus DÉFINITIF du serveur).
+  ///
+  /// Les deux issues d'un rejeu n'ont rien à voir (FR-085) : un échec RÉSEAU se
+  /// réessaie indéfiniment ; un refus MÉTIER — course réassignée, arrêt déjà
+  /// collecté — ne se réessaiera jamais avec succès, et insister le ferait
+  /// compter comme une panne. Une action refusée sort donc de la file… mais pas
+  /// de la trace : Yao doit pouvoir savoir ce qui est arrivé à une collecte
+  /// qu'il a réellement faite (FR-086).
+  TextColumn get statut => text().withDefault(const Constant('en_attente'))();
+
+  /// Instant LOCAL du refus définitif — l'ordre du journal de réconciliation.
+  DateTimeColumn get refuseLeLocal => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {uuidClient};
 }
@@ -414,7 +436,7 @@ class BaseOffline extends _$BaseOffline {
   BaseOffline.memoire() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -455,6 +477,20 @@ class BaseOffline extends _$BaseOffline {
                 courseCacheTable, courseCacheTable.arretRemiseStatut);
             await m.addColumn(
                 courseCacheTable, courseCacheTable.arriveChezClientLe);
+          }
+          // v6 (cycle CRS, T046/T047) : l'issue d'un rejeu se classe. Deux
+          // colonnes AJOUTÉES sur `actions_en_attente` — la table la plus
+          // sensible du dépôt : les actions déjà en vol gardent leur défaut
+          // `en_attente` et continuent de se rejouer exactement comme avant.
+          if (from < 6) {
+            await m.addColumn(actionsEnAttente, actionsEnAttente.statut);
+            await m.addColumn(actionsEnAttente, actionsEnAttente.refuseLeLocal);
+          }
+          // v7 : le drain distingue JSON et multipart. Défaut `true` — c'est ce
+          // que faisait le code d'avant, donc les actions DÉJÀ en vol se
+          // rejouent exactement comme elles auraient été envoyées.
+          if (from < 7) {
+            await m.addColumn(actionsEnAttente, actionsEnAttente.multipart);
           }
         },
       );

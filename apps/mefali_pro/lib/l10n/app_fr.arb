@@ -985,6 +985,18 @@
   "@crsReconciliationEtatIncompatible": { "description": "Refus définitif générique au rejeu" },
   "crsReconciliationJournalTitre": "Actions refusées",
   "@crsReconciliationJournalTitre": { "description": "Trace consultable des refus définitifs (FR-086)" },
+  "crsReconciliationRefuses": "{n, plural, =1{1 action refusée} other{{n} actions refusées}}",
+  "@crsReconciliationRefuses": {
+    "description": "Compteur des refus définitifs dans le bandeau de course (FR-083, FR-086)",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsReconciliationJournalEffacer": "Effacer la trace",
+  "@crsReconciliationJournalEffacer": { "description": "Yao a parlé à l'exploitation : la trace a fait son travail" },
+  "crsReconciliationFaiteA": "Action faite à {heure}",
+  "@crsReconciliationFaiteA": {
+    "description": "Heure de l'ACTION (pas du refus) — c'est le moment dont Yao se souvient",
+    "placeholders": { "heure": { "type": "String" } }
+  },
   "crsReconciliationJournalVide": "Aucune action refusée",
   "@crsReconciliationJournalVide": { "description": "État vide du journal de réconciliation" },
   "crsReconciliationAvanceEngagee": "Vous aviez déjà avancé de l'argent sur cette course. L'agence ouvre un dossier.",

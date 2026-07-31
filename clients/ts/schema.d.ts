@@ -2812,6 +2812,34 @@ export interface components {
             motif_cle: string;
             /** @description Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…). */
             type_issue: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             *
+             *     **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue
+             *     jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois
+             *     — deux sanctions, deux indemnisations, deux litiges (R4).
+             */
+            uuid_client: string;
+        };
+        /**
+         * @description Enregistrement d'une issue §7.5 **par l'exploitation**.
+         *
+         *     Volontairement distinct du DTO coursier : celui-ci exige un `uuid_client`
+         *     (sa file hors-ligne rejoue), l'admin n'en a pas — chaque clic est une action
+         *     neuve, sur un écran connecté. Partager le DTO aurait obligé l'exploitation à
+         *     fabriquer un identifiant d'idempotence qui ne correspond à rien chez elle.
+         */
+        DemandeIssueAdmin: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné — absent = à la remise.
+             */
+            arret_id?: string | null;
+            /** @description Clé i18n du motif — jamais du texte libre. */
+            motif_cle: string;
+            /** @description Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…). */
+            type_issue: string;
         };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
@@ -5091,7 +5119,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DemandeEchec"];
+                "application/json": components["schemas"]["DemandeIssueAdmin"];
             };
         };
         responses: {

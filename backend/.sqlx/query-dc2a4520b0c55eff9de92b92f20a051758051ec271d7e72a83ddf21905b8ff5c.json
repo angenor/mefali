@@ -1,0 +1,123 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.id, i.commande_id, i.type_issue::text AS \"type_issue!\",\n                      i.detenteur_argent::text AS \"detenteur_argent!\",\n                      i.detenteur_marchandise::text AS \"detenteur_marchandise!\",\n                      i.montant_en_jeu_unites, i.devise,\n                      i.indemnisation_due, i.litige_ouvert,\n                      i.sanction::text AS \"sanction!\",\n                      (SELECT r.id FROM commandes.commande r\n                        WHERE r.relivraison_de = i.commande_id LIMIT 1) AS \"relivraison_id?\"\n               FROM commandes.issue_echec i\n               WHERE i.issue_uuid_client = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.issue_echec",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.issue_echec",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "type_issue!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "detenteur_argent!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "detenteur_marchandise!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "montant_en_jeu_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.issue_echec",
+            "name": "montant_en_jeu_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.issue_echec",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "indemnisation_due",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.issue_echec",
+            "name": "indemnisation_due"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "litige_ouvert",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.issue_echec",
+            "name": "litige_ouvert"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "sanction!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "relivraison_id?",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "dc2a4520b0c55eff9de92b92f20a051758051ec271d7e72a83ddf21905b8ff5c"
+}

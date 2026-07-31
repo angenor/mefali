@@ -675,13 +675,28 @@ impl Bac {
     /// Collecte un arrêt par le domaine (le scan vit dans `qr_http` et exige
     /// plaque + multipart : hors sujet pour la plupart des tests d'ici).
     pub async fn collecter(&self, arret: Uuid) -> commandes::ProgressionCollecte {
+        self.collecter_avec_uuid(arret, Uuid::now_v7()).await
+    }
+
+    /// Collecte avec un `uuid_client` IMPOSÉ — c'est ce que fait la file quand
+    /// elle rejoue : le même identifiant, autant de fois qu'il le faut.
+    ///
+    /// Le chemin HTTP (`qr_http::collecter`) exige une plaque et un multipart,
+    /// que ce bac ne monte pas ; mais l'idempotence vit **dans le domaine**, et
+    /// c'est exactement cette fonction que l'endpoint appelle. Rejouer ici, ce
+    /// n'est pas simuler le rejeu : c'est le faire.
+    pub async fn collecter_avec_uuid(
+        &self,
+        arret: Uuid,
+        uuid_client: Uuid,
+    ) -> commandes::ProgressionCollecte {
         let mut tx = self.pool.begin().await.unwrap();
         let p = self
             .commandes
             .marquer_arret_collecte(
                 &mut tx,
                 arret,
-                Uuid::now_v7(),
+                uuid_client,
                 commandes::ModeCollecte::ScanQr,
                 None,
                 10,

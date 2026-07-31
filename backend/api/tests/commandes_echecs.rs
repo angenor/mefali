@@ -100,6 +100,9 @@ async fn declarer_echec(bac: &Bac, course: &Course, type_issue: &str) -> (u16, V
         &format!("/courses/{}/echec", course.livraison),
         &bac.jeton_coursier,
         json!({
+            // `uuid_client` OBLIGATOIRE depuis CRS 010 : un échec déclaré sans
+            // réseau se rejoue, et l'arbre §7.5 ne doit se dérouler qu'une fois.
+            "uuid_client": Uuid::now_v7(),
             "type_issue": type_issue,
             "motif_cle": "echec.motif.client_injoignable",
         }),

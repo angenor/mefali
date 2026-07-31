@@ -68,6 +68,7 @@ import 'package:mefali_api_client/src/model/demande_deblocage.dart';
 import 'package:mefali_api_client/src/model/demande_depot.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/demande_echec.dart';
+import 'package:mefali_api_client/src/model/demande_issue_admin.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
 import 'package:mefali_api_client/src/model/demande_rafraichissement.dart';
 import 'package:mefali_api_client/src/model/demande_remise.dart';
@@ -227,6 +228,7 @@ part 'serializers.g.dart';
   DemandeDepot,
   DemandeDevisPanier,
   DemandeEchec,
+  DemandeIssueAdmin,
   DemandeOtp,
   DemandeRafraichissement,
   DemandeRemise,

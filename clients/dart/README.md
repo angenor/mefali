@@ -220,6 +220,7 @@ Class | Method | HTTP request | Description
  - [DemandeDepot](doc/DemandeDepot.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
  - [DemandeEchec](doc/DemandeEchec.md)
+ - [DemandeIssueAdmin](doc/DemandeIssueAdmin.md)
  - [DemandeOtp](doc/DemandeOtp.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
  - [DemandeRemise](doc/DemandeRemise.md)

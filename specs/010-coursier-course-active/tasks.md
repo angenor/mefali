@@ -146,13 +146,13 @@ tâche qui les enfreint est incomplète, même si son code marche :
 
 **Independent Test**: le test obligatoire du module — réseau coupé entre le dernier scan et la confirmation, puis rétabli : exactement une collecte, exactement une remise, aucun doublon même en rejouant deux fois.
 
-- [ ] T045 [US3] Étendre la file de `apps/packages/mefali_core/lib/src/offline/file_actions.dart` aux actions du cycle (transitions, appels, relevés de présence, **photos de récupération, de remplacement, de dépôt et de preuve**, remise, échec) avec ordre de création strict et compteur de tentatives (FR-087)
-- [ ] T046 [US3] Classement des issues de rejeu dans `apps/mefali_pro/lib/coursier/course/etat_course.dart` : **réessayable** (réseau) vs **refus définitif** (métier) — le second sort de la file après réconciliation affichée (FR-085)
-- [ ] T047 [US3] Messages de réconciliation en clés i18n (« cette course ne vous est plus attribuée », « cet arrêt est déjà collecté ») + trace consultable des refus définitifs dans `apps/mefali_pro/lib/coursier/course/journal_reconciliation.dart` (FR-084, FR-086)
-- [ ] T048 [US3] Indicateur d'actions en attente (nombre + octets de photos restants) dans le bandeau posé en T027 — réf. `docs/design/png/K3-course-active.png` 1b (FR-083)
-- [ ] T049 [US3] Contrôle de **propriété au rejeu** côté serveur pour toutes les actions de course (`backend/crates/commandes/` et `backend/crates/coursier/`) : une action d'un coursier désassigné est refusée et tracée, émission de `coursier.action_reconciliee` (FR-006, FR-088, dette du cycle 008)
-- [ ] T050 [US3] Rendre `POST /courses/{livraison_id}/echec` idempotent par `issue_uuid_client` dans `backend/crates/commandes/src/echec.rs` + adapter le DTO dans `backend/api/src/course_http.rs` ; utoipa + clients + build vert
-- [ ] T051 [US3] ⭐ Tests d'intégration `backend/api/tests/coursier_reconciliation.rs` — le scénario exact de `quickstart.md` §2.1 (coupure entre le dernier scan et la remise, rejeu, cardinalité 1/1/1, **second rejeu sans effet**) **et** la course réassignée pendant la coupure (actions refusées, tracées, avance engagée ouvrant le litige) — FR-089, SC-004, SC-016
+- [X] T045 [US3] Étendre la file de `apps/packages/mefali_core/lib/src/offline/file_actions.dart` aux actions du cycle (transitions, appels, relevés de présence, **photos de récupération, de remplacement, de dépôt et de preuve**, remise, échec) avec ordre de création strict et compteur de tentatives (FR-087)
+- [X] T046 [US3] Classement des issues de rejeu dans `apps/mefali_pro/lib/coursier/course/etat_course.dart` : **réessayable** (réseau) vs **refus définitif** (métier) — le second sort de la file après réconciliation affichée (FR-085)
+- [X] T047 [US3] Messages de réconciliation en clés i18n (« cette course ne vous est plus attribuée », « cet arrêt est déjà collecté ») + trace consultable des refus définitifs dans `apps/mefali_pro/lib/coursier/course/journal_reconciliation.dart` (FR-084, FR-086)
+- [X] T048 [US3] Indicateur d'actions en attente (nombre + octets de photos restants) dans le bandeau posé en T027 — réf. `docs/design/png/K3-course-active.png` 1b (FR-083)
+- [X] T049 [US3] Contrôle de **propriété au rejeu** côté serveur pour toutes les actions de course (`backend/crates/commandes/` et `backend/crates/coursier/`) : une action d'un coursier désassigné est refusée et tracée, émission de `coursier.action_reconciliee` (FR-006, FR-088, dette du cycle 008)
+- [X] T050 [US3] Rendre `POST /courses/{livraison_id}/echec` idempotent par `issue_uuid_client` dans `backend/crates/commandes/src/echec.rs` + adapter le DTO dans `backend/api/src/course_http.rs` ; utoipa + clients + build vert
+- [X] T051 [US3] ⭐ Tests d'intégration `backend/api/tests/coursier_reconciliation.rs` — le scénario exact de `quickstart.md` §2.1 (coupure entre le dernier scan et la remise, rejeu, cardinalité 1/1/1, **second rejeu sans effet**) **et** la course réassignée pendant la coupure (actions refusées, tracées, avance engagée ouvrant le litige) — FR-089, SC-004, SC-016
 
 **Checkpoint**: US3 complète — le test qui fait foi passe, deux fois de suite.
 

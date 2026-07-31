@@ -276,6 +276,38 @@ class ArretCourse {
       );
 }
 
+/// Une action **refusée définitivement** par le serveur au rejeu (FR-086).
+///
+/// Elle n'est pas une erreur technique : c'est un fait métier que Yao doit
+/// pouvoir raconter. « J'ai bien collecté chez Adjoua à 14h32, le serveur dit
+/// que la course ne m'est plus attribuée » — sans cette trace, il n'aurait que
+/// sa parole, et l'avance qu'il a engagée resterait invisible (SC-016).
+class RefusReconciliation {
+  /// Crée une ligne de journal.
+  const RefusReconciliation({
+    required this.uuidClient,
+    required this.endpoint,
+    required this.motifCle,
+    required this.creeLeLocal,
+    this.refuseLeLocal,
+  });
+
+  /// Identifiant de l'action refusée.
+  final String uuidClient;
+
+  /// Endpoint visé — ce que Yao a essayé de faire.
+  final String endpoint;
+
+  /// Clé i18n du refus, telle que le serveur l'a rendue.
+  final String motifCle;
+
+  /// Quand l'action a été FAITE (heure de l'appareil).
+  final DateTime creeLeLocal;
+
+  /// Quand le serveur l'a refusée.
+  final DateTime? refuseLeLocal;
+}
+
 /// État de la course active : arrêts, client, remise, indicateur hors-ligne.
 class EtatCourse {
   /// Crée l'état.
@@ -290,6 +322,7 @@ class EtatCourse {
     this.remise = const RemiseVue(),
     this.actionsEnAttente = 0,
     this.octetsPhotosEnAttente = 0,
+    this.refus = const [],
   });
 
   /// Arrêts de la course, dans l'ordre.
@@ -321,6 +354,9 @@ class EtatCourse {
 
   /// Octets de photo restant à transmettre (FR-083).
   final int octetsPhotosEnAttente;
+
+  /// Actions refusées définitivement au rejeu, la plus récente d'abord (FR-086).
+  final List<RefusReconciliation> refus;
 
   /// Une course est-elle en cours ?
   bool get aUneCourse => livraisonId != null;
@@ -361,6 +397,7 @@ class EtatCourse {
     RemiseVue? remise,
     int? actionsEnAttente,
     int? octetsPhotosEnAttente,
+    List<RefusReconciliation>? refus,
   }) =>
       EtatCourse(
         arrets: arrets ?? this.arrets,
@@ -374,6 +411,7 @@ class EtatCourse {
         actionsEnAttente: actionsEnAttente ?? this.actionsEnAttente,
         octetsPhotosEnAttente:
             octetsPhotosEnAttente ?? this.octetsPhotosEnAttente,
+        refus: refus ?? this.refus,
       );
 }
 
@@ -518,28 +556,52 @@ class EtatCourseActive extends _$EtatCourseActive {
     }
   }
 
-  /// Rejoue la file d'actions hors-ligne (multipart idempotent). Succès ou
-  /// idempotent → retire ; refus métier DÉFINITIF → réconcilie (décoche + retire,
-  /// l'arrêt reste à collecter, SC-008) ; réseau toujours coupé → conserve et
-  /// s'arrête (inutile d'insister sur les suivantes).
+  /// Rejoue la file d'actions hors-ligne (multipart idempotent), dans l'ordre
+  /// de création strict (FR-087).
+  ///
+  /// **Trois issues, et elles ne se ressemblent pas** (FR-085) :
+  ///
+  /// - succès ou rejeu idempotent → l'action sort de la file, définitivement ;
+  /// - **réseau** toujours coupé → l'action RESTE, son compteur de tentatives
+  ///   monte, et on s'arrête là : insister sur les suivantes ne ferait
+  ///   qu'allonger un échec déjà connu, et casserait l'ordre de rejeu ;
+  /// - **refus métier** → l'action ne réussira JAMAIS (la course a été
+  ///   réassignée, l'arrêt est déjà collecté). Elle quitte la file mais garde
+  ///   sa trace : derrière une collecte refusée, il y a une avance que Yao a
+  ///   réellement engagée, et il doit pouvoir en parler à l'exploitation
+  ///   (FR-086, SC-016).
+  ///
+  /// La coche optimiste est retirée dans le second cas seulement : l'arrêt
+  /// redevient « à collecter » et l'écran cesse de mentir (SC-008).
   Future<void> _drainerFile(FileActions file, Dio dio) async {
     for (final action in await file.enAttente()) {
       try {
-        final form = FormData.fromMap({
-          'demande': action.payloadJson,
-          if (action.photoOctets != null)
-            'photo': MultipartFile.fromBytes(action.photoOctets!, filename: 'photo.jpg'),
-        });
-        await dio.post<dynamic>(action.endpoint, data: form);
+        // JSON ou multipart selon ce que l'endpoint attend (mémorisé à
+        // l'enfilement) : les transitions d'arrêt sont du JSON, et leur envoyer
+        // un multipart les faisait toutes échouer au drain.
+        final corpsEnvoye = action.multipart
+            ? FormData.fromMap({
+                'demande': action.payloadJson,
+                if (action.photoOctets != null)
+                  'photo': MultipartFile.fromBytes(action.photoOctets!,
+                      filename: 'photo.jpg'),
+              })
+            : jsonDecode(action.payloadJson);
+        await dio.post<dynamic>(action.endpoint, data: corpsEnvoye);
         await file.retirer(action.uuidClient);
       } on DioException catch (e) {
         if (e.response == null) {
           await file.marquerEchec(action.uuidClient, 'reseau');
           return; // réseau toujours coupé
         }
-        // Refus métier réconcilié : l'arrêt reste à collecter.
+        // Refus métier réconcilié : l'arrêt reste à collecter, et le motif du
+        // serveur — sa clé i18n — devient la ligne du journal.
+        final corps = e.response?.data;
+        final motif = (corps is Map && corps['code'] is String)
+            ? corps['code'] as String
+            : 'erreur_interne';
         await file.decocherOptimiste(_arretDeEndpoint(action.endpoint));
-        await file.retirer(action.uuidClient);
+        await file.marquerRefusDefinitif(action.uuidClient, motif);
       }
     }
   }
@@ -613,6 +675,7 @@ class EtatCourseActive extends _$EtatCourseActive {
     final checklist = await file.lignesChecklist();
     final course = await file.courseCache();
     final enAttente = await file.enAttente();
+    final refuses = await file.refusDefinitifs();
 
     final parArret = <String, List<LigneChecklistVue>>{};
     for (final l in checklist) {
@@ -635,7 +698,17 @@ class EtatCourseActive extends _$EtatCourseActive {
       devise: course?.devise ?? 'XOF',
       actionsEnAttente: enAttente.length,
       octetsPhotosEnAttente:
-          enAttente.fold(0, (n, a) => n + (a.photoOctets?.length ?? 0)),
+          enAttente.fold<int>(0, (n, a) => n + (a.photoOctets?.length ?? 0)),
+      refus: [
+        for (final r in refuses)
+          RefusReconciliation(
+            uuidClient: r.uuidClient,
+            endpoint: r.endpoint,
+            motifCle: r.dernierMotif ?? 'erreur_interne',
+            creeLeLocal: r.creeLeLocal,
+            refuseLeLocal: r.refuseLeLocal,
+          ),
+      ],
       client: ClientCourseVue(
         nomUsage: (course?.clientNomUsage ?? '').isEmpty
             ? null
@@ -699,16 +772,19 @@ class EtatCourseActive extends _$EtatCourseActive {
     required String endpoint,
     required Map<String, dynamic> payload,
     List<int>? photo,
+    bool multipart = true,
   }) async {
     final file = ref.read(fileActionsProvider);
     try {
       final dio = ref.read(clientSessionProvider).dio;
-      final form = FormData.fromMap({
-        'demande': jsonEncode(payload),
-        if (photo != null)
-          'photo': MultipartFile.fromBytes(photo, filename: 'photo.jpg'),
-      });
-      await dio.post<dynamic>(endpoint, data: form);
+      final corps = multipart
+          ? FormData.fromMap({
+              'demande': jsonEncode(payload),
+              if (photo != null)
+                'photo': MultipartFile.fromBytes(photo, filename: 'photo.jpg'),
+            })
+          : payload;
+      await dio.post<dynamic>(endpoint, data: corps);
       ref.invalidateSelf();
       return null;
     } on DioException catch (e) {
@@ -722,6 +798,7 @@ class EtatCourseActive extends _$EtatCourseActive {
           payloadJson: jsonEncode(payload),
           photoOctets: photo,
           creeLeLocal: DateTime.now(),
+          multipart: multipart,
         );
         ref.invalidateSelf();
         return null;
@@ -749,6 +826,9 @@ class EtatCourseActive extends _$EtatCourseActive {
         'uuid_client': _uuid.v7(),
         'horodatage_local': DateTime.now().toUtc().toIso8601String(),
       },
+      // Les trois transitions déclaratives attendent du JSON : aucune ne porte
+      // de photo, et le contrat du cycle 008 est inchangé.
+      multipart: false,
     );
   }
 
@@ -806,6 +886,7 @@ class EtatCourseActive extends _$EtatCourseActive {
         'prestataire_id': ?prestataireId,
         'passe_le_local': DateTime.now().toUtc().toIso8601String(),
       },
+      multipart: false,
     );
     return uuidClient;
   }
@@ -844,6 +925,7 @@ class EtatCourseActive extends _$EtatCourseActive {
         'horodatage_local': DateTime.now().toUtc().toIso8601String(),
         'motif': motif,
       },
+      multipart: false,
     );
   }
 

@@ -100,6 +100,43 @@ class $ActionsEnAttenteTable extends ActionsEnAttente
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _multipartMeta = const VerificationMeta(
+    'multipart',
+  );
+  @override
+  late final GeneratedColumn<bool> multipart = GeneratedColumn<bool>(
+    'multipart',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("multipart" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _statutMeta = const VerificationMeta('statut');
+  @override
+  late final GeneratedColumn<String> statut = GeneratedColumn<String>(
+    'statut',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('en_attente'),
+  );
+  static const VerificationMeta _refuseLeLocalMeta = const VerificationMeta(
+    'refuseLeLocal',
+  );
+  @override
+  late final GeneratedColumn<DateTime> refuseLeLocal =
+      GeneratedColumn<DateTime>(
+        'refuse_le_local',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     uuidClient,
@@ -110,6 +147,9 @@ class $ActionsEnAttenteTable extends ActionsEnAttente
     creeLeLocal,
     tentatives,
     dernierMotif,
+    multipart,
+    statut,
+    refuseLeLocal,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -191,6 +231,27 @@ class $ActionsEnAttenteTable extends ActionsEnAttente
         ),
       );
     }
+    if (data.containsKey('multipart')) {
+      context.handle(
+        _multipartMeta,
+        multipart.isAcceptableOrUnknown(data['multipart']!, _multipartMeta),
+      );
+    }
+    if (data.containsKey('statut')) {
+      context.handle(
+        _statutMeta,
+        statut.isAcceptableOrUnknown(data['statut']!, _statutMeta),
+      );
+    }
+    if (data.containsKey('refuse_le_local')) {
+      context.handle(
+        _refuseLeLocalMeta,
+        refuseLeLocal.isAcceptableOrUnknown(
+          data['refuse_le_local']!,
+          _refuseLeLocalMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -232,6 +293,18 @@ class $ActionsEnAttenteTable extends ActionsEnAttente
         DriftSqlType.string,
         data['${effectivePrefix}dernier_motif'],
       ),
+      multipart: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}multipart'],
+      )!,
+      statut: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}statut'],
+      )!,
+      refuseLeLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}refuse_le_local'],
+      ),
     );
   }
 
@@ -265,6 +338,28 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
 
   /// Dernier motif d'échec (clé i18n ou message serveur), le cas échéant.
   final String? dernierMotif;
+
+  /// L'action voyage-t-elle en `multipart/form-data` ?
+  ///
+  /// **Toutes ne le sont pas, et c'est le contrat qui le dit** : seules celles
+  /// qui peuvent porter une photo (collecte, substitution, remise, preuve) sont
+  /// multipart ; les transitions d'arrêt attendent du JSON. Envoyer tout de la
+  /// même façon faisait échouer la moitié des endpoints au drain — bug attrapé
+  /// par le test qui fait foi du module.
+  final bool multipart;
+
+  /// `en_attente` (rejouable) ou `refuse` (refus DÉFINITIF du serveur).
+  ///
+  /// Les deux issues d'un rejeu n'ont rien à voir (FR-085) : un échec RÉSEAU se
+  /// réessaie indéfiniment ; un refus MÉTIER — course réassignée, arrêt déjà
+  /// collecté — ne se réessaiera jamais avec succès, et insister le ferait
+  /// compter comme une panne. Une action refusée sort donc de la file… mais pas
+  /// de la trace : Yao doit pouvoir savoir ce qui est arrivé à une collecte
+  /// qu'il a réellement faite (FR-086).
+  final String statut;
+
+  /// Instant LOCAL du refus définitif — l'ordre du journal de réconciliation.
+  final DateTime? refuseLeLocal;
   const ActionEnAttente({
     required this.uuidClient,
     required this.endpoint,
@@ -274,6 +369,9 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
     required this.creeLeLocal,
     required this.tentatives,
     this.dernierMotif,
+    required this.multipart,
+    required this.statut,
+    this.refuseLeLocal,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -289,6 +387,11 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
     map['tentatives'] = Variable<int>(tentatives);
     if (!nullToAbsent || dernierMotif != null) {
       map['dernier_motif'] = Variable<String>(dernierMotif);
+    }
+    map['multipart'] = Variable<bool>(multipart);
+    map['statut'] = Variable<String>(statut);
+    if (!nullToAbsent || refuseLeLocal != null) {
+      map['refuse_le_local'] = Variable<DateTime>(refuseLeLocal);
     }
     return map;
   }
@@ -307,6 +410,11 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
       dernierMotif: dernierMotif == null && nullToAbsent
           ? const Value.absent()
           : Value(dernierMotif),
+      multipart: Value(multipart),
+      statut: Value(statut),
+      refuseLeLocal: refuseLeLocal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(refuseLeLocal),
     );
   }
 
@@ -324,6 +432,9 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
       creeLeLocal: serializer.fromJson<DateTime>(json['creeLeLocal']),
       tentatives: serializer.fromJson<int>(json['tentatives']),
       dernierMotif: serializer.fromJson<String?>(json['dernierMotif']),
+      multipart: serializer.fromJson<bool>(json['multipart']),
+      statut: serializer.fromJson<String>(json['statut']),
+      refuseLeLocal: serializer.fromJson<DateTime?>(json['refuseLeLocal']),
     );
   }
   @override
@@ -338,6 +449,9 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
       'creeLeLocal': serializer.toJson<DateTime>(creeLeLocal),
       'tentatives': serializer.toJson<int>(tentatives),
       'dernierMotif': serializer.toJson<String?>(dernierMotif),
+      'multipart': serializer.toJson<bool>(multipart),
+      'statut': serializer.toJson<String>(statut),
+      'refuseLeLocal': serializer.toJson<DateTime?>(refuseLeLocal),
     };
   }
 
@@ -350,6 +464,9 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
     DateTime? creeLeLocal,
     int? tentatives,
     Value<String?> dernierMotif = const Value.absent(),
+    bool? multipart,
+    String? statut,
+    Value<DateTime?> refuseLeLocal = const Value.absent(),
   }) => ActionEnAttente(
     uuidClient: uuidClient ?? this.uuidClient,
     endpoint: endpoint ?? this.endpoint,
@@ -359,6 +476,11 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
     creeLeLocal: creeLeLocal ?? this.creeLeLocal,
     tentatives: tentatives ?? this.tentatives,
     dernierMotif: dernierMotif.present ? dernierMotif.value : this.dernierMotif,
+    multipart: multipart ?? this.multipart,
+    statut: statut ?? this.statut,
+    refuseLeLocal: refuseLeLocal.present
+        ? refuseLeLocal.value
+        : this.refuseLeLocal,
   );
   ActionEnAttente copyWithCompanion(ActionsEnAttenteCompanion data) {
     return ActionEnAttente(
@@ -382,6 +504,11 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
       dernierMotif: data.dernierMotif.present
           ? data.dernierMotif.value
           : this.dernierMotif,
+      multipart: data.multipart.present ? data.multipart.value : this.multipart,
+      statut: data.statut.present ? data.statut.value : this.statut,
+      refuseLeLocal: data.refuseLeLocal.present
+          ? data.refuseLeLocal.value
+          : this.refuseLeLocal,
     );
   }
 
@@ -395,7 +522,10 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
           ..write('photoOctets: $photoOctets, ')
           ..write('creeLeLocal: $creeLeLocal, ')
           ..write('tentatives: $tentatives, ')
-          ..write('dernierMotif: $dernierMotif')
+          ..write('dernierMotif: $dernierMotif, ')
+          ..write('multipart: $multipart, ')
+          ..write('statut: $statut, ')
+          ..write('refuseLeLocal: $refuseLeLocal')
           ..write(')'))
         .toString();
   }
@@ -410,6 +540,9 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
     creeLeLocal,
     tentatives,
     dernierMotif,
+    multipart,
+    statut,
+    refuseLeLocal,
   );
   @override
   bool operator ==(Object other) =>
@@ -422,7 +555,10 @@ class ActionEnAttente extends DataClass implements Insertable<ActionEnAttente> {
           $driftBlobEquality.equals(other.photoOctets, this.photoOctets) &&
           other.creeLeLocal == this.creeLeLocal &&
           other.tentatives == this.tentatives &&
-          other.dernierMotif == this.dernierMotif);
+          other.dernierMotif == this.dernierMotif &&
+          other.multipart == this.multipart &&
+          other.statut == this.statut &&
+          other.refuseLeLocal == this.refuseLeLocal);
 }
 
 class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
@@ -434,6 +570,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
   final Value<DateTime> creeLeLocal;
   final Value<int> tentatives;
   final Value<String?> dernierMotif;
+  final Value<bool> multipart;
+  final Value<String> statut;
+  final Value<DateTime?> refuseLeLocal;
   final Value<int> rowid;
   const ActionsEnAttenteCompanion({
     this.uuidClient = const Value.absent(),
@@ -444,6 +583,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
     this.creeLeLocal = const Value.absent(),
     this.tentatives = const Value.absent(),
     this.dernierMotif = const Value.absent(),
+    this.multipart = const Value.absent(),
+    this.statut = const Value.absent(),
+    this.refuseLeLocal = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ActionsEnAttenteCompanion.insert({
@@ -455,6 +597,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
     required DateTime creeLeLocal,
     this.tentatives = const Value.absent(),
     this.dernierMotif = const Value.absent(),
+    this.multipart = const Value.absent(),
+    this.statut = const Value.absent(),
+    this.refuseLeLocal = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuidClient = Value(uuidClient),
        endpoint = Value(endpoint),
@@ -469,6 +614,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
     Expression<DateTime>? creeLeLocal,
     Expression<int>? tentatives,
     Expression<String>? dernierMotif,
+    Expression<bool>? multipart,
+    Expression<String>? statut,
+    Expression<DateTime>? refuseLeLocal,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -480,6 +628,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
       if (creeLeLocal != null) 'cree_le_local': creeLeLocal,
       if (tentatives != null) 'tentatives': tentatives,
       if (dernierMotif != null) 'dernier_motif': dernierMotif,
+      if (multipart != null) 'multipart': multipart,
+      if (statut != null) 'statut': statut,
+      if (refuseLeLocal != null) 'refuse_le_local': refuseLeLocal,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -493,6 +644,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
     Value<DateTime>? creeLeLocal,
     Value<int>? tentatives,
     Value<String?>? dernierMotif,
+    Value<bool>? multipart,
+    Value<String>? statut,
+    Value<DateTime?>? refuseLeLocal,
     Value<int>? rowid,
   }) {
     return ActionsEnAttenteCompanion(
@@ -504,6 +658,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
       creeLeLocal: creeLeLocal ?? this.creeLeLocal,
       tentatives: tentatives ?? this.tentatives,
       dernierMotif: dernierMotif ?? this.dernierMotif,
+      multipart: multipart ?? this.multipart,
+      statut: statut ?? this.statut,
+      refuseLeLocal: refuseLeLocal ?? this.refuseLeLocal,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -535,6 +692,15 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
     if (dernierMotif.present) {
       map['dernier_motif'] = Variable<String>(dernierMotif.value);
     }
+    if (multipart.present) {
+      map['multipart'] = Variable<bool>(multipart.value);
+    }
+    if (statut.present) {
+      map['statut'] = Variable<String>(statut.value);
+    }
+    if (refuseLeLocal.present) {
+      map['refuse_le_local'] = Variable<DateTime>(refuseLeLocal.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -552,6 +718,9 @@ class ActionsEnAttenteCompanion extends UpdateCompanion<ActionEnAttente> {
           ..write('creeLeLocal: $creeLeLocal, ')
           ..write('tentatives: $tentatives, ')
           ..write('dernierMotif: $dernierMotif, ')
+          ..write('multipart: $multipart, ')
+          ..write('statut: $statut, ')
+          ..write('refuseLeLocal: $refuseLeLocal, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5356,6 +5525,9 @@ typedef $$ActionsEnAttenteTableCreateCompanionBuilder =
       required DateTime creeLeLocal,
       Value<int> tentatives,
       Value<String?> dernierMotif,
+      Value<bool> multipart,
+      Value<String> statut,
+      Value<DateTime?> refuseLeLocal,
       Value<int> rowid,
     });
 typedef $$ActionsEnAttenteTableUpdateCompanionBuilder =
@@ -5368,6 +5540,9 @@ typedef $$ActionsEnAttenteTableUpdateCompanionBuilder =
       Value<DateTime> creeLeLocal,
       Value<int> tentatives,
       Value<String?> dernierMotif,
+      Value<bool> multipart,
+      Value<String> statut,
+      Value<DateTime?> refuseLeLocal,
       Value<int> rowid,
     });
 
@@ -5417,6 +5592,21 @@ class $$ActionsEnAttenteTableFilterComposer
 
   ColumnFilters<String> get dernierMotif => $composableBuilder(
     column: $table.dernierMotif,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get multipart => $composableBuilder(
+    column: $table.multipart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get statut => $composableBuilder(
+    column: $table.statut,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get refuseLeLocal => $composableBuilder(
+    column: $table.refuseLeLocal,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5469,6 +5659,21 @@ class $$ActionsEnAttenteTableOrderingComposer
     column: $table.dernierMotif,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get multipart => $composableBuilder(
+    column: $table.multipart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get statut => $composableBuilder(
+    column: $table.statut,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get refuseLeLocal => $composableBuilder(
+    column: $table.refuseLeLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ActionsEnAttenteTableAnnotationComposer
@@ -5513,6 +5718,17 @@ class $$ActionsEnAttenteTableAnnotationComposer
 
   GeneratedColumn<String> get dernierMotif => $composableBuilder(
     column: $table.dernierMotif,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get multipart =>
+      $composableBuilder(column: $table.multipart, builder: (column) => column);
+
+  GeneratedColumn<String> get statut =>
+      $composableBuilder(column: $table.statut, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get refuseLeLocal => $composableBuilder(
+    column: $table.refuseLeLocal,
     builder: (column) => column,
   );
 }
@@ -5562,6 +5778,9 @@ class $$ActionsEnAttenteTableTableManager
                 Value<DateTime> creeLeLocal = const Value.absent(),
                 Value<int> tentatives = const Value.absent(),
                 Value<String?> dernierMotif = const Value.absent(),
+                Value<bool> multipart = const Value.absent(),
+                Value<String> statut = const Value.absent(),
+                Value<DateTime?> refuseLeLocal = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ActionsEnAttenteCompanion(
                 uuidClient: uuidClient,
@@ -5572,6 +5791,9 @@ class $$ActionsEnAttenteTableTableManager
                 creeLeLocal: creeLeLocal,
                 tentatives: tentatives,
                 dernierMotif: dernierMotif,
+                multipart: multipart,
+                statut: statut,
+                refuseLeLocal: refuseLeLocal,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5584,6 +5806,9 @@ class $$ActionsEnAttenteTableTableManager
                 required DateTime creeLeLocal,
                 Value<int> tentatives = const Value.absent(),
                 Value<String?> dernierMotif = const Value.absent(),
+                Value<bool> multipart = const Value.absent(),
+                Value<String> statut = const Value.absent(),
+                Value<DateTime?> refuseLeLocal = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ActionsEnAttenteCompanion.insert(
                 uuidClient: uuidClient,
@@ -5594,6 +5819,9 @@ class $$ActionsEnAttenteTableTableManager
                 creeLeLocal: creeLeLocal,
                 tentatives: tentatives,
                 dernierMotif: dernierMotif,
+                multipart: multipart,
+                statut: statut,
+                refuseLeLocal: refuseLeLocal,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
