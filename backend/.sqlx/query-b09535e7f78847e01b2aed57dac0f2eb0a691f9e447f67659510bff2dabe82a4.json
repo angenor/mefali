@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.livraison\n                 SET depot_photo_cle = $2, depot_lat = $3, depot_lon = $4\n                 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b09535e7f78847e01b2aed57dac0f2eb0a691f9e447f67659510bff2dabe82a4"
+}

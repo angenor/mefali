@@ -13,7 +13,7 @@ void main() {
       // TODO
     });
 
-    // Essais de code consommés.
+    // Essais de code consommés (consolidés serveur + hors ligne).
     // int essaisCode
     test('to test the property `essaisCode`', () async {
       // TODO
@@ -28,6 +28,12 @@ void main() {
     // Mode retenu.
     // String modeRemise
     test('to test the property `modeRemise`', () async {
+      // TODO
+    });
+
+    // `true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien n'a été réécrit ni ré-émis (R4).
+    // bool rejeu
+    test('to test the property `rejeu`', () async {
       // TODO
     });
 

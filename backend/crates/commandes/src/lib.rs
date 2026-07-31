@@ -46,8 +46,8 @@ pub mod workflow;
 pub use annulation::{AnnulationFaite, AuteurAnnulation};
 pub use echec::{DemandeEchec, IssueEnregistree, ResolutionIssue};
 pub use collecte::{
-    ActionArret, DemandeTransitionArret, MotifIndisponible, PreuveRemise, RemiseFaite,
-    TransitionArret,
+    ActionArret, DemandeRemise, DemandeTransitionArret, MotifIndisponible, PreuveRemise,
+    RemiseFaite, TransitionArret,
 };
 pub use depot::PgCommandes;
 pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};

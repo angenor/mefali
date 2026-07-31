@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.commande\n             SET essais_code = $2,\n                 code_bloque_le = CASE WHEN $3 THEN $4 ELSE code_bloque_le END\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int2",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d068353af930bfb36238f9a6e7a84b1f47df33d0e434783098996df5cf137474"
+}

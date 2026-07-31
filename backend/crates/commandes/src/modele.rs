@@ -730,6 +730,15 @@ pub enum ErreurCommandes {
     /// Code ou jeton de remise incorrect.
     #[error("code ou jeton de remise incorrect")]
     RemiseIncorrecte,
+    /// Remise en mode `depot` sur une commande dont le dépôt n'est pas ouvert.
+    ///
+    /// La voie dépôt n'est **pas un droit du coursier** : elle s'ouvre commande
+    /// par commande, par l'exploitation, avec un motif tracé (FR-048, FR-116).
+    /// La garde est des deux côtés — l'app ne la propose pas, le serveur la
+    /// refuse — parce qu'une file hors ligne peut avoir été remplie avant que
+    /// l'exploitation ne referme le drapeau.
+    #[error("dépôt non autorisé sur cette commande")]
+    DepotNonAutorise,
     /// Échec déclaré sans preuves réunies (FR-056).
     #[error("preuves d'échec incomplètes")]
     PreuvesIncompletes,
@@ -780,6 +789,7 @@ impl ErreurCommandes {
             ErreurCommandes::SubstitutionExpiree => "substitution_expiree",
             ErreurCommandes::CodeEpuise => "code_epuise",
             ErreurCommandes::RemiseIncorrecte => "remise_incorrecte",
+            ErreurCommandes::DepotNonAutorise => "depot_non_autorise",
             ErreurCommandes::PreuvesIncompletes => "preuves_incompletes",
             ErreurCommandes::MotifRequis => "motif_requis",
             // Techniques : Sql, StatutInconnu, ModeInconnu, Dependance.

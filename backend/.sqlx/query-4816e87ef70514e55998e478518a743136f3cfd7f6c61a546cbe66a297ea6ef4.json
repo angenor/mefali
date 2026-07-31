@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.livraison\n             SET remise_uuid_client = $2, remise_hors_ligne = $3\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4816e87ef70514e55998e478518a743136f3cfd7f6c61a546cbe66a297ea6ef4"
+}

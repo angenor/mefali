@@ -440,18 +440,59 @@ pub async fn declarer_rupture(
 
 // ── Remise et échec (US9 / T060) ───────────────────────────────────────────
 
-/// Preuve de remise présentée par le coursier.
+/// Preuve de remise présentée par le coursier — partie `demande` du multipart.
 #[derive(Debug, Deserialize, ToSchema)]
 #[schema(as = DemandeRemise)]
 pub struct DemandeRemiseDto {
+    /// Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+    ///
+    /// **Obligatoire** depuis CRS 010 : sans elle, un rejeu de la file clôturait
+    /// deux fois la même course (R4).
+    pub uuid_client: Uuid,
     /// `qr` | `code` | `depot`.
     pub mode: String,
     /// Jeton lu dans le QR de réception (mode `qr`).
     pub jeton: Option<String>,
     /// Code à 4 chiffres dicté par le client (mode `code`).
     pub code: Option<String>,
-    /// Clé de la photo déposée sur place (mode `depot`).
+    /// Clé d'une photo **déjà** déposée (mode `depot`) — compatibilité du cycle
+    /// 008 ; l'app coursier envoie la partie binaire `photo` (R18).
     pub photo_cle: Option<String>,
+    /// Latitude du coursier au dépôt (mode `depot`, FR-048).
+    pub depot_lat: Option<f64>,
+    /// Longitude du coursier au dépôt (mode `depot`, FR-048).
+    pub depot_lon: Option<f64>,
+    /// Essais faux consommés **hors ligne**, consolidés en `max()` côté serveur
+    /// contre le seuil de zone `commande.essais_code_livraison` (R5).
+    #[serde(default)]
+    pub essais_hors_ligne: i16,
+    /// La validation a-t-elle eu lieu sans réseau ? Journalisé, jamais décisif —
+    /// le serveur revalide la preuve ici même (FR-046).
+    #[serde(default)]
+    pub hors_ligne: bool,
+    /// Horodatage de l'appareil. **Observation seulement**.
+    pub confirme_le_local: Option<DateTime<Utc>>,
+}
+
+/// Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`).
+#[derive(Debug, ToSchema)]
+#[schema(as = RemiseMultipart)]
+pub struct RemiseMultipartDto {
+    /// Partie JSON `demande`.
+    pub demande: DemandeRemiseDto,
+    /// Photo du dépôt sur place (mode `depot` — FR-048).
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub photo: Option<Vec<u8>>,
+}
+
+/// Multipart de remise : partie `demande` (JSON) + `photo` binaire.
+#[derive(Debug, MultipartForm)]
+pub struct RemiseForm {
+    /// Partie JSON `demande`.
+    demande: Text<String>,
+    /// Photo du dépôt — 5 Mo max, même plafond que la rupture du cycle 008.
+    #[multipart(limit = "5MB")]
+    photo: Option<ChampFichier>,
 }
 
 /// Résultat d'une remise validée.
@@ -464,8 +505,11 @@ pub struct ResultatRemiseDto {
     pub livraison_id: Uuid,
     /// Mode retenu.
     pub mode_remise: String,
-    /// Essais de code consommés.
+    /// Essais de code consommés (consolidés serveur + hors ligne).
     pub essais_code: i16,
+    /// `true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien
+    /// n'a été réécrit ni ré-émis (R4).
+    pub rejeu: bool,
 }
 
 /// CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
@@ -474,25 +518,33 @@ pub struct ResultatRemiseDto {
 /// l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu
 /// côté serveur, sur la valeur stockée.
 ///
-/// Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention
-/// admin : quatre chiffres se devinent en quelques minutes sans plafond.
+/// Trois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à
+/// intervention admin : quatre chiffres se devinent en quelques minutes sans
+/// plafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa
+/// long, il ne se devine pas.
+///
+/// **Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la
+/// demande, donc dans la file hors-ligne. Référencer un objet « déjà déposé »
+/// faisait de la voie dépôt la seule des trois à exiger du réseau.
 #[utoipa::path(
     post,
     path = "/courses/{livraison_id}/remise",
     tag = "courses",
     params(("livraison_id" = Uuid, Path, description = "Course assignée à l'appelant.")),
-    request_body = DemandeRemiseDto,
+    request_body(content = RemiseMultipartDto, content_type = "multipart/form-data",
+                 description = "Partie `demande` (JSON) + `photo` binaire du dépôt."),
     responses(
         (status = 200, description = "Remise validée : livraison LIVRÉE, commande TERMINÉE, \
-         paiement réglé.", body = ResultatRemiseDto),
+         paiement réglé. `rejeu = true` si le même `uuid_client` avait déjà abouti.",
+         body = ResultatRemiseDto),
         (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
         (status = 403, description = "Rôle coursier requis, ou course assignée à un autre.",
          body = ErreurApiDto),
         (status = 404, description = "Livraison inconnue.", body = ErreurApiDto),
         (status = 409, description = "Code ou jeton incorrect, ou course pas encore en livraison.",
          body = ErreurApiDto),
-        (status = 422, description = "Demande mal formée (jeton, code ou photo manquant).",
-         body = ErreurApiDto),
+        (status = 422, description = "Demande mal formée (jeton, code ou photo manquant), ou \
+         **dépôt non autorisé** sur cette commande.", body = ErreurApiDto),
         (status = 423, description = "Code de remise ÉPUISÉ — intervention admin requise.",
          body = ErreurApiDto),
     ),
@@ -502,15 +554,29 @@ pub struct ResultatRemiseDto {
 pub async fn remise(
     auth: Auth,
     chemin: web::Path<Uuid>,
-    corps: web::Json<DemandeRemiseDto>,
+    form: MultipartForm<RemiseForm>,
     depot: web::Data<PgCommandes>,
 ) -> Result<HttpResponse, ErreurCommandesHttp> {
     auth.exiger_role(Role::Coursier)?;
-    let corps = corps.into_inner();
-    let preuve = match (corps.mode.as_str(), corps.jeton, corps.code, corps.photo_cle) {
-        ("qr", Some(jeton), _, _) => PreuveRemise::Qr(jeton),
-        ("code", _, Some(code), _) => PreuveRemise::Code(code),
-        ("depot", _, _, Some(photo_cle)) => PreuveRemise::Depot { photo_cle },
+    let form = form.into_inner();
+    let dto: DemandeRemiseDto = serde_json::from_str(&form.demande).map_err(|_| {
+        ErreurCommandesHttp::Domaine(commandes::ErreurCommandes::PanierInvalide(
+            "partie `demande` illisible".to_owned(),
+        ))
+    })?;
+
+    let preuve = match (dto.mode.as_str(), dto.jeton, dto.code) {
+        ("qr", Some(jeton), _) => PreuveRemise::Qr(jeton),
+        ("code", _, Some(code)) => PreuveRemise::Code(code),
+        ("depot", _, _) => PreuveRemise::Depot {
+            photo: form.photo.as_ref().map(|p| p.data.to_vec()),
+            mime: form
+                .photo
+                .as_ref()
+                .and_then(|p| p.content_type.as_ref().map(|m| m.to_string()))
+                .unwrap_or_else(|| "image/jpeg".to_owned()),
+            photo_cle: dto.photo_cle,
+        },
         _ => {
             return Err(ErreurCommandesHttp::Domaine(
                 commandes::ErreurCommandes::PanierInvalide(
@@ -521,13 +587,26 @@ pub async fn remise(
     };
 
     let faite = depot
-        .valider_remise(chemin.into_inner(), auth.compte_id, preuve, Utc::now())
+        .valider_remise(
+            chemin.into_inner(),
+            auth.compte_id,
+            commandes::DemandeRemise {
+                uuid_client: dto.uuid_client,
+                preuve,
+                essais_hors_ligne: dto.essais_hors_ligne,
+                hors_ligne: dto.hors_ligne,
+                depot_lat: dto.depot_lat,
+                depot_lon: dto.depot_lon,
+            },
+            Utc::now(),
+        )
         .await?;
     Ok(HttpResponse::Ok().json(ResultatRemiseDto {
         commande_id: faite.commande_id,
         livraison_id: faite.livraison_id,
         mode_remise: faite.mode_remise,
         essais_code: faite.essais_code,
+        rejeu: faite.rejeu,
     }))
 }
 

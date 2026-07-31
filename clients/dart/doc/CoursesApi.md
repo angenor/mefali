@@ -251,11 +251,11 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **remise**
-> ResultatRemise remise(livraisonId, demandeRemise)
+> ResultatRemise remise(livraisonId, demande, photo)
 
 CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
 
-⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond.
+⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa long, il ne se devine pas.  **Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la demande, donc dans la file hors-ligne. Référencer un objet « déjà déposé » faisait de la voie dépôt la seule des trois à exiger du réseau.
 
 ### Example
 ```dart
@@ -263,10 +263,11 @@ import 'package:mefali_api_client/api.dart';
 
 final api = MefaliApiClient().getCoursesApi();
 final String livraisonId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Course assignée à l'appelant.
-final DemandeRemise demandeRemise = ; // DemandeRemise | 
+final DemandeRemise demande = ; // DemandeRemise | Partie JSON `demande`.
+final MultipartFile photo = BINARY_DATA_HERE; // MultipartFile | Photo du dépôt sur place (mode `depot` — FR-048).
 
 try {
-    final response = api.remise(livraisonId, demandeRemise);
+    final response = api.remise(livraisonId, demande, photo);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling CoursesApi->remise: $e\n');
@@ -278,7 +279,8 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **livraisonId** | **String**| Course assignée à l'appelant. | 
- **demandeRemise** | [**DemandeRemise**](DemandeRemise.md)|  | 
+ **demande** | [**DemandeRemise**](DemandeRemise.md)| Partie JSON `demande`. | 
+ **photo** | **MultipartFile**| Photo du dépôt sur place (mode `depot` — FR-048). | [optional] 
 
 ### Return type
 
@@ -290,7 +292,7 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
+ - **Content-Type**: multipart/form-data
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

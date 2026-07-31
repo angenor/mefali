@@ -1148,8 +1148,14 @@ export interface paths {
          *     l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu
          *     côté serveur, sur la valeur stockée.
          *
-         *     Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention
-         *     admin : quatre chiffres se devinent en quelques minutes sans plafond.
+         *     Trois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à
+         *     intervention admin : quatre chiffres se devinent en quelques minutes sans
+         *     plafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa
+         *     long, il ne se devine pas.
+         *
+         *     **Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la
+         *     demande, donc dans la file hors-ligne. Référencer un objet « déjà déposé »
+         *     faisait de la voie dépôt la seule des trois à exiger du réseau.
          */
         post: operations["remise"];
         delete?: never;
@@ -2727,16 +2733,53 @@ export interface components {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
         };
-        /** @description Preuve de remise présentée par le coursier. */
+        /** @description Preuve de remise présentée par le coursier — partie `demande` du multipart. */
         DemandeRemise: {
             /** @description Code à 4 chiffres dicté par le client (mode `code`). */
             code?: string | null;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil. **Observation seulement**.
+             */
+            confirme_le_local?: string | null;
+            /**
+             * Format: double
+             * @description Latitude du coursier au dépôt (mode `depot`, FR-048).
+             */
+            depot_lat?: number | null;
+            /**
+             * Format: double
+             * @description Longitude du coursier au dépôt (mode `depot`, FR-048).
+             */
+            depot_lon?: number | null;
+            /**
+             * Format: int32
+             * @description Essais faux consommés **hors ligne**, consolidés en `max()` côté serveur
+             *     contre le seuil de zone `commande.essais_code_livraison` (R5).
+             */
+            essais_hors_ligne?: number;
+            /**
+             * @description La validation a-t-elle eu lieu sans réseau ? Journalisé, jamais décisif —
+             *     le serveur revalide la preuve ici même (FR-046).
+             */
+            hors_ligne?: boolean;
             /** @description Jeton lu dans le QR de réception (mode `qr`). */
             jeton?: string | null;
             /** @description `qr` | `code` | `depot`. */
             mode: string;
-            /** @description Clé de la photo déposée sur place (mode `depot`). */
+            /**
+             * @description Clé d'une photo **déjà** déposée (mode `depot`) — compatibilité du cycle
+             *     008 ; l'app coursier envoie la partie binaire `photo` (R18).
+             */
             photo_cle?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             *
+             *     **Obligatoire** depuis CRS 010 : sans elle, un rejeu de la file clôturait
+             *     deux fois la même course (R4).
+             */
+            uuid_client: string;
         };
         /** @description Demande de reprise manuelle — **motif obligatoire**. */
         DemandeReprise: {
@@ -4135,6 +4178,16 @@ export interface components {
             /** @description Slug du véhicule (référentiel `zones.type_transport`). */
             transport_slug: string;
         };
+        /** @description Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`). */
+        RemiseMultipart: {
+            /** @description Partie JSON `demande`. */
+            demande: components["schemas"]["DemandeRemise"];
+            /**
+             * Format: binary
+             * @description Photo du dépôt sur place (mode `depot` — FR-048).
+             */
+            photo?: string | null;
+        };
         /** @description De quoi confirmer la remise **sans réseau** (K4). */
         RemisePreprovisionnee: {
             /** @description Saisie du code bloquée (K4-1d). */
@@ -4274,7 +4327,7 @@ export interface components {
             commande_id: string;
             /**
              * Format: int32
-             * @description Essais de code consommés.
+             * @description Essais de code consommés (consolidés serveur + hors ligne).
              */
             essais_code: number;
             /**
@@ -4284,6 +4337,11 @@ export interface components {
             livraison_id: string;
             /** @description Mode retenu. */
             mode_remise: string;
+            /**
+             * @description `true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien
+             *     n'a été réécrit ni ré-émis (R4).
+             */
+            rejeu: boolean;
         };
         /** @description Résultat COMPLET d'une simulation (FR-020). */
         ResultatSimulation: {
@@ -8006,13 +8064,14 @@ export interface operations {
             };
             cookie?: never;
         };
+        /** @description Partie `demande` (JSON) + `photo` binaire du dépôt. */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DemandeRemise"];
+                "multipart/form-data": components["schemas"]["RemiseMultipart"];
             };
         };
         responses: {
-            /** @description Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. */
+            /** @description Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. `rejeu = true` si le même `uuid_client` avait déjà abouti. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8057,7 +8116,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErreurApi"];
                 };
             };
-            /** @description Demande mal formée (jeton, code ou photo manquant). */
+            /** @description Demande mal formée (jeton, code ou photo manquant), ou **dépôt non autorisé** sur cette commande. */
             422: {
                 headers: {
                     [name: string]: unknown;

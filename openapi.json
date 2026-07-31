@@ -4691,7 +4691,7 @@
           "courses"
         ],
         "summary": "CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.",
-        "description": "⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a\nl'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu\ncôté serveur, sur la valeur stockée.\n\nTrois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention\nadmin : quatre chiffres se devinent en quelques minutes sans plafond.",
+        "description": "⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a\nl'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu\ncôté serveur, sur la valeur stockée.\n\nTrois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à\nintervention admin : quatre chiffres se devinent en quelques minutes sans\nplafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa\nlong, il ne se devine pas.\n\n**Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la\ndemande, donc dans la file hors-ligne. Référencer un objet « déjà déposé »\nfaisait de la voie dépôt la seule des trois à exiger du réseau.",
         "operationId": "remise",
         "parameters": [
           {
@@ -4706,10 +4706,11 @@
           }
         ],
         "requestBody": {
+          "description": "Partie `demande` (JSON) + `photo` binaire du dépôt.",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/DemandeRemise"
+                "$ref": "#/components/schemas/RemiseMultipart"
               }
             }
           },
@@ -4717,7 +4718,7 @@
         },
         "responses": {
           "200": {
-            "description": "Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé.",
+            "description": "Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. `rejeu = true` si le même `uuid_client` avait déjà abouti.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4767,7 +4768,7 @@
             }
           },
           "422": {
-            "description": "Demande mal formée (jeton, code ou photo manquant).",
+            "description": "Demande mal formée (jeton, code ou photo manquant), ou **dépôt non autorisé** sur cette commande.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8832,8 +8833,9 @@
       },
       "DemandeRemise": {
         "type": "object",
-        "description": "Preuve de remise présentée par le coursier.",
+        "description": "Preuve de remise présentée par le coursier — partie `demande` du multipart.",
         "required": [
+          "uuid_client",
           "mode"
         ],
         "properties": {
@@ -8843,6 +8845,39 @@
               "null"
             ],
             "description": "Code à 4 chiffres dicté par le client (mode `code`)."
+          },
+          "confirme_le_local": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Horodatage de l'appareil. **Observation seulement**."
+          },
+          "depot_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Latitude du coursier au dépôt (mode `depot`, FR-048)."
+          },
+          "depot_lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Longitude du coursier au dépôt (mode `depot`, FR-048)."
+          },
+          "essais_hors_ligne": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais faux consommés **hors ligne**, consolidés en `max()` côté serveur\ncontre le seuil de zone `commande.essais_code_livraison` (R5)."
+          },
+          "hors_ligne": {
+            "type": "boolean",
+            "description": "La validation a-t-elle eu lieu sans réseau ? Journalisé, jamais décisif —\nle serveur revalide la preuve ici même (FR-046)."
           },
           "jeton": {
             "type": [
@@ -8860,7 +8895,12 @@
               "string",
               "null"
             ],
-            "description": "Clé de la photo déposée sur place (mode `depot`)."
+            "description": "Clé d'une photo **déjà** déposée (mode `depot`) — compatibilité du cycle\n008 ; l'app coursier envoie la partie binaire `photo` (R18)."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V).\n\n**Obligatoire** depuis CRS 010 : sans elle, un rejeu de la file clôturait\ndeux fois la même course (R4)."
           }
         }
       },
@@ -11402,6 +11442,27 @@
           }
         }
       },
+      "RemiseMultipart": {
+        "type": "object",
+        "description": "Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`).",
+        "required": [
+          "demande"
+        ],
+        "properties": {
+          "demande": {
+            "$ref": "#/components/schemas/DemandeRemise",
+            "description": "Partie JSON `demande`."
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Photo du dépôt sur place (mode `depot` — FR-048)."
+          }
+        }
+      },
       "RemisePreprovisionnee": {
         "type": "object",
         "description": "De quoi confirmer la remise **sans réseau** (K4).",
@@ -11631,7 +11692,8 @@
           "commande_id",
           "livraison_id",
           "mode_remise",
-          "essais_code"
+          "essais_code",
+          "rejeu"
         ],
         "properties": {
           "commande_id": {
@@ -11642,7 +11704,7 @@
           "essais_code": {
             "type": "integer",
             "format": "int32",
-            "description": "Essais de code consommés."
+            "description": "Essais de code consommés (consolidés serveur + hors ligne)."
           },
           "livraison_id": {
             "type": "string",
@@ -11652,6 +11714,10 @@
           "mode_remise": {
             "type": "string",
             "description": "Mode retenu."
+          },
+          "rejeu": {
+            "type": "boolean",
+            "description": "`true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien\nn'a été réécrit ni ré-émis (R4)."
           }
         }
       },
