@@ -130,6 +130,7 @@ export 'package:mefali_api_client/src/model/issue_echec.dart';
 export 'package:mefali_api_client/src/model/issue_rupture.dart';
 export 'package:mefali_api_client/src/model/itineraire_simule.dart';
 export 'package:mefali_api_client/src/model/jetons_dto.dart';
+export 'package:mefali_api_client/src/model/journee_coursier.dart';
 export 'package:mefali_api_client/src/model/lieu.dart';
 export 'package:mefali_api_client/src/model/ligne_arret.dart';
 export 'package:mefali_api_client/src/model/ligne_devis.dart';

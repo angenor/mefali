@@ -65,6 +65,12 @@ pub const OFFRE_ARRIERE_PLAN_S: i64 = 5;
 /// Seuil d'essais du code de remise — paramètre du **cycle 008**, réutilisé.
 pub const ESSAIS_CODE_LIVRAISON: i64 = 3;
 
+/// Palier d'avance du bac (cycle 009) — le plafond que `GET /moi/journee` sert
+/// quand Yao n'a rien déclaré. Volontairement plus haut que ce qu'une course de
+/// trois vendeurs engage : sinon « reste disponible » tomberait à zéro par
+/// construction et n'assurerait plus rien.
+pub const PALIER_AVANCE: i64 = 20_000;
+
 /// Un vendeur du bac, avec son catalogue.
 pub struct Vendeur {
     /// Prestataire agréé.
@@ -134,6 +140,14 @@ pub struct Bac {
     pub qr: PgQr,
     /// Dépôt du domaine coursier — celui du cycle.
     pub coursier_depot: PgCoursier,
+    /// Dépôt de dispatch, composé de doubles.
+    ///
+    /// Il n'est là que pour **une** raison : `GET /moi/journee` est le seul
+    /// handler du cycle à composer deux domaines (gains de `coursier`, plafond
+    /// et taux d'acceptation de `dispatch`). Le monter ici, c'est exercer cette
+    /// composition — et c'est justement ce qu'un test de crate ne peut pas
+    /// faire, puisque aucune arête ne relie les deux crates (contrat §2).
+    pub dispatch: dispatch::PgDispatch,
     /// Ancien double des preuves d'échec. **Plus câblé** depuis T058 : il est
     /// retenu pour que les tests qui le posaient compilent encore, mais il ne
     /// décide plus rien — le port est `PgCoursier`, et les preuves se
@@ -262,6 +276,37 @@ impl Bac {
                 .await
                 .unwrap();
         }
+        // Paramètres du cycle DSP 009 — PRÉCONDITIONS de `GET /moi/journee`,
+        // pas des choix de ce bac : le plafond retenu et le taux d'acceptation
+        // sortent de la configuration de dispatch, et sans elle le handler ne
+        // pourrait même pas se construire.
+        for (cle, valeur) in [
+            ("dispatch.pool_ttl_s", json!(90)),
+            ("dispatch.timer_offre_s", json!(40)),
+            ("dispatch.verrou_offre_s", json!(45)),
+            ("dispatch.timeouts_francs_par_jour", json!(3)),
+            ("dispatch.acceptation_fenetre_jours", json!(7)),
+            ("dispatch.note_composante_neutre_millimes", json!(500)),
+            ("dispatch.reassignation_deplacement_min_m", json!(150)),
+            ("dispatch.rayon_m", json!(5_000)),
+            (
+                "dispatch.grille_avance_par_note",
+                json!([{ "note_max_centiemes": null, "plafond_unites": PALIER_AVANCE }]),
+            ),
+            ("dispatch.poids_proximite", json!(40)),
+            ("dispatch.poids_inactivite", json!(30)),
+            ("dispatch.poids_note", json!(20)),
+            ("dispatch.poids_acceptation", json!(10)),
+            ("dispatch.inactivite_plafond_s", json!(1_800)),
+            ("dispatch.broadcast_apres_candidats", json!(3)),
+            ("dispatch.broadcast_apres_s", json!(120)),
+            ("dispatch.reassignation_sans_mouvement_s", json!(300)),
+            ("dispatch.reassignation_sans_scan_marge_s", json!(600)),
+        ] {
+            z.definir_parametre(&mut tx, pays, cle, valeur, "bac")
+                .await
+                .unwrap();
+        }
         tx.commit().await.unwrap();
 
         let objets: Arc<dyn DepotObjets> = Arc::new(MemoireObjets::new());
@@ -330,6 +375,22 @@ impl Bac {
         // et personne ne verrait la différence avant la mise en service.
         let commandes = commandes.avec_preuves(Arc::new(coursier_depot.clone()));
 
+        // Dispatch de doubles : pool et verrous en mémoire, aucune note (AVI
+        // n'existe pas), aucune paire bloquée, notifications collectées. Seuls
+        // le plafond du jour et le taux d'acceptation sont lus par ce bac —
+        // tous deux en Postgres, donc réels.
+        let dispatch = dispatch::PgDispatch::new(
+            pool.clone(),
+            Arc::new(commandes.clone()),
+            Arc::new(comptes.clone()),
+            Arc::new(dispatch::MemoirePool::nouveau()),
+            Arc::new(dispatch::VerrouMemoire::nouveau()),
+            Arc::new(dispatch::ProximiteFixe::nouveau()),
+            Arc::new(dispatch::NoteAbsente),
+            Arc::new(dispatch::AucunePaireBloquee),
+            Arc::new(dispatch::NotificationsCollectees::nouveau()),
+        );
+
         let mut bac = Self {
             pool,
             comptes,
@@ -337,6 +398,7 @@ impl Bac {
             commandes,
             qr,
             coursier_depot,
+            dispatch,
             preuves,
             positions,
             restrictions,
@@ -536,12 +598,14 @@ impl Bac {
         let commandes = self.commandes.clone();
         let qr = self.qr.clone();
         let coursier = self.coursier_depot.clone();
+        let dispatch = self.dispatch.clone();
         move |cfg: &mut web::ServiceConfig| {
             cfg.app_data(web::Data::new(pool))
                 .app_data(web::Data::new(comptes))
                 .app_data(web::Data::new(commandes))
                 .app_data(web::Data::new(qr))
                 .app_data(web::Data::new(coursier))
+                .app_data(web::Data::new(dispatch))
                 .service(crs010::course_active)
                 .service(crs010::journaliser_appel)
                 .service(crs010::declarer_issue_appel)
@@ -549,6 +613,7 @@ impl Bac {
                 .service(crs010::deposer_photo_preuve)
                 .service(crs010::etat_preuves)
                 .service(crs010::ma_caisse)
+                .service(crs010::ma_journee)
                 .service(cmd::creer_commande)
                 .service(cmd::suivre_commande)
                 .service(cmd::decider_substitution)

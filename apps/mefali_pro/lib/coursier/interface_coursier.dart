@@ -23,16 +23,27 @@
 /// dans le provider en ferait une horloge qui tourne sur un arbre démonté, ce
 /// que `OffreEnCours` refuse explicitement ; en poser une SECONDE dans K2
 /// doublait le débit pendant les 40 s de décision.
+///
+/// **La navigation basse (T076) vient SOUS cette règle, pas devant.** Ses trois
+/// destinations — Tableau, Courses, Caisse — n'existent qu'aux points 2 et 3 :
+/// une offre a 40 s pour être décidée, et lui laisser une barre d'onglets
+/// donnerait à Yao le moyen de la perdre en tapant à côté. Une course active,
+/// elle, garde la barre : consulter sa caisse au milieu d'une course est
+/// légitime, et le retour à la course est immédiat.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/experimental/scope.dart';
 
+import '../l10n/app_localizations.dart';
 import '../roles/etat_roles.dart';
 import '../roles/interface_pro.dart';
+import 'caisse/ecran_caisse.dart';
 import 'course/ecran_course_active.dart';
 import 'course/etat_course.dart';
 import 'disponibilite/ecran_disponibilite.dart';
@@ -40,6 +51,18 @@ import 'disponibilite/emetteur_position.dart';
 import 'disponibilite/etat_disponibilite.dart';
 import 'offre/ecran_offre.dart';
 import 'offre/etat_offre.dart';
+
+/// Les trois destinations de la barre basse (K1, K5).
+enum DestinationCoursier {
+  /// K1 — disponibilité, plafond, gains du jour.
+  tableau,
+
+  /// K3 — la course active, ou son état vide.
+  courses,
+
+  /// K5 — la caisse.
+  caisse,
+}
 
 /// L'espace coursier.
 ///
@@ -61,6 +84,10 @@ class InterfaceCoursier extends ConsumerStatefulWidget {
 class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
   /// Tic d'interrogation de l'offre — **local**, annulé au démontage.
   Timer? _tic;
+
+  /// Destination choisie dans la barre basse — **état LOCAL du widget** : il ne
+  /// survit pas à la session et n'intéresse personne d'autre (constitution XII).
+  DestinationCoursier _destination = DestinationCoursier.tableau;
 
   /// Identifiant de l'offre que K2 tient à l'écran, ou `null`.
   ///
@@ -163,13 +190,78 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
       return EcranOffre(onTermine: () => _congedier(tenue));
     }
 
-    // 2. Course assignée — tant qu'elle dure, elle occupe l'écran.
+    // 2. Course assignée — elle prend l'écran, et la barre basse la SUIT :
+    //    consulter sa caisse au milieu d'une course est légitime, le retour est
+    //    immédiat. Ce qui ne change pas, c'est la destination par défaut : une
+    //    course active ouvre sur la course, jamais sur le tableau de bord.
     final course = ref.watch(etatCourseActiveProvider).value;
-    if (course != null && course.arrets.isNotEmpty) {
-      return EcranCourseActive(entete: entete);
-    }
+    final enCourse = course != null && course.arrets.isNotEmpty;
+    final destination = enCourse && _destination == DestinationCoursier.tableau
+        ? DestinationCoursier.courses
+        : _destination;
 
-    // 3. Sinon K1 : c'est là que Yao décide s'il travaille, et pour combien.
-    return EcranDisponibilite(entete: entete);
+    final barre = _BarreBasse(
+      destination: destination,
+      onChoisir: (d) => setState(() => _destination = d),
+    );
+
+    return switch (destination) {
+      DestinationCoursier.caisse => EcranCaisse(
+          entete: entete,
+          barreBasse: barre,
+          // K5-1b — « Passer en ligne » ramène au tableau de bord, où le
+          // plafond d'avance se déclare : passer en ligne sans plafond est
+          // refusé par le serveur (`capacite_non_declaree`, cycle 009).
+          onPasserEnLigne: () =>
+              setState(() => _destination = DestinationCoursier.tableau),
+        ),
+      // K3 gère lui-même son état vide (« aucune course en cours »).
+      DestinationCoursier.courses =>
+        EcranCourseActive(entete: entete, barreBasse: barre),
+      // 3. K1 : c'est là que Yao décide s'il travaille, et pour combien.
+      DestinationCoursier.tableau => EcranDisponibilite(
+          entete: entete,
+          barreBasse: barre,
+          onCaisse: () =>
+              setState(() => _destination = DestinationCoursier.caisse),
+        ),
+    };
+  }
+}
+
+/// La barre basse à trois destinations (K1 et K5, FR-096).
+///
+/// `NavigationBar` Material 3 thémée depuis `mefali_core` — jamais une
+/// transposition de la structure des exports HTML (constitution XI).
+class _BarreBasse extends StatelessWidget {
+  const _BarreBasse({required this.destination, required this.onChoisir});
+
+  final DestinationCoursier destination;
+  final ValueChanged<DestinationCoursier> onChoisir;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    return NavigationBar(
+      key: const Key('coursier-nav'),
+      selectedIndex: destination.index,
+      onDestinationSelected: (i) => onChoisir(DestinationCoursier.values[i]),
+      backgroundColor: MefaliTokens.surface,
+      indicatorColor: MefaliTokens.primaryTint,
+      destinations: [
+        NavigationDestination(
+          icon: const Icon(Symbols.dashboard_rounded),
+          label: t.crsNavTableau,
+        ),
+        NavigationDestination(
+          icon: const Icon(Symbols.local_shipping_rounded),
+          label: t.crsNavCourses,
+        ),
+        NavigationDestination(
+          icon: const Icon(Symbols.account_balance_wallet_rounded),
+          label: t.crsNavCaisse,
+        ),
+      ],
+    );
   }
 }

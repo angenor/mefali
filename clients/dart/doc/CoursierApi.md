@@ -16,6 +16,7 @@ Method | HTTP request | Description
 [**etatPreuves**](CoursierApi.md#etatpreuves) | **GET** /courses/{livraison_id}/preuves | CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
 [**journaliserAppel**](CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
 [**maCaisse**](CoursierApi.md#macaisse) | **GET** /moi/caisse | CRS-06 — la caisse du coursier (FR-067 → FR-077).
+[**maJournee**](CoursierApi.md#majournee) | **GET** /moi/journee | CRS-01 — la journée du coursier (FR-091 → FR-095).
 [**signalerRupture**](CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 
 
@@ -310,6 +311,45 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**VueCaisse**](VueCaisse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **maJournee**
+> JourneeCoursier maJournee()
+
+CRS-01 — la journée du coursier (FR-091 → FR-095).
+
+⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les avances viennent de `coursier`, le plafond retenu et le taux d'acceptation de `dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une arête permanente entre deux domaines qui n'ont rien à se dire (`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.  La **note reste absente** : le module d'avis n'existe pas, et K1 afficherait un « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCoursierApi();
+
+try {
+    final response = api.maJournee();
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CoursierApi->maJournee: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**JourneeCoursier**](JourneeCoursier.md)
 
 ### Authorization
 

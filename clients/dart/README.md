@@ -118,6 +118,7 @@ Class | Method | HTTP request | Description
 [*CoursierApi*](doc/CoursierApi.md) | [**etatPreuves**](doc/CoursierApi.md#etatpreuves) | **GET** /courses/{livraison_id}/preuves | CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
 [*CoursierApi*](doc/CoursierApi.md) | [**journaliserAppel**](doc/CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
 [*CoursierApi*](doc/CoursierApi.md) | [**maCaisse**](doc/CoursierApi.md#macaisse) | **GET** /moi/caisse | CRS-06 — la caisse du coursier (FR-067 → FR-077).
+[*CoursierApi*](doc/CoursierApi.md) | [**maJournee**](doc/CoursierApi.md#majournee) | **GET** /moi/journee | CRS-01 — la journée du coursier (FR-091 → FR-095).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**autoriserDepot**](doc/CoursierAdminApi.md#autoriserdepot) | **POST** /admin/commandes/{commande_id}/depot | **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
 [*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**debloquerCode**](doc/CoursierAdminApi.md#debloquercode) | **POST** /admin/commandes/{commande_id}/code/debloquer | **FR-055** — l&#39;exploitation lève le blocage du code, avec motif tracé.
@@ -278,6 +279,7 @@ Class | Method | HTTP request | Description
  - [IssueRupture](doc/IssueRupture.md)
  - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
+ - [JourneeCoursier](doc/JourneeCoursier.md)
  - [Lieu](doc/Lieu.md)
  - [LigneArret](doc/LigneArret.md)
  - [LigneDevis](doc/LigneDevis.md)

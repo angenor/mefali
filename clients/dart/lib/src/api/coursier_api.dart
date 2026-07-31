@@ -16,6 +16,7 @@ import 'package:mefali_api_client/src/model/demande_photo_preuve.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/etat_preuves.dart';
 import 'package:mefali_api_client/src/model/issue_appel_declaree.dart';
+import 'package:mefali_api_client/src/model/journee_coursier.dart';
 import 'package:mefali_api_client/src/model/lot_de_presence.dart';
 import 'package:mefali_api_client/src/model/photo_preuve_deposee.dart';
 import 'package:mefali_api_client/src/model/presence_enregistree.dart';
@@ -675,6 +676,85 @@ class CoursierApi {
     }
 
     return Response<VueCaisse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// CRS-01 — la journée du coursier (FR-091 → FR-095).
+  /// ⚠ **Composé DANS CE HANDLER**, et c&#39;est le seul du cycle : les gains et les avances viennent de &#x60;coursier&#x60;, le plafond retenu et le taux d&#39;acceptation de &#x60;dispatch&#x60;. Faire dépendre l&#39;un de l&#39;autre pour deux nombres créerait une arête permanente entre deux domaines qui n&#39;ont rien à se dire (&#x60;contracts/ports-coursier.md&#x60; §2). &#x60;api&#x60; détient déjà les deux dépôts.  La **note reste absente** : le module d&#39;avis n&#39;existe pas, et K1 afficherait un « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.
+  ///
+  /// Parameters:
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [JourneeCoursier] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<JourneeCoursier>> maJournee({ 
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/moi/journee';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    JourneeCoursier? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(JourneeCoursier),
+      ) as JourneeCoursier;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<JourneeCoursier>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

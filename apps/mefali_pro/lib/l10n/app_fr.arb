@@ -978,6 +978,15 @@
   },
   "crsJourneeNoteAbsente": "—",
   "@crsJourneeNoteAbsente": { "description": "Note du jour ABSENTE tant qu'AVI n'existe pas : un tiret, jamais un 5,0 inventé" },
+  "crsJourneeNoteTitre": "Note du jour",
+  "@crsJourneeNoteTitre": { "description": "Tuile de K1-1a — la valeur reste un tiret tant qu'AVI n'est pas construit (FR-094)" },
+  "crsJourneeAcceptationTitre": "Acceptation",
+  "@crsJourneeAcceptationTitre": { "description": "Tuile de K1-1a — compteur RÉELLEMENT tenu par le dispatch (FR-093)" },
+  "crsJourneeAcceptationValeur": "{n} %",
+  "@crsJourneeAcceptationValeur": {
+    "description": "Taux d'acceptation ; absent tant qu'aucune offre décidable n'a été émise",
+    "placeholders": { "n": { "type": "int" } }
+  },
   "crsNavTableau": "Tableau",
   "@crsNavTableau": { "description": "Destination de la barre basse (K1, K5)" },
   "crsNavCourses": "Courses",

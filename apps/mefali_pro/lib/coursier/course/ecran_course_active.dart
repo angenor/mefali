@@ -29,10 +29,14 @@ class EcranCourseActive extends ConsumerWidget {
   /// Crée l'écran de course active. [entete] (optionnel) est rendu en tête du
   /// corps, DANS l'unique Scaffold — la bascule de rôle du coursier bi-rôle y
   /// passe sans imbriquer un second Scaffold.
-  const EcranCourseActive({super.key, this.entete});
+  const EcranCourseActive({super.key, this.entete, this.barreBasse});
 
   /// Widget d'entête optionnel (ex. bascule de rôle).
   final Widget? entete;
+
+  /// Navigation basse à trois destinations, injectée par l'aiguillage (T076).
+  /// Absente quand l'écran est monté seul (tests, points de montage isolés).
+  final Widget? barreBasse;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,6 +44,7 @@ class EcranCourseActive extends ConsumerWidget {
     final asyncEtat = ref.watch(etatCourseActiveProvider);
 
     return Scaffold(
+      bottomNavigationBar: barreBasse,
       appBar: AppBar(title: Text(l10n.courseTitre)),
       body: SafeArea(
         child: Column(

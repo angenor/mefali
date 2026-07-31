@@ -16,9 +16,19 @@
 /// - le **bandeau de reconnexion** quand le réseau lâche. Il est honnête :
 ///   passé le TTL, Yao sera effectivement sorti du pool.
 ///
-/// **Hors périmètre, et c'est voulu** : les gains du jour, la note, le taux
-/// d'acceptation et le raccourci Caisse de la maquette appartiennent à CRS-01
-/// et AVI. Les afficher ici obligerait à inventer leurs données.
+/// - les **gains du jour** et le **reste disponible** (CRS-01, T075) : le
+///   nombre de courses livrées et la somme de leurs parts coursier, dans la
+///   devise de la zone (FR-091, FR-095).
+///
+/// **Deux écarts de maquette assumés**, et pour la même raison — ne jamais
+/// afficher un chiffre que rien ne peut alimenter :
+///
+/// - la **note du jour** reste un tiret tant qu'AVI n'est pas construit
+///   (FR-094). Le cycle 009 avait déjà tranché ;
+/// - l'état **1c « paie fixe »** n'est pas construit : la promotion de
+///   lancement est un engagement opérationnel hors produit (cadrage §7.1). Le
+///   bandeau montre ce que le produit sait calculer — la somme des parts
+///   coursier des courses livrées.
 library;
 
 import 'package:flutter/material.dart';
@@ -30,6 +40,7 @@ import 'package:riverpod_annotation/experimental/scope.dart';
 import '../../l10n/app_localizations.dart';
 import 'emetteur_position.dart';
 import 'etat_disponibilite.dart';
+import 'etat_journee.dart';
 
 /// Pas d'édition du plafond, en unités mineures.
 ///
@@ -51,10 +62,22 @@ class EcranDisponibilite extends ConsumerStatefulWidget {
   /// Construit l'écran. [entete] (optionnel) est rendu en tête du corps, DANS
   /// l'unique `Scaffold` — la bascule de rôle du coursier bi-rôle y passe sans
   /// imbriquer un second `Scaffold` (patron d'`EcranCourseActive`, FR-046).
-  const EcranDisponibilite({super.key, this.entete});
+  const EcranDisponibilite({
+    super.key,
+    this.entete,
+    this.barreBasse,
+    this.onCaisse,
+  });
 
   /// Entête optionnel (bascule de rôle).
   final Widget? entete;
+
+  /// Navigation basse à trois destinations, injectée par l'aiguillage (T076).
+  /// Absente quand l'écran est monté seul (tests, points de montage isolés).
+  final Widget? barreBasse;
+
+  /// Ouvre la caisse depuis le raccourci du tableau de bord (FR-096).
+  final VoidCallback? onCaisse;
 
   @override
   ConsumerState<EcranDisponibilite> createState() => _EcranDisponibiliteState();
@@ -78,11 +101,15 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
     // (limite assumée, research R15) : en arrière-plan, Yao sort du pool par
     // expiration — comportement CONFORME à DSP-01, et son bandeau le dit.
     ref.watch(emetteurPositionProvider);
+    // La journée est LUE, jamais bloquante : `.value` sans `when` — un réseau
+    // muet efface le bandeau, il n'empêche pas Yao de se mettre en ligne.
+    final journee = ref.watch(etatJourneeProvider).value;
 
     final saisie = _saisie ?? etat.plafondDeclareUnites ?? plafondDefautUnites;
 
     return Scaffold(
       backgroundColor: MefaliTokens.background,
+      bottomNavigationBar: widget.barreBasse,
       appBar: AppBar(
         title: Text(t.dispoTitre),
         actions: [
@@ -119,7 +146,30 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
             etat: etat,
             saisie: saisie,
             onSaisie: (v) => setState(() => _saisie = v),
+            journee: journee,
           ),
+          // ── Ce que Yao a gagné aujourd'hui (CRS-01, K1-1a) ──────────────
+          //
+          // Absent tant que la journée n'a pas été lue : des zéros affichés
+          // avant la première réponse passeraient pour un fait — « tu n'as
+          // rien gagné » — au lieu d'un « on ne sait pas encore ».
+          if (journee != null && journee.connue) ...[
+            const SizedBox(height: MefaliTokens.space3),
+            _CarteGains(journee: journee),
+            const SizedBox(height: MefaliTokens.space3),
+            _TuilesNoteEtAcceptation(journee: journee),
+            if (widget.onCaisse != null &&
+                journee.avancesEnCoursUnites > 0) ...[
+              const SizedBox(height: MefaliTokens.space3),
+              _RaccourciCaisse(
+                montant: formaterMontant(
+                  journee.avancesEnCoursUnites,
+                  journee.devise,
+                ),
+                onOuvrir: widget.onCaisse!,
+              ),
+            ],
+          ],
           const SizedBox(height: MefaliTokens.space4),
           if (!etat.enLigne)
             SizedBox(
@@ -286,11 +336,15 @@ class _CartePlafond extends StatelessWidget {
     required this.etat,
     required this.saisie,
     required this.onSaisie,
+    this.journee,
   });
 
   final EtatDisponibilite etat;
   final int saisie;
   final ValueChanged<int> onSaisie;
+
+  /// Journée lue, pour le « reste disponible » de la maquette 1a.
+  final EtatJourneeVue? journee;
 
   @override
   Widget build(BuildContext context) {
@@ -400,6 +454,32 @@ class _CartePlafond extends StatelessWidget {
               color: MefaliTokens.textMuted,
             ),
           ),
+          // ── Reste disponible (FR-095) ──────────────────────────────────
+          //
+          // C'est le nombre qui dit à Yao s'il peut accepter la course
+          // suivante. Sans lui, il découvrirait le refus au moment d'accepter,
+          // sans comprendre pourquoi — le plafond affiché serait pourtant
+          // « suffisant ».
+          if (journee != null && journee!.connue) ...[
+            const SizedBox(height: MefaliTokens.space1),
+            Text(
+              t.crsJourneeResteDisponible(
+                formaterMontant(
+                  journee!.resteDisponibleUnites,
+                  journee!.devise.isEmpty ? etat.devise : journee!.devise,
+                ),
+              ),
+              key: const Key('dispo-reste-disponible'),
+              style: TextStyle(
+                fontSize: MefaliTokens.captionSize,
+                fontWeight: MefaliTokens.weightSemiBold,
+                // À zéro, c'est un blocage à venir : il se voit.
+                color: journee!.resteDisponibleUnites == 0
+                    ? MefaliTokens.danger
+                    : MefaliTokens.textMuted,
+              ),
+            ),
+          ],
           if (!verrouille) ...[
             const SizedBox(height: MefaliTokens.space1),
             Text(
@@ -411,6 +491,210 @@ class _CartePlafond extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Les gains du jour — display success (K1-1a, FR-091).
+///
+/// La somme est celle des **parts coursier du devis figé** (cycle 007) : jamais
+/// un recalcul, sinon le gain bougerait après coup sous les yeux de Yao.
+class _CarteGains extends StatelessWidget {
+  const _CarteGains({required this.journee});
+
+  final EtatJourneeVue journee;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    return _Carte(
+      enfant: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Symbols.payments_rounded,
+                  size: 20, color: MefaliTokens.textMuted),
+              const SizedBox(width: MefaliTokens.space2),
+              Expanded(
+                child: Text(
+                  t.crsJourneeCoursesLivrees(journee.coursesLivrees),
+                  key: const Key('dispo-gains-libelle'),
+                  style: const TextStyle(
+                    fontSize: MefaliTokens.bodySize,
+                    color: MefaliTokens.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: MefaliTokens.space1),
+          Text(
+            formaterMontant(journee.gainsUnites, journee.devise),
+            key: const Key('dispo-gains-montant'),
+            style: const TextStyle(
+              fontSize: MefaliTokens.displaySize,
+              height: MefaliTokens.displayHeight,
+              fontWeight: MefaliTokens.weightBold,
+              color: MefaliTokens.success,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Les deux tuiles de K1-1a : note du jour et taux d'acceptation.
+///
+/// La note reste un **tiret** tant qu'AVI n'est pas construit (FR-094) : le
+/// cycle 009 avait tranché, l'absence vaut mieux qu'un 4,8 inventé. Le taux,
+/// lui, est un compteur réellement tenu par le dispatch — mais absent tant
+/// qu'aucune offre décidable n'a été émise, parce qu'un « 0 % » ferait croire à
+/// Yao qu'il refuse tout.
+class _TuilesNoteEtAcceptation extends StatelessWidget {
+  const _TuilesNoteEtAcceptation({required this.journee});
+
+  final EtatJourneeVue journee;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final taux = journee.tauxAcceptationPourcent;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _Tuile(
+            icone: Symbols.star_rounded,
+            titre: t.crsJourneeNoteTitre,
+            valeur: t.crsJourneeNoteAbsente,
+            cle: const Key('dispo-note'),
+          ),
+        ),
+        const SizedBox(width: MefaliTokens.space3),
+        Expanded(
+          child: _Tuile(
+            icone: Symbols.check_rounded,
+            titre: t.crsJourneeAcceptationTitre,
+            valeur: taux == null
+                ? t.crsJourneeNoteAbsente
+                : t.crsJourneeAcceptationValeur(taux),
+            cle: const Key('dispo-acceptation'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Une tuile compacte « titre + valeur » (K1-1a).
+class _Tuile extends StatelessWidget {
+  const _Tuile({
+    required this.icone,
+    required this.titre,
+    required this.valeur,
+    required this.cle,
+  });
+
+  final IconData icone;
+  final String titre;
+  final String valeur;
+  final Key cle;
+
+  @override
+  Widget build(BuildContext context) => _Carte(
+        enfant: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icone, size: 18, color: MefaliTokens.textMuted),
+                const SizedBox(width: MefaliTokens.space1),
+                Expanded(
+                  child: Text(
+                    titre,
+                    style: const TextStyle(
+                      fontSize: MefaliTokens.captionSize,
+                      color: MefaliTokens.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: MefaliTokens.space1),
+            Text(
+              valeur,
+              key: cle,
+              style: const TextStyle(
+                fontSize: MefaliTokens.headingSize,
+                fontWeight: MefaliTokens.weightBold,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// Raccourci vers la caisse depuis le tableau de bord (K1-1a, FR-096).
+///
+/// Affiché **seulement** quand de l'argent est engagé : une carte « 0 FCFA en
+/// main » n'apprendrait rien et pousserait vers un écran vide. La navigation
+/// basse, elle, mène toujours à la caisse.
+class _RaccourciCaisse extends StatelessWidget {
+  const _RaccourciCaisse({required this.montant, required this.onOuvrir});
+
+  final String montant;
+  final VoidCallback onOuvrir;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    return InkWell(
+      key: const Key('dispo-raccourci-caisse'),
+      onTap: onOuvrir,
+      borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
+      child: _Carte(
+        enfant: Row(
+          children: [
+            Container(
+              width: MefaliTokens.tapMin,
+              height: MefaliTokens.tapMin,
+              decoration: const BoxDecoration(
+                color: MefaliTokens.successTint,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Symbols.account_balance_wallet_rounded,
+                  color: MefaliTokens.success),
+            ),
+            const SizedBox(width: MefaliTokens.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.crsNavCaisse,
+                    style: const TextStyle(
+                      fontSize: MefaliTokens.headingSize,
+                      fontWeight: MefaliTokens.weightSemiBold,
+                    ),
+                  ),
+                  const SizedBox(height: MefaliTokens.space1),
+                  Text(
+                    t.crsCaisseRaccourci(montant),
+                    style: const TextStyle(
+                      fontSize: MefaliTokens.captionSize,
+                      color: MefaliTokens.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Symbols.chevron_right_rounded,
+                color: MefaliTokens.textMuted),
+          ],
+        ),
       ),
     );
   }

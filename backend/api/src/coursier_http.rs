@@ -32,6 +32,11 @@ pub enum ErreurCoursierHttp {
     Api(ErreurApi),
     /// Refus métier ou erreur d'infrastructure du domaine coursier.
     Coursier(ErreurCoursier),
+    /// Refus venu de `dispatch` — **seul** `GET /moi/journee` en produit, parce
+    /// qu'il est le seul handler à composer les deux domaines (contrat §2).
+    /// Le mapping de statut est délégué tel quel : un dossier coursier invalide
+    /// doit rendre le même code ici que sur `/moi/disponibilite`.
+    Dispatch(dispatch::ErreurDispatch),
 }
 
 impl From<ErreurApi> for ErreurCoursierHttp {
@@ -46,11 +51,18 @@ impl From<ErreurCoursier> for ErreurCoursierHttp {
     }
 }
 
+impl From<dispatch::ErreurDispatch> for ErreurCoursierHttp {
+    fn from(e: dispatch::ErreurDispatch) -> Self {
+        ErreurCoursierHttp::Dispatch(e)
+    }
+}
+
 impl std::fmt::Display for ErreurCoursierHttp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ErreurCoursierHttp::Api(e) => write!(f, "{e}"),
             ErreurCoursierHttp::Coursier(e) => write!(f, "{e}"),
+            ErreurCoursierHttp::Dispatch(e) => write!(f, "{e}"),
         }
     }
 }
@@ -86,12 +98,19 @@ impl ResponseError for ErreurCoursierHttp {
         match self {
             ErreurCoursierHttp::Api(e) => e.status_code(),
             ErreurCoursierHttp::Coursier(e) => statut_coursier(e),
+            // Délégué au mapping du cycle 009 : un même refus doit rendre le
+            // même statut et la même clé, quelle que soit la porte d'entrée.
+            ErreurCoursierHttp::Dispatch(e) => crate::erreurs_dispatch::statut(e),
         }
     }
 
     fn error_response(&self) -> HttpResponse {
         match self {
             ErreurCoursierHttp::Api(e) => e.error_response(),
+            ErreurCoursierHttp::Dispatch(e) => {
+                HttpResponse::build(crate::erreurs_dispatch::statut(e))
+                    .json(crate::erreurs_dispatch::corps(e))
+            }
             ErreurCoursierHttp::Coursier(e) => {
                 let (code, message_cle) = match e.message_cle() {
                     Some(cle) => (cle.to_owned(), format!("coursier.erreur.{cle}")),
@@ -962,6 +981,100 @@ pub async fn ma_caisse(
     // `coursier_id = auth.compte_id`, aucun identifiant n'est accepté en entrée.
     let vue = coursier.vue_caisse(auth.compte_id).await?;
     Ok(HttpResponse::Ok().json(VueCaisseDto::from(vue)))
+}
+
+/// Ce que Yao a gagné aujourd'hui, et ce qu'il peut encore engager (K1-1a).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = JourneeCoursier)]
+pub struct JourneeDto {
+    /// Courses dont la remise est validée dans le jour civil **de la zone**.
+    pub courses_livrees: i64,
+    /// Somme des parts coursier de ces courses (devis FIGÉ du cycle 007).
+    pub gains_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Plafond d'avance qui s'applique — `min(déclaré, palier de la grille)`.
+    pub plafond_retenu_unites: i64,
+    /// Ce qu'il reste engageable : plafond retenu **moins** avances en cours
+    /// (FR-095). Jamais négatif — un « reste » négatif ne veut rien dire à
+    /// l'écran ; l'écart, lui, est signalé par la caisse (FR-078).
+    pub reste_disponible_unites: i64,
+    /// Argent encore dehors, à l'origine de l'amputation ci-dessus.
+    pub avances_en_cours_unites: i64,
+    /// Taux d'acceptation tenu par le dispatch, ou `null` si aucune offre
+    /// décidable n'a été émise sur la fenêtre (FR-093).
+    pub taux_acceptation_pourcent: Option<i32>,
+    /// **Toujours `null`** tant qu'AVI n'est pas construit (FR-094) : l'absence
+    /// vaut mieux qu'un chiffre inventé.
+    pub note_centiemes: Option<i32>,
+}
+
+/// CRS-01 — la journée du coursier (FR-091 → FR-095).
+///
+/// ⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les
+/// avances viennent de `coursier`, le plafond retenu et le taux d'acceptation de
+/// `dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une
+/// arête permanente entre deux domaines qui n'ont rien à se dire
+/// (`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.
+///
+/// La **note reste absente** : le module d'avis n'existe pas, et K1 afficherait
+/// un « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.
+#[utoipa::path(
+    get,
+    path = "/moi/journee",
+    tag = "coursier",
+    responses(
+        (status = 200, description = "Gains du jour, plafond retenu, reste disponible, taux d'acceptation.", body = JourneeDto),
+        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+        (status = 409, description = "Dossier coursier invalide.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/moi/journee")]
+pub async fn ma_journee(
+    auth: Auth,
+    coursier: web::Data<PgCoursier>,
+    dispatch: web::Data<dispatch::PgDispatch>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    let maintenant = Utc::now();
+
+    // 1. Ce que le domaine coursier sait : courses livrées, gains, avances.
+    let journee = coursier.journee_du_coursier(auth.compte_id).await?;
+
+    // 2. Ce que le dispatch sait : plafond retenu et taux d'acceptation.
+    let exploitable = dispatch
+        .coursier_exploitable(auth.compte_id)
+        .await?
+        .ok_or(dispatch::ErreurDispatch::DossierCoursierInvalide)?;
+    let config = dispatch.config(exploitable.zone).await?;
+    let plafond = dispatch
+        .plafond_du_jour(auth.compte_id, &config, maintenant)
+        .await?;
+    let taux = dispatch
+        .taux_acceptation_pourcent(auth.compte_id, &config, maintenant)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(JourneeDto {
+        courses_livrees: journee.courses_livrees,
+        gains_unites: journee.gains_unites,
+        // La devise des gains fait foi quand il y a eu des courses ; sinon celle
+        // du plafond, qui vient de la zone de travail.
+        devise: if journee.devise.is_empty() {
+            plafond.devise.clone()
+        } else {
+            journee.devise
+        },
+        plafond_retenu_unites: plafond.retenu_unites,
+        reste_disponible_unites: (plafond.retenu_unites - journee.avances_en_cours_unites).max(0),
+        avances_en_cours_unites: journee.avances_en_cours_unites,
+        taux_acceptation_pourcent: taux,
+        // FR-094 — jamais une valeur inventée. `plafond.note_centiemes` est
+        // déjà `None` en production ; le forcer ici rend la promesse EXPLICITE
+        // plutôt que dépendante d'un défaut d'un autre crate.
+        note_centiemes: None,
+    }))
 }
 
 /// CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).

@@ -6577,6 +6577,63 @@
         ]
       }
     },
+    "/moi/journee": {
+      "get": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-01 — la journée du coursier (FR-091 → FR-095).",
+        "description": "⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les\navances viennent de `coursier`, le plafond retenu et le taux d'acceptation de\n`dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une\narête permanente entre deux domaines qui n'ont rien à se dire\n(`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.\n\nLa **note reste absente** : le module d'avis n'existe pas, et K1 afficherait\nun « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.",
+        "operationId": "ma_journee",
+        "responses": {
+          "200": {
+            "description": "Gains du jour, plafond retenu, reste disponible, taux d'acceptation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneeCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/position": {
       "post": {
         "tags": [
@@ -11506,6 +11563,65 @@
           "rafraichissement": {
             "type": "string",
             "description": "Opaque 256 bits — tourne à chaque usage."
+          }
+        }
+      },
+      "JourneeCoursier": {
+        "type": "object",
+        "description": "Ce que Yao a gagné aujourd'hui, et ce qu'il peut encore engager (K1-1a).",
+        "required": [
+          "courses_livrees",
+          "gains_unites",
+          "devise",
+          "plafond_retenu_unites",
+          "reste_disponible_unites",
+          "avances_en_cours_unites"
+        ],
+        "properties": {
+          "avances_en_cours_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Argent encore dehors, à l'origine de l'amputation ci-dessus."
+          },
+          "courses_livrees": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Courses dont la remise est validée dans le jour civil **de la zone**."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "gains_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Somme des parts coursier de ces courses (devis FIGÉ du cycle 007)."
+          },
+          "note_centiemes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "**Toujours `null`** tant qu'AVI n'est pas construit (FR-094) : l'absence\nvaut mieux qu'un chiffre inventé."
+          },
+          "plafond_retenu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Plafond d'avance qui s'applique — `min(déclaré, palier de la grille)`."
+          },
+          "reste_disponible_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qu'il reste engageable : plafond retenu **moins** avances en cours\n(FR-095). Jamais négatif — un « reste » négatif ne veut rien dire à\nl'écran ; l'écart, lui, est signalé par la caisse (FR-078)."
+          },
+          "taux_acceptation_pourcent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Taux d'acceptation tenu par le dispatch, ou `null` si aucune offre\ndécidable n'a été émise sur la fenêtre (FR-093)."
           }
         }
       },

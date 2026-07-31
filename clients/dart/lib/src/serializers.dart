@@ -117,6 +117,7 @@ import 'package:mefali_api_client/src/model/issue_echec.dart';
 import 'package:mefali_api_client/src/model/issue_rupture.dart';
 import 'package:mefali_api_client/src/model/itineraire_simule.dart';
 import 'package:mefali_api_client/src/model/jetons_dto.dart';
+import 'package:mefali_api_client/src/model/journee_coursier.dart';
 import 'package:mefali_api_client/src/model/lieu.dart';
 import 'package:mefali_api_client/src/model/ligne_arret.dart';
 import 'package:mefali_api_client/src/model/ligne_devis.dart';
@@ -298,6 +299,7 @@ part 'serializers.g.dart';
   IssueRupture,
   ItineraireSimule,
   JetonsDto,
+  JourneeCoursier,
   Lieu,
   LigneArret,
   LigneDevis,

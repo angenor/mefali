@@ -481,6 +481,45 @@ impl PgCoursier {
         }))
     }
 
+    /// Ce que **`coursier`** sait de la journée de Yao (FR-091, FR-095).
+    ///
+    /// Trois nombres seulement, et c'est volontaire : les courses livrées, leurs
+    /// gains, et l'argent encore dehors. Le plafond retenu et le taux
+    /// d'acceptation appartiennent à `dispatch` — ils sont ajoutés **dans le
+    /// handler**, qui détient les deux dépôts. Faire dépendre `coursier` de
+    /// `dispatch` pour deux nombres créerait une arête permanente entre deux
+    /// domaines qui n'ont rien à se dire (contrat §2).
+    ///
+    /// Les gains sont la somme des **parts coursier du devis figé** (cycle 007),
+    /// jamais un recalcul : un montant recalculé après coup pourrait différer de
+    /// celui annoncé à l'acceptation, et Yao verrait son gain bouger tout seul.
+    pub async fn journee_du_coursier(
+        &self,
+        coursier: Uuid,
+    ) -> Result<JourneeCoursier, ErreurCoursier> {
+        use commandes::CourseCoursier as _;
+
+        let (debut, fin) = self.bornes_du_jour(coursier, None).await?;
+        let livrees = self.commandes.livrees_du_jour(coursier, debut, fin).await?;
+        let ouvertes = self.avances_ouvertes(coursier).await?;
+
+        // La devise vient des livraisons du jour quand il y en a — c'est celle
+        // dans laquelle l'argent a réellement circulé ; sinon celle de la zone
+        // de travail, et à défaut rien du tout (aucune course, aucun montant à
+        // libeller : une devise inventée serait pire qu'une absence).
+        let devise = match livrees.first() {
+            Some(l) => l.devise.clone(),
+            None => self.devise_du_coursier(coursier).await?,
+        };
+
+        Ok(JourneeCoursier {
+            courses_livrees: livrees.len() as i64,
+            gains_unites: livrees.iter().map(|l| l.part_coursier_unites).sum(),
+            avances_en_cours_unites: ouvertes.total,
+            devise,
+        })
+    }
+
     /// Exposition cash de toute la flotte (FR-075).
     pub async fn exposition_cash(&self) -> Result<crate::modele::ExpositionCash, ErreurCoursier> {
         let lignes = sqlx::query!(
@@ -520,6 +559,22 @@ impl PgCoursier {
                 .collect(),
         })
     }
+}
+
+/// Ce que le domaine `coursier` sait de la journée — la moitié de K1-1a.
+///
+/// L'autre moitié (plafond retenu, taux d'acceptation) vient de `dispatch` et
+/// est assemblée dans le handler `GET /moi/journee`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JourneeCoursier {
+    /// Courses dont la remise est validée dans le jour civil de la zone.
+    pub courses_livrees: i64,
+    /// Somme des parts coursier de ces courses (devis FIGÉ du cycle 007).
+    pub gains_unites: i64,
+    /// Argent encore dehors — ce qui ampute le « reste disponible » (FR-095).
+    pub avances_en_cours_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
 }
 
 /// Les avances non compensées d'un coursier, décomposées.

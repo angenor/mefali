@@ -114,6 +114,7 @@ doc/IssueEchec.md
 doc/IssueRupture.md
 doc/ItineraireSimule.md
 doc/JetonsDto.md
+doc/JourneeCoursier.md
 doc/Lieu.md
 doc/LigneArret.md
 doc/LigneDevis.md
@@ -324,6 +325,7 @@ lib/src/model/issue_echec.dart
 lib/src/model/issue_rupture.dart
 lib/src/model/itineraire_simule.dart
 lib/src/model/jetons_dto.dart
+lib/src/model/journee_coursier.dart
 lib/src/model/lieu.dart
 lib/src/model/ligne_arret.dart
 lib/src/model/ligne_devis.dart
@@ -512,6 +514,7 @@ test/issue_echec_test.dart
 test/issue_rupture_test.dart
 test/itineraire_simule_test.dart
 test/jetons_dto_test.dart
+test/journee_coursier_test.dart
 test/lieu_test.dart
 test/ligne_arret_test.dart
 test/ligne_devis_test.dart

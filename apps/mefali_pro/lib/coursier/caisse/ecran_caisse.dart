@@ -33,11 +33,20 @@ import 'etat_caisse.dart';
 /// L'écran caisse.
 class EcranCaisse extends ConsumerWidget {
   /// Crée l'écran.
-  const EcranCaisse({super.key, this.entete, this.onPasserEnLigne});
+  const EcranCaisse({
+    super.key,
+    this.entete,
+    this.barreBasse,
+    this.onPasserEnLigne,
+  });
 
   /// Entête optionnel (bascule de rôle) — rendu DANS l'unique `Scaffold`,
   /// patron d'`EcranDisponibilite` : jamais de `Scaffold` imbriqué.
   final Widget? entete;
+
+  /// Navigation basse à trois destinations, injectée par l'aiguillage (T076).
+  /// Absente quand l'écran est monté seul (tests, points de montage isolés).
+  final Widget? barreBasse;
 
   /// Action « Passer en ligne » de l'état vide (K5-1b).
   ///
@@ -54,6 +63,7 @@ class EcranCaisse extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: MefaliTokens.background,
+      bottomNavigationBar: barreBasse,
       appBar: AppBar(
         // `min` + `Flexible` : la barre haute partage sa largeur avec le badge
         // de droite (une date, ou un décompte de litiges). Un `Row` naturel y

@@ -1642,6 +1642,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/journee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-01 — la journée du coursier (FR-091 → FR-095).
+         * @description ⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les
+         *     avances viennent de `coursier`, le plafond retenu et le taux d'acceptation de
+         *     `dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une
+         *     arête permanente entre deux domaines qui n'ont rien à se dire
+         *     (`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.
+         *
+         *     La **note reste absente** : le module d'avis n'existe pas, et K1 afficherait
+         *     un « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.
+         */
+        get: operations["ma_journee"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/position": {
         parameters: {
             query?: never;
@@ -3998,6 +4025,50 @@ export interface components {
             acces: string;
             /** @description Opaque 256 bits — tourne à chaque usage. */
             rafraichissement: string;
+        };
+        /** @description Ce que Yao a gagné aujourd'hui, et ce qu'il peut encore engager (K1-1a). */
+        JourneeCoursier: {
+            /**
+             * Format: int64
+             * @description Argent encore dehors, à l'origine de l'amputation ci-dessus.
+             */
+            avances_en_cours_unites: number;
+            /**
+             * Format: int64
+             * @description Courses dont la remise est validée dans le jour civil **de la zone**.
+             */
+            courses_livrees: number;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Somme des parts coursier de ces courses (devis FIGÉ du cycle 007).
+             */
+            gains_unites: number;
+            /**
+             * Format: int32
+             * @description **Toujours `null`** tant qu'AVI n'est pas construit (FR-094) : l'absence
+             *     vaut mieux qu'un chiffre inventé.
+             */
+            note_centiemes?: number | null;
+            /**
+             * Format: int64
+             * @description Plafond d'avance qui s'applique — `min(déclaré, palier de la grille)`.
+             */
+            plafond_retenu_unites: number;
+            /**
+             * Format: int64
+             * @description Ce qu'il reste engageable : plafond retenu **moins** avances en cours
+             *     (FR-095). Jamais négatif — un « reste » négatif ne veut rien dire à
+             *     l'écran ; l'écart, lui, est signalé par la caisse (FR-078).
+             */
+            reste_disponible_unites: number;
+            /**
+             * Format: int32
+             * @description Taux d'acceptation tenu par le dispatch, ou `null` si aucune offre
+             *     décidable n'a été émise sur la fenêtre (FR-093).
+             */
+            taux_acceptation_pourcent?: number | null;
         };
         /** @description Position d'un lieu (pin GPS). */
         Lieu: {
@@ -10255,6 +10326,53 @@ export interface operations {
             };
             /** @description Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ma_journee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gains du jour, plafond retenu, reste disponible, taux d'acceptation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneeCoursier"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

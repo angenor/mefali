@@ -43,7 +43,7 @@ pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
 pub use appels::{AppelEnregistre, DemandeAppel};
 pub use presence::{PresenceEnregistree, ReleveDePresence};
 pub use preuves::{PhotoPreuveDeposee, PhotoPreuveVue, PreuvesExploitation};
-pub use caisse::{AvancesOuvertes, DemandeEcriture};
+pub use caisse::{AvancesOuvertes, DemandeEcriture, JourneeCoursier};
 pub use indemnisation::DecisionIndemnisation;
 pub use depot::PgCoursier;
 pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};

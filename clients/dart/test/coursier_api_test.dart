@@ -70,6 +70,15 @@ void main() {
       // TODO
     });
 
+    // CRS-01 — la journée du coursier (FR-091 → FR-095).
+    //
+    // ⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les avances viennent de `coursier`, le plafond retenu et le taux d'acceptation de `dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une arête permanente entre deux domaines qui n'ont rien à se dire (`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.  La **note reste absente** : le module d'avis n'existe pas, et K1 afficherait un « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.
+    //
+    //Future<JourneeCoursier> maJournee() async
+    test('test maJournee', () async {
+      // TODO
+    });
+
     // Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
     //
     //Future<SignalementRecuDto> signalerRupture(String idempotencyKey, SignalerRuptureDto signalerRuptureDto) async

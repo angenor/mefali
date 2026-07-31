@@ -33,7 +33,7 @@
 
 mod bac_coursier;
 
-use bac_coursier::{Bac, Course, DEVIS_PART_COURSIER};
+use bac_coursier::{Bac, Course, DEVIS_PART_COURSIER, PALIER_AVANCE};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -502,4 +502,152 @@ async fn un_echec_indemnisable_fait_naitre_une_indemnisation_demandee(pool: PgPo
     );
     // AVI-04 n'est pas construit : le litige reste vide, il n'est pas inventé.
     assert_eq!(indemnisations[0]["litige_id"], Value::Null);
+}
+
+// ── US6 (T074) : `GET /moi/journee`, composé dans le handler ────────────────
+//
+// Le bandeau de K1 mélange deux domaines : les gains et les avances viennent de
+// `coursier`, le plafond retenu et le taux d'acceptation de `dispatch`. Aucune
+// arête ne relie les deux crates (contrat §2) — la composition se fait dans le
+// handler, et c'est **ici** qu'elle s'exerce : un test de crate ne peut pas la
+// voir, par construction.
+
+/// SC-013 — le bandeau égale la somme des parts coursier des courses livrées,
+/// **au franc près**.
+#[sqlx::test(migrations = "../migrations")]
+async fn la_journee_somme_les_parts_coursier_des_courses_livrees(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+
+    // Avant la première course : rien, mais un plafond déjà lisible — sinon
+    // K1 n'aurait rien à afficher à un coursier qui prend son service.
+    let (statut, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(statut, 200, "journée refusée : {j}");
+    assert_eq!(j["courses_livrees"], json!(0));
+    assert_eq!(j["gains_unites"], json!(0));
+    assert_eq!(j["plafond_retenu_unites"], json!(PALIER_AVANCE));
+    assert_eq!(j["reste_disponible_unites"], json!(PALIER_AVANCE));
+    assert_eq!(j["devise"], json!("XOF"));
+
+    for _ in 0..2 {
+        let course = bac.course_prete().await;
+        bac.collecter_tout(&course).await;
+        confirmer_remise(&bac, &course).await;
+    }
+    bac.drainer_caisse().await;
+
+    let (_, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(j["courses_livrees"], json!(2));
+    assert_eq!(
+        j["gains_unites"],
+        json!(2 * DEVIS_PART_COURSIER),
+        "la part coursier vient du devis FIGÉ, jamais d'un recalcul",
+    );
+    // Les deux courses sont encaissées : plus rien dehors.
+    assert_eq!(j["avances_en_cours_unites"], json!(0));
+    assert_eq!(j["reste_disponible_unites"], json!(PALIER_AVANCE));
+}
+
+/// FR-095 — le « reste disponible » diminue d'exactement ce qui est engagé.
+///
+/// C'est ce nombre qui dit à Yao s'il peut accepter la course suivante. Le
+/// laisser à sa valeur nominale pendant qu'une avance court lui ferait accepter
+/// une course qu'il ne peut pas payer.
+#[sqlx::test(migrations = "../migrations")]
+async fn le_reste_disponible_diminue_de_l_avance_engagee(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = bac.course_prete().await;
+    let avance = avance_attendue(&bac, &course).await;
+
+    bac.collecter_tout(&course).await;
+    bac.drainer_caisse().await;
+
+    let (_, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(j["avances_en_cours_unites"], json!(avance));
+    assert_eq!(
+        j["reste_disponible_unites"],
+        json!(PALIER_AVANCE - avance),
+        "plafond retenu MOINS ce qui est déjà dehors",
+    );
+    // Pas encore livrée : aucun gain compté. Un gain compté à la collecte
+    // paierait Yao pour une course qu'il n'a pas finie.
+    assert_eq!(j["courses_livrees"], json!(0));
+    assert_eq!(j["gains_unites"], json!(0));
+}
+
+/// Le reste disponible ne descend **jamais** sous zéro.
+///
+/// Un « reste » négatif ne veut rien dire à l'écran. L'écart, lui, n'est pas
+/// tu : la caisse le signale comme incident (FR-078), et c'est le bon endroit.
+#[sqlx::test(migrations = "../migrations")]
+async fn le_reste_disponible_ne_descend_jamais_sous_zero(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = bac.course_prete().await;
+    let avance = avance_attendue(&bac, &course).await;
+
+    // Plafond déclaré SOUS l'avance engagée — la situation d'incident.
+    sqlx::query(
+        "INSERT INTO dispatch.plafond_jour (coursier_id, jour, plafond_unites, devise)
+         VALUES ($1, current_date, $2, 'XOF')",
+    )
+    .bind(bac.coursier)
+    .bind(avance - 500)
+    .execute(&bac.pool)
+    .await
+    .unwrap();
+
+    bac.collecter_tout(&course).await;
+    bac.drainer_caisse().await;
+
+    let (_, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(j["reste_disponible_unites"], json!(0));
+    assert_eq!(
+        bac.lire_caisse().await["ecart_plafond"],
+        json!(true),
+        "l'écart est signalé là où il a un sens",
+    );
+}
+
+/// FR-094 — **aucune note** tant qu'AVI n'existe pas, et un taux d'acceptation
+/// `null` tant qu'aucune offre décidable n'a été émise.
+///
+/// Le cycle 009 avait tranché : l'absence vaut mieux qu'un chiffre inventé. Un
+/// `0 %` ferait croire à Yao qu'il refuse tout, alors qu'on ne lui a encore
+/// rien proposé.
+#[sqlx::test(migrations = "../migrations")]
+async fn ni_note_inventee_ni_taux_par_defaut(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let (_, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(j["note_centiemes"], Value::Null);
+    assert_eq!(j["taux_acceptation_pourcent"], Value::Null);
+}
+
+/// FR-092 — les gains repartent de zéro au changement de jour civil.
+#[sqlx::test(migrations = "../migrations")]
+async fn les_gains_ne_reportent_pas_d_un_jour_sur_l_autre(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = bac.course_prete().await;
+    bac.collecter_tout(&course).await;
+    confirmer_remise(&bac, &course).await;
+    bac.drainer_caisse().await;
+
+    let (_, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(j["courses_livrees"], json!(1));
+
+    // La remise recule d'un jour : c'est `livree_le` qui borne les gains.
+    sqlx::query("UPDATE commandes.livraison SET livree_le = livree_le - interval '1 day'")
+        .execute(&bac.pool)
+        .await
+        .unwrap();
+
+    let (_, j) = bac.get("/moi/journee", &bac.jeton_coursier).await;
+    assert_eq!(j["courses_livrees"], json!(0), "sans report : {j}");
+    assert_eq!(j["gains_unites"], json!(0));
+}
+
+/// La journée est sous rôle coursier, comme la caisse.
+#[sqlx::test(migrations = "../migrations")]
+async fn la_journee_exige_le_role_coursier(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let (statut, _) = bac.get("/moi/journee", &bac.jeton_client).await;
+    assert_eq!(statut, 403);
 }
