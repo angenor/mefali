@@ -521,6 +521,7 @@ impl Bac {
 
     /// Configure une `App` Actix avec les MÊMES handlers que la production.
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
+        use api::admin_coursier_http as adm010;
         use api::commandes_http as cmd;
         use api::course_http as crs;
         use api::coursier_http as crs010;
@@ -546,7 +547,10 @@ impl Bac {
                 .service(crs::arret_indisponible)
                 .service(crs::declarer_rupture)
                 .service(crs::remise)
-                .service(crs::declarer_echec);
+                .service(crs::declarer_echec)
+                .service(adm010::remises_bloquees)
+                .service(adm010::debloquer_code)
+                .service(adm010::autoriser_depot);
         }
     }
 
@@ -836,6 +840,36 @@ impl Bac {
             .to_request();
         let resp = actix_web::test::call_service(&app, req).await;
         Self::lire(resp).await
+    }
+
+    /// `POST /courses/{livraison}/remise` — multipart depuis CRS 010 (R18).
+    ///
+    /// Complète la demande d'un `uuid_client` NEUF si elle n'en porte pas : la
+    /// plupart des tests veulent un appel distinct. Ceux qui testent le REJEU
+    /// fixent l'UUID eux-mêmes, et c'est exactement la différence qu'ils
+    /// cherchent à montrer.
+    pub async fn remise(&self, livraison: Uuid, mut demande: Value, avec_photo: bool) -> (u16, Value) {
+        if demande.get("uuid_client").is_none() {
+            demande["uuid_client"] = json!(Uuid::now_v7());
+        }
+        self.post_multipart(
+            &format!("/courses/{livraison}/remise"),
+            &self.jeton_coursier,
+            demande,
+            avec_photo,
+        )
+        .await
+    }
+
+    /// Ouvre (ou referme) la voie dépôt par la VOIE ADMIN — jamais par un
+    /// `UPDATE` de test : c'est l'endpoint T037 qui est exercé au passage.
+    pub async fn ouvrir_depot(&self, commande: Uuid, autorise: bool) -> (u16, Value) {
+        self.post(
+            &format!("/admin/commandes/{commande}/depot"),
+            &self.jeton_admin,
+            json!({ "autorise": autorise, "motif_cle": "depot.demande_client_par_telephone" }),
+        )
+        .await
     }
 
     async fn lire(resp: actix_web::dev::ServiceResponse) -> (u16, Value) {

@@ -115,6 +115,9 @@ Class | Method | HTTP request | Description
 [*CoursierApi*](doc/CoursierApi.md) | [**declarerIssueAppel**](doc/CoursierApi.md#declarerissueappel) | **PATCH** /courses/{livraison_id}/appels | CRS-03 — déclare (ou corrige) l&#39;issue d&#39;un appel (FR-036, R19).
 [*CoursierApi*](doc/CoursierApi.md) | [**journaliserAppel**](doc/CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**autoriserDepot**](doc/CoursierAdminApi.md#autoriserdepot) | **POST** /admin/commandes/{commande_id}/depot | **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**debloquerCode**](doc/CoursierAdminApi.md#debloquercode) | **POST** /admin/commandes/{commande_id}/code/debloquer | **FR-055** — l&#39;exploitation lève le blocage du code, avec motif tracé.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**remisesBloquees**](doc/CoursierAdminApi.md#remisesbloquees) | **GET** /admin/remises/bloquees | **FR-044** — les remises dont le code est épuisé et le blocage non levé.
 [*DispatchApi*](doc/DispatchApi.md) | [**accepterOffre**](doc/DispatchApi.md#accepteroffre) | **POST** /courses/offres/{offre_id}/accepter | &#x60;POST /courses/offres/{offre_id}/accepter&#x60; — prendre la course.
 [*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
 [*DispatchApi*](doc/DispatchApi.md) | [**lireDisponibilite**](doc/DispatchApi.md#liredisponibilite) | **GET** /moi/disponibilite | &#x60;GET /moi/disponibilite&#x60; — l&#39;état courant, tel que K1 l&#39;affiche.
@@ -205,6 +208,7 @@ Class | Method | HTTP request | Description
  - [CoursierSuivi](doc/CoursierSuivi.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
+ - [DecisionDepot](doc/DecisionDepot.md)
  - [DecisionOffre](doc/DecisionOffre.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DecisionSubstitution](doc/DecisionSubstitution.md)
@@ -212,6 +216,8 @@ Class | Method | HTTP request | Description
  - [DemandeAppel](doc/DemandeAppel.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
+ - [DemandeDeblocage](doc/DemandeDeblocage.md)
+ - [DemandeDepot](doc/DemandeDepot.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
  - [DemandeEchec](doc/DemandeEchec.md)
  - [DemandeOtp](doc/DemandeOtp.md)
@@ -286,7 +292,9 @@ Class | Method | HTTP request | Description
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
+ - [RemiseBloquee](doc/RemiseBloquee.md)
  - [RemisePreprovisionnee](doc/RemisePreprovisionnee.md)
+ - [RemisesBloquees](doc/RemisesBloquees.md)
  - [RepriseFaite](doc/RepriseFaite.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatAnnulation](doc/ResultatAnnulation.md)

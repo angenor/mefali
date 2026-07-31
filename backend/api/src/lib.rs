@@ -6,6 +6,8 @@
 
 /// Surface HTTP admin du cycle CMD (file d'attente, annulation, issues).
 pub mod admin_commandes_http;
+/// Surface HTTP admin du cycle CRS (blocages, dépôt, caisse, indemnisations).
+pub mod admin_coursier_http;
 /// Surface HTTP admin du cycle DSP (alertes, pool, reprise manuelle).
 pub mod admin_dispatch_http;
 pub mod admin_prestataires_http;
@@ -112,6 +114,9 @@ pub fn api_openapi() -> OpenApi {
         .service(coursier_http::course_active)
         .service(coursier_http::journaliser_appel)
         .service(coursier_http::declarer_issue_appel)
+        .service(admin_coursier_http::remises_bloquees)
+        .service(admin_coursier_http::debloquer_code)
+        .service(admin_coursier_http::autoriser_depot)
         .service(admin_tarification_http::grille_de_zone)
         .service(admin_tarification_http::creer_brouillon)
         .service(admin_tarification_http::ecrire_regle)
@@ -761,8 +766,9 @@ pub async fn run() -> std::io::Result<()> {
             .service(coursier_http::course_active)
             .service(coursier_http::journaliser_appel)
             .service(coursier_http::declarer_issue_appel)
-        .service(coursier_http::journaliser_appel)
-        .service(coursier_http::declarer_issue_appel)
+            .service(admin_coursier_http::remises_bloquees)
+            .service(admin_coursier_http::debloquer_code)
+            .service(admin_coursier_http::autoriser_depot)
             .service(admin_tarification_http::grille_de_zone)
             .service(admin_tarification_http::creer_brouillon)
             .service(admin_tarification_http::ecrire_regle)

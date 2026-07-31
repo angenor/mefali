@@ -36,6 +36,7 @@ pub mod creation;
 pub mod depot;
 pub mod echec;
 pub mod etats;
+pub mod exploitation;
 pub mod modele;
 pub mod panier;
 pub mod ports;
@@ -51,10 +52,12 @@ pub use collecte::{
 };
 pub use depot::PgCommandes;
 pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};
+pub use exploitation::{DecisionDepot, RemiseBloquee};
 pub use modele::{
     ArretACollecter, Detenteur, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement,
     IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
-    Restrictions, Sanction, StatutArret, StatutLigne, TypeArret, TypeIssueEchec,
+    reference_courte, Restrictions, Sanction, StatutArret, StatutLigne, TypeArret,
+    TypeIssueEchec,
 };
 pub use panier::{
     CauseScission, DetailsVertical, GroupeVendeur, LignePanier, LigneValidee, PanierValide,

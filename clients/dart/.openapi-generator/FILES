@@ -45,11 +45,13 @@ doc/CorrigerDto.md
 doc/CourseActiveComplete.md
 doc/CourseBloquee.md
 doc/CoursesApi.md
+doc/CoursierAdminApi.md
 doc/CoursierApi.md
 doc/CoursierDuPool.md
 doc/CoursierSuivi.md
 doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
+doc/DecisionDepot.md
 doc/DecisionOffre.md
 doc/DecisionRole.md
 doc/DecisionSubstitution.md
@@ -57,6 +59,8 @@ doc/DemandeAnnulation.md
 doc/DemandeAppel.md
 doc/DemandeCollecte.md
 doc/DemandeCreationCommande.md
+doc/DemandeDeblocage.md
+doc/DemandeDepot.md
 doc/DemandeDevisPanier.md
 doc/DemandeEchec.md
 doc/DemandeOtp.md
@@ -136,7 +140,9 @@ doc/RefusOffre.md
 doc/Regle.md
 doc/RegleRetenue.md
 doc/RegleUpsert.md
+doc/RemiseBloquee.md
 doc/RemisePreprovisionnee.md
+doc/RemisesBloquees.md
 doc/RepriseFaite.md
 doc/ResolutionPlaque.md
 doc/ResultatAnnulation.md
@@ -174,6 +180,7 @@ lib/src/api/auth_api.dart
 lib/src/api/commandes_admin_api.dart
 lib/src/api/commandes_api.dart
 lib/src/api/courses_api.dart
+lib/src/api/coursier_admin_api.dart
 lib/src/api/coursier_api.dart
 lib/src/api/dispatch_admin_api.dart
 lib/src/api/dispatch_api.dart
@@ -234,6 +241,7 @@ lib/src/model/coursier_suivi.dart
 lib/src/model/creer_article_dto.dart
 lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
+lib/src/model/decision_depot.dart
 lib/src/model/decision_offre.dart
 lib/src/model/decision_role.dart
 lib/src/model/decision_substitution.dart
@@ -241,6 +249,8 @@ lib/src/model/demande_annulation.dart
 lib/src/model/demande_appel.dart
 lib/src/model/demande_collecte.dart
 lib/src/model/demande_creation_commande.dart
+lib/src/model/demande_deblocage.dart
+lib/src/model/demande_depot.dart
 lib/src/model/demande_devis_panier.dart
 lib/src/model/demande_echec.dart
 lib/src/model/demande_otp.dart
@@ -315,7 +325,9 @@ lib/src/model/refus_offre.dart
 lib/src/model/regle.dart
 lib/src/model/regle_retenue.dart
 lib/src/model/regle_upsert.dart
+lib/src/model/remise_bloquee.dart
 lib/src/model/remise_preprovisionnee.dart
+lib/src/model/remises_bloquees.dart
 lib/src/model/reprise_faite.dart
 lib/src/model/resolution_plaque.dart
 lib/src/model/resultat_annulation.dart
@@ -387,11 +399,13 @@ test/corriger_dto_test.dart
 test/course_active_complete_test.dart
 test/course_bloquee_test.dart
 test/courses_api_test.dart
+test/coursier_admin_api_test.dart
 test/coursier_api_test.dart
 test/coursier_du_pool_test.dart
 test/coursier_suivi_test.dart
 test/creer_article_dto_test.dart
 test/creer_prestataire_dto_test.dart
+test/decision_depot_test.dart
 test/decision_offre_test.dart
 test/decision_role_test.dart
 test/decision_substitution_test.dart
@@ -399,6 +413,8 @@ test/demande_annulation_test.dart
 test/demande_appel_test.dart
 test/demande_collecte_test.dart
 test/demande_creation_commande_test.dart
+test/demande_deblocage_test.dart
+test/demande_depot_test.dart
 test/demande_devis_panier_test.dart
 test/demande_echec_test.dart
 test/demande_otp_test.dart
@@ -478,7 +494,9 @@ test/refus_offre_test.dart
 test/regle_retenue_test.dart
 test/regle_test.dart
 test/regle_upsert_test.dart
+test/remise_bloquee_test.dart
 test/remise_preprovisionnee_test.dart
+test/remises_bloquees_test.dart
 test/reprise_faite_test.dart
 test/resolution_plaque_test.dart
 test/resultat_annulation_test.dart

@@ -85,6 +85,9 @@ pub fn statut(e: &ErreurCommandes) -> StatusCode {
         | ErreurCommandes::SubstitutionEcartPrix
         | ErreurCommandes::SubstitutionExpiree
         | ErreurCommandes::RemiseIncorrecte
+        // Lever un blocage qui n'existe pas : l'état s'y oppose, et il peut
+        // changer (trois codes faux plus tard, la levée aura du sens).
+        | ErreurCommandes::CodeNonBloque
         | ErreurCommandes::PreuvesIncompletes => StatusCode::CONFLICT,
 
         ErreurCommandes::CodeEpuise => StatusCode::LOCKED,
@@ -156,6 +159,7 @@ mod tests {
             ErreurCommandes::CodeEpuise,
             ErreurCommandes::RemiseIncorrecte,
             ErreurCommandes::DepotNonAutorise,
+            ErreurCommandes::CodeNonBloque,
             ErreurCommandes::PreuvesIncompletes,
             ErreurCommandes::MotifRequis,
             ErreurCommandes::NonProprietaire,

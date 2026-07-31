@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.commande\n             SET code_debloque_le = $2, code_debloque_par = $3,\n                 code_deblocage_motif_cle = $4, essais_code = 0\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3abd8d3270108998f1da130e5cb25e0213b208893aad66e0edd53ad86eafb6bb"
+}

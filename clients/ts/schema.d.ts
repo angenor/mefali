@@ -26,6 +26,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/commandes/{commande_id}/code/debloquer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * **FR-055** — l'exploitation lève le blocage du code, avec motif tracé.
+         * @description Le compteur d'essais retombe à zéro : une levée qui laisserait le compteur
+         *     au plafond serait inopérante — le premier essai suivant rebloquerait la
+         *     commande, et l'exploitation croirait avoir agi.
+         */
+        post: operations["debloquer_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commandes/{commande_id}/depot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
+         * @description Le cadrage §7.4-5 dit « mode dépôt autorisé **par le client** ». Tant
+         *     qu'aucune surface cliente ne le porte, c'est l'exploitation qui l'ouvre à sa
+         *     demande, au téléphone, avec un motif tracé — le contrat ne changera pas
+         *     quand l'app cliente reprendra la main.
+         *
+         *     **Fermé par défaut** : un défaut ouvert aurait rendu le dépôt possible
+         *     partout sans que personne ne l'ait décidé.
+         */
+        post: operations["autoriser_depot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/commandes/{id}/annuler": {
         parameters: {
             query?: never;
@@ -553,6 +601,29 @@ export interface paths {
          *     DÉRIVATION, sans action distincte (SC-002).
          */
         post: operations["suspendre_prestataire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/remises/bloquees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * **FR-044** — les remises dont le code est épuisé et le blocage non levé.
+         * @description Le verrou du code protège un secret à quatre chiffres, mais il laisse une
+         *     commande à la porte du client. Sans cette lecture, l'alerte
+         *     `remise.code_epuise` partirait dans l'outbox sans que personne ne puisse
+         *     répondre — et un humain ne s'abonne pas à un journal.
+         */
+        get: operations["remises_bloquees"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2569,6 +2640,18 @@ export interface components {
              */
             ville_id: string;
         };
+        /** @description État de la voie dépôt après décision. */
+        DecisionDepot: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description La voie dépôt est-elle ouverte ? */
+            depot_autorise: boolean;
+            /** @description Motif retenu. */
+            motif_cle: string;
+        };
         /** @description Décision sur une offre — accepter ou refuser. */
         DecisionOffre: {
             /**
@@ -2689,6 +2772,18 @@ export interface components {
              * @description Zone de la commande.
              */
             zone_id: string;
+        };
+        /** @description Motif d'une décision d'exploitation — **jamais du texte libre**. */
+        DemandeDeblocage: {
+            /** @description Clé i18n du motif (obligatoire). */
+            motif_cle: string;
+        };
+        /** @description Ouverture ou fermeture de la voie « dépôt » sur une commande. */
+        DemandeDepot: {
+            /** @description `true` ouvre la voie, `false` la referme. */
+            autorise: boolean;
+            /** @description Clé i18n du motif (obligatoire dans les deux sens). */
+            motif_cle: string;
         };
         /** @description Demande de devis de panier — **aucun effet de bord** (P4). */
         DemandeDevisPanier: {
@@ -4178,6 +4273,41 @@ export interface components {
             /** @description Slug du véhicule (référentiel `zones.type_transport`). */
             transport_slug: string;
         };
+        /** @description Une commande dont le code de remise est bloqué. */
+        RemiseBloquee: {
+            /**
+             * Format: date-time
+             * @description Instant du blocage — **l'ordre de la liste**, le plus ancien d'abord.
+             */
+            bloque_le: string;
+            /**
+             * Format: uuid
+             * @description Commande verrouillée.
+             */
+            commande_id: string;
+            /**
+             * Format: uuid
+             * @description Coursier assigné, s'il l'est encore.
+             */
+            coursier_id?: string | null;
+            /**
+             * Format: int32
+             * @description Essais consommés au blocage.
+             */
+            essais_code: number;
+            /**
+             * Format: uuid
+             * @description Livraison portée — celle où le coursier est resté devant la porte.
+             */
+            livraison_id?: string | null;
+            /** @description Référence courte, pour se parler au téléphone. */
+            reference: string;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
+        };
         /** @description Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`). */
         RemiseMultipart: {
             /** @description Partie JSON `demande`. */
@@ -4215,6 +4345,11 @@ export interface components {
             montant_a_encaisser_unites: number;
             /** @description Seuils de preuve de la zone. */
             preuves: components["schemas"]["SeuilsPreuves"];
+        };
+        /** @description La file des blocages d'une zone. */
+        RemisesBloquees: {
+            /** @description Commandes bloquées, **la plus ancienne d'abord**. */
+            remises: components["schemas"]["RemiseBloquee"][];
         };
         /** @description Nouveau repère parlé pour une adresse existante. */
         RemplacementRepereVocal: {
@@ -4717,6 +4852,139 @@ export interface operations {
             };
             /** @description Rôle admin requis. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    debloquer_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande dont le code est bloqué. */
+                commande_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeDeblocage"];
+            };
+        };
+        responses: {
+            /** @description Blocage levé, compteur remis à zéro, événement émis. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Le code n'est pas bloqué. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    autoriser_depot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande concernée. */
+                commande_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeDepot"];
+            };
+        };
+        responses: {
+            /** @description Décision enregistrée et tracée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionDepot"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6448,6 +6716,47 @@ export interface operations {
             };
             /** @description Motif manquant (FR-010). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    remises_bloquees: {
+        parameters: {
+            query?: {
+                /** @description Zone dont on veut les blocages. Absente = toutes les zones. */
+                zone_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Blocages en cours, le plus ancien d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemisesBloquees"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

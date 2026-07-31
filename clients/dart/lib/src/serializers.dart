@@ -56,6 +56,7 @@ import 'package:mefali_api_client/src/model/coursier_du_pool.dart';
 import 'package:mefali_api_client/src/model/coursier_suivi.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/decision_depot.dart';
 import 'package:mefali_api_client/src/model/decision_offre.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/decision_substitution.dart';
@@ -63,6 +64,8 @@ import 'package:mefali_api_client/src/model/demande_annulation.dart';
 import 'package:mefali_api_client/src/model/demande_appel.dart';
 import 'package:mefali_api_client/src/model/demande_collecte.dart';
 import 'package:mefali_api_client/src/model/demande_creation_commande.dart';
+import 'package:mefali_api_client/src/model/demande_deblocage.dart';
+import 'package:mefali_api_client/src/model/demande_depot.dart';
 import 'package:mefali_api_client/src/model/demande_devis_panier.dart';
 import 'package:mefali_api_client/src/model/demande_echec.dart';
 import 'package:mefali_api_client/src/model/demande_otp.dart';
@@ -137,7 +140,9 @@ import 'package:mefali_api_client/src/model/refus_offre.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
+import 'package:mefali_api_client/src/model/remise_bloquee.dart';
 import 'package:mefali_api_client/src/model/remise_preprovisionnee.dart';
+import 'package:mefali_api_client/src/model/remises_bloquees.dart';
 import 'package:mefali_api_client/src/model/reprise_faite.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_annulation.dart';
@@ -210,6 +215,7 @@ part 'serializers.g.dart';
   CoursierSuivi,
   CreerArticleDto,
   CreerPrestataireDto,
+  DecisionDepot,
   DecisionOffre,
   DecisionRole,
   DecisionSubstitution,
@@ -217,6 +223,8 @@ part 'serializers.g.dart';
   DemandeAppel,
   DemandeCollecte,
   DemandeCreationCommande,
+  DemandeDeblocage,
+  DemandeDepot,
   DemandeDevisPanier,
   DemandeEchec,
   DemandeOtp,
@@ -291,7 +299,9 @@ part 'serializers.g.dart';
   Regle,
   RegleRetenue,
   RegleUpsert,
+  RemiseBloquee,
   RemisePreprovisionnee,
+  RemisesBloquees,
   RepriseFaite,
   ResolutionPlaque,
   ResultatAnnulation,

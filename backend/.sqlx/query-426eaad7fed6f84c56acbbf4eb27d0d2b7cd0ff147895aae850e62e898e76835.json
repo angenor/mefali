@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.essais_code,\n                      (c.code_bloque_le IS NOT NULL\n                       AND (c.code_debloque_le IS NULL\n                            OR c.code_debloque_le < c.code_bloque_le)) AS \"bloque!\",\n                      (SELECT l.id FROM commandes.livraison l\n                        WHERE l.commande_id = c.id LIMIT 1) AS \"livraison_id?\"\n               FROM commandes.commande c WHERE c.id = $1\n               FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "essais_code",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "essais_code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "bloque!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "livraison_id?",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "426eaad7fed6f84c56acbbf4eb27d0d2b7cd0ff147895aae850e62e898e76835"
+}

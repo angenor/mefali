@@ -64,6 +64,187 @@
         ]
       }
     },
+    "/admin/commandes/{commande_id}/code/debloquer": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "**FR-055** — l'exploitation lève le blocage du code, avec motif tracé.",
+        "description": "Le compteur d'essais retombe à zéro : une levée qui laisserait le compteur\nau plafond serait inopérante — le premier essai suivant rebloquerait la\ncommande, et l'exploitation croirait avoir agi.",
+        "operationId": "debloquer_code",
+        "parameters": [
+          {
+            "name": "commande_id",
+            "in": "path",
+            "description": "Commande dont le code est bloqué.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDeblocage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Blocage levé, compteur remis à zéro, événement émis."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Le code n'est pas bloqué.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/commandes/{commande_id}/depot": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "**FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.",
+        "description": "Le cadrage §7.4-5 dit « mode dépôt autorisé **par le client** ». Tant\nqu'aucune surface cliente ne le porte, c'est l'exploitation qui l'ouvre à sa\ndemande, au téléphone, avec un motif tracé — le contrat ne changera pas\nquand l'app cliente reprendra la main.\n\n**Fermé par défaut** : un défaut ouvert aurait rendu le dépôt possible\npartout sans que personne ne l'ait décidé.",
+        "operationId": "autoriser_depot",
+        "parameters": [
+          {
+            "name": "commande_id",
+            "in": "path",
+            "description": "Commande concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDepot"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Décision enregistrée et tracée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionDepot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/commandes/{id}/annuler": {
       "post": {
         "tags": [
@@ -2505,6 +2686,68 @@
           },
           "422": {
             "description": "Motif manquant (FR-010).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/remises/bloquees": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "**FR-044** — les remises dont le code est épuisé et le blocage non levé.",
+        "description": "Le verrou du code protège un secret à quatre chiffres, mais il laisse une\ncommande à la porte du client. Sans cette lecture, l'alerte\n`remise.code_epuise` partirait dans l'outbox sans que personne ne puisse\nrépondre — et un humain ne s'abonne pas à un journal.",
+        "operationId": "remises_bloquees",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "description": "Zone dont on veut les blocages. Absente = toutes les zones.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blocages en cours, le plus ancien d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemisesBloquees"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8503,6 +8746,30 @@
           }
         }
       },
+      "DecisionDepot": {
+        "type": "object",
+        "description": "État de la voie dépôt après décision.",
+        "required": [
+          "commande_id",
+          "depot_autorise",
+          "motif_cle"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "depot_autorise": {
+            "type": "boolean",
+            "description": "La voie dépôt est-elle ouverte ?"
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Motif retenu."
+          }
+        }
+      },
       "DecisionOffre": {
         "type": "object",
         "description": "Décision sur une offre — accepter ou refuser.",
@@ -8733,6 +9000,37 @@
             "type": "string",
             "format": "uuid",
             "description": "Zone de la commande."
+          }
+        }
+      },
+      "DemandeDeblocage": {
+        "type": "object",
+        "description": "Motif d'une décision d'exploitation — **jamais du texte libre**.",
+        "required": [
+          "motif_cle"
+        ],
+        "properties": {
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif (obligatoire)."
+          }
+        }
+      },
+      "DemandeDepot": {
+        "type": "object",
+        "description": "Ouverture ou fermeture de la voie « dépôt » sur une commande.",
+        "required": [
+          "autorise",
+          "motif_cle"
+        ],
+        "properties": {
+          "autorise": {
+            "type": "boolean",
+            "description": "`true` ouvre la voie, `false` la referme."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif (obligatoire dans les deux sens)."
           }
         }
       },
@@ -11442,6 +11740,59 @@
           }
         }
       },
+      "RemiseBloquee": {
+        "type": "object",
+        "description": "Une commande dont le code de remise est bloqué.",
+        "required": [
+          "commande_id",
+          "reference",
+          "zone_id",
+          "essais_code",
+          "bloque_le"
+        ],
+        "properties": {
+          "bloque_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant du blocage — **l'ordre de la liste**, le plus ancien d'abord."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande verrouillée."
+          },
+          "coursier_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Coursier assigné, s'il l'est encore."
+          },
+          "essais_code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais consommés au blocage."
+          },
+          "livraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Livraison portée — celle où le coursier est resté devant la porte."
+          },
+          "reference": {
+            "type": "string",
+            "description": "Référence courte, pour se parler au téléphone."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
+          }
+        }
+      },
       "RemiseMultipart": {
         "type": "object",
         "description": "Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`).",
@@ -11511,6 +11862,22 @@
           "preuves": {
             "$ref": "#/components/schemas/SeuilsPreuves",
             "description": "Seuils de preuve de la zone."
+          }
+        }
+      },
+      "RemisesBloquees": {
+        "type": "object",
+        "description": "La file des blocages d'une zone.",
+        "required": [
+          "remises"
+        ],
+        "properties": {
+          "remises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemiseBloquee"
+            },
+            "description": "Commandes bloquées, **la plus ancienne d'abord**."
           }
         }
       },

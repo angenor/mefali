@@ -764,10 +764,12 @@ impl ErreurCoursier {
 /// évite d'exposer une clé i18n pour une panne (patron `ErreurCommandes`).
 impl From<socle::OutboxError> for ErreurCoursier {
     fn from(erreur: socle::OutboxError) -> Self {
-        match erreur {
-            socle::OutboxError::Db(e) => ErreurCoursier::Sql(e),
-            autre => ErreurCoursier::ConfigurationInvalide(autre.to_string()),
-        }
+        // `OutboxError` n'a qu'une variante : la déstructurer plutôt que de la
+        // filtrer garantit qu'une variante AJOUTÉE plus tard cassera la
+        // compilation ici, au lieu de tomber en silence dans un bras fourre-tout
+        // qui la maquillerait en erreur de configuration.
+        let socle::OutboxError::Db(e) = erreur;
+        ErreurCoursier::Sql(e)
     }
 }
 
