@@ -34,6 +34,9 @@ String messageErreurCommande(MefaliCoreLocalizations l10n, String? cleOuCode) {
     'panier_invalide' => l10n.commandeErreurPanierInvalide,
     'motif_requis' => l10n.commandeErreurMotifRequis,
     'code_epuise' => l10n.commandeErreurCodeEpuise,
+    // Codes ajoutés au cycle CRS 010 : la voie dépôt et la levée de blocage.
+    'depot_non_autorise' => l10n.commandeErreurDepotNonAutorise,
+    'code_non_bloque' => l10n.commandeErreurCodeNonBloque,
     'remise_incorrecte' => l10n.commandeErreurRemiseIncorrecte,
     'preuves_incompletes' => l10n.commandeErreurPreuvesIncompletes,
     'substitution_autre_vendeur' => l10n.substitutionErreurAutreVendeur,

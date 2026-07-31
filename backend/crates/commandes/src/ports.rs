@@ -439,6 +439,19 @@ pub struct RemiseDeCourse {
     pub montant_a_encaisser_unites: i64,
     /// Cash ou prépayé : décide s'il y a quelque chose à encaisser.
     pub mode_paiement: ModePaiement,
+    /// Arrêt de REMISE — celui que « je suis arrivé chez le client »
+    /// transitionne (FR-053).
+    ///
+    /// Il ne figure pas dans [`CourseDuCoursier::arrets`], qui ne porte que les
+    /// collectes : c'est ce qui permet à l'app de savoir que la course est
+    /// « toute collectée ». Mais sans son identifiant, le bouton de K3-1c
+    /// n'aurait rien à envoyer.
+    pub arret_remise_id: Option<Uuid>,
+    /// Statut de l'arrêt de remise (`a_collecter` → `en_route` → `arrive`).
+    pub arret_remise_statut: Option<StatutArret>,
+    /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052) et
+    /// base du délai des preuves d'échec.
+    pub arrive_chez_client_le: Option<DateTime<Utc>>,
 }
 
 /// La course active d'un coursier, telle que `commandes` la connaît.
@@ -1068,6 +1081,9 @@ mod tests {
                 code_bloque: false,
                 montant_a_encaisser_unites: 5_800,
                 mode_paiement: ModePaiement::Cash,
+                arret_remise_id: None,
+                arret_remise_statut: None,
+                arrive_chez_client_le: None,
             },
         }
     }

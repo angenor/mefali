@@ -284,6 +284,19 @@ class CourseCacheTable extends Table {
   TextColumn get seuilsPreuvesJson =>
       text().withDefault(const Constant('{}'))();
 
+  /// Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053).
+  ///
+  /// Il n'est pas dans `arrets_preprovisionnes`, qui ne porte que les collectes
+  /// (c'est ce qui permet de savoir que tout est collecté). Sans lui, le bouton
+  /// de K3-1c n'aurait rien à transitionner, hors ligne comme en ligne.
+  TextColumn get arretRemiseId => text().nullable()();
+
+  /// Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+  TextColumn get arretRemiseStatut => text().nullable()();
+
+  /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+  DateTimeColumn get arriveChezClientLe => dateTime().nullable()();
+
   /// Dernière mise en cache (local).
   DateTimeColumn get majLeLocal => dateTime()();
 
@@ -401,7 +414,7 @@ class BaseOffline extends _$BaseOffline {
   BaseOffline.memoire() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -431,6 +444,17 @@ class BaseOffline extends _$BaseOffline {
             await m.createTable(lignesChecklist);
             await m.createTable(essaisRemise);
             await m.createTable(relevesPresenceLocaux);
+          }
+          // v5 (cycle CRS, T039) : l'arrêt de REMISE dans le cache de course.
+          // Découvert en branchant K4 — « je suis arrivé chez le client » n'avait
+          // aucune cible : la liste d'arrêts ne porte que les collectes. Trois
+          // colonnes AJOUTÉES, aucune touchée.
+          if (from < 5) {
+            await m.addColumn(courseCacheTable, courseCacheTable.arretRemiseId);
+            await m.addColumn(
+                courseCacheTable, courseCacheTable.arretRemiseStatut);
+            await m.addColumn(
+                courseCacheTable, courseCacheTable.arriveChezClientLe);
           }
         },
       );

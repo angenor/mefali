@@ -4320,6 +4320,19 @@ export interface components {
         };
         /** @description De quoi confirmer la remise **sans réseau** (K4). */
         RemisePreprovisionnee: {
+            /**
+             * Format: uuid
+             * @description Arrêt de REMISE — la cible de « je suis arrivé chez le client »
+             *     (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes.
+             */
+            arret_remise_id?: string | null;
+            /** @description Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`). */
+            arret_remise_statut?: string | null;
+            /**
+             * Format: date-time
+             * @description Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+             */
+            arrive_chez_client_le?: string | null;
             /** @description Saisie du code bloquée (K4-1d). */
             code_bloque: boolean;
             /** @description Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037). */

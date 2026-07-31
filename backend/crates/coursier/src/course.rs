@@ -218,6 +218,12 @@ pub(crate) fn composer(
             montant_a_encaisser_unites: course.remise.montant_a_encaisser_unites,
             mode_paiement: course.remise.mode_paiement,
             seuils_preuves: config.seuils_preuves(),
+            arret_remise_id: course.remise.arret_remise_id,
+            arret_remise_statut: course
+                .remise
+                .arret_remise_statut
+                .map(|s| s.comme_str().to_owned()),
+            arrive_chez_client_le: course.remise.arrive_chez_client_le,
         },
     }
 }
@@ -297,6 +303,9 @@ mod tests {
                 code_bloque: false,
                 montant_a_encaisser_unites: 5_800,
                 mode_paiement: ModePaiement::Cash,
+                arret_remise_id: None,
+                arret_remise_statut: None,
+                arrive_chez_client_le: None,
             },
         }
     }

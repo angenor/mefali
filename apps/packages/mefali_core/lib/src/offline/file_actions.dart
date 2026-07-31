@@ -197,7 +197,11 @@ class FileActions {
   }
 
   /// Remet le compteur à zéro après consolidation serveur.
-  Future<void> consolidorEssais(String livraisonId) async {
+  ///
+  /// Appelé quand le serveur a **accusé réception** des essais hors ligne
+  /// (il retient `max(serveur, local)`, R5) : les garder après cela les ferait
+  /// compter deux fois à la remise suivante.
+  Future<void> consoliderEssais(String livraisonId) async {
     await (_base.delete(_base.essaisRemise)
           ..where((e) => e.livraisonId.equals(livraisonId)))
         .go();

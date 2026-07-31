@@ -8,6 +8,12 @@ part of 'remise_preprovisionnee.dart';
 
 class _$RemisePreprovisionnee extends RemisePreprovisionnee {
   @override
+  final String? arretRemiseId;
+  @override
+  final String? arretRemiseStatut;
+  @override
+  final DateTime? arriveChezClientLe;
+  @override
   final bool codeBloque;
   @override
   final String empreinteCode;
@@ -29,7 +35,10 @@ class _$RemisePreprovisionnee extends RemisePreprovisionnee {
       (RemisePreprovisionneeBuilder()..update(updates))._build();
 
   _$RemisePreprovisionnee._(
-      {required this.codeBloque,
+      {this.arretRemiseId,
+      this.arretRemiseStatut,
+      this.arriveChezClientLe,
+      required this.codeBloque,
       required this.empreinteCode,
       required this.empreinteJeton,
       required this.essaisConsommes,
@@ -51,6 +60,9 @@ class _$RemisePreprovisionnee extends RemisePreprovisionnee {
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
     return other is RemisePreprovisionnee &&
+        arretRemiseId == other.arretRemiseId &&
+        arretRemiseStatut == other.arretRemiseStatut &&
+        arriveChezClientLe == other.arriveChezClientLe &&
         codeBloque == other.codeBloque &&
         empreinteCode == other.empreinteCode &&
         empreinteJeton == other.empreinteJeton &&
@@ -64,6 +76,9 @@ class _$RemisePreprovisionnee extends RemisePreprovisionnee {
   @override
   int get hashCode {
     var _$hash = 0;
+    _$hash = $jc(_$hash, arretRemiseId.hashCode);
+    _$hash = $jc(_$hash, arretRemiseStatut.hashCode);
+    _$hash = $jc(_$hash, arriveChezClientLe.hashCode);
     _$hash = $jc(_$hash, codeBloque.hashCode);
     _$hash = $jc(_$hash, empreinteCode.hashCode);
     _$hash = $jc(_$hash, empreinteJeton.hashCode);
@@ -79,6 +94,9 @@ class _$RemisePreprovisionnee extends RemisePreprovisionnee {
   @override
   String toString() {
     return (newBuiltValueToStringHelper(r'RemisePreprovisionnee')
+          ..add('arretRemiseId', arretRemiseId)
+          ..add('arretRemiseStatut', arretRemiseStatut)
+          ..add('arriveChezClientLe', arriveChezClientLe)
           ..add('codeBloque', codeBloque)
           ..add('empreinteCode', empreinteCode)
           ..add('empreinteJeton', empreinteJeton)
@@ -94,6 +112,21 @@ class _$RemisePreprovisionnee extends RemisePreprovisionnee {
 class RemisePreprovisionneeBuilder
     implements Builder<RemisePreprovisionnee, RemisePreprovisionneeBuilder> {
   _$RemisePreprovisionnee? _$v;
+
+  String? _arretRemiseId;
+  String? get arretRemiseId => _$this._arretRemiseId;
+  set arretRemiseId(String? arretRemiseId) =>
+      _$this._arretRemiseId = arretRemiseId;
+
+  String? _arretRemiseStatut;
+  String? get arretRemiseStatut => _$this._arretRemiseStatut;
+  set arretRemiseStatut(String? arretRemiseStatut) =>
+      _$this._arretRemiseStatut = arretRemiseStatut;
+
+  DateTime? _arriveChezClientLe;
+  DateTime? get arriveChezClientLe => _$this._arriveChezClientLe;
+  set arriveChezClientLe(DateTime? arriveChezClientLe) =>
+      _$this._arriveChezClientLe = arriveChezClientLe;
 
   bool? _codeBloque;
   bool? get codeBloque => _$this._codeBloque;
@@ -139,6 +172,9 @@ class RemisePreprovisionneeBuilder
   RemisePreprovisionneeBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
+      _arretRemiseId = $v.arretRemiseId;
+      _arretRemiseStatut = $v.arretRemiseStatut;
+      _arriveChezClientLe = $v.arriveChezClientLe;
       _codeBloque = $v.codeBloque;
       _empreinteCode = $v.empreinteCode;
       _empreinteJeton = $v.empreinteJeton;
@@ -170,6 +206,9 @@ class RemisePreprovisionneeBuilder
     try {
       _$result = _$v ??
           _$RemisePreprovisionnee._(
+            arretRemiseId: arretRemiseId,
+            arretRemiseStatut: arretRemiseStatut,
+            arriveChezClientLe: arriveChezClientLe,
             codeBloque: BuiltValueNullFieldError.checkNotNull(
                 codeBloque, r'RemisePreprovisionnee', 'codeBloque'),
             empreinteCode: BuiltValueNullFieldError.checkNotNull(

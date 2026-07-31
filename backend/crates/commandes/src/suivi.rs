@@ -413,14 +413,34 @@ impl crate::ports::CourseCoursier for PgCommandes {
                       c.lieu_lat, c.lieu_lon, c.repere_texte, c.repere_vocal_cle,
                       c.depot_autorise,
                       c.code_livraison_hash, c.jeton_reception_hash, c.essais_code,
-                      (c.code_bloque_le IS NOT NULL AND c.code_debloque_le IS NULL)
-                          AS "code_bloque!",
+                      -- Une levée ANTÉRIEURE au dernier blocage ne le lève pas :
+                      -- une commande rebloquée après une levée admin doit
+                      -- redevenir bloquée. Même prédicat que `valider_remise`.
+                      (c.code_bloque_le IS NOT NULL
+                       AND (c.code_debloque_le IS NULL
+                            OR c.code_debloque_le < c.code_bloque_le)) AS "code_bloque!",
                       c.total_unites, c.mode_paiement::text AS "mode_paiement!",
-                      cp.telephone_e164, ad.repere_vocal_duree_s
+                      cp.telephone_e164, ad.repere_vocal_duree_s,
+                      -- L'arrêt de REMISE : il n'est pas dans la liste des
+                      -- arrêts (qui ne porte que les collectes), mais c'est lui
+                      -- que « je suis arrivé chez le client » transitionne. Sans
+                      -- son identifiant, l'app n'a rien à envoyer et le bouton
+                      -- de K3-1c ne fait rien.
+                      ar.id AS "arret_remise_id?",
+                      ar.statut::text AS "arret_remise_statut?",
+                      ar.arrive_le AS "arrive_chez_client_le?"
                FROM commandes.livraison l
                JOIN commandes.commande c ON c.id = l.commande_id
                JOIN comptes.compte cp ON cp.id = c.client_id
                LEFT JOIN comptes.adresse ad ON ad.id = c.adresse_id
+               LEFT JOIN LATERAL (
+                   SELECT a.id, a.statut, a.arrive_le
+                     FROM commandes.arret a
+                     JOIN commandes.segment s ON s.id = a.segment_id
+                    WHERE s.livraison_id = l.id AND a.type_arret = 'remise'
+                    ORDER BY s.ordre DESC, a.ordre DESC
+                    LIMIT 1
+               ) ar ON true
                WHERE l.coursier_id = $1
                  AND l.etat IN ('assignee', 'en_collecte', 'en_livraison')
                ORDER BY l.assignee_le DESC NULLS LAST
@@ -534,6 +554,13 @@ impl crate::ports::CourseCoursier for PgCommandes {
                 code_bloque: e.code_bloque,
                 montant_a_encaisser_unites: e.total_unites,
                 mode_paiement: e.mode_paiement.parse()?,
+                arret_remise_id: e.arret_remise_id,
+                arret_remise_statut: e
+                    .arret_remise_statut
+                    .as_deref()
+                    .map(str::parse)
+                    .transpose()?,
+                arrive_chez_client_le: e.arrive_chez_client_le,
             },
         }))
     }

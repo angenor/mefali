@@ -8,6 +8,9 @@ import 'package:mefali_api_client/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**arretRemiseId** | **String** | Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes. | [optional] 
+**arretRemiseStatut** | **String** | Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`). | [optional] 
+**arriveChezClientLe** | [**DateTime**](DateTime.md) | Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052). | [optional] 
 **codeBloque** | **bool** | Saisie du code bloquée (K4-1d). | 
 **empreinteCode** | **String** | Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037). | 
 **empreinteJeton** | **String** | Empreinte du jeton de réception — **jamais le jeton**. | 

@@ -823,6 +823,18 @@ abstract class MefaliCoreLocalizations {
   /// **'Un motif est obligatoire.'**
   String get commandeErreurMotifRequis;
 
+  /// Refus 422 depot_non_autorise (FR-048) — l'exploitation seule ouvre cette voie
+  ///
+  /// In fr, this message translates to:
+  /// **'Le dépôt n\'est pas autorisé sur cette commande.'**
+  String get commandeErreurDepotNonAutorise;
+
+  /// Refus 409 code_non_bloque (FR-055, admin) — une levée préventive n'existe pas
+  ///
+  /// In fr, this message translates to:
+  /// **'Le code de remise n\'est pas bloqué.'**
+  String get commandeErreurCodeNonBloque;
+
   /// Refus 423 code_epuise (CRS-04)
   ///
   /// In fr, this message translates to:

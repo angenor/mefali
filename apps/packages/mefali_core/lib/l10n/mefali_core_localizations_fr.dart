@@ -463,6 +463,14 @@ class MefaliCoreLocalizationsFr extends MefaliCoreLocalizations {
   String get commandeErreurMotifRequis => 'Un motif est obligatoire.';
 
   @override
+  String get commandeErreurDepotNonAutorise =>
+      'Le dépôt n\'est pas autorisé sur cette commande.';
+
+  @override
+  String get commandeErreurCodeNonBloque =>
+      'Le code de remise n\'est pas bloqué.';
+
+  @override
   String get commandeErreurCodeEpuise =>
       'Trop d\'essais. Un conseiller va vous contacter.';
 

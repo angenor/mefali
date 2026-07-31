@@ -179,6 +179,16 @@ pub struct RemisePreprovisionnee {
     pub mode_paiement: ModePaiement,
     /// Seuils de preuve de la zone.
     pub seuils_preuves: SeuilsPreuves,
+    /// Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053).
+    ///
+    /// Absent de la liste des arrêts, qui ne porte que les collectes : c'est ce
+    /// qui permet à l'app de savoir que tout est collecté. Mais sans lui, le
+    /// bouton de K3-1c n'aurait rien à transitionner.
+    pub arret_remise_id: Option<Uuid>,
+    /// Statut de l'arrêt de remise.
+    pub arret_remise_statut: Option<String>,
+    /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+    pub arrive_chez_client_le: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// La course active, composée en une seule lecture (FR-011, FR-028).

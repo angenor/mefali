@@ -196,11 +196,14 @@ void main() {
   });
 
   group('schemaVersion (migration additive)', () {
-    test('la version monte à 4 et les huit tables sont déclarées', () async {
+    test('la version monte à 5 et les huit tables sont déclarées', () async {
       final base = BaseOffline.memoire();
       addTearDown(base.close);
 
-      expect(base.schemaVersion, 4);
+      // v5 : trois colonnes de plus sur `course_cache` (l'arrêt de REMISE,
+      // découvert en branchant K4). Migration strictement ADDITIVE — aucune
+      // table retirée, aucune action en vol perdue au passage de version.
+      expect(base.schemaVersion, 5);
       final tables = base.allTables.map((t) => t.actualTableName).toSet();
       expect(
         tables,

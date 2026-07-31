@@ -2836,6 +2836,40 @@ class $CourseCacheTableTable extends CourseCacheTable
         requiredDuringInsert: false,
         defaultValue: const Constant('{}'),
       );
+  static const VerificationMeta _arretRemiseIdMeta = const VerificationMeta(
+    'arretRemiseId',
+  );
+  @override
+  late final GeneratedColumn<String> arretRemiseId = GeneratedColumn<String>(
+    'arret_remise_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _arretRemiseStatutMeta = const VerificationMeta(
+    'arretRemiseStatut',
+  );
+  @override
+  late final GeneratedColumn<String> arretRemiseStatut =
+      GeneratedColumn<String>(
+        'arret_remise_statut',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _arriveChezClientLeMeta =
+      const VerificationMeta('arriveChezClientLe');
+  @override
+  late final GeneratedColumn<DateTime> arriveChezClientLe =
+      GeneratedColumn<DateTime>(
+        'arrive_chez_client_le',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _majLeLocalMeta = const VerificationMeta(
     'majLeLocal',
   );
@@ -2869,6 +2903,9 @@ class $CourseCacheTableTable extends CourseCacheTable
     montantAEncaisserUnites,
     modePaiement,
     seuilsPreuvesJson,
+    arretRemiseId,
+    arretRemiseStatut,
+    arriveChezClientLe,
     majLeLocal,
   ];
   @override
@@ -3048,6 +3085,33 @@ class $CourseCacheTableTable extends CourseCacheTable
         ),
       );
     }
+    if (data.containsKey('arret_remise_id')) {
+      context.handle(
+        _arretRemiseIdMeta,
+        arretRemiseId.isAcceptableOrUnknown(
+          data['arret_remise_id']!,
+          _arretRemiseIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('arret_remise_statut')) {
+      context.handle(
+        _arretRemiseStatutMeta,
+        arretRemiseStatut.isAcceptableOrUnknown(
+          data['arret_remise_statut']!,
+          _arretRemiseStatutMeta,
+        ),
+      );
+    }
+    if (data.containsKey('arrive_chez_client_le')) {
+      context.handle(
+        _arriveChezClientLeMeta,
+        arriveChezClientLe.isAcceptableOrUnknown(
+          data['arrive_chez_client_le']!,
+          _arriveChezClientLeMeta,
+        ),
+      );
+    }
     if (data.containsKey('maj_le_local')) {
       context.handle(
         _majLeLocalMeta,
@@ -3148,6 +3212,18 @@ class $CourseCacheTableTable extends CourseCacheTable
         DriftSqlType.string,
         data['${effectivePrefix}seuils_preuves_json'],
       )!,
+      arretRemiseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}arret_remise_id'],
+      ),
+      arretRemiseStatut: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}arret_remise_statut'],
+      ),
+      arriveChezClientLe: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}arrive_chez_client_le'],
+      ),
       majLeLocal: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}maj_le_local'],
@@ -3224,6 +3300,19 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
   /// compter hors ligne (le serveur revérifie de toute façon, FR-060).
   final String seuilsPreuvesJson;
 
+  /// Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053).
+  ///
+  /// Il n'est pas dans `arrets_preprovisionnes`, qui ne porte que les collectes
+  /// (c'est ce qui permet de savoir que tout est collecté). Sans lui, le bouton
+  /// de K3-1c n'aurait rien à transitionner, hors ligne comme en ligne.
+  final String? arretRemiseId;
+
+  /// Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+  final String? arretRemiseStatut;
+
+  /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+  final DateTime? arriveChezClientLe;
+
   /// Dernière mise en cache (local).
   final DateTime majLeLocal;
   const CourseCache({
@@ -3247,6 +3336,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     required this.montantAEncaisserUnites,
     required this.modePaiement,
     required this.seuilsPreuvesJson,
+    this.arretRemiseId,
+    this.arretRemiseStatut,
+    this.arriveChezClientLe,
     required this.majLeLocal,
   });
   @override
@@ -3284,6 +3376,15 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     map['montant_a_encaisser_unites'] = Variable<int>(montantAEncaisserUnites);
     map['mode_paiement'] = Variable<String>(modePaiement);
     map['seuils_preuves_json'] = Variable<String>(seuilsPreuvesJson);
+    if (!nullToAbsent || arretRemiseId != null) {
+      map['arret_remise_id'] = Variable<String>(arretRemiseId);
+    }
+    if (!nullToAbsent || arretRemiseStatut != null) {
+      map['arret_remise_statut'] = Variable<String>(arretRemiseStatut);
+    }
+    if (!nullToAbsent || arriveChezClientLe != null) {
+      map['arrive_chez_client_le'] = Variable<DateTime>(arriveChezClientLe);
+    }
     map['maj_le_local'] = Variable<DateTime>(majLeLocal);
     return map;
   }
@@ -3322,6 +3423,15 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       montantAEncaisserUnites: Value(montantAEncaisserUnites),
       modePaiement: Value(modePaiement),
       seuilsPreuvesJson: Value(seuilsPreuvesJson),
+      arretRemiseId: arretRemiseId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(arretRemiseId),
+      arretRemiseStatut: arretRemiseStatut == null && nullToAbsent
+          ? const Value.absent()
+          : Value(arretRemiseStatut),
+      arriveChezClientLe: arriveChezClientLe == null && nullToAbsent
+          ? const Value.absent()
+          : Value(arriveChezClientLe),
       majLeLocal: Value(majLeLocal),
     );
   }
@@ -3356,6 +3466,13 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       ),
       modePaiement: serializer.fromJson<String>(json['modePaiement']),
       seuilsPreuvesJson: serializer.fromJson<String>(json['seuilsPreuvesJson']),
+      arretRemiseId: serializer.fromJson<String?>(json['arretRemiseId']),
+      arretRemiseStatut: serializer.fromJson<String?>(
+        json['arretRemiseStatut'],
+      ),
+      arriveChezClientLe: serializer.fromJson<DateTime?>(
+        json['arriveChezClientLe'],
+      ),
       majLeLocal: serializer.fromJson<DateTime>(json['majLeLocal']),
     );
   }
@@ -3385,6 +3502,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       ),
       'modePaiement': serializer.toJson<String>(modePaiement),
       'seuilsPreuvesJson': serializer.toJson<String>(seuilsPreuvesJson),
+      'arretRemiseId': serializer.toJson<String?>(arretRemiseId),
+      'arretRemiseStatut': serializer.toJson<String?>(arretRemiseStatut),
+      'arriveChezClientLe': serializer.toJson<DateTime?>(arriveChezClientLe),
       'majLeLocal': serializer.toJson<DateTime>(majLeLocal),
     };
   }
@@ -3410,6 +3530,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     int? montantAEncaisserUnites,
     String? modePaiement,
     String? seuilsPreuvesJson,
+    Value<String?> arretRemiseId = const Value.absent(),
+    Value<String?> arretRemiseStatut = const Value.absent(),
+    Value<DateTime?> arriveChezClientLe = const Value.absent(),
     DateTime? majLeLocal,
   }) => CourseCache(
     livraisonId: livraisonId ?? this.livraisonId,
@@ -3439,6 +3562,15 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
         montantAEncaisserUnites ?? this.montantAEncaisserUnites,
     modePaiement: modePaiement ?? this.modePaiement,
     seuilsPreuvesJson: seuilsPreuvesJson ?? this.seuilsPreuvesJson,
+    arretRemiseId: arretRemiseId.present
+        ? arretRemiseId.value
+        : this.arretRemiseId,
+    arretRemiseStatut: arretRemiseStatut.present
+        ? arretRemiseStatut.value
+        : this.arretRemiseStatut,
+    arriveChezClientLe: arriveChezClientLe.present
+        ? arriveChezClientLe.value
+        : this.arriveChezClientLe,
     majLeLocal: majLeLocal ?? this.majLeLocal,
   );
   CourseCache copyWithCompanion(CourseCacheTableCompanion data) {
@@ -3493,6 +3625,15 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       seuilsPreuvesJson: data.seuilsPreuvesJson.present
           ? data.seuilsPreuvesJson.value
           : this.seuilsPreuvesJson,
+      arretRemiseId: data.arretRemiseId.present
+          ? data.arretRemiseId.value
+          : this.arretRemiseId,
+      arretRemiseStatut: data.arretRemiseStatut.present
+          ? data.arretRemiseStatut.value
+          : this.arretRemiseStatut,
+      arriveChezClientLe: data.arriveChezClientLe.present
+          ? data.arriveChezClientLe.value
+          : this.arriveChezClientLe,
       majLeLocal: data.majLeLocal.present
           ? data.majLeLocal.value
           : this.majLeLocal,
@@ -3522,6 +3663,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
           ..write('montantAEncaisserUnites: $montantAEncaisserUnites, ')
           ..write('modePaiement: $modePaiement, ')
           ..write('seuilsPreuvesJson: $seuilsPreuvesJson, ')
+          ..write('arretRemiseId: $arretRemiseId, ')
+          ..write('arretRemiseStatut: $arretRemiseStatut, ')
+          ..write('arriveChezClientLe: $arriveChezClientLe, ')
           ..write('majLeLocal: $majLeLocal')
           ..write(')'))
         .toString();
@@ -3549,6 +3693,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     montantAEncaisserUnites,
     modePaiement,
     seuilsPreuvesJson,
+    arretRemiseId,
+    arretRemiseStatut,
+    arriveChezClientLe,
     majLeLocal,
   ]);
   @override
@@ -3575,6 +3722,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
           other.montantAEncaisserUnites == this.montantAEncaisserUnites &&
           other.modePaiement == this.modePaiement &&
           other.seuilsPreuvesJson == this.seuilsPreuvesJson &&
+          other.arretRemiseId == this.arretRemiseId &&
+          other.arretRemiseStatut == this.arretRemiseStatut &&
+          other.arriveChezClientLe == this.arriveChezClientLe &&
           other.majLeLocal == this.majLeLocal);
 }
 
@@ -3599,6 +3749,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
   final Value<int> montantAEncaisserUnites;
   final Value<String> modePaiement;
   final Value<String> seuilsPreuvesJson;
+  final Value<String?> arretRemiseId;
+  final Value<String?> arretRemiseStatut;
+  final Value<DateTime?> arriveChezClientLe;
   final Value<DateTime> majLeLocal;
   final Value<int> rowid;
   const CourseCacheTableCompanion({
@@ -3622,6 +3775,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     this.montantAEncaisserUnites = const Value.absent(),
     this.modePaiement = const Value.absent(),
     this.seuilsPreuvesJson = const Value.absent(),
+    this.arretRemiseId = const Value.absent(),
+    this.arretRemiseStatut = const Value.absent(),
+    this.arriveChezClientLe = const Value.absent(),
     this.majLeLocal = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3646,6 +3802,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     this.montantAEncaisserUnites = const Value.absent(),
     this.modePaiement = const Value.absent(),
     this.seuilsPreuvesJson = const Value.absent(),
+    this.arretRemiseId = const Value.absent(),
+    this.arretRemiseStatut = const Value.absent(),
+    this.arriveChezClientLe = const Value.absent(),
     required DateTime majLeLocal,
     this.rowid = const Value.absent(),
   }) : livraisonId = Value(livraisonId),
@@ -3673,6 +3832,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     Expression<int>? montantAEncaisserUnites,
     Expression<String>? modePaiement,
     Expression<String>? seuilsPreuvesJson,
+    Expression<String>? arretRemiseId,
+    Expression<String>? arretRemiseStatut,
+    Expression<DateTime>? arriveChezClientLe,
     Expression<DateTime>? majLeLocal,
     Expression<int>? rowid,
   }) {
@@ -3699,6 +3861,10 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
         'montant_a_encaisser_unites': montantAEncaisserUnites,
       if (modePaiement != null) 'mode_paiement': modePaiement,
       if (seuilsPreuvesJson != null) 'seuils_preuves_json': seuilsPreuvesJson,
+      if (arretRemiseId != null) 'arret_remise_id': arretRemiseId,
+      if (arretRemiseStatut != null) 'arret_remise_statut': arretRemiseStatut,
+      if (arriveChezClientLe != null)
+        'arrive_chez_client_le': arriveChezClientLe,
       if (majLeLocal != null) 'maj_le_local': majLeLocal,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3725,6 +3891,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     Value<int>? montantAEncaisserUnites,
     Value<String>? modePaiement,
     Value<String>? seuilsPreuvesJson,
+    Value<String?>? arretRemiseId,
+    Value<String?>? arretRemiseStatut,
+    Value<DateTime?>? arriveChezClientLe,
     Value<DateTime>? majLeLocal,
     Value<int>? rowid,
   }) {
@@ -3750,6 +3919,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
           montantAEncaisserUnites ?? this.montantAEncaisserUnites,
       modePaiement: modePaiement ?? this.modePaiement,
       seuilsPreuvesJson: seuilsPreuvesJson ?? this.seuilsPreuvesJson,
+      arretRemiseId: arretRemiseId ?? this.arretRemiseId,
+      arretRemiseStatut: arretRemiseStatut ?? this.arretRemiseStatut,
+      arriveChezClientLe: arriveChezClientLe ?? this.arriveChezClientLe,
       majLeLocal: majLeLocal ?? this.majLeLocal,
       rowid: rowid ?? this.rowid,
     );
@@ -3820,6 +3992,17 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     if (seuilsPreuvesJson.present) {
       map['seuils_preuves_json'] = Variable<String>(seuilsPreuvesJson.value);
     }
+    if (arretRemiseId.present) {
+      map['arret_remise_id'] = Variable<String>(arretRemiseId.value);
+    }
+    if (arretRemiseStatut.present) {
+      map['arret_remise_statut'] = Variable<String>(arretRemiseStatut.value);
+    }
+    if (arriveChezClientLe.present) {
+      map['arrive_chez_client_le'] = Variable<DateTime>(
+        arriveChezClientLe.value,
+      );
+    }
     if (majLeLocal.present) {
       map['maj_le_local'] = Variable<DateTime>(majLeLocal.value);
     }
@@ -3852,6 +4035,9 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
           ..write('montantAEncaisserUnites: $montantAEncaisserUnites, ')
           ..write('modePaiement: $modePaiement, ')
           ..write('seuilsPreuvesJson: $seuilsPreuvesJson, ')
+          ..write('arretRemiseId: $arretRemiseId, ')
+          ..write('arretRemiseStatut: $arretRemiseStatut, ')
+          ..write('arriveChezClientLe: $arriveChezClientLe, ')
           ..write('majLeLocal: $majLeLocal, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -6430,6 +6616,9 @@ typedef $$CourseCacheTableTableCreateCompanionBuilder =
       Value<int> montantAEncaisserUnites,
       Value<String> modePaiement,
       Value<String> seuilsPreuvesJson,
+      Value<String?> arretRemiseId,
+      Value<String?> arretRemiseStatut,
+      Value<DateTime?> arriveChezClientLe,
       required DateTime majLeLocal,
       Value<int> rowid,
     });
@@ -6455,6 +6644,9 @@ typedef $$CourseCacheTableTableUpdateCompanionBuilder =
       Value<int> montantAEncaisserUnites,
       Value<String> modePaiement,
       Value<String> seuilsPreuvesJson,
+      Value<String?> arretRemiseId,
+      Value<String?> arretRemiseStatut,
+      Value<DateTime?> arriveChezClientLe,
       Value<DateTime> majLeLocal,
       Value<int> rowid,
     });
@@ -6565,6 +6757,21 @@ class $$CourseCacheTableTableFilterComposer
 
   ColumnFilters<String> get seuilsPreuvesJson => $composableBuilder(
     column: $table.seuilsPreuvesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arretRemiseId => $composableBuilder(
+    column: $table.arretRemiseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arretRemiseStatut => $composableBuilder(
+    column: $table.arretRemiseStatut,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get arriveChezClientLe => $composableBuilder(
+    column: $table.arriveChezClientLe,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6683,6 +6890,21 @@ class $$CourseCacheTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get arretRemiseId => $composableBuilder(
+    column: $table.arretRemiseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get arretRemiseStatut => $composableBuilder(
+    column: $table.arretRemiseStatut,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get arriveChezClientLe => $composableBuilder(
+    column: $table.arriveChezClientLe,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get majLeLocal => $composableBuilder(
     column: $table.majLeLocal,
     builder: (column) => ColumnOrderings(column),
@@ -6788,6 +7010,21 @@ class $$CourseCacheTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get arretRemiseId => $composableBuilder(
+    column: $table.arretRemiseId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get arretRemiseStatut => $composableBuilder(
+    column: $table.arretRemiseStatut,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get arriveChezClientLe => $composableBuilder(
+    column: $table.arriveChezClientLe,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get majLeLocal => $composableBuilder(
     column: $table.majLeLocal,
     builder: (column) => column,
@@ -6847,6 +7084,9 @@ class $$CourseCacheTableTableTableManager
                 Value<int> montantAEncaisserUnites = const Value.absent(),
                 Value<String> modePaiement = const Value.absent(),
                 Value<String> seuilsPreuvesJson = const Value.absent(),
+                Value<String?> arretRemiseId = const Value.absent(),
+                Value<String?> arretRemiseStatut = const Value.absent(),
+                Value<DateTime?> arriveChezClientLe = const Value.absent(),
                 Value<DateTime> majLeLocal = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CourseCacheTableCompanion(
@@ -6870,6 +7110,9 @@ class $$CourseCacheTableTableTableManager
                 montantAEncaisserUnites: montantAEncaisserUnites,
                 modePaiement: modePaiement,
                 seuilsPreuvesJson: seuilsPreuvesJson,
+                arretRemiseId: arretRemiseId,
+                arretRemiseStatut: arretRemiseStatut,
+                arriveChezClientLe: arriveChezClientLe,
                 majLeLocal: majLeLocal,
                 rowid: rowid,
               ),
@@ -6895,6 +7138,9 @@ class $$CourseCacheTableTableTableManager
                 Value<int> montantAEncaisserUnites = const Value.absent(),
                 Value<String> modePaiement = const Value.absent(),
                 Value<String> seuilsPreuvesJson = const Value.absent(),
+                Value<String?> arretRemiseId = const Value.absent(),
+                Value<String?> arretRemiseStatut = const Value.absent(),
+                Value<DateTime?> arriveChezClientLe = const Value.absent(),
                 required DateTime majLeLocal,
                 Value<int> rowid = const Value.absent(),
               }) => CourseCacheTableCompanion.insert(
@@ -6918,6 +7164,9 @@ class $$CourseCacheTableTableTableManager
                 montantAEncaisserUnites: montantAEncaisserUnites,
                 modePaiement: modePaiement,
                 seuilsPreuvesJson: seuilsPreuvesJson,
+                arretRemiseId: arretRemiseId,
+                arretRemiseStatut: arretRemiseStatut,
+                arriveChezClientLe: arriveChezClientLe,
                 majLeLocal: majLeLocal,
                 rowid: rowid,
               ),

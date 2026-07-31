@@ -128,6 +128,9 @@ class RemiseVue {
     this.codeBloque = false,
     this.montantAEncaisserUnites = 0,
     this.modePaiement = 'cash',
+    this.arretRemiseId,
+    this.arretRemiseStatut,
+    this.arriveChezClientLe,
   });
 
   /// Empreinte salée du code — **jamais le code** (FR-037).
@@ -150,6 +153,22 @@ class RemiseVue {
 
   /// `cash` | `mobile_money`.
   final String modePaiement;
+
+  /// Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053).
+  ///
+  /// Il n'est pas dans la liste des arrêts, qui ne porte que les collectes :
+  /// c'est ce qui permet à [EtatCourse.toutCollecte] d'être vrai. Sans cet
+  /// identifiant, le bouton de K3-1c n'aurait rien à envoyer.
+  final String? arretRemiseId;
+
+  /// Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+  final String? arretRemiseStatut;
+
+  /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+  final DateTime? arriveChezClientLe;
+
+  /// Yao a-t-il déclaré son arrivée chez le client ? C'est ce qui ouvre K4.
+  bool get arriveChezClient => arretRemiseStatut == 'arrive';
 }
 
 /// Un arrêt de la course, fusion de la donnée serveur (pré-provisionnement) et
@@ -452,6 +471,9 @@ class EtatCourseActive extends _$EtatCourseActive {
           'rayon_m': c.remise.preuves.rayonM,
           'photos_min': c.remise.preuves.photosMin,
         })),
+        arretRemiseId: Value(c.remise.arretRemiseId),
+        arretRemiseStatut: Value(c.remise.arretRemiseStatut),
+        arriveChezClientLe: Value(c.remise.arriveChezClientLe),
       ),
     );
 
@@ -634,6 +656,9 @@ class EtatCourseActive extends _$EtatCourseActive {
         codeBloque: course?.codeBloque ?? false,
         montantAEncaisserUnites: course?.montantAEncaisserUnites ?? 0,
         modePaiement: course?.modePaiement ?? 'cash',
+        arretRemiseId: course?.arretRemiseId,
+        arretRemiseStatut: course?.arretRemiseStatut,
+        arriveChezClientLe: course?.arriveChezClientLe,
       ),
       arrets: [
         for (final l in arretsCache)

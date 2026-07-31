@@ -226,6 +226,13 @@ pub struct RemisePreprovisionneeDto {
     pub mode_paiement: String,
     /// Seuils de preuve de la zone.
     pub preuves: SeuilsPreuvesDto,
+    /// Arrêt de REMISE — la cible de « je suis arrivé chez le client »
+    /// (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes.
+    pub arret_remise_id: Option<Uuid>,
+    /// Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+    pub arret_remise_statut: Option<String>,
+    /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+    pub arrive_chez_client_le: Option<DateTime<Utc>>,
 }
 
 /// La course active, pré-provisionnée pour fonctionner hors ligne.
@@ -315,6 +322,9 @@ impl From<coursier::CourseComplete> for CourseActiveDto {
                     rayon_m: c.remise.seuils_preuves.rayon_m,
                     photos_min: c.remise.seuils_preuves.photos_min,
                 },
+                arret_remise_id: c.remise.arret_remise_id,
+                arret_remise_statut: c.remise.arret_remise_statut,
+                arrive_chez_client_le: c.remise.arrive_chez_client_le,
             },
         }
     }

@@ -69,3 +69,27 @@ INSERT INTO zones.parametre_zone (zone_id, cle, valeur) VALUES
     -- secondes de décision est exactement ce que le cycle 009 avait écarté.
     ('01900000-0000-7000-8000-000000000001', 'coursier.offre_interrogation_arriere_plan_s', '5')
 ON CONFLICT (zone_id, cle) DO UPDATE SET valeur = EXCLUDED.valeur, modifie_le = now();
+
+-- ── Niveau VILLE (Tiassalé) — le contact de l'agence ──────────────────────
+--
+-- DÉCOUVERT en implémentant K4-1d (T043). La maquette écrit « Appelez Mefali
+-- Tiassalé — 07 07 55 12 12 » en action PRINCIPALE de l'écran de blocage, et
+-- FR-043 l'exige nommément : « afficher le motif en langage clair ET le numéro
+-- de l'agence ». Rien dans le dépôt ne fournissait ce numéro — l'écrire en dur
+-- dans l'app aurait mis un numéro de téléphone dans un binaire de production,
+-- changeable seulement par un passage store (constitution I).
+--
+-- Namespace `texte.*` et non `coursier.*`, à dessein : ce sont des TEXTES
+-- d'affichage, servis par `/config` dans la liste blanche publique déjà en
+-- place (cycle 002, ZON-04). Aucune plomberie nouvelle, aucun endpoint de plus,
+-- et l'exploitation les édite par ADM-05 comme tous les autres.
+--
+-- Au niveau VILLE parce qu'une agence est locale : Tiassalé n'a pas le même
+-- numéro que la ville suivante, et l'héritage sert exactement à cela.
+--
+-- Ils ne sont PAS comptés dans les « sept paramètres du cycle » de R17 : ceux-là
+-- sont des seuils de preuve et d'offre. Ces deux-ci sont des libellés.
+INSERT INTO zones.parametre_zone (zone_id, cle, valeur) VALUES
+    ('01900000-0000-7000-8000-000000000002', 'texte.nom_agence',        '"Tiassalé"'),
+    ('01900000-0000-7000-8000-000000000002', 'texte.telephone_agence',  '"+2250707551212"')
+ON CONFLICT (zone_id, cle) DO UPDATE SET valeur = EXCLUDED.valeur, modifie_le = now();

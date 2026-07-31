@@ -12,6 +12,9 @@ part 'remise_preprovisionnee.g.dart';
 /// De quoi confirmer la remise **sans réseau** (K4).
 ///
 /// Properties:
+/// * [arretRemiseId] - Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes.
+/// * [arretRemiseStatut] - Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+/// * [arriveChezClientLe] - Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
 /// * [codeBloque] - Saisie du code bloquée (K4-1d).
 /// * [empreinteCode] - Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037).
 /// * [empreinteJeton] - Empreinte du jeton de réception — **jamais le jeton**.
@@ -22,6 +25,18 @@ part 'remise_preprovisionnee.g.dart';
 /// * [preuves] - Seuils de preuve de la zone.
 @BuiltValue()
 abstract class RemisePreprovisionnee implements Built<RemisePreprovisionnee, RemisePreprovisionneeBuilder> {
+  /// Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes.
+  @BuiltValueField(wireName: r'arret_remise_id')
+  String? get arretRemiseId;
+
+  /// Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+  @BuiltValueField(wireName: r'arret_remise_statut')
+  String? get arretRemiseStatut;
+
+  /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+  @BuiltValueField(wireName: r'arrive_chez_client_le')
+  DateTime? get arriveChezClientLe;
+
   /// Saisie du code bloquée (K4-1d).
   @BuiltValueField(wireName: r'code_bloque')
   bool get codeBloque;
@@ -77,6 +92,27 @@ class _$RemisePreprovisionneeSerializer implements PrimitiveSerializer<RemisePre
     RemisePreprovisionnee object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
+    if (object.arretRemiseId != null) {
+      yield r'arret_remise_id';
+      yield serializers.serialize(
+        object.arretRemiseId,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.arretRemiseStatut != null) {
+      yield r'arret_remise_statut';
+      yield serializers.serialize(
+        object.arretRemiseStatut,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.arriveChezClientLe != null) {
+      yield r'arrive_chez_client_le';
+      yield serializers.serialize(
+        object.arriveChezClientLe,
+        specifiedType: const FullType.nullable(DateTime),
+      );
+    }
     yield r'code_bloque';
     yield serializers.serialize(
       object.codeBloque,
@@ -140,6 +176,30 @@ class _$RemisePreprovisionneeSerializer implements PrimitiveSerializer<RemisePre
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
+        case r'arret_remise_id':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.arretRemiseId = valueDes;
+          break;
+        case r'arret_remise_statut':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.arretRemiseStatut = valueDes;
+          break;
+        case r'arrive_chez_client_le':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.arriveChezClientLe = valueDes;
+          break;
         case r'code_bloque':
           final valueDes = serializers.deserialize(
             value,

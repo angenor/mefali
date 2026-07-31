@@ -1148,7 +1148,13 @@ mod tests {
         // code de remise EXISTE depuis le cycle 008 et est réutilisé tel quel —
         // deux clés pour un même seuil divergeraient au premier réglage
         // d'exploitation (research 010 R5, FR-106).
-        assert_eq!(apres_un.4, 88, "50 (pays) + 38 (ville) paramètres");
+        // + 2 (ville, cycle 010 : `texte.nom_agence` et
+        // `texte.telephone_agence`). DÉCOUVERTS en implémentant K4-1d : FR-043
+        // exige d'afficher « le numéro de l'agence » sur l'écran de blocage, et
+        // rien ne le fournissait. Ce sont des TEXTES d'affichage servis par la
+        // liste blanche publique de `/config` — pas des seuils : ils ne
+        // rejoignent donc pas les « sept paramètres » de research R17.
+        assert_eq!(apres_un.4, 90, "50 (pays) + 40 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

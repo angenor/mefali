@@ -11828,6 +11828,29 @@
           "preuves"
         ],
         "properties": {
+          "arret_remise_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt de REMISE — la cible de « je suis arrivé chez le client »\n(FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes."
+          },
+          "arret_remise_statut": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`)."
+          },
+          "arrive_chez_client_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052)."
+          },
           "code_bloque": {
             "type": "boolean",
             "description": "Saisie du code bloquée (K4-1d)."

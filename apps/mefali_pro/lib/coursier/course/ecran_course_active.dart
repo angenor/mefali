@@ -12,6 +12,8 @@ import 'ecran_scan.dart';
 import 'etat_course.dart';
 import 'feuille_arret_indisponible.dart';
 import 'feuille_remplacement.dart';
+import '../remise/ecran_confirmation.dart';
+import '../remise/ecran_scan_remise.dart';
 
 /// Écran K3 — course active du coursier.
 ///
@@ -116,29 +118,49 @@ class _CorpsCourse extends ConsumerWidget {
             const SizedBox(height: MefaliTokens.space2),
           ],
           Expanded(
-            child: etat.toutCollecte
-                ? BandeauLivraison(
-                    etat: etat,
-                    enLigne: enLigne,
-                    onAppelerClient: () => ActionsAppel(ref: ref)
-                        .appelerClient(context, etat: etat, motif: 'suivi'),
-                    onArriveChezClient: () => _transition(ref, etat, 'arrive'),
-                  )
-                : _Collecte(etat: etat, enLigne: enLigne),
+            // Trois phases, une seule décision : tant qu'il reste à collecter,
+            // K3-1a/1b ; tout collecté, K3-1c « en route vers le client » ;
+            // arrivé, K4. La bascule est automatique (FR-021) — Yao ne navigue
+            // jamais, l'écran suit ce qu'il vient de faire.
+            child: switch ((etat.toutCollecte, etat.remise.arriveChezClient)) {
+              (true, true) => EcranConfirmation(
+                  etat: etat,
+                  enLigne: enLigne,
+                  onScannerQr: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => EcranScanRemise(etat: etat),
+                    ),
+                  ),
+                ),
+              (true, false) => BandeauLivraison(
+                  etat: etat,
+                  enLigne: enLigne,
+                  onAppelerClient: () => ActionsAppel(ref: ref)
+                      .appelerClient(context, etat: etat, motif: 'suivi'),
+                  onArriveChezClient: () => _arriverChezClient(ref, etat),
+                ),
+              (false, _) => _Collecte(etat: etat, enLigne: enLigne),
+            },
           ),
         ],
       ),
     );
   }
 
-  Future<void> _transition(WidgetRef ref, EtatCourse etat, String action) async {
+  /// « Je suis arrivé chez le client » (FR-053) — la transition qui ouvre K4.
+  ///
+  /// Elle vise l'arrêt de **remise**, pas `arretCourant` : celui-ci vaut `null`
+  /// dès que toutes les collectes sont faites, et le bouton ne faisait donc
+  /// rien. L'identifiant vient du pré-provisionnement, ce qui rend la
+  /// transition possible hors ligne comme le reste de la course.
+  Future<void> _arriverChezClient(WidgetRef ref, EtatCourse etat) async {
     final livraison = etat.livraisonId;
-    final arret = etat.arretCourant;
+    final arret = etat.remise.arretRemiseId;
     if (livraison == null || arret == null) return;
     await ref.read(etatCourseActiveProvider.notifier).transitionArret(
           livraisonId: livraison,
-          arretId: arret.arretId,
-          action: action,
+          arretId: arret,
+          action: 'arrive',
         );
   }
 }

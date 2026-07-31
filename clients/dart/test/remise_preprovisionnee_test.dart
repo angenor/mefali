@@ -7,6 +7,24 @@ void main() {
   // TODO add properties to the builder and call build()
 
   group(RemisePreprovisionnee, () {
+    // Arrêt de REMISE — la cible de « je suis arrivé chez le client » (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes.
+    // String arretRemiseId
+    test('to test the property `arretRemiseId`', () async {
+      // TODO
+    });
+
+    // Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`).
+    // String arretRemiseStatut
+    test('to test the property `arretRemiseStatut`', () async {
+      // TODO
+    });
+
+    // Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+    // DateTime arriveChezClientLe
+    test('to test the property `arriveChezClientLe`', () async {
+      // TODO
+    });
+
     // Saisie du code bloquée (K4-1d).
     // bool codeBloque
     test('to test the property `codeBloque`', () async {

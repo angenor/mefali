@@ -96,7 +96,7 @@ final class EtatCourseActiveProvider
   EtatCourseActive create() => EtatCourseActive();
 }
 
-String _$etatCourseActiveHash() => r'0be7e6b89f313621bf15914cc3e59e48d15819fc';
+String _$etatCourseActiveHash() => r'a6dc02b921ec1b789e29b8d154c411e08617a52b';
 
 /// Course active du coursier (chargement /courses/active + collecte offline-first).
 ///

@@ -582,6 +582,14 @@
   "@commandeErreurMotifRequis": {
     "description": "Refus 422 motif_requis (FR-054, admin)"
   },
+  "commandeErreurDepotNonAutorise": "Le dépôt n'est pas autorisé sur cette commande.",
+  "@commandeErreurDepotNonAutorise": {
+    "description": "Refus 422 depot_non_autorise (FR-048) — l'exploitation seule ouvre cette voie"
+  },
+  "commandeErreurCodeNonBloque": "Le code de remise n'est pas bloqué.",
+  "@commandeErreurCodeNonBloque": {
+    "description": "Refus 409 code_non_bloque (FR-055, admin) — une levée préventive n'existe pas"
+  },
   "commandeErreurCodeEpuise": "Trop d'essais. Un conseiller va vous contacter.",
   "@commandeErreurCodeEpuise": {
     "description": "Refus 423 code_epuise (CRS-04)"
