@@ -171,6 +171,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/coursiers/exposition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).
+         * @description C'est le nombre qui dit combien d'argent de Mefali circule dans des poches.
+         *     Sans lui, une dérive ne se verrait qu'au comptage du soir.
+         */
+        get: operations["exposition_cash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/dispatch/alertes": {
         parameters: {
             query?: never;
@@ -239,6 +260,66 @@ export interface paths {
         get: operations["pool_dispatch"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/indemnisations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CRS-06 (exploitation) — la file des indemnisations (FR-071). */
+        get: operations["file_indemnisations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/indemnisations/{indemnisation_id}/refuser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.
+         * @description Aucune écriture de caisse : rien n'entre, rien ne sort. Ce que Yao doit
+         *     pouvoir lire, c'est la raison (FR-072).
+         */
+        post: operations["refuser_indemnisation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/indemnisations/{indemnisation_id}/valider": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-06 (exploitation) — valide une indemnisation : l'argent entre au livre.
+         * @description L'écriture de caisse et l'événement partent dans la MÊME transaction que le
+         *     changement d'état : une validation sans son écriture laisserait Yao avec une
+         *     promesse et rien dans sa caisse.
+         */
+        post: operations["valider_indemnisation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1458,6 +1539,33 @@ export interface paths {
         put?: never;
         /** Enregistre un nouveau repère vocal — après purge, ou pour le refaire. */
         post: operations["remplacer_repere_vocal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/caisse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-06 — la caisse du coursier (FR-067 → FR-077).
+         * @description Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le
+         *     client. Entre les deux, il porte le risque : cet endpoint est la seule façon
+         *     qu'il a de vérifier que « le coursier ne perd jamais » est vrai.
+         *
+         *     ⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces
+         *     (PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que
+         *     masquée — la masquer la ferait disparaître de l'écran dont c'est la seule
+         *     raison d'être (R10, FR-117).
+         */
+        get: operations["ma_caisse"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2778,6 +2886,14 @@ export interface components {
             /** @description Motif retenu. */
             motif_cle: string;
         };
+        /** @description Corps d'une décision d'indemnisation. */
+        DecisionIndemnisation: {
+            /**
+             * @description Clé i18n du motif — **obligatoire au refus** (FR-072). Un refus sans
+             *     raison rend la promesse d'indemnisation invérifiable.
+             */
+            motif_cle?: string | null;
+        };
         /** @description Décision sur une offre — accepter ou refuser. */
         DecisionOffre: {
             /**
@@ -3529,6 +3645,24 @@ export interface components {
             /** @description Statut courant. */
             statut: string;
         };
+        /** @description Ce que l'exploitation voit du cash en circulation (FR-075). */
+        ExpositionCash: {
+            /**
+             * Format: date-time
+             * @description Instant de la lecture — l'exposition est vraie **à quelques secondes**
+             *     près (délai du worker outbox, SC-010 l'accepte explicitement).
+             */
+            au: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Détail, du plus exposé au moins exposé. */
+            par_coursier: components["schemas"]["LigneExposition"][];
+            /**
+             * Format: int64
+             * @description Total en circulation.
+             */
+            total_unites: number;
+        };
         /**
          * @description Fiche publique : le sous-ensemble EXACT de FR-027 — ni contact
          *     téléphonique, ni coordonnées de site, ni donnée d'exploitation (SC-013).
@@ -3565,6 +3699,11 @@ export interface components {
         FileAttenteCoursier: {
             /** @description Commandes en attente, **la plus ancienne d'abord** (FIFO par âge). */
             commandes: components["schemas"]["CommandeEnAttente"][];
+        };
+        /** @description La file des indemnisations. */
+        FileIndemnisations: {
+            /** @description Indemnisations, la plus récente d'abord. */
+            indemnisations: components["schemas"]["IndemnisationVue"][];
         };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
@@ -3680,6 +3819,64 @@ export interface components {
         HorairesSemaineDto: {
             /** @description Plages par jour (lundi → dimanche). */
             jours: components["schemas"]["PlageDto"][][];
+        };
+        /** @description Ce qu'une décision produit. */
+        IndemnisationDecidee: {
+            /**
+             * Format: uuid
+             * @description Écriture de caisse produite — **seulement** à la validation.
+             */
+            ecriture_id?: string | null;
+            /** @description `validee` | `refusee`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Indemnisation décidée.
+             */
+            id: string;
+        };
+        /** @description Une indemnisation, telle que la caisse l'affiche. */
+        IndemnisationVue: {
+            /**
+             * Format: uuid
+             * @description Commande d'origine.
+             */
+            commande_id: string;
+            /** @description Référence lisible de la commande. */
+            commande_reference: string;
+            /**
+             * Format: date-time
+             * @description Naissance de la demande.
+             */
+            cree_le: string;
+            /**
+             * Format: date-time
+             * @description Quand la décision a été prise.
+             */
+            decide_le?: string | null;
+            /** @description Clé i18n du motif de décision (refus surtout). */
+            decision_motif_cle?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description `demandee` | `validee` | `refusee`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Indemnisation.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Litige rattaché — **absent** tant qu'AVI-04 n'existe pas (R16).
+             */
+            litige_id?: string | null;
+            /**
+             * Format: int64
+             * @description Montant (unités mineures, positif).
+             */
+            montant_unites: number;
+            /** @description Clé i18n du motif. */
+            motif_cle: string;
         };
         /** @description Corps de `POST /auth/inscription`. */
         Inscription: {
@@ -3866,6 +4063,69 @@ export interface components {
              */
             sous_total_unites: number;
         };
+        /** @description L'exposition d'un coursier. */
+        LigneExposition: {
+            /**
+             * Format: int64
+             * @description Avance en cours (unités mineures, positif).
+             */
+            avance_unites: number;
+            /**
+             * Format: int64
+             * @description Courses concernées.
+             */
+            courses: number;
+            /**
+             * Format: uuid
+             * @description Coursier.
+             */
+            coursier_id: string;
+            /**
+             * @description Nom d'usage. **Vide** tant que le produit n'en porte aucun (cycle CPT
+             *     003 : « un numéro vérifié, rien d'autre ») — un nom fabriqué depuis le
+             *     numéro serait pire qu'une absence.
+             */
+            nom: string;
+        };
+        /** @description Une course de l'historique du jour — **trois chiffres** (K5-1a). */
+        LigneHistoriqueCaisse: {
+            /**
+             * Format: int64
+             * @description Ce que le coursier a avancé (positif).
+             */
+            avance_unites: number;
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Avance NON SOLDÉE parce que la commande était prépayée (R10, FR-117). */
+            en_attente_reglement: boolean;
+            /**
+             * Format: int64
+             * @description Sa part sur cette course (devis figé du cycle 007).
+             */
+            gain_unites: number;
+            /**
+             * Format: date-time
+             * @description Heure de la première écriture (horodatage serveur).
+             */
+            heure: string;
+            /**
+             * Format: uuid
+             * @description Livraison concernée.
+             */
+            livraison_id?: string | null;
+            /** @description Référence lisible (`#418`) — de quoi se parler au téléphone. */
+            reference: string;
+            /**
+             * Format: int64
+             * @description Ce qu'il a récupéré (positif).
+             */
+            rembourse_unites: number;
+            /** @description La course est-elle terminée ? */
+            terminee: boolean;
+        };
         /** @description Une ligne de panier soumise. */
         LignePanier: {
             /**
@@ -3888,6 +4148,33 @@ export interface components {
              * @description Quantité (> 0).
              */
             quantite: number;
+        };
+        /** @description Un litige en cours vu par le coursier (K5-1c). */
+        LitigeVu: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Clé i18n de l'état affiché. */
+            etat_cle: string;
+            /**
+             * Format: uuid
+             * @description Litige.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Montant en jeu (unités mineures).
+             */
+            montant_unites: number;
+            /**
+             * Format: date-time
+             * @description Ouverture.
+             */
+            ouvert_le: string;
+            /** @description Référence lisible. */
+            reference: string;
         };
         /** @description La livraison créée avec la commande. */
         LivraisonCommande: {
@@ -5174,6 +5461,34 @@ export interface components {
              */
             zone: string;
         };
+        /** @description Tout l'écran caisse (K5-1a), en une lecture. */
+        VueCaisse: {
+            /**
+             * Format: int64
+             * @description Argent avancé et non encore récupéré (FR-067) — toujours positif.
+             */
+            avance_en_cours_unites: number;
+            /**
+             * Format: int64
+             * @description Part que le cash ne soldera jamais (commandes prépayées, R10, FR-117).
+             */
+            avances_en_attente_reglement_unites: number;
+            /**
+             * Format: int64
+             * @description Combien de courses portent cette avance.
+             */
+            courses_concernees: number;
+            /** @description Devise ISO 4217 de la zone. */
+            devise: string;
+            /** @description Les avances en cours dépassent le plafond déclaré du jour (FR-078). */
+            ecart_plafond: boolean;
+            /** @description Historique du jour civil **de la zone**. */
+            historique_du_jour: components["schemas"]["LigneHistoriqueCaisse"][];
+            /** @description Indemnisations rattachées. */
+            indemnisations: components["schemas"]["IndemnisationVue"][];
+            /** @description Litiges en cours — vide tant qu'AVI-04 n'existe pas. */
+            litiges_en_cours: components["schemas"]["LitigeVu"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -5657,6 +5972,44 @@ export interface operations {
             };
         };
     };
+    exposition_cash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Somme des avances non soldées, par coursier et au total. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpositionCash"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     alertes_dispatch: {
         parameters: {
             query?: never;
@@ -5790,6 +6143,187 @@ export interface operations {
             };
             /** @description Rôle admin requis. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    file_indemnisations: {
+        parameters: {
+            query?: {
+                /** @description `demandee` | `validee` | `refusee`. Absent = toutes. */
+                etat?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File des indemnisations, la plus récente d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileIndemnisations"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État de filtre inconnu. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    refuser_indemnisation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Indemnisation à refuser. */
+                indemnisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIndemnisation"];
+            };
+        };
+        responses: {
+            /** @description Refusée — aucune écriture de caisse. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndemnisationDecidee"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Indemnisation inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Déjà validée ou refusée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    valider_indemnisation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Indemnisation à valider. */
+                indemnisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validée — écriture de caisse portée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndemnisationDecidee"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Indemnisation inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Déjà validée ou refusée. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9437,6 +9971,44 @@ export interface operations {
             };
             /** @description Durée (> paramètre de zone) ou note vocale invalides. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ma_caisse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Avances en cours, historique du jour, indemnisations, litiges. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VueCaisse"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

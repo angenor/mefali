@@ -51,6 +51,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CreerArticleDto.serializer)
       ..add(CreerPrestataireDto.serializer)
       ..add(DecisionDepot.serializer)
+      ..add(DecisionIndemnisation.serializer)
       ..add(DecisionOffre.serializer)
       ..add(DecisionRole.serializer)
       ..add(DecisionSubstitution.serializer)
@@ -89,8 +90,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(EtatPreuves.serializer)
       ..add(EtatPublicationPosition.serializer)
       ..add(EtatRoleDto.serializer)
+      ..add(ExpositionCash.serializer)
       ..add(FichePublique.serializer)
       ..add(FileAttenteCoursier.serializer)
+      ..add(FileIndemnisations.serializer)
       ..add(ForcageDto.serializer)
       ..add(GainOffre.serializer)
       ..add(Grille.serializer)
@@ -98,6 +101,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(GroupeVendeur.serializer)
       ..add(HealthResponse.serializer)
       ..add(HorairesSemaineDto.serializer)
+      ..add(IndemnisationDecidee.serializer)
+      ..add(IndemnisationVue.serializer)
       ..add(Inscription.serializer)
       ..add(IntentionAppel.serializer)
       ..add(IssueAppelDeclaree.serializer)
@@ -108,7 +113,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Lieu.serializer)
       ..add(LigneArret.serializer)
       ..add(LigneDevis.serializer)
+      ..add(LigneExposition.serializer)
+      ..add(LigneHistoriqueCaisse.serializer)
       ..add(LignePanier.serializer)
+      ..add(LitigeVu.serializer)
       ..add(LivraisonCommande.serializer)
       ..add(LotDePresence.serializer)
       ..add(MesCommandes.serializer)
@@ -175,6 +183,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(UrlPresignee.serializer)
       ..add(VehiculeDeclare.serializer)
       ..add(VerificationOtp.serializer)
+      ..add(VueCaisse.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(AppelJournalise)]),
           () => ListBuilder<AppelJournalise>())
@@ -261,11 +270,27 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(GroupeVendeur)]),
           () => ListBuilder<GroupeVendeur>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(IndemnisationVue)]),
+          () => ListBuilder<IndemnisationVue>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LigneArret)]),
           () => ListBuilder<LigneArret>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LigneDevis)]),
           () => ListBuilder<LigneDevis>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneExposition)]),
+          () => ListBuilder<LigneExposition>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(LigneHistoriqueCaisse)]),
+          () => ListBuilder<LigneHistoriqueCaisse>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(IndemnisationVue)]),
+          () => ListBuilder<IndemnisationVue>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LitigeVu)]),
+          () => ListBuilder<LitigeVu>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LignePanier)]),
           () => ListBuilder<LignePanier>())

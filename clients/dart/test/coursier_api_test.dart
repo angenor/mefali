@@ -61,6 +61,15 @@ void main() {
       // TODO
     });
 
+    // CRS-06 — la caisse du coursier (FR-067 → FR-077).
+    //
+    // Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le client. Entre les deux, il porte le risque : cet endpoint est la seule façon qu'il a de vérifier que « le coursier ne perd jamais » est vrai.  ⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces (PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que masquée — la masquer la ferait disparaître de l'écran dont c'est la seule raison d'être (R10, FR-117).
+    //
+    //Future<VueCaisse> maCaisse() async
+    test('test maCaisse', () async {
+      // TODO
+    });
+
     // Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
     //
     //Future<SignalementRecuDto> signalerRupture(String idempotencyKey, SignalerRuptureDto signalerRuptureDto) async

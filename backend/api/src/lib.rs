@@ -117,10 +117,15 @@ pub fn api_openapi() -> OpenApi {
         .service(coursier_http::enregistrer_presence)
         .service(coursier_http::deposer_photo_preuve)
         .service(coursier_http::etat_preuves)
+        .service(coursier_http::ma_caisse)
         .service(admin_coursier_http::remises_bloquees)
         .service(admin_coursier_http::debloquer_code)
         .service(admin_coursier_http::autoriser_depot)
         .service(admin_coursier_http::preuves_de_livraison)
+        .service(admin_coursier_http::exposition_cash)
+        .service(admin_coursier_http::file_indemnisations)
+        .service(admin_coursier_http::valider_indemnisation)
+        .service(admin_coursier_http::refuser_indemnisation)
         .service(admin_tarification_http::grille_de_zone)
         .service(admin_tarification_http::creer_brouillon)
         .service(admin_tarification_http::ecrire_regle)
@@ -413,6 +418,49 @@ async fn job_purge_photos_collecte(depot: qr::PgQr) {
     }
 }
 
+/// **Second consommateur réel du produit** (CRS-06, R9) — le livre de caisse.
+///
+/// Adaptateur seulement : toute la traduction événement → écriture vit dans le
+/// crate `coursier`. C'est ce qui permet de la tester sans monter un worker, et
+/// ce qui évite qu'une règle d'argent finisse dans la couche HTTP.
+///
+/// Trois types consommés, tout le reste ignoré — un consommateur reçoit TOUT le
+/// journal (contrat `socle`).
+struct CaisseOutbox {
+    depot: coursier::PgCoursier,
+}
+
+#[async_trait::async_trait]
+impl socle::ConsommateurOutbox for CaisseOutbox {
+    fn nom(&self) -> &'static str {
+        "caisse"
+    }
+
+    async fn consommer(
+        &self,
+        evenement: &socle::EvenementPublie,
+    ) -> Result<(), socle::ConsommationError> {
+        match self.depot.consommer_pour_caisse(evenement).await {
+            Ok(()) => Ok(()),
+            // Panne d'infrastructure : l'événement reste non publié et sera
+            // rejoué. L'idempotence par `evenement_id` rend le rejeu inoffensif.
+            Err(coursier::ErreurCoursier::Sql(e)) => {
+                Err(socle::ConsommationError(format!("base de données : {e}")))
+            }
+            // Refus métier ou configuration : journalisé, JAMAIS rejoué —
+            // rejouer ne changerait rien et bloquerait la ligne pour tout le
+            // monde (patron `DispatchOutbox`).
+            Err(e) => {
+                tracing::warn!(
+                    evenement = %evenement.id, type_evenement = %evenement.type_evenement,
+                    erreur = %e, "caisse sans effet — l'événement reste consommé",
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Purge périodique des photos de **preuve d'échec** échues (CRS-05, FR-064).
 ///
 /// Même patron que [`job_purge_photos_collecte`], à une différence près : la
@@ -639,6 +687,9 @@ pub async fn run() -> std::io::Result<()> {
                     "domaine CRS câblé (PgCoursier ; preuves d'échec RÉELLES ; \
                      litiges AVI-04 non construits) ; job de purge des photos de preuve démarré"
                 );
+                // Poignée retenue pour le consommateur outbox, câblé plus bas
+                // avec le worker (le dépôt lui-même part dans `web::Data`).
+                let depot_coursier_pour_caisse = depot_coursier.clone();
                 coursier_opt = Some(depot_coursier);
 
                 tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
@@ -686,9 +737,19 @@ pub async fn run() -> std::io::Result<()> {
                 // son premier consommateur réel (research R1).
                 let worker = socle::WorkerOutbox::new(
                     pool.clone(),
-                    vec![Arc::new(DispatchOutbox {
-                        depot: depot_dispatch.clone(),
-                    })],
+                    vec![
+                        Arc::new(DispatchOutbox {
+                            depot: depot_dispatch.clone(),
+                        }),
+                        // CRS-06 — le SECOND consommateur réel du produit. Il
+                        // alimente la caisse sans qu'aucune arête n'apparaisse
+                        // entre `commandes` et `coursier` : l'outbox est
+                        // précisément ce qui permet de réagir à un domaine sans
+                        // en dépendre (constitution II, R9).
+                        Arc::new(CaisseOutbox {
+                            depot: depot_coursier_pour_caisse,
+                        }),
+                    ],
                 );
                 tokio::spawn(worker.run());
                 tokio::spawn(job_tic_dispatch(depot_dispatch.clone(), pool.clone()));
@@ -797,10 +858,15 @@ pub async fn run() -> std::io::Result<()> {
             .service(coursier_http::enregistrer_presence)
             .service(coursier_http::deposer_photo_preuve)
             .service(coursier_http::etat_preuves)
+            .service(coursier_http::ma_caisse)
             .service(admin_coursier_http::remises_bloquees)
             .service(admin_coursier_http::debloquer_code)
             .service(admin_coursier_http::autoriser_depot)
             .service(admin_coursier_http::preuves_de_livraison)
+            .service(admin_coursier_http::exposition_cash)
+            .service(admin_coursier_http::file_indemnisations)
+            .service(admin_coursier_http::valider_indemnisation)
+            .service(admin_coursier_http::refuser_indemnisation)
             .service(admin_tarification_http::grille_de_zone)
             .service(admin_tarification_http::creer_brouillon)
             .service(admin_tarification_http::ecrire_regle)

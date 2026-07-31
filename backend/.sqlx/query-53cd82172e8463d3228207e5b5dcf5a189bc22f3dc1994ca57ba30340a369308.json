@@ -1,0 +1,84 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.commande_id AS \"commande_id!\", e.livraison_id,\n                      COALESCE(-SUM(e.montant_unites) FILTER (WHERE e.type = 'avance'), 0)::bigint\n                          AS \"avance!\",\n                      COALESCE(SUM(e.montant_unites) FILTER (WHERE e.type = 'remboursement'), 0)::bigint\n                          AS \"rembourse!\",\n                      COALESCE(MAX(l.devis_part_coursier), 0)::bigint AS \"gain!\",\n                      bool_or(l.livree_le IS NOT NULL) AS \"terminee!\",\n                      (c.mode_paiement <> 'cash') AS \"prepayee!\",\n                      MIN(e.ecrit_le) AS \"heure!\"\n                 FROM coursier.ecriture_caisse e\n                 JOIN commandes.commande  c ON c.id = e.commande_id\n                 LEFT JOIN commandes.livraison l ON l.id = e.livraison_id\n                WHERE e.coursier_id = $1 AND e.ecrit_le >= $2 AND e.ecrit_le < $3\n                  AND e.commande_id IS NOT NULL\n                GROUP BY e.commande_id, e.livraison_id, c.mode_paiement\n                ORDER BY MIN(e.ecrit_le) DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "commande_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.ecriture_caisse",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.ecriture_caisse",
+            "name": "livraison_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "avance!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "rembourse!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "gain!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "terminee!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "prepayee!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "heure!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "53cd82172e8463d3228207e5b5dcf5a189bc22f3dc1994ca57ba30340a369308"
+}

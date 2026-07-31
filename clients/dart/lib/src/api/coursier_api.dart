@@ -21,6 +21,7 @@ import 'package:mefali_api_client/src/model/photo_preuve_deposee.dart';
 import 'package:mefali_api_client/src/model/presence_enregistree.dart';
 import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
 import 'package:mefali_api_client/src/model/signaler_rupture_dto.dart';
+import 'package:mefali_api_client/src/model/vue_caisse.dart';
 
 class CoursierApi {
 
@@ -595,6 +596,85 @@ class CoursierApi {
     }
 
     return Response<AppelEnregistre>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// CRS-06 — la caisse du coursier (FR-067 → FR-077).
+  /// Yao sort de l&#39;argent de sa poche à chaque arrêt et le récupère chez le client. Entre les deux, il porte le risque : cet endpoint est la seule façon qu&#39;il a de vérifier que « le coursier ne perd jamais » est vrai.  ⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces (PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que masquée — la masquer la ferait disparaître de l&#39;écran dont c&#39;est la seule raison d&#39;être (R10, FR-117).
+  ///
+  /// Parameters:
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [VueCaisse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<VueCaisse>> maCaisse({ 
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/moi/caisse';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    VueCaisse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(VueCaisse),
+      ) as VueCaisse;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<VueCaisse>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

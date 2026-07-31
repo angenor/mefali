@@ -15,6 +15,7 @@ Method | HTTP request | Description
 [**enregistrerPresence**](CoursierApi.md#enregistrerpresence) | **POST** /courses/{livraison_id}/presence | CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
 [**etatPreuves**](CoursierApi.md#etatpreuves) | **GET** /courses/{livraison_id}/preuves | CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
 [**journaliserAppel**](CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
+[**maCaisse**](CoursierApi.md#macaisse) | **GET** /moi/caisse | CRS-06 — la caisse du coursier (FR-067 → FR-077).
 [**signalerRupture**](CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 
 
@@ -278,6 +279,45 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **maCaisse**
+> VueCaisse maCaisse()
+
+CRS-06 — la caisse du coursier (FR-067 → FR-077).
+
+Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le client. Entre les deux, il porte le risque : cet endpoint est la seule façon qu'il a de vérifier que « le coursier ne perd jamais » est vrai.  ⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces (PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que masquée — la masquer la ferait disparaître de l'écran dont c'est la seule raison d'être (R10, FR-117).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getCoursierApi();
+
+try {
+    final response = api.maCaisse();
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling CoursierApi->maCaisse: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**VueCaisse**](VueCaisse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

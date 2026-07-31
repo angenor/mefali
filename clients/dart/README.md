@@ -117,11 +117,16 @@ Class | Method | HTTP request | Description
 [*CoursierApi*](doc/CoursierApi.md) | [**enregistrerPresence**](doc/CoursierApi.md#enregistrerpresence) | **POST** /courses/{livraison_id}/presence | CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
 [*CoursierApi*](doc/CoursierApi.md) | [**etatPreuves**](doc/CoursierApi.md#etatpreuves) | **GET** /courses/{livraison_id}/preuves | CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
 [*CoursierApi*](doc/CoursierApi.md) | [**journaliserAppel**](doc/CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
+[*CoursierApi*](doc/CoursierApi.md) | [**maCaisse**](doc/CoursierApi.md#macaisse) | **GET** /moi/caisse | CRS-06 — la caisse du coursier (FR-067 → FR-077).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
 [*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**autoriserDepot**](doc/CoursierAdminApi.md#autoriserdepot) | **POST** /admin/commandes/{commande_id}/depot | **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
 [*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**debloquerCode**](doc/CoursierAdminApi.md#debloquercode) | **POST** /admin/commandes/{commande_id}/code/debloquer | **FR-055** — l&#39;exploitation lève le blocage du code, avec motif tracé.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**expositionCash**](doc/CoursierAdminApi.md#expositioncash) | **GET** /admin/coursiers/exposition | CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**fileIndemnisations**](doc/CoursierAdminApi.md#fileindemnisations) | **GET** /admin/indemnisations | CRS-06 (exploitation) — la file des indemnisations (FR-071).
 [*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**preuvesDeLivraison**](doc/CoursierAdminApi.md#preuvesdelivraison) | **GET** /admin/livraisons/{livraison_id}/preuves | CRS-05 (exploitation) — le dossier de preuves d&#39;une livraison (FR-063).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**refuserIndemnisation**](doc/CoursierAdminApi.md#refuserindemnisation) | **POST** /admin/indemnisations/{indemnisation_id}/refuser | CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.
 [*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**remisesBloquees**](doc/CoursierAdminApi.md#remisesbloquees) | **GET** /admin/remises/bloquees | **FR-044** — les remises dont le code est épuisé et le blocage non levé.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**validerIndemnisation**](doc/CoursierAdminApi.md#validerindemnisation) | **POST** /admin/indemnisations/{indemnisation_id}/valider | CRS-06 (exploitation) — valide une indemnisation : l&#39;argent entre au livre.
 [*DispatchApi*](doc/DispatchApi.md) | [**accepterOffre**](doc/DispatchApi.md#accepteroffre) | **POST** /courses/offres/{offre_id}/accepter | &#x60;POST /courses/offres/{offre_id}/accepter&#x60; — prendre la course.
 [*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
 [*DispatchApi*](doc/DispatchApi.md) | [**lireDisponibilite**](doc/DispatchApi.md#liredisponibilite) | **GET** /moi/disponibilite | &#x60;GET /moi/disponibilite&#x60; — l&#39;état courant, tel que K1 l&#39;affiche.
@@ -214,6 +219,7 @@ Class | Method | HTTP request | Description
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionDepot](doc/DecisionDepot.md)
+ - [DecisionIndemnisation](doc/DecisionIndemnisation.md)
  - [DecisionOffre](doc/DecisionOffre.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DecisionSubstitution](doc/DecisionSubstitution.md)
@@ -252,8 +258,10 @@ Class | Method | HTTP request | Description
  - [EtatPreuves](doc/EtatPreuves.md)
  - [EtatPublicationPosition](doc/EtatPublicationPosition.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
+ - [ExpositionCash](doc/ExpositionCash.md)
  - [FichePublique](doc/FichePublique.md)
  - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
+ - [FileIndemnisations](doc/FileIndemnisations.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [GainOffre](doc/GainOffre.md)
  - [Grille](doc/Grille.md)
@@ -261,6 +269,8 @@ Class | Method | HTTP request | Description
  - [GroupeVendeur](doc/GroupeVendeur.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
+ - [IndemnisationDecidee](doc/IndemnisationDecidee.md)
+ - [IndemnisationVue](doc/IndemnisationVue.md)
  - [Inscription](doc/Inscription.md)
  - [IntentionAppel](doc/IntentionAppel.md)
  - [IssueAppelDeclaree](doc/IssueAppelDeclaree.md)
@@ -271,7 +281,10 @@ Class | Method | HTTP request | Description
  - [Lieu](doc/Lieu.md)
  - [LigneArret](doc/LigneArret.md)
  - [LigneDevis](doc/LigneDevis.md)
+ - [LigneExposition](doc/LigneExposition.md)
+ - [LigneHistoriqueCaisse](doc/LigneHistoriqueCaisse.md)
  - [LignePanier](doc/LignePanier.md)
+ - [LitigeVu](doc/LitigeVu.md)
  - [LivraisonCommande](doc/LivraisonCommande.md)
  - [LotDePresence](doc/LotDePresence.md)
  - [MesCommandes](doc/MesCommandes.md)
@@ -338,6 +351,7 @@ Class | Method | HTTP request | Description
  - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)
  - [VerificationOtp](doc/VerificationOtp.md)
+ - [VueCaisse](doc/VueCaisse.md)
 
 
 ## Documentation For Authorization

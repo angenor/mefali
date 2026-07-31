@@ -221,6 +221,224 @@ pub async fn autoriser_depot(
     }))
 }
 
+// ── Exposition cash et indemnisations (T069 — FR-071, FR-072, FR-075) ──────
+
+/// L'exposition d'un coursier.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = LigneExposition)]
+pub struct LigneExpositionDto {
+    /// Coursier.
+    pub coursier_id: Uuid,
+    /// Nom d'usage. **Vide** tant que le produit n'en porte aucun (cycle CPT
+    /// 003 : « un numéro vérifié, rien d'autre ») — un nom fabriqué depuis le
+    /// numéro serait pire qu'une absence.
+    pub nom: String,
+    /// Avance en cours (unités mineures, positif).
+    pub avance_unites: i64,
+    /// Courses concernées.
+    pub courses: i64,
+}
+
+/// Ce que l'exploitation voit du cash en circulation (FR-075).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = ExpositionCash)]
+pub struct ExpositionCashDto {
+    /// Total en circulation.
+    pub total_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Instant de la lecture — l'exposition est vraie **à quelques secondes**
+    /// près (délai du worker outbox, SC-010 l'accepte explicitement).
+    pub au: chrono::DateTime<Utc>,
+    /// Détail, du plus exposé au moins exposé.
+    pub par_coursier: Vec<LigneExpositionDto>,
+}
+
+/// CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).
+///
+/// C'est le nombre qui dit combien d'argent de Mefali circule dans des poches.
+/// Sans lui, une dérive ne se verrait qu'au comptage du soir.
+#[utoipa::path(
+    get,
+    path = "/admin/coursiers/exposition",
+    tag = "coursier-admin",
+    responses(
+        (status = 200, description = "Somme des avances non soldées, par coursier et au total.", body = ExpositionCashDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/admin/coursiers/exposition")]
+pub async fn exposition_cash(
+    auth: Auth,
+    coursier: web::Data<coursier::PgCoursier>,
+) -> Result<HttpResponse, crate::coursier_http::ErreurCoursierHttp> {
+    auth.exiger_role(Role::Admin)?;
+    let vue = coursier.exposition_cash().await?;
+    Ok(HttpResponse::Ok().json(ExpositionCashDto {
+        total_unites: vue.total_unites,
+        devise: vue.devise,
+        au: Utc::now(),
+        par_coursier: vue
+            .par_coursier
+            .into_iter()
+            .map(|l| LigneExpositionDto {
+                coursier_id: l.coursier_id,
+                nom: l.nom,
+                avance_unites: l.avance_unites,
+                courses: l.courses,
+            })
+            .collect(),
+    }))
+}
+
+/// Filtre d'état de la file des indemnisations.
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct FiltreIndemnisationDto {
+    /// `demandee` | `validee` | `refusee`. Absent = toutes.
+    pub etat: Option<String>,
+}
+
+/// La file des indemnisations.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = FileIndemnisations)]
+pub struct FileIndemnisationsDto {
+    /// Indemnisations, la plus récente d'abord.
+    pub indemnisations: Vec<crate::coursier_http::IndemnisationDto>,
+}
+
+/// CRS-06 (exploitation) — la file des indemnisations (FR-071).
+#[utoipa::path(
+    get,
+    path = "/admin/indemnisations",
+    tag = "coursier-admin",
+    params(FiltreIndemnisationDto),
+    responses(
+        (status = 200, description = "File des indemnisations, la plus récente d'abord.", body = FileIndemnisationsDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 422, description = "État de filtre inconnu.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/admin/indemnisations")]
+pub async fn file_indemnisations(
+    auth: Auth,
+    filtre: web::Query<FiltreIndemnisationDto>,
+    coursier: web::Data<coursier::PgCoursier>,
+) -> Result<HttpResponse, crate::coursier_http::ErreurCoursierHttp> {
+    auth.exiger_role(Role::Admin)?;
+    let etat = filtre
+        .etat
+        .as_deref()
+        .map(str::parse::<coursier::EtatIndemnisation>)
+        .transpose()?;
+    let indemnisations = coursier.indemnisations(etat).await?;
+    Ok(HttpResponse::Ok().json(FileIndemnisationsDto {
+        indemnisations: indemnisations.into_iter().map(Into::into).collect(),
+    }))
+}
+
+/// Corps d'une décision d'indemnisation.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = DecisionIndemnisation)]
+pub struct DemandeDecisionDto {
+    /// Clé i18n du motif — **obligatoire au refus** (FR-072). Un refus sans
+    /// raison rend la promesse d'indemnisation invérifiable.
+    pub motif_cle: Option<String>,
+}
+
+/// Ce qu'une décision produit.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = IndemnisationDecidee)]
+pub struct IndemnisationDecideeDto {
+    /// Indemnisation décidée.
+    pub id: Uuid,
+    /// `validee` | `refusee`.
+    pub etat: String,
+    /// Écriture de caisse produite — **seulement** à la validation.
+    pub ecriture_id: Option<Uuid>,
+}
+
+/// CRS-06 (exploitation) — valide une indemnisation : l'argent entre au livre.
+///
+/// L'écriture de caisse et l'événement partent dans la MÊME transaction que le
+/// changement d'état : une validation sans son écriture laisserait Yao avec une
+/// promesse et rien dans sa caisse.
+#[utoipa::path(
+    post,
+    path = "/admin/indemnisations/{indemnisation_id}/valider",
+    tag = "coursier-admin",
+    params(("indemnisation_id" = Uuid, Path, description = "Indemnisation à valider.")),
+    responses(
+        (status = 200, description = "Validée — écriture de caisse portée.", body = IndemnisationDecideeDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 404, description = "Indemnisation inconnue.", body = ErreurApiDto),
+        (status = 409, description = "Déjà validée ou refusée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/indemnisations/{indemnisation_id}/valider")]
+pub async fn valider_indemnisation(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    coursier: web::Data<coursier::PgCoursier>,
+) -> Result<HttpResponse, crate::coursier_http::ErreurCoursierHttp> {
+    auth.exiger_role(Role::Admin)?;
+    let d = coursier
+        .valider_indemnisation(chemin.into_inner(), auth.compte_id)
+        .await?;
+    Ok(HttpResponse::Ok().json(IndemnisationDecideeDto {
+        id: d.id,
+        etat: d.etat.comme_str().to_owned(),
+        ecriture_id: d.ecriture_id,
+    }))
+}
+
+/// CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.
+///
+/// Aucune écriture de caisse : rien n'entre, rien ne sort. Ce que Yao doit
+/// pouvoir lire, c'est la raison (FR-072).
+#[utoipa::path(
+    post,
+    path = "/admin/indemnisations/{indemnisation_id}/refuser",
+    tag = "coursier-admin",
+    params(("indemnisation_id" = Uuid, Path, description = "Indemnisation à refuser.")),
+    request_body = DemandeDecisionDto,
+    responses(
+        (status = 200, description = "Refusée — aucune écriture de caisse.", body = IndemnisationDecideeDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 404, description = "Indemnisation inconnue.", body = ErreurApiDto),
+        (status = 409, description = "Déjà validée ou refusée.", body = ErreurApiDto),
+        (status = 422, description = "Motif absent.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[post("/admin/indemnisations/{indemnisation_id}/refuser")]
+pub async fn refuser_indemnisation(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<DemandeDecisionDto>,
+    coursier: web::Data<coursier::PgCoursier>,
+) -> Result<HttpResponse, crate::coursier_http::ErreurCoursierHttp> {
+    auth.exiger_role(Role::Admin)?;
+    let d = coursier
+        .refuser_indemnisation(
+            chemin.into_inner(),
+            auth.compte_id,
+            corps.motif_cle.as_deref().unwrap_or_default(),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(IndemnisationDecideeDto {
+        id: d.id,
+        etat: d.etat.comme_str().to_owned(),
+        ecriture_id: d.ecriture_id,
+    }))
+}
+
 // ── Lecture des preuves d'échec (T057 — FR-063) ────────────────────────────
 
 /// Durée de vie des URL présignées servies à l'exploitation.

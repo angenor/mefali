@@ -53,6 +53,7 @@ doc/CoursierSuivi.md
 doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionDepot.md
+doc/DecisionIndemnisation.md
 doc/DecisionOffre.md
 doc/DecisionRole.md
 doc/DecisionSubstitution.md
@@ -93,8 +94,10 @@ doc/EtatEffectifBoutique.md
 doc/EtatPreuves.md
 doc/EtatPublicationPosition.md
 doc/EtatRoleDto.md
+doc/ExpositionCash.md
 doc/FichePublique.md
 doc/FileAttenteCoursier.md
+doc/FileIndemnisations.md
 doc/ForcageDto.md
 doc/GainOffre.md
 doc/Grille.md
@@ -102,6 +105,8 @@ doc/GrillesZone.md
 doc/GroupeVendeur.md
 doc/HealthResponse.md
 doc/HorairesSemaineDto.md
+doc/IndemnisationDecidee.md
+doc/IndemnisationVue.md
 doc/Inscription.md
 doc/IntentionAppel.md
 doc/IssueAppelDeclaree.md
@@ -112,7 +117,10 @@ doc/JetonsDto.md
 doc/Lieu.md
 doc/LigneArret.md
 doc/LigneDevis.md
+doc/LigneExposition.md
+doc/LigneHistoriqueCaisse.md
 doc/LignePanier.md
+doc/LitigeVu.md
 doc/LivraisonCommande.md
 doc/LotDePresence.md
 doc/MesCommandes.md
@@ -185,6 +193,7 @@ doc/UrlPresignee.md
 doc/VehiculeDeclare.md
 doc/VendeurApi.md
 doc/VerificationOtp.md
+doc/VueCaisse.md
 doc/ZonesApi.md
 lib/mefali_api_client.dart
 lib/src/api.dart
@@ -256,6 +265,7 @@ lib/src/model/creer_article_dto.dart
 lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
 lib/src/model/decision_depot.dart
+lib/src/model/decision_indemnisation.dart
 lib/src/model/decision_offre.dart
 lib/src/model/decision_role.dart
 lib/src/model/decision_substitution.dart
@@ -294,8 +304,10 @@ lib/src/model/etat_effectif_boutique.dart
 lib/src/model/etat_preuves.dart
 lib/src/model/etat_publication_position.dart
 lib/src/model/etat_role_dto.dart
+lib/src/model/exposition_cash.dart
 lib/src/model/fiche_publique.dart
 lib/src/model/file_attente_coursier.dart
+lib/src/model/file_indemnisations.dart
 lib/src/model/forcage_dto.dart
 lib/src/model/gain_offre.dart
 lib/src/model/grille.dart
@@ -303,6 +315,8 @@ lib/src/model/grilles_zone.dart
 lib/src/model/groupe_vendeur.dart
 lib/src/model/health_response.dart
 lib/src/model/horaires_semaine_dto.dart
+lib/src/model/indemnisation_decidee.dart
+lib/src/model/indemnisation_vue.dart
 lib/src/model/inscription.dart
 lib/src/model/intention_appel.dart
 lib/src/model/issue_appel_declaree.dart
@@ -313,7 +327,10 @@ lib/src/model/jetons_dto.dart
 lib/src/model/lieu.dart
 lib/src/model/ligne_arret.dart
 lib/src/model/ligne_devis.dart
+lib/src/model/ligne_exposition.dart
+lib/src/model/ligne_historique_caisse.dart
 lib/src/model/ligne_panier.dart
+lib/src/model/litige_vu.dart
 lib/src/model/livraison_commande.dart
 lib/src/model/lot_de_presence.dart
 lib/src/model/mes_commandes.dart
@@ -380,6 +397,7 @@ lib/src/model/suspendre_dto.dart
 lib/src/model/url_presignee.dart
 lib/src/model/vehicule_declare.dart
 lib/src/model/verification_otp.dart
+lib/src/model/vue_caisse.dart
 lib/src/serializers.dart
 pubspec.yaml
 test/acceptation_offre_test.dart
@@ -433,6 +451,7 @@ test/coursier_suivi_test.dart
 test/creer_article_dto_test.dart
 test/creer_prestataire_dto_test.dart
 test/decision_depot_test.dart
+test/decision_indemnisation_test.dart
 test/decision_offre_test.dart
 test/decision_role_test.dart
 test/decision_substitution_test.dart
@@ -473,8 +492,10 @@ test/etat_effectif_boutique_test.dart
 test/etat_preuves_test.dart
 test/etat_publication_position_test.dart
 test/etat_role_dto_test.dart
+test/exposition_cash_test.dart
 test/fiche_publique_test.dart
 test/file_attente_coursier_test.dart
+test/file_indemnisations_test.dart
 test/forcage_dto_test.dart
 test/gain_offre_test.dart
 test/grille_test.dart
@@ -482,6 +503,8 @@ test/grilles_zone_test.dart
 test/groupe_vendeur_test.dart
 test/health_response_test.dart
 test/horaires_semaine_dto_test.dart
+test/indemnisation_decidee_test.dart
+test/indemnisation_vue_test.dart
 test/inscription_test.dart
 test/intention_appel_test.dart
 test/issue_appel_declaree_test.dart
@@ -492,7 +515,10 @@ test/jetons_dto_test.dart
 test/lieu_test.dart
 test/ligne_arret_test.dart
 test/ligne_devis_test.dart
+test/ligne_exposition_test.dart
+test/ligne_historique_caisse_test.dart
 test/ligne_panier_test.dart
+test/litige_vu_test.dart
 test/livraison_commande_test.dart
 test/lot_de_presence_test.dart
 test/mes_commandes_test.dart
@@ -565,4 +591,5 @@ test/url_presignee_test.dart
 test/vehicule_declare_test.dart
 test/vendeur_api_test.dart
 test/verification_otp_test.dart
+test/vue_caisse_test.dart
 test/zones_api_test.dart

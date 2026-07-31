@@ -681,6 +681,53 @@
         ]
       }
     },
+    "/admin/coursiers/exposition": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).",
+        "description": "C'est le nombre qui dit combien d'argent de Mefali circule dans des poches.\nSans lui, une dérive ne se verrait qu'au comptage du soir.",
+        "operationId": "exposition_cash",
+        "responses": {
+          "200": {
+            "description": "Somme des avances non soldées, par coursier et au total.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpositionCash"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/dispatch/alertes": {
       "get": {
         "tags": [
@@ -859,6 +906,254 @@
           },
           "403": {
             "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/indemnisations": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — la file des indemnisations (FR-071).",
+        "operationId": "file_indemnisations",
+        "parameters": [
+          {
+            "name": "etat",
+            "in": "query",
+            "description": "`demandee` | `validee` | `refusee`. Absent = toutes.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File des indemnisations, la plus récente d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileIndemnisations"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "État de filtre inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/indemnisations/{indemnisation_id}/refuser": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.",
+        "description": "Aucune écriture de caisse : rien n'entre, rien ne sort. Ce que Yao doit\npouvoir lire, c'est la raison (FR-072).",
+        "operationId": "refuser_indemnisation",
+        "parameters": [
+          {
+            "name": "indemnisation_id",
+            "in": "path",
+            "description": "Indemnisation à refuser.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIndemnisation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Refusée — aucune écriture de caisse.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndemnisationDecidee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Indemnisation inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà validée ou refusée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/indemnisations/{indemnisation_id}/valider": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — valide une indemnisation : l'argent entre au livre.",
+        "description": "L'écriture de caisse et l'événement partent dans la MÊME transaction que le\nchangement d'état : une validation sans son écriture laisserait Yao avec une\npromesse et rien dans sa caisse.",
+        "operationId": "valider_indemnisation",
+        "parameters": [
+          {
+            "name": "indemnisation_id",
+            "in": "path",
+            "description": "Indemnisation à valider.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validée — écriture de caisse portée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndemnisationDecidee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Indemnisation inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà validée ou refusée.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5926,6 +6221,53 @@
         ]
       }
     },
+    "/moi/caisse": {
+      "get": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-06 — la caisse du coursier (FR-067 → FR-077).",
+        "description": "Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le\nclient. Entre les deux, il porte le risque : cet endpoint est la seule façon\nqu'il a de vérifier que « le coursier ne perd jamais » est vrai.\n\n⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces\n(PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que\nmasquée — la masquer la ferait disparaître de l'écran dont c'est la seule\nraison d'être (R10, FR-117).",
+        "operationId": "ma_caisse",
+        "responses": {
+          "200": {
+            "description": "Avances en cours, historique du jour, indemnisations, litiges.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VueCaisse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/commandes": {
       "get": {
         "tags": [
@@ -9106,6 +9448,19 @@
           }
         }
       },
+      "DecisionIndemnisation": {
+        "type": "object",
+        "description": "Corps d'une décision d'indemnisation.",
+        "properties": {
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif — **obligatoire au refus** (FR-072). Un refus sans\nraison rend la promesse d'indemnisation invérifiable."
+          }
+        }
+      },
       "DecisionOffre": {
         "type": "object",
         "description": "Décision sur une offre — accepter ou refuser.",
@@ -10476,6 +10831,39 @@
           }
         }
       },
+      "ExpositionCash": {
+        "type": "object",
+        "description": "Ce que l'exploitation voit du cash en circulation (FR-075).",
+        "required": [
+          "total_unites",
+          "devise",
+          "au",
+          "par_coursier"
+        ],
+        "properties": {
+          "au": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant de la lecture — l'exposition est vraie **à quelques secondes**\nprès (délai du worker outbox, SC-010 l'accepte explicitement)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "par_coursier": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneExposition"
+            },
+            "description": "Détail, du plus exposé au moins exposé."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total en circulation."
+          }
+        }
+      },
       "FichePublique": {
         "type": "object",
         "description": "Fiche publique : le sous-ensemble EXACT de FR-027 — ni contact\ntéléphonique, ni coordonnées de site, ni donnée d'exploitation (SC-013).",
@@ -10555,6 +10943,22 @@
               "$ref": "#/components/schemas/CommandeEnAttente"
             },
             "description": "Commandes en attente, **la plus ancienne d'abord** (FIFO par âge)."
+          }
+        }
+      },
+      "FileIndemnisations": {
+        "type": "object",
+        "description": "La file des indemnisations.",
+        "required": [
+          "indemnisations"
+        ],
+        "properties": {
+          "indemnisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndemnisationVue"
+            },
+            "description": "Indemnisations, la plus récente d'abord."
           }
         }
       },
@@ -10768,6 +11172,108 @@
             "description": "Plages par jour (lundi → dimanche).",
             "maxItems": 7,
             "minItems": 7
+          }
+        }
+      },
+      "IndemnisationDecidee": {
+        "type": "object",
+        "description": "Ce qu'une décision produit.",
+        "required": [
+          "id",
+          "etat"
+        ],
+        "properties": {
+          "ecriture_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Écriture de caisse produite — **seulement** à la validation."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`validee` | `refusee`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Indemnisation décidée."
+          }
+        }
+      },
+      "IndemnisationVue": {
+        "type": "object",
+        "description": "Une indemnisation, telle que la caisse l'affiche.",
+        "required": [
+          "id",
+          "commande_id",
+          "commande_reference",
+          "montant_unites",
+          "devise",
+          "etat",
+          "motif_cle",
+          "cree_le"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande d'origine."
+          },
+          "commande_reference": {
+            "type": "string",
+            "description": "Référence lisible de la commande."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Naissance de la demande."
+          },
+          "decide_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Quand la décision a été prise."
+          },
+          "decision_motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif de décision (refus surtout)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`demandee` | `validee` | `refusee`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Indemnisation."
+          },
+          "litige_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Litige rattaché — **absent** tant qu'AVI-04 n'existe pas (R16)."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant (unités mineures, positif)."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif."
           }
         }
       },
@@ -11106,6 +11612,98 @@
           }
         }
       },
+      "LigneExposition": {
+        "type": "object",
+        "description": "L'exposition d'un coursier.",
+        "required": [
+          "coursier_id",
+          "nom",
+          "avance_unites",
+          "courses"
+        ],
+        "properties": {
+          "avance_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Avance en cours (unités mineures, positif)."
+          },
+          "courses": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Courses concernées."
+          },
+          "coursier_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Coursier."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom d'usage. **Vide** tant que le produit n'en porte aucun (cycle CPT\n003 : « un numéro vérifié, rien d'autre ») — un nom fabriqué depuis le\nnuméro serait pire qu'une absence."
+          }
+        }
+      },
+      "LigneHistoriqueCaisse": {
+        "type": "object",
+        "description": "Une course de l'historique du jour — **trois chiffres** (K5-1a).",
+        "required": [
+          "commande_id",
+          "reference",
+          "avance_unites",
+          "rembourse_unites",
+          "gain_unites",
+          "terminee",
+          "en_attente_reglement",
+          "heure"
+        ],
+        "properties": {
+          "avance_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce que le coursier a avancé (positif)."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "en_attente_reglement": {
+            "type": "boolean",
+            "description": "Avance NON SOLDÉE parce que la commande était prépayée (R10, FR-117)."
+          },
+          "gain_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sa part sur cette course (devis figé du cycle 007)."
+          },
+          "heure": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Heure de la première écriture (horodatage serveur)."
+          },
+          "livraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Livraison concernée."
+          },
+          "reference": {
+            "type": "string",
+            "description": "Référence lisible (`#418`) — de quoi se parler au téléphone."
+          },
+          "rembourse_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qu'il a récupéré (positif)."
+          },
+          "terminee": {
+            "type": "boolean",
+            "description": "La course est-elle terminée ?"
+          }
+        }
+      },
       "LignePanier": {
         "type": "object",
         "description": "Une ligne de panier soumise.",
@@ -11136,6 +11734,48 @@
             "type": "integer",
             "format": "int32",
             "description": "Quantité (> 0)."
+          }
+        }
+      },
+      "LitigeVu": {
+        "type": "object",
+        "description": "Un litige en cours vu par le coursier (K5-1c).",
+        "required": [
+          "id",
+          "commande_id",
+          "reference",
+          "etat_cle",
+          "montant_unites",
+          "ouvert_le"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "etat_cle": {
+            "type": "string",
+            "description": "Clé i18n de l'état affiché."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Litige."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant en jeu (unités mineures)."
+          },
+          "ouvert_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ouverture."
+          },
+          "reference": {
+            "type": "string",
+            "description": "Référence lisible."
           }
         }
       },
@@ -13471,6 +14111,66 @@
             "type": "string",
             "format": "uuid",
             "description": "Zone de l'app."
+          }
+        }
+      },
+      "VueCaisse": {
+        "type": "object",
+        "description": "Tout l'écran caisse (K5-1a), en une lecture.",
+        "required": [
+          "avance_en_cours_unites",
+          "courses_concernees",
+          "avances_en_attente_reglement_unites",
+          "historique_du_jour",
+          "indemnisations",
+          "litiges_en_cours",
+          "devise",
+          "ecart_plafond"
+        ],
+        "properties": {
+          "avance_en_cours_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Argent avancé et non encore récupéré (FR-067) — toujours positif."
+          },
+          "avances_en_attente_reglement_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part que le cash ne soldera jamais (commandes prépayées, R10, FR-117)."
+          },
+          "courses_concernees": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combien de courses portent cette avance."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217 de la zone."
+          },
+          "ecart_plafond": {
+            "type": "boolean",
+            "description": "Les avances en cours dépassent le plafond déclaré du jour (FR-078)."
+          },
+          "historique_du_jour": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneHistoriqueCaisse"
+            },
+            "description": "Historique du jour civil **de la zone**."
+          },
+          "indemnisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndemnisationVue"
+            },
+            "description": "Indemnisations rattachées."
+          },
+          "litiges_en_cours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LitigeVu"
+            },
+            "description": "Litiges en cours — vide tant qu'AVI-04 n'existe pas."
           }
         }
       }

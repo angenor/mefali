@@ -58,6 +58,7 @@ import 'package:mefali_api_client/src/model/coursier_suivi.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_depot.dart';
+import 'package:mefali_api_client/src/model/decision_indemnisation.dart';
 import 'package:mefali_api_client/src/model/decision_offre.dart';
 import 'package:mefali_api_client/src/model/decision_role.dart';
 import 'package:mefali_api_client/src/model/decision_substitution.dart';
@@ -96,8 +97,10 @@ import 'package:mefali_api_client/src/model/etat_effectif_boutique.dart';
 import 'package:mefali_api_client/src/model/etat_preuves.dart';
 import 'package:mefali_api_client/src/model/etat_publication_position.dart';
 import 'package:mefali_api_client/src/model/etat_role_dto.dart';
+import 'package:mefali_api_client/src/model/exposition_cash.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
+import 'package:mefali_api_client/src/model/file_indemnisations.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/gain_offre.dart';
 import 'package:mefali_api_client/src/model/grille.dart';
@@ -105,6 +108,8 @@ import 'package:mefali_api_client/src/model/grilles_zone.dart';
 import 'package:mefali_api_client/src/model/groupe_vendeur.dart';
 import 'package:mefali_api_client/src/model/health_response.dart';
 import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
+import 'package:mefali_api_client/src/model/indemnisation_decidee.dart';
+import 'package:mefali_api_client/src/model/indemnisation_vue.dart';
 import 'package:mefali_api_client/src/model/inscription.dart';
 import 'package:mefali_api_client/src/model/intention_appel.dart';
 import 'package:mefali_api_client/src/model/issue_appel_declaree.dart';
@@ -115,7 +120,10 @@ import 'package:mefali_api_client/src/model/jetons_dto.dart';
 import 'package:mefali_api_client/src/model/lieu.dart';
 import 'package:mefali_api_client/src/model/ligne_arret.dart';
 import 'package:mefali_api_client/src/model/ligne_devis.dart';
+import 'package:mefali_api_client/src/model/ligne_exposition.dart';
+import 'package:mefali_api_client/src/model/ligne_historique_caisse.dart';
 import 'package:mefali_api_client/src/model/ligne_panier.dart';
+import 'package:mefali_api_client/src/model/litige_vu.dart';
 import 'package:mefali_api_client/src/model/livraison_commande.dart';
 import 'package:mefali_api_client/src/model/lot_de_presence.dart';
 import 'package:mefali_api_client/src/model/mes_commandes.dart';
@@ -182,6 +190,7 @@ import 'package:mefali_api_client/src/model/suspendre_dto.dart';
 import 'package:mefali_api_client/src/model/url_presignee.dart';
 import 'package:mefali_api_client/src/model/vehicule_declare.dart';
 import 'package:mefali_api_client/src/model/verification_otp.dart';
+import 'package:mefali_api_client/src/model/vue_caisse.dart';
 
 part 'serializers.g.dart';
 
@@ -230,6 +239,7 @@ part 'serializers.g.dart';
   CreerArticleDto,
   CreerPrestataireDto,
   DecisionDepot,
+  DecisionIndemnisation,
   DecisionOffre,
   DecisionRole,
   DecisionSubstitution,
@@ -268,8 +278,10 @@ part 'serializers.g.dart';
   EtatPreuves,
   EtatPublicationPosition,
   EtatRoleDto,
+  ExpositionCash,
   FichePublique,
   FileAttenteCoursier,
+  FileIndemnisations,
   ForcageDto,
   GainOffre,
   Grille,
@@ -277,6 +289,8 @@ part 'serializers.g.dart';
   GroupeVendeur,
   HealthResponse,
   HorairesSemaineDto,
+  IndemnisationDecidee,
+  IndemnisationVue,
   Inscription,
   IntentionAppel,
   IssueAppelDeclaree,
@@ -287,7 +301,10 @@ part 'serializers.g.dart';
   Lieu,
   LigneArret,
   LigneDevis,
+  LigneExposition,
+  LigneHistoriqueCaisse,
   LignePanier,
+  LitigeVu,
   LivraisonCommande,
   LotDePresence,
   MesCommandes,
@@ -354,6 +371,7 @@ part 'serializers.g.dart';
   UrlPresignee,
   VehiculeDeclare,
   VerificationOtp,
+  VueCaisse,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(

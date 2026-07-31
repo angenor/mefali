@@ -776,6 +776,191 @@ pub async fn etat_preuves(
     Ok(HttpResponse::Ok().json(EtatPreuvesDto::from(etat)))
 }
 
+// ── Caisse (T068 — FR-067 → FR-078) ────────────────────────────────────────
+
+/// Une course de l'historique du jour — **trois chiffres** (K5-1a).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = LigneHistoriqueCaisse)]
+pub struct LigneHistoriqueDto {
+    /// Commande concernée.
+    pub commande_id: Uuid,
+    /// Livraison concernée.
+    pub livraison_id: Option<Uuid>,
+    /// Référence lisible (`#418`) — de quoi se parler au téléphone.
+    pub reference: String,
+    /// Ce que le coursier a avancé (positif).
+    pub avance_unites: i64,
+    /// Ce qu'il a récupéré (positif).
+    pub rembourse_unites: i64,
+    /// Sa part sur cette course (devis figé du cycle 007).
+    pub gain_unites: i64,
+    /// La course est-elle terminée ?
+    pub terminee: bool,
+    /// Avance NON SOLDÉE parce que la commande était prépayée (R10, FR-117).
+    pub en_attente_reglement: bool,
+    /// Heure de la première écriture (horodatage serveur).
+    pub heure: DateTime<Utc>,
+}
+
+/// Une indemnisation, telle que la caisse l'affiche.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = IndemnisationVue)]
+pub struct IndemnisationDto {
+    /// Indemnisation.
+    pub id: Uuid,
+    /// Commande d'origine.
+    pub commande_id: Uuid,
+    /// Référence lisible de la commande.
+    pub commande_reference: String,
+    /// Montant (unités mineures, positif).
+    pub montant_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// `demandee` | `validee` | `refusee`.
+    pub etat: String,
+    /// Litige rattaché — **absent** tant qu'AVI-04 n'existe pas (R16).
+    pub litige_id: Option<Uuid>,
+    /// Clé i18n du motif.
+    pub motif_cle: String,
+    /// Clé i18n du motif de décision (refus surtout).
+    pub decision_motif_cle: Option<String>,
+    /// Quand la décision a été prise.
+    pub decide_le: Option<DateTime<Utc>>,
+    /// Naissance de la demande.
+    pub cree_le: DateTime<Utc>,
+}
+
+impl From<coursier::IndemnisationVue> for IndemnisationDto {
+    fn from(i: coursier::IndemnisationVue) -> Self {
+        Self {
+            id: i.id,
+            commande_id: i.commande_id,
+            commande_reference: i.commande_reference,
+            montant_unites: i.montant_unites,
+            devise: i.devise,
+            etat: i.etat.comme_str().to_owned(),
+            litige_id: i.litige_id,
+            motif_cle: i.motif_cle,
+            decision_motif_cle: i.decision_motif_cle,
+            decide_le: i.decide_le,
+            cree_le: i.cree_le,
+        }
+    }
+}
+
+/// Un litige en cours vu par le coursier (K5-1c).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = LitigeVu)]
+pub struct LitigeVuDto {
+    /// Litige.
+    pub id: Uuid,
+    /// Commande concernée.
+    pub commande_id: Uuid,
+    /// Référence lisible.
+    pub reference: String,
+    /// Clé i18n de l'état affiché.
+    pub etat_cle: String,
+    /// Montant en jeu (unités mineures).
+    pub montant_unites: i64,
+    /// Ouverture.
+    pub ouvert_le: DateTime<Utc>,
+}
+
+/// Tout l'écran caisse (K5-1a), en une lecture.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = VueCaisse)]
+pub struct VueCaisseDto {
+    /// Argent avancé et non encore récupéré (FR-067) — toujours positif.
+    pub avance_en_cours_unites: i64,
+    /// Combien de courses portent cette avance.
+    pub courses_concernees: i64,
+    /// Part que le cash ne soldera jamais (commandes prépayées, R10, FR-117).
+    pub avances_en_attente_reglement_unites: i64,
+    /// Historique du jour civil **de la zone**.
+    pub historique_du_jour: Vec<LigneHistoriqueDto>,
+    /// Indemnisations rattachées.
+    pub indemnisations: Vec<IndemnisationDto>,
+    /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
+    pub litiges_en_cours: Vec<LitigeVuDto>,
+    /// Devise ISO 4217 de la zone.
+    pub devise: String,
+    /// Les avances en cours dépassent le plafond déclaré du jour (FR-078).
+    pub ecart_plafond: bool,
+}
+
+impl From<coursier::VueCaisse> for VueCaisseDto {
+    fn from(v: coursier::VueCaisse) -> Self {
+        Self {
+            avance_en_cours_unites: v.avance_en_cours_unites,
+            courses_concernees: v.courses_concernees,
+            avances_en_attente_reglement_unites: v.avances_en_attente_reglement_unites,
+            historique_du_jour: v
+                .historique
+                .into_iter()
+                .map(|l| LigneHistoriqueDto {
+                    commande_id: l.commande_id,
+                    livraison_id: l.livraison_id,
+                    reference: l.reference,
+                    avance_unites: l.avance_unites,
+                    rembourse_unites: l.rembourse_unites,
+                    gain_unites: l.gain_unites,
+                    terminee: l.terminee,
+                    en_attente_reglement: l.en_attente_reglement,
+                    heure: l.heure,
+                })
+                .collect(),
+            indemnisations: v.indemnisations.into_iter().map(Into::into).collect(),
+            litiges_en_cours: v
+                .litiges
+                .into_iter()
+                .map(|l| LitigeVuDto {
+                    id: l.id,
+                    commande_id: l.commande_id,
+                    reference: l.reference,
+                    etat_cle: l.etat_cle,
+                    montant_unites: l.montant_unites,
+                    ouvert_le: l.ouvert_le,
+                })
+                .collect(),
+            devise: v.devise,
+            ecart_plafond: v.ecart_plafond,
+        }
+    }
+}
+
+/// CRS-06 — la caisse du coursier (FR-067 → FR-077).
+///
+/// Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le
+/// client. Entre les deux, il porte le risque : cet endpoint est la seule façon
+/// qu'il a de vérifier que « le coursier ne perd jamais » est vrai.
+///
+/// ⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces
+/// (PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que
+/// masquée — la masquer la ferait disparaître de l'écran dont c'est la seule
+/// raison d'être (R10, FR-117).
+#[utoipa::path(
+    get,
+    path = "/moi/caisse",
+    tag = "coursier",
+    responses(
+        (status = 200, description = "Avances en cours, historique du jour, indemnisations, litiges.", body = VueCaisseDto),
+        (status = 403, description = "Rôle coursier requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente/révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/moi/caisse")]
+pub async fn ma_caisse(
+    auth: Auth,
+    coursier: web::Data<PgCoursier>,
+) -> Result<HttpResponse, ErreurCoursierHttp> {
+    auth.exiger_role(Role::Coursier)?;
+    // La garde de propriété est la lecture elle-même : elle filtre par
+    // `coursier_id = auth.compte_id`, aucun identifiant n'est accepté en entrée.
+    let vue = coursier.vue_caisse(auth.compte_id).await?;
+    Ok(HttpResponse::Ok().json(VueCaisseDto::from(vue)))
+}
+
 /// CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).
 ///
 /// Le serveur ne peut pas l'observer : l'appel part du téléphone. Cette issue

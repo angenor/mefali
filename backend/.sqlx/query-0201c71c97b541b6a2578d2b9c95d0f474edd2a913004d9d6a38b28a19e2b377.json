@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coursier.indemnisation\n                   (id, coursier_id, commande_id, issue_echec_id, montant_unites,\n                    devise, etat, motif_cle, evenement_id)\n               VALUES ($1, $2, $3, $4, $5, $6, 'demandee', $7, $8)\n               ON CONFLICT (evenement_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0201c71c97b541b6a2578d2b9c95d0f474edd2a913004d9d6a38b28a19e2b377"
+}

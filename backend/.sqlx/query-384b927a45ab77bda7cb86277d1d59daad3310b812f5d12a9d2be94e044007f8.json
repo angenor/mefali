@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(-SUM(e.montant_unites), 0)::bigint  AS \"total!\",\n                      COUNT(DISTINCT e.livraison_id)               AS \"courses!\",\n                      COALESCE(-SUM(e.montant_unites) FILTER (\n                          WHERE c.mode_paiement <> 'cash' AND l.livree_le IS NOT NULL\n                      ), 0)::bigint                                AS \"en_attente!\"\n                 FROM coursier.ecriture_caisse e\n                 JOIN commandes.livraison l ON l.id = e.livraison_id\n                 JOIN commandes.commande  c ON c.id = e.commande_id\n                WHERE e.coursier_id = $1 AND e.type = 'avance'\n                  -- Une avance est SOLDÉE dès qu'un remboursement existe sur la\n                  -- même livraison. Pas de table de solde : la somme est exacte\n                  -- par construction (data-model §1.3).\n                  AND NOT EXISTS (\n                      SELECT 1 FROM coursier.ecriture_caisse r\n                       WHERE r.livraison_id = e.livraison_id\n                         AND r.type = 'remboursement')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "courses!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "en_attente!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "384b927a45ab77bda7cb86277d1d59daad3310b812f5d12a9d2be94e044007f8"
+}
