@@ -301,6 +301,30 @@ class FileActions {
         .write(const RelevesPresenceLocauxCompanion(envoye: Value(true)));
   }
 
+  // ── Dernier état connu de la caisse (FR-076) ────────────────────────────
+
+  /// Range la caisse lue en ligne, pour que K5 s'ouvre sans réseau.
+  ///
+  /// Une seule ligne : c'est un instantané, pas un journal. L'historique du
+  /// livre vit côté serveur, où il est immuable — en garder une copie locale
+  /// modifiable créerait un second livre, contre lequel personne n'arbitre.
+  Future<void> remplacerCaisse(String vueJson, {DateTime? luLe}) async {
+    await _base.transaction(() async {
+      await _base.delete(_base.caisseCacheTable).go();
+      await _base.into(_base.caisseCacheTable).insert(
+            CaisseCacheTableCompanion.insert(
+              vueJson: vueJson,
+              luLeLocal: luLe ?? DateTime.now(),
+            ),
+          );
+    });
+  }
+
+  /// La caisse en cache, ou `null` si elle n'a jamais été lue en ligne.
+  Future<CaisseCache?> caisseCache() {
+    return _base.select(_base.caisseCacheTable).getSingleOrNull();
+  }
+
   /// Efface tout ce qui appartient à une course terminée — **numéros compris**
   /// (R6, FR-034). Les actions ENCORE EN ATTENTE ne sont pas touchées.
   Future<void> effacerCourse(String livraisonId) =>

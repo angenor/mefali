@@ -866,7 +866,7 @@
   "@crsCaisseTitre": { "description": "Titre de K5" },
   "crsCaisseAvanceEnCours": "Argent avancé en cours",
   "@crsCaisseAvanceEnCours": { "description": "Libellé du solde de K5-1b (aucune course)" },
-  "crsCaisseAvanceEnCoursCourses": "Argent avancé en cours ({n} course)",
+  "crsCaisseAvanceEnCoursCourses": "Argent avancé en cours ({n, plural, =1{1 course} other{{n} courses}})",
   "@crsCaisseAvanceEnCoursCourses": {
     "description": "Libellé du solde de K5-1a (FR-067)",
     "placeholders": { "n": { "type": "int" } }
@@ -897,6 +897,18 @@
   },
   "crsCaisseChipEnCours": "En cours",
   "@crsCaisseChipEnCours": { "description": "Chip d'une course non terminée" },
+  "crsCaisseChipTerminee": "✓ {heure}",
+  "@crsCaisseChipTerminee": {
+    "description": "Chip d'une course terminée, à l'heure SERVEUR de sa première écriture (K5-1a)",
+    "placeholders": { "heure": { "type": "String" } }
+  },
+  "crsCaisseLigneCourse": "Course {reference}",
+  "@crsCaisseLigneCourse": {
+    "description": "Titre d'une ligne d'historique ou d'indemnisation (K5-1a). La maquette y ajoute le type de course (« marché, 3 arrêts ») — la caisse ne le sert pas.",
+    "placeholders": { "reference": { "type": "String" } }
+  },
+  "crsCaisseLignePrepayee": "Avance non soldée — commande prépayée",
+  "@crsCaisseLignePrepayee": { "description": "Une avance qu'aucun cash ne remboursera (FR-117, R10)" },
   "crsCaisseIndemnisationsTitre": "Indemnisations",
   "@crsCaisseIndemnisationsTitre": { "description": "Section de K5-1a" },
   "crsCaisseIndemnisationMontant": "Indemnisation {montant}",
@@ -921,10 +933,15 @@
   "@crsCaisseAucuneCourseTexte": { "description": "Explication de l'état vide (K5-1b)" },
   "crsCaissePasserEnLigne": "Passer en ligne",
   "@crsCaissePasserEnLigne": { "description": "Action de l'état vide (K5-1b)" },
-  "crsCaisseLitigeBadge": "{n} litige",
+  "crsCaisseLitigeBadge": "{n, plural, =1{1 litige} other{{n} litiges}}",
   "@crsCaisseLitigeBadge": {
     "description": "Badge d'entête de K5-1c",
     "placeholders": { "n": { "type": "int" } }
+  },
+  "crsCaisseDate": "{date}",
+  "@crsCaisseDate": {
+    "description": "Chip de date de l'entête de K5-1a (« sam. 12 juil. »)",
+    "placeholders": { "date": { "type": "DateTime", "format": "MMMEd" } }
   },
   "crsCaisseLitigeTitre": "Litige en cours — course {reference}",
   "@crsCaisseLitigeTitre": {
@@ -935,12 +952,21 @@
   "@crsCaisseLitigeEnExamen": { "description": "Chip d'état d'un litige" },
   "crsCaisseLitigeVoir": "Voir le litige",
   "@crsCaisseLitigeVoir": { "description": "Action de la carte de litige — AVI-04 non construit, elle informe seulement" },
+  "crsCaisseLitigeEngagement": "Indemnisation demandée : {montant}. L'agence vous rappelle.",
+  "@crsCaisseLitigeEngagement": {
+    "description": "Engagement de rappel de K5-1c. La maquette dit « avant 17 h » — aucun délai n'est tenu en base, l'inventer serait une promesse que rien ne garantit.",
+    "placeholders": { "montant": { "type": "String" } }
+  },
   "crsCaisseHorsLigne": "Dernier état connu — hors connexion",
   "@crsCaisseHorsLigne": { "description": "La caisse se lit hors ligne, et se DIT périmée (FR-076)" },
   "crsCaisseEcartPlafond": "Vos avances dépassent votre plafond du jour — l'agence est prévenue",
   "@crsCaisseEcartPlafond": { "description": "Signalement d'incident (FR-078) : l'écart se voit, il ne se tait pas" },
+  "crsCaisseErreur": "La caisse n'a pas pu être lue.",
+  "@crsCaisseErreur": { "description": "Refus SERVEUR — un réseau muet, lui, sert le dernier état connu (FR-076)" },
+  "crsCaisseReessayer": "Réessayer",
+  "@crsCaisseReessayer": { "description": "Action de reprise après un refus serveur" },
 
-  "crsJourneeCoursesLivrees": "Gains du jour — {n} courses livrées",
+  "crsJourneeCoursesLivrees": "{n, plural, =0{Gains du jour — aucune course livrée} =1{Gains du jour — 1 course livrée} other{Gains du jour — {n} courses livrées}}",
   "@crsJourneeCoursesLivrees": {
     "description": "Bandeau de gains de K1-1a (FR-091)",
     "placeholders": { "n": { "type": "int" } }

@@ -71,6 +71,9 @@ pub fn statut_coursier(e: &ErreurCoursier) -> StatusCode {
         | ErreurCoursier::CodeNonBloque => StatusCode::CONFLICT,
         ErreurCoursier::DepotNonAutorise
         | ErreurCoursier::MotifRequis
+        // Une énumération mal orthographiée par l'appelant : sa demande est
+        // invalide, le serveur va bien.
+        | ErreurCoursier::ValeurInconnue(_)
         | ErreurCoursier::DemandeInvalide(_) => StatusCode::UNPROCESSABLE_ENTITY,
         ErreurCoursier::EcritureImmuable => StatusCode::CONFLICT,
         // Infrastructure et configuration : rien à exposer.

@@ -413,6 +413,36 @@ class RelevesPresenceLocaux extends Table {
   Set<Column> get primaryKey => {uuidClient};
 }
 
+/// Dernier état connu de la **caisse** (cycle CRS 010, FR-076).
+///
+/// K5 est l'écran où Yao vérifie combien d'argent il porte — et le réseau
+/// manque précisément là où il en a le plus besoin : dans une cour, entre deux
+/// marchés. La caisse doit donc s'ouvrir hors ligne, **annoncée comme datée**
+/// plutôt que vide.
+///
+/// La vue est rangée telle que le serveur l'a rendue (JSON), et non éclatée en
+/// colonnes : la caisse a trois listes imbriquées, et une seconde modélisation
+/// locale serait une seconde vérité à resynchroniser à chaque évolution du
+/// contrat. Aucun secret n'y figure — des montants, des références, des états.
+@DataClassName('CaisseCache')
+class CaisseCacheTable extends Table {
+  @override
+  String get tableName => 'caisse_cache';
+
+  /// Ligne unique — même patron que [CourseCacheTable].
+  IntColumn get id => integer().withDefault(const Constant(0))();
+
+  /// La vue de caisse sérialisée, telle que `GET /moi/caisse` l'a rendue.
+  TextColumn get vueJson => text()();
+
+  /// Instant de la dernière lecture RÉUSSIE (local) — c'est ce que l'écran
+  /// annonce quand il sert ce cache.
+  DateTimeColumn get luLeLocal => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Base locale drift : file coursier (006) + cache client (008) + course
 /// complète, checklist, essais et présence (010).
 @DriftDatabase(
@@ -425,6 +455,7 @@ class RelevesPresenceLocaux extends Table {
     LignesChecklist,
     EssaisRemise,
     RelevesPresenceLocaux,
+    CaisseCacheTable,
   ],
 )
 class BaseOffline extends _$BaseOffline {
@@ -436,7 +467,7 @@ class BaseOffline extends _$BaseOffline {
   BaseOffline.memoire() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -491,6 +522,13 @@ class BaseOffline extends _$BaseOffline {
           // rejouent exactement comme elles auraient été envoyées.
           if (from < 7) {
             await m.addColumn(actionsEnAttente, actionsEnAttente.multipart);
+          }
+          // v8 (cycle CRS, T072) : le dernier état connu de la caisse. Table
+          // CRÉÉE, aucune touchée — et son absence n'est jamais une erreur :
+          // une caisse jamais lue en ligne s'ouvre sur son état vide, pas sur
+          // un écran de panne.
+          if (from < 8) {
+            await m.createTable(caisseCacheTable);
           }
         },
       );

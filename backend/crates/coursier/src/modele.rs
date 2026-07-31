@@ -755,10 +755,14 @@ impl ErreurCoursier {
             ErreurCoursier::EcritureImmuable => "caisse_ecriture_immuable",
             ErreurCoursier::CodeNonBloque => "code_non_bloque",
             ErreurCoursier::DemandeInvalide(_) => "demande_invalide",
+            // Une valeur d'entrée hors énumération est un refus de DEMANDE, pas
+            // une panne : `?etat=peut-etre` rendait `500`, et l'appelant lisait
+            // « le serveur est cassé » là où il avait simplement mal écrit
+            // (défaut trouvé par `admin_coursier::la_file_…_se_filtre_par_etat`).
+            ErreurCoursier::ValeurInconnue(_) => "valeur_inconnue",
             // Techniques : rien à exposer.
             ErreurCoursier::ParametreAbsent(_)
             | ErreurCoursier::ConfigurationInvalide(_)
-            | ErreurCoursier::ValeurInconnue(_)
             | ErreurCoursier::Commandes(_)
             | ErreurCoursier::Qr(_)
             | ErreurCoursier::Prestataires(_)

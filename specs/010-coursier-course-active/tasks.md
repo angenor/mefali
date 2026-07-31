@@ -193,10 +193,10 @@ tâche qui les enfreint est incomplète, même si son code marche :
 - [X] T067 [US5] Port `LitigesOuverts` + double `AucunLitige` dans `backend/crates/coursier/src/ports.rs` (AVI-04 non construit) et rattachement d'un `litige_id` nullable
 - [X] T068 [US5] Endpoint `GET /moi/caisse` dans `backend/api/src/coursier_http.rs` ; utoipa + clients + build vert
 - [X] T069 [US5] Endpoints d'exploitation dans `backend/api/src/admin_coursier_http.rs` : `GET /admin/coursiers/exposition`, `GET /admin/indemnisations`, `POST /admin/indemnisations/{id}/valider`, `POST /admin/indemnisations/{id}/refuser` (motif obligatoire) ; utoipa + clients + build vert
-- [ ] T070 [US5] Écran caisse dans `apps/mefali_pro/lib/coursier/caisse/ecran_caisse.dart` : solde avancé en display danger, historique du jour à trois chiffres, indemnisations avec leurs chips d'état — réf. `docs/design/png/K5-caisse-historique.png` 1a
-- [ ] T071 [US5] États vide et litige : « Aucune course aujourd'hui » avec action « Passer en ligne », et carte de litige en cours avec engagement de rappel — réf. `K5-caisse-historique.png` 1b et 1c (la carte « Signaler ou bloquer » de 1a et la feuille 1d **ne sont pas construites**, CRS-07)
-- [ ] T072 [US5] Porteur `EtatCaisse` (`AsyncNotifier`) + lecture **hors ligne** du dernier état connu, annoncé comme tel (FR-076) ; `build_runner` + `dart analyze`
-- [ ] T073 [US5] Tests d'intégration `backend/api/tests/coursier_caisse.rs` (avance → remboursement → solde 0, prépayée → avance ouverte, immuabilité, **incident d'écart au plafond**) et `backend/api/tests/admin_coursier.rs` (exposition = somme, validation, refus motivé) — SC-009, SC-010, SC-011
+- [X] T070 [US5] Écran caisse dans `apps/mefali_pro/lib/coursier/caisse/ecran_caisse.dart` : solde avancé en display danger, historique du jour à trois chiffres, indemnisations avec leurs chips d'état — réf. `docs/design/png/K5-caisse-historique.png` 1a
+- [X] T071 [US5] États vide et litige : « Aucune course aujourd'hui » avec action « Passer en ligne », et carte de litige en cours avec engagement de rappel — réf. `K5-caisse-historique.png` 1b et 1c (la carte « Signaler ou bloquer » de 1a et la feuille 1d **ne sont pas construites**, CRS-07)
+- [X] T072 [US5] Porteur `EtatCaisse` (`AsyncNotifier`) + lecture **hors ligne** du dernier état connu, annoncé comme tel (FR-076) ; `build_runner` + `dart analyze`
+- [X] T073 [US5] Tests d'intégration `backend/api/tests/coursier_caisse.rs` (avance → remboursement → solde 0, prépayée → avance ouverte, immuabilité, **incident d'écart au plafond**) et `backend/api/tests/admin_coursier.rs` (exposition = somme, validation, refus motivé) — SC-009, SC-010, SC-011
 
 **Checkpoint**: US5 complète — « le coursier ne perd jamais » devient vérifiable par Yao lui-même.
 

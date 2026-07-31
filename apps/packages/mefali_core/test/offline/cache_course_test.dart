@@ -196,15 +196,16 @@ void main() {
   });
 
   group('schemaVersion (migration additive)', () {
-    test('la version monte à 7 et les huit tables sont déclarées', () async {
+    test('la version monte à 8 et les neuf tables sont déclarées', () async {
       final base = BaseOffline.memoire();
       addTearDown(base.close);
 
       // v5 : l'arrêt de REMISE dans `course_cache` (découvert en branchant K4).
       // v6 : le classement d'issue d'un rejeu (`statut`, `refuse_le_local`).
       // v7 : le mode d'envoi (`multipart`) — les transitions sont du JSON.
+      // v8 : le dernier état connu de la CAISSE (K5 s'ouvre hors ligne, FR-076).
       // Toutes ADDITIVES : aucune table retirée, aucune action en vol perdue.
-      expect(base.schemaVersion, 7);
+      expect(base.schemaVersion, 8);
       final tables = base.allTables.map((t) => t.actualTableName).toSet();
       expect(
         tables,
@@ -219,6 +220,7 @@ void main() {
           'lignes_checklist',
           'essais_remise',
           'releves_presence_locaux',
+          'caisse_cache',
         ]),
       );
     });

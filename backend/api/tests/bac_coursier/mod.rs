@@ -548,6 +548,7 @@ impl Bac {
                 .service(crs010::enregistrer_presence)
                 .service(crs010::deposer_photo_preuve)
                 .service(crs010::etat_preuves)
+                .service(crs010::ma_caisse)
                 .service(cmd::creer_commande)
                 .service(cmd::suivre_commande)
                 .service(cmd::decider_substitution)
@@ -560,7 +561,11 @@ impl Bac {
                 .service(adm010::remises_bloquees)
                 .service(adm010::debloquer_code)
                 .service(adm010::autoriser_depot)
-                .service(adm010::preuves_de_livraison);
+                .service(adm010::preuves_de_livraison)
+                .service(adm010::exposition_cash)
+                .service(adm010::file_indemnisations)
+                .service(adm010::valider_indemnisation)
+                .service(adm010::refuser_indemnisation);
         }
     }
 
@@ -999,6 +1004,63 @@ impl Bac {
             serde_json::from_slice(&octets).expect("corps JSON")
         };
         (statut, valeur)
+    }
+
+    // ── La caisse : le journal, porté au livre ────────────────────────────
+
+    /// Fait consommer par la caisse **tous** les événements du journal, dans
+    /// leur ordre d'écriture (T064).
+    ///
+    /// Le worker outbox n'est pas monté dans ce bac : le brancher ferait
+    /// dépendre chaque test d'un ordonnancement asynchrone, et un test de
+    /// comptabilité qui attend une seconde de plus n'est pas un test, c'est un
+    /// pari. `consommer_pour_caisse` est **exactement** ce que l'adaptateur
+    /// `CaisseOutbox` appelle en production — l'appeler ici, ce n'est pas
+    /// simuler le worker, c'est exécuter le même code sans son horloge.
+    ///
+    /// Rejouable sans effet : l'idempotence par `evenement_id` est une
+    /// contrainte de base, et c'est précisément ce que le second appel prouve.
+    pub async fn drainer_caisse(&self) {
+        let lignes: Vec<(Uuid, String, String, Uuid, Value, DateTime<Utc>)> = sqlx::query_as(
+            "SELECT id, type_evenement, entite_type, entite_id, payload, survenu_le
+               FROM outbox.evenement ORDER BY cree_le, id",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap();
+        for (id, type_evenement, entite_type, entite_id, payload, survenu_le) in lignes {
+            self.coursier_depot
+                .consommer_pour_caisse(&socle::EvenementPublie {
+                    id,
+                    type_evenement,
+                    entite_type,
+                    entite_id,
+                    payload,
+                    survenu_le,
+                })
+                .await
+                .expect("consommation de caisse");
+        }
+    }
+
+    /// `GET /moi/caisse` du coursier du bac.
+    pub async fn lire_caisse(&self) -> Value {
+        let (statut, corps) = self.get("/moi/caisse", &self.jeton_coursier).await;
+        assert_eq!(statut, 200, "lecture de la caisse refusée : {corps}");
+        corps
+    }
+
+    /// Écritures de caisse d'un coursier, par type — la vérité du livre, lue
+    /// sans passer par la vue agrégée.
+    pub async fn ecritures_caisse(&self, coursier: Uuid) -> Vec<(String, i64)> {
+        sqlx::query_as(
+            "SELECT type::text, montant_unites FROM coursier.ecriture_caisse
+              WHERE coursier_id = $1 ORDER BY ecrit_le, id",
+        )
+        .bind(coursier)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap()
     }
 
     // ── Lectures d'état ───────────────────────────────────────────────────

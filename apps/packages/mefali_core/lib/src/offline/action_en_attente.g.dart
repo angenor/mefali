@@ -5478,6 +5478,260 @@ class RelevesPresenceLocauxCompanion
   }
 }
 
+class $CaisseCacheTableTable extends CaisseCacheTable
+    with TableInfo<$CaisseCacheTableTable, CaisseCache> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CaisseCacheTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _vueJsonMeta = const VerificationMeta(
+    'vueJson',
+  );
+  @override
+  late final GeneratedColumn<String> vueJson = GeneratedColumn<String>(
+    'vue_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _luLeLocalMeta = const VerificationMeta(
+    'luLeLocal',
+  );
+  @override
+  late final GeneratedColumn<DateTime> luLeLocal = GeneratedColumn<DateTime>(
+    'lu_le_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, vueJson, luLeLocal];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'caisse_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CaisseCache> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('vue_json')) {
+      context.handle(
+        _vueJsonMeta,
+        vueJson.isAcceptableOrUnknown(data['vue_json']!, _vueJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_vueJsonMeta);
+    }
+    if (data.containsKey('lu_le_local')) {
+      context.handle(
+        _luLeLocalMeta,
+        luLeLocal.isAcceptableOrUnknown(data['lu_le_local']!, _luLeLocalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_luLeLocalMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CaisseCache map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CaisseCache(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      vueJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vue_json'],
+      )!,
+      luLeLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}lu_le_local'],
+      )!,
+    );
+  }
+
+  @override
+  $CaisseCacheTableTable createAlias(String alias) {
+    return $CaisseCacheTableTable(attachedDatabase, alias);
+  }
+}
+
+class CaisseCache extends DataClass implements Insertable<CaisseCache> {
+  /// Ligne unique — même patron que [CourseCacheTable].
+  final int id;
+
+  /// La vue de caisse sérialisée, telle que `GET /moi/caisse` l'a rendue.
+  final String vueJson;
+
+  /// Instant de la dernière lecture RÉUSSIE (local) — c'est ce que l'écran
+  /// annonce quand il sert ce cache.
+  final DateTime luLeLocal;
+  const CaisseCache({
+    required this.id,
+    required this.vueJson,
+    required this.luLeLocal,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['vue_json'] = Variable<String>(vueJson);
+    map['lu_le_local'] = Variable<DateTime>(luLeLocal);
+    return map;
+  }
+
+  CaisseCacheTableCompanion toCompanion(bool nullToAbsent) {
+    return CaisseCacheTableCompanion(
+      id: Value(id),
+      vueJson: Value(vueJson),
+      luLeLocal: Value(luLeLocal),
+    );
+  }
+
+  factory CaisseCache.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CaisseCache(
+      id: serializer.fromJson<int>(json['id']),
+      vueJson: serializer.fromJson<String>(json['vueJson']),
+      luLeLocal: serializer.fromJson<DateTime>(json['luLeLocal']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'vueJson': serializer.toJson<String>(vueJson),
+      'luLeLocal': serializer.toJson<DateTime>(luLeLocal),
+    };
+  }
+
+  CaisseCache copyWith({int? id, String? vueJson, DateTime? luLeLocal}) =>
+      CaisseCache(
+        id: id ?? this.id,
+        vueJson: vueJson ?? this.vueJson,
+        luLeLocal: luLeLocal ?? this.luLeLocal,
+      );
+  CaisseCache copyWithCompanion(CaisseCacheTableCompanion data) {
+    return CaisseCache(
+      id: data.id.present ? data.id.value : this.id,
+      vueJson: data.vueJson.present ? data.vueJson.value : this.vueJson,
+      luLeLocal: data.luLeLocal.present ? data.luLeLocal.value : this.luLeLocal,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CaisseCache(')
+          ..write('id: $id, ')
+          ..write('vueJson: $vueJson, ')
+          ..write('luLeLocal: $luLeLocal')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, vueJson, luLeLocal);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CaisseCache &&
+          other.id == this.id &&
+          other.vueJson == this.vueJson &&
+          other.luLeLocal == this.luLeLocal);
+}
+
+class CaisseCacheTableCompanion extends UpdateCompanion<CaisseCache> {
+  final Value<int> id;
+  final Value<String> vueJson;
+  final Value<DateTime> luLeLocal;
+  const CaisseCacheTableCompanion({
+    this.id = const Value.absent(),
+    this.vueJson = const Value.absent(),
+    this.luLeLocal = const Value.absent(),
+  });
+  CaisseCacheTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String vueJson,
+    required DateTime luLeLocal,
+  }) : vueJson = Value(vueJson),
+       luLeLocal = Value(luLeLocal);
+  static Insertable<CaisseCache> custom({
+    Expression<int>? id,
+    Expression<String>? vueJson,
+    Expression<DateTime>? luLeLocal,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (vueJson != null) 'vue_json': vueJson,
+      if (luLeLocal != null) 'lu_le_local': luLeLocal,
+    });
+  }
+
+  CaisseCacheTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? vueJson,
+    Value<DateTime>? luLeLocal,
+  }) {
+    return CaisseCacheTableCompanion(
+      id: id ?? this.id,
+      vueJson: vueJson ?? this.vueJson,
+      luLeLocal: luLeLocal ?? this.luLeLocal,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (vueJson.present) {
+      map['vue_json'] = Variable<String>(vueJson.value);
+    }
+    if (luLeLocal.present) {
+      map['lu_le_local'] = Variable<DateTime>(luLeLocal.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CaisseCacheTableCompanion(')
+          ..write('id: $id, ')
+          ..write('vueJson: $vueJson, ')
+          ..write('luLeLocal: $luLeLocal')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$BaseOffline extends GeneratedDatabase {
   _$BaseOffline(QueryExecutor e) : super(e);
   $BaseOfflineManager get managers => $BaseOfflineManager(this);
@@ -5499,6 +5753,9 @@ abstract class _$BaseOffline extends GeneratedDatabase {
   late final $EssaisRemiseTable essaisRemise = $EssaisRemiseTable(this);
   late final $RelevesPresenceLocauxTable relevesPresenceLocaux =
       $RelevesPresenceLocauxTable(this);
+  late final $CaisseCacheTableTable caisseCacheTable = $CaisseCacheTableTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5512,6 +5769,7 @@ abstract class _$BaseOffline extends GeneratedDatabase {
     lignesChecklist,
     essaisRemise,
     relevesPresenceLocaux,
+    caisseCacheTable,
   ];
 }
 
@@ -8102,6 +8360,164 @@ typedef $$RelevesPresenceLocauxTableProcessedTableManager =
       RelevePresenceLocal,
       PrefetchHooks Function()
     >;
+typedef $$CaisseCacheTableTableCreateCompanionBuilder =
+    CaisseCacheTableCompanion Function({
+      Value<int> id,
+      required String vueJson,
+      required DateTime luLeLocal,
+    });
+typedef $$CaisseCacheTableTableUpdateCompanionBuilder =
+    CaisseCacheTableCompanion Function({
+      Value<int> id,
+      Value<String> vueJson,
+      Value<DateTime> luLeLocal,
+    });
+
+class $$CaisseCacheTableTableFilterComposer
+    extends Composer<_$BaseOffline, $CaisseCacheTableTable> {
+  $$CaisseCacheTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vueJson => $composableBuilder(
+    column: $table.vueJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get luLeLocal => $composableBuilder(
+    column: $table.luLeLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CaisseCacheTableTableOrderingComposer
+    extends Composer<_$BaseOffline, $CaisseCacheTableTable> {
+  $$CaisseCacheTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vueJson => $composableBuilder(
+    column: $table.vueJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get luLeLocal => $composableBuilder(
+    column: $table.luLeLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CaisseCacheTableTableAnnotationComposer
+    extends Composer<_$BaseOffline, $CaisseCacheTableTable> {
+  $$CaisseCacheTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get vueJson =>
+      $composableBuilder(column: $table.vueJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get luLeLocal =>
+      $composableBuilder(column: $table.luLeLocal, builder: (column) => column);
+}
+
+class $$CaisseCacheTableTableTableManager
+    extends
+        RootTableManager<
+          _$BaseOffline,
+          $CaisseCacheTableTable,
+          CaisseCache,
+          $$CaisseCacheTableTableFilterComposer,
+          $$CaisseCacheTableTableOrderingComposer,
+          $$CaisseCacheTableTableAnnotationComposer,
+          $$CaisseCacheTableTableCreateCompanionBuilder,
+          $$CaisseCacheTableTableUpdateCompanionBuilder,
+          (
+            CaisseCache,
+            BaseReferences<_$BaseOffline, $CaisseCacheTableTable, CaisseCache>,
+          ),
+          CaisseCache,
+          PrefetchHooks Function()
+        > {
+  $$CaisseCacheTableTableTableManager(
+    _$BaseOffline db,
+    $CaisseCacheTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CaisseCacheTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CaisseCacheTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CaisseCacheTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> vueJson = const Value.absent(),
+                Value<DateTime> luLeLocal = const Value.absent(),
+              }) => CaisseCacheTableCompanion(
+                id: id,
+                vueJson: vueJson,
+                luLeLocal: luLeLocal,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String vueJson,
+                required DateTime luLeLocal,
+              }) => CaisseCacheTableCompanion.insert(
+                id: id,
+                vueJson: vueJson,
+                luLeLocal: luLeLocal,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CaisseCacheTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$BaseOffline,
+      $CaisseCacheTableTable,
+      CaisseCache,
+      $$CaisseCacheTableTableFilterComposer,
+      $$CaisseCacheTableTableOrderingComposer,
+      $$CaisseCacheTableTableAnnotationComposer,
+      $$CaisseCacheTableTableCreateCompanionBuilder,
+      $$CaisseCacheTableTableUpdateCompanionBuilder,
+      (
+        CaisseCache,
+        BaseReferences<_$BaseOffline, $CaisseCacheTableTable, CaisseCache>,
+      ),
+      CaisseCache,
+      PrefetchHooks Function()
+    >;
 
 class $BaseOfflineManager {
   final _$BaseOffline _db;
@@ -8122,4 +8538,6 @@ class $BaseOfflineManager {
       $$EssaisRemiseTableTableManager(_db, _db.essaisRemise);
   $$RelevesPresenceLocauxTableTableManager get relevesPresenceLocaux =>
       $$RelevesPresenceLocauxTableTableManager(_db, _db.relevesPresenceLocaux);
+  $$CaisseCacheTableTableTableManager get caisseCacheTable =>
+      $$CaisseCacheTableTableTableManager(_db, _db.caisseCacheTable);
 }
