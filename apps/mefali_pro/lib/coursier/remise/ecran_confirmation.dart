@@ -6,7 +6,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../course/appels_course.dart';
 import '../course/etat_course.dart';
+import '../preuves/ecran_preuves.dart';
 import 'etat_remise.dart';
 import 'pave_code.dart';
 
@@ -161,7 +163,44 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
             label: Text(l10n.crsRemiseDepot, textAlign: TextAlign.center),
           ),
         ],
+        // ── La sortie de secours : le client ne répond pas (K4-1e) ─────────
+        //
+        // Volontairement la DERNIÈRE et la moins appuyée des options : un
+        // échec coûte de l'argent à quelqu'un, et les trois voies de remise
+        // doivent avoir été essayées avant. Elle n'est pas cachée pour autant
+        // — un coursier planté devant une porte close doit savoir où aller.
+        const SizedBox(height: MefaliTokens.space3),
+        TextButton.icon(
+          key: const Key('remise-vers-preuves'),
+          onPressed: etat.livraisonId == null ? null : _ouvrirPreuves,
+          icon: const Icon(Symbols.gpp_maybe, size: 16),
+          label: Text(l10n.crsPreuvesTitre),
+        ),
       ],
+    );
+  }
+
+  /// Ouvre K4-1e — les trois preuves à réunir avant de déclarer l'échec.
+  Future<void> _ouvrirPreuves() async {
+    final livraison = widget.etat.livraisonId;
+    if (livraison == null) return;
+    // L'appel passe par le chemin UNIQUE de journalisation (`ActionsAppel`) :
+    // il enfile l'intention, compose sans afficher le numéro, puis demande
+    // l'issue au retour. Le motif est `client_absent` — le seul qui compte
+    // pour la preuve (FR-035).
+    final appels = ActionsAppel(ref: ref);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (contexte) => EcranPreuves(
+          livraisonId: livraison,
+          onAppeler: () => appels.appelerClient(
+            contexte,
+            etat: widget.etat,
+            motif: 'client_absent',
+          ),
+          prendrePhoto: widget.prendrePhoto,
+        ),
+      ),
     );
   }
 

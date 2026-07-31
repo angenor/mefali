@@ -118,6 +118,61 @@ class ClientCourseVue {
 }
 
 /// De quoi confirmer la remise sans réseau (K4).
+/// Les seuils de preuve d'échec de la zone (K4-1e).
+///
+/// Ils voyagent dans le pré-provisionnement — jamais en dur, jamais redemandés
+/// au moment où Yao en a besoin : quand il est devant une porte close, c'est
+/// souvent qu'il n'a pas de réseau non plus.
+///
+/// Les valeurs par défaut ne sont **pas** une configuration : elles ne servent
+/// qu'au cas où le cache local est vide, et le serveur revalide de toute façon
+/// (FR-060).
+class SeuilsPreuvesVue {
+  /// Crée les seuils.
+  const SeuilsPreuvesVue({
+    this.appelsMin = 2,
+    this.espacementS = 180,
+    this.presenceS = 600,
+    this.rayonM = 100,
+    this.photosMin = 1,
+  });
+
+  /// Lit les seuils depuis le JSON mis en cache par le pré-provisionnement.
+  factory SeuilsPreuvesVue.depuisJson(String? json) {
+    if (json == null || json.isEmpty) return const SeuilsPreuvesVue();
+    try {
+      final m = jsonDecode(json) as Map<String, dynamic>;
+      const defaut = SeuilsPreuvesVue();
+      return SeuilsPreuvesVue(
+        appelsMin: (m['appels_min'] as num?)?.toInt() ?? defaut.appelsMin,
+        espacementS: (m['espacement_s'] as num?)?.toInt() ?? defaut.espacementS,
+        presenceS: (m['presence_s'] as num?)?.toInt() ?? defaut.presenceS,
+        rayonM: (m['rayon_m'] as num?)?.toInt() ?? defaut.rayonM,
+        photosMin: (m['photos_min'] as num?)?.toInt() ?? defaut.photosMin,
+      );
+    } on FormatException {
+      // Un cache illisible ne doit pas empêcher d'ouvrir l'écran : les seuils
+      // par défaut affichent quelque chose, et le serveur tranche.
+      return const SeuilsPreuvesVue();
+    }
+  }
+
+  /// Appels `client_absent` exigés.
+  final int appelsMin;
+
+  /// Espacement minimal entre deux appels retenus (s).
+  final int espacementS;
+
+  /// Présence continue exigée (s).
+  final int presenceS;
+
+  /// Rayon dans lequel un relevé compte (m).
+  final int rayonM;
+
+  /// Photos exigées.
+  final int photosMin;
+}
+
 class RemiseVue {
   /// Crée la vue de remise.
   const RemiseVue({
@@ -128,10 +183,15 @@ class RemiseVue {
     this.codeBloque = false,
     this.montantAEncaisserUnites = 0,
     this.modePaiement = 'cash',
+    this.preuves = const SeuilsPreuvesVue(),
     this.arretRemiseId,
     this.arretRemiseStatut,
     this.arriveChezClientLe,
   });
+
+  /// Seuils de preuve d'échec de la zone — servis avec la course pour que
+  /// K4-1e sache compter **hors ligne** (FR-058).
+  final SeuilsPreuvesVue preuves;
 
   /// Empreinte salée du code — **jamais le code** (FR-037).
   final String empreinteCode;
@@ -729,6 +789,7 @@ class EtatCourseActive extends _$EtatCourseActive {
         codeBloque: course?.codeBloque ?? false,
         montantAEncaisserUnites: course?.montantAEncaisserUnites ?? 0,
         modePaiement: course?.modePaiement ?? 'cash',
+        preuves: SeuilsPreuvesVue.depuisJson(course?.seuilsPreuvesJson),
         arretRemiseId: course?.arretRemiseId,
         arretRemiseStatut: course?.arretRemiseStatut,
         arriveChezClientLe: course?.arriveChezClientLe,
