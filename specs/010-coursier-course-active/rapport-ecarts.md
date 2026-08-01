@@ -231,24 +231,125 @@ façon obligatoire.
 
 ---
 
-## 5. Non validé visuellement
+## 5. Validation sur appareil (T087) — ce qu'elle a trouvé
 
-**T087 (validation sur appareil des six scénarios de `quickstart.md` §3) n'est
-pas faite.** Elle exige un appareil ou un émulateur et une API joignable ;
-aucun test automatisé ne voit une sonnerie, un écran en plein soleil, ou un
-réseau qui tombe pour de vrai.
+**Menée le 2026-08-01** sur émulateur Android (Pixel API 36.1), API locale et
+Garage joignables par l'IP LAN. Aucun appareil physique : ce qui relève de la
+perception — lisibilité en plein soleil, sonnerie entendue — reste à la charge
+d'une passe humaine (§5.3).
 
-Ce qui reste donc **non observé** :
+Elle a trouvé **trois défauts bloquants**, tous invisibles des 757 tests
+backend et des 133 tests Flutter, plus une dette d'outillage. Chacun cassait
+un parcours entier.
 
-| Scénario | Ce qui n'est pas vérifié |
-|---|---|
-| §3.1 course en plein soleil | lisibilité réelle des montants, ergonomie de la coche |
-| §3.2 note vocale hors ligne | lecture du fichier téléchargé en mode avion |
-| §3.3 hors-ligne complet | les 2 s de validation locale, le drain à la reconnexion |
-| §3.4 réveil écran éteint | **la sonnerie elle-même**, le maintien dans le pool 30 min |
-| §3.5 preuves | l'échantillonnage écran éteint sur 10 minutes réelles |
-| §3.6 caisse | le solde en conditions réelles |
+### 5.1 Les trois défauts
 
-Le §3.4 est le plus important : c'est la raison d'être d'US7, et le seul
-scénario dont aucune partie n'est vérifiable en test. La réserve du cycle 009
-sur la bascule K2 → course reste ouverte pour la même raison.
+**(1) L'app coursier ne se construisait plus pour Android** — commit `d6040fa`.
+`flutter_local_notifications`, le plugin qui porte la sonnerie d'US7, exige le
+*core library desugaring*. `assembleDebug` échouait : l'app n'était donc pas
+constructible depuis l'entrée du plugin au cycle. `flutter test` tourne sur la
+VM Dart de l'hôte et ne voit jamais Gradle.
+
+**(2) La sonnerie se taisait dès la deuxième mise en ligne** — commit `9fb0635`.
+`preparer()` déduisait l'autorisation de `requestNotificationsPermission()`,
+qui rend `null` sur Android < 13 (no-op) **et** quand la permission est déjà
+accordée. Le `?? false` faisait de ces deux `null` un refus : `sonner()`
+sortait à la première ligne, et Yao n'était plus jamais réveillé — pendant que
+le bandeau lui affirmait qu'il avait refusé une permission qu'il venait
+d'accorder. **US7 ne tenait donc pas sa raison d'être.** La vérité est
+maintenant relue (`areNotificationsEnabled`) plutôt que déduite.
+
+**(3) Aucune course ne pouvait démarrer** — commit `78de238`.
+`arret_de_coursier` n'acceptait un arrêt que si la livraison était déjà
+`en_collecte`. Or une course sort du dispatch en `assignee` : c'est la première
+action sur un arrêt qui l'ouvre. Le premier scan répondait `arret_hors_course`
+et la course restait bloquée pour toujours. Le bac de test ne le voyait pas :
+il appelle `marquer_arret_collecte` sur le domaine, sans traverser la route
+HTTP que l'app emprunte. **Même piège que les doubles menteurs du cycle 009,
+sous une autre forme — un raccourci de test qui saute la couche fautive.**
+
+**(4) Dette levée en passant** — commit `65ccb37`. Le cache `.sqlx` ne pouvait
+plus être régénéré (`ligne_en_rupture` ne compilait qu'en lisant le cache),
+et `SQLX_OFFLINE=true` échouait symétriquement. `cargo sqlx prepare`, exigé par
+`CLAUDE.md` après tout changement SQL, était donc inutilisable.
+
+### 5.2 Ce qui est observé
+
+| Scénario | Statut | Ce qui a été vu |
+|---|---|---|
+| §3.1 course active | **partiel** | arrêt courant seul développé (« Arrêt 1 / 3 »), suivants repliés + badge « À collecter », montant par arrêt, coche d'article, bouton « Indisponible » par ligne ; collecte du 1ᵉʳ arrêt par code de secours **après** le défaut (3) |
+| §3.2 note vocale | **partiel** | URL présignée émise sur l'IP LAN (`:3910`), pas `localhost` — piège du cycle 006 évité ; fichier téléchargé (17 775 o). Lecture hors ligne dans l'app **non observée** |
+| §3.3 hors-ligne | **non fait** | — |
+| §3.4 réveil écran éteint | **VALIDÉ** | voir §5.2.1 |
+| §3.5 preuves | **non fait** | — |
+| §3.6 caisse | **non fait** | caisse à 0 vérifiée en entrée de course seulement |
+
+#### 5.2.1 §3.4 — le scénario qui justifiait le cycle
+
+- Service de premier plan vivant **app absente du premier plan et écran
+  éteint** ; notification permanente sur `mefali_service_continu`
+  (importance LOW, `ONGOING|NO_CLEAR`), « Mefali — en ligne / Vous recevez les
+  offres de course, écran éteint. »
+- Canal de sonnerie `mefali_offres_course` en **importance MAX**, `playSound`,
+  vibration, `fullScreenIntent` — distinct du canal du service, comme prévu.
+- **Maintien dans le pool : 30 min 23 s d'écran éteint sans une seule sortie**,
+  relevés toutes les 5 min, `age_s ≤ 6` en continu alors que `pool_ttl_s = 90`.
+- **Réveil : offre émise écran éteint → notification postée à t+8 s** sur le
+  canal MAX, écran toujours éteint (après le correctif (2) ; avant, rien).
+- Compte à rebours au temps **réellement restant** (offre reprise affichée à
+  21 s, pas 40) — FR-100.
+- Mise hors ligne → service arrêté, notification disparue, coursier sorti du
+  pool. Rien ne survit.
+- **La bascule K2 → écran de course a été observée** : la réserve reconduite du
+  cycle 009 est **levée**.
+
+### 5.3 Ce qui reste à une passe humaine
+
+Non pas par manque de temps, mais parce qu'aucun outil ne les voit :
+
+- **§3.1 en plein soleil** : lisibilité réelle des montants, confort de la
+  coche — jugement visuel, dehors, sur un vrai écran.
+- **§3.4 la sonnerie entendue** : le canal, l'importance, le son et le
+  `fullScreenIntent` sont vérifiés ; le son qui sort du haut-parleur, non.
+
+Et trois scénarios restent à dérouler : **§3.3** (hors-ligne complet et
+3 codes faux), **§3.5** (preuves, 10 min écran éteint), **§3.6** (caisse en
+cours de course).
+
+### 5.4 Comportements corrects relevés au passage
+
+Mise en ligne refusée sans véhicule déclaré, avec le motif ; bandeau explicite
+quand la notification n'est pas autorisée ; course exigeant 10 300 FCFA
+d'avance **jamais** offerte à un coursier plafonné à 5 000 ; offre expirée →
+« sans pénalité — 1 sur 3 aujourd'hui » ; reprise `sans_mouvement` après 300 s
+d'immobilité ; dégradé de routage ×1,4 journalisé (`degraded: true`, OSRM
+absent du poste) ; l'offre ne révèle pas l'adresse exacte et le
+pré-provisionnement ne porte que des **empreintes** de jeton et de code
+(SC-015).
+
+### 5.5 Réserves ouvertes
+
+- **`dart analyze` (mefali_pro) : 8 avertissements** — 4
+  `only_use_keep_alive_inside_keep_alive`, 4 `provider_dependencies`.
+  Préexistants, stables après `build_runner clean`, non traités ici.
+- **`flutter test` (mefali_core) : 1 échec** —
+  `session_intercepteur_test` « renouvellement partagé (FR-014) ». Passe seul,
+  échoue en suite, y compris `--concurrency=1`, et **aussi sans les correctifs
+  ci-dessus** : pollution entre tests (`Ref … after it has been disposed`,
+  piège connu du cycle 004). La suite s'arrête à 101 au lieu de 116.
+- **Le canal d'offre n'a pas de son « prolongé »** : `canal_offre.dart` l'annonce
+  en tête de fichier, l'implémentation utilise `playSound: true`, donc le son de
+  notification par défaut du système. Le canal est bien dédié ; le son, non.
+- **L'app garde l'écran d'une course annulée côté serveur** (`204` reçu, K3
+  toujours affiché) et **n'ouvre pas sur la course active au démarrage** : elle
+  reste sur le tableau de bord, il faut l'onglet « Courses ».
+- **Exception non gérée** vue en journal :
+  `TimeoutException … Time limit reached while waiting for position update`,
+  suivie de « Geolocator position updates stopped ». Le service continue de
+  publier (le pool ne se vide pas), mais l'exception remonte non traitée.
+
+### 5.6 Verts au 2026-08-01, après correctifs
+
+`cargo test --workspace` **757 passés / 0 échec** · `flutter test` mefali_pro
+**133** · `verifier-accord-locks.sh` OK · `generate-clients.sh` **sans diff** ·
+`cargo sqlx prepare --workspace` de nouveau opérationnel.
