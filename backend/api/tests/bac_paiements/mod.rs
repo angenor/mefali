@@ -157,7 +157,13 @@ impl Bac {
                 .service(api::paiements_http::etat_paiement)
                 .service(api::paiements_http::recu_commande)
                 .service(api::vendeur_http::recu_arret)
-                .service(api::paiements_webhook_http::recevoir_notification);
+                .service(api::paiements_webhook_http::recevoir_notification)
+                // Surfaces d'exploitation du cycle (T071/T072).
+                .service(api::admin_paiements_http::registre_transactions)
+                .service(api::admin_paiements_http::file_dossiers)
+                .service(api::admin_paiements_http::clore_dossier)
+                .service(api::admin_paiements_http::file_creances)
+                .service(api::admin_paiements_http::regler_creance);
         }
     }
 
@@ -251,6 +257,16 @@ impl Bac {
         self.cmd
             .creer_commande_mode("marche", vec![vendeur.ligne(quantite)], "mobile_money")
             .await
+    }
+
+    /// Un passage de balayage, tel que le job le fait toutes les 10 s.
+    ///
+    /// Appelé directement plutôt qu'en montant le job : un test qui attend un
+    /// ordonnancement asynchrone n'est pas un test, c'est un pari.
+    pub async fn balayer(&self) -> paiements::BilanBalayage {
+        paiements::balayer(&self.paiements, &self.cmd.commandes, self.fournisseur.as_ref())
+            .await
+            .expect("le balayage aboutit")
     }
 
     /// Crée un compte porteur du rôle **vendeur**, rattaché au prestataire
