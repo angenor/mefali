@@ -113,5 +113,118 @@
   "parcoursCommandeAnnulee": "Commande annulée.",
   "@parcoursCommandeAnnulee": {
     "description": "Confirmation d'annulation"
+  },
+
+  "paiementTitre": "Régler ma commande",
+  "@paiementTitre": {
+    "description": "Titre de l'écran de paiement (cycle PAY 011, US1)"
+  },
+  "paiementMontantLibelle": "Montant à régler",
+  "@paiementMontantLibelle": {
+    "description": "Libellé du montant total de la session de paiement"
+  },
+  "paiementOuvrir": "Payer maintenant",
+  "@paiementOuvrir": {
+    "description": "Action qui ouvre l'accès de paiement dans le navigateur système"
+  },
+  "paiementOuvertureEnCours": "Ouverture du paiement…",
+  "@paiementOuvertureEnCours": {
+    "description": "État transitoire pendant le lancement du navigateur"
+  },
+  "paiementRevenuSansConfirmation": "Nous n'avons pas encore reçu la confirmation. Si vous avez payé, elle arrive dans un instant.",
+  "@paiementRevenuSansConfirmation": {
+    "description": "Retour de navigateur sans confirmation — le retour ne crédite RIEN (FR-025). Le texte ne dit ni « payé » ni « échoué » : il dit ce que le serveur sait, c'est-à-dire rien encore."
+  },
+  "paiementTempsRestant": "Temps restant : {duree}",
+  "@paiementTempsRestant": {
+    "description": "Compte à rebours de la session, recalé sur le serveur à chaque lecture (FR-017)",
+    "placeholders": {
+      "duree": {"type": "String"}
+    }
+  },
+  "paiementReprendre": "Reprendre le paiement",
+  "@paiementReprendre": {
+    "description": "Action de reprise tant que la session vit (FR-016)"
+  },
+  "paiementEtatOuverte": "En attente de votre paiement",
+  "@paiementEtatOuverte": {
+    "description": "État `ouverte` de la transaction"
+  },
+  "paiementEtatReglee": "Paiement confirmé",
+  "@paiementEtatReglee": {
+    "description": "État `reglee` — la commande repart au dispatch"
+  },
+  "paiementEtatEchouee": "Paiement refusé. Vous pouvez réessayer.",
+  "@paiementEtatEchouee": {
+    "description": "État `echouee` — la session vit encore, le réessai est permis (FR-026)"
+  },
+  "paiementEtatExpiree": "Le délai de paiement est écoulé.",
+  "@paiementEtatExpiree": {
+    "description": "État `expiree`"
+  },
+  "paiementSessionExpiree": "Le délai de paiement est écoulé. Votre commande a été annulée, sans aucun frais.",
+  "@paiementSessionExpiree": {
+    "description": "Annulation par expiration, vue depuis le suivi (FR-031). SANS JARGON DE PAIEMENT : ni « transaction », ni « session », ni « fournisseur » — Awa n'a pas à connaître notre plomberie pour comprendre qu'elle n'a rien payé."
+  },
+  "paiementRecommander": "Recommander",
+  "@paiementRecommander": {
+    "description": "Action qui repart du panier après une annulation par expiration (FR-035)"
+  },
+  "paiementRemboursementAVenir": "Un paiement nous est parvenu après l'annulation. Notre équipe vous recontacte.",
+  "@paiementRemboursementAVenir": {
+    "description": "Paiement hors délai (R8) — la commande n'est PAS ressuscitée et le remboursement n'est PAS automatique (PAY-04 hors périmètre). Le texte ne promet donc pas un remboursement immédiat : il promet un humain."
+  },
+  "paiementErreurFournisseurIndisponible": "Le paiement est momentanément indisponible. Votre commande est bien enregistrée : réessayez dans un instant.",
+  "@paiementErreurFournisseurIndisponible": {
+    "description": "Erreur 502 — la commande reste INTACTE (FR-018), et le message le dit pour éviter une seconde commande"
+  },
+  "paiementErreurNonRequis": "Cette commande n'attend aucun paiement.",
+  "@paiementErreurNonRequis": {
+    "description": "Erreur 409 `paiement_non_requis` — commande cash, déjà réglée ou annulée"
+  },
+  "paiementNavigateurIndisponible": "Impossible d'ouvrir la page de paiement sur cet appareil.",
+  "@paiementNavigateurIndisponible": {
+    "description": "Échec du lancement `url_launcher`"
+  },
+
+  "recuTitre": "Reçu",
+  "@recuTitre": {
+    "description": "Titre du reçu de commande (cycle PAY 011, US5)"
+  },
+  "recuArticles": "Articles",
+  "@recuArticles": {
+    "description": "Montant des articles du reçu"
+  },
+  "recuFraisLivraison": "Frais de livraison",
+  "@recuFraisLivraison": {
+    "description": "Frais de livraison du reçu"
+  },
+  "recuRetenueLivraisonOfferte": "Livraison offerte par le vendeur",
+  "@recuRetenueLivraisonOfferte": {
+    "description": "Ligne de retenue VND-08 sur le reçu client — les MÊMES chiffres que le reçu vendeur (FR-053)"
+  },
+  "recuTotalDu": "Total",
+  "@recuTotalDu": {
+    "description": "Total dû du reçu"
+  },
+  "recuDejaRegle": "Déjà réglé",
+  "@recuDejaRegle": {
+    "description": "Commande prépayée (FR-073) — rien à remettre au coursier"
+  },
+  "recuAremettreAuCoursier": "À remettre au coursier",
+  "@recuAremettreAuCoursier": {
+    "description": "Montant cash à remettre à la livraison"
+  },
+  "recuLigneRetiree": "Retirée",
+  "@recuLigneRetiree": {
+    "description": "Statut d'une ligne retirée — elle apparaît pour EXPLIQUER pourquoi le total a bougé, mais ne compte dans aucun montant"
+  },
+  "recuModeCash": "Espèces à la livraison",
+  "@recuModeCash": {
+    "description": "Mode de paiement cash"
+  },
+  "recuModeMobileMoney": "Mobile money",
+  "@recuModeMobileMoney": {
+    "description": "Mode de paiement prépayé. Le MOYEN précis (Wave, Orange Money…) est affiché à part quand le fournisseur l'a communiqué."
   }
 }

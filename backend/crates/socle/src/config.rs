@@ -66,6 +66,37 @@ pub enum SmsMode {
     Traces,
 }
 
+/// Fournisseur de paiement sélectionné à l'exécution (cycle PAY, research R4).
+///
+/// **Aucune marque d'agrégateur ici, et jamais.** Le cadrage §10.7 dit le choix
+/// non tranché ; `agregateur` désigne le client HTTP *paramétré*, qui se branche
+/// sur celui qui sera retenu par configuration seule (FR-003, FR-042).
+///
+/// Énum plutôt que chaîne libre, pour la raison exacte de [`SmsMode`] : une
+/// faute de frappe dans le `.env` doit échouer au démarrage, pas encaisser dans
+/// le vide.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PaiementFournisseur {
+    /// Double pilotable — dev, tests, staging. **Défaut** : un environnement
+    /// mal configuré simule, il n'appelle pas un tiers au hasard.
+    #[default]
+    Simule,
+    /// Client HTTP paramétré vers l'agrégateur retenu (production).
+    Agregateur,
+}
+
+impl PaiementFournisseur {
+    /// Identifiant stable, employé comme segment d'URL du webhook et stocké sur
+    /// la transaction. **Jamais interprété par une règle métier** (FR-003).
+    pub fn comme_str(self) -> &'static str {
+        match self {
+            PaiementFournisseur::Simule => "simule",
+            PaiementFournisseur::Agregateur => "agregateur",
+        }
+    }
+}
+
 /// Contrat du `.env` consommé par le backend.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
@@ -95,6 +126,24 @@ pub struct Config {
     /// Fournisseur d'envoi de SMS (cycle CPT, research R6).
     #[serde(default)]
     pub sms_mode: SmsMode,
+    /// Fournisseur de paiement câblé (cycle PAY, research R4). Défaut `simule`.
+    #[serde(default)]
+    pub paiement_fournisseur: PaiementFournisseur,
+    /// URL de base de l'agrégateur — **requise** en mode `agregateur`.
+    #[serde(default)]
+    pub paiement_base_url: Option<String>,
+    /// Clé d'API de l'agrégateur — **requise** en mode `agregateur`.
+    #[serde(default)]
+    pub paiement_cle_api: Option<String>,
+    /// Secret HMAC de vérification des notifications entrantes (cycle PAY,
+    /// research R6). ≥ 32 octets — vérifié par [`Config::valider`].
+    ///
+    /// DISTINCT des deux autres secrets, et ce n'est pas de la coquetterie : il
+    /// est **partagé avec un tiers**. Le mutualiser avec `jwt_secret`
+    /// donnerait à l'agrégateur de quoi forger des jetons de session ; avec
+    /// `plaque_secret`, de quoi forger des plaques de vendeur.
+    #[serde(default)]
+    pub paiement_webhook_secret: Option<String>,
     /// Sentry — vide en dev (désactivé).
     #[serde(default)]
     pub sentry_dsn: Option<String>,
@@ -147,6 +196,60 @@ impl Config {
                 self.plaque_secret.len()
             )));
         }
+        self.valider_paiement()?;
+        Ok(())
+    }
+
+    /// Gardes du cycle PAY (FR-045) : **en mode `agregateur`, une configuration
+    /// incomplète refuse le démarrage.**
+    ///
+    /// ## Pourquoi échouer au démarrage plutôt qu'au premier paiement
+    ///
+    /// Les trois manques que cette fonction attrape ne produisent pas une
+    /// erreur visible : ils produisent une chaîne d'argent **silencieusement
+    /// cassée**.
+    ///
+    /// - Sans `PAIEMENT_BASE_URL` ou `PAIEMENT_CLE_API`, chaque ouverture de
+    ///   session rend `502` : les clients voient « réessayez », personne ne voit
+    ///   la cause, et les commandes au-dessus du plafond cash redeviennent
+    ///   impossibles — le trou même que ce cycle existe pour combler.
+    /// - Sans `PAIEMENT_WEBHOOK_SECRET`, c'est pire : l'API **encaisse** (les
+    ///   sessions s'ouvrent) mais **ne confirme jamais**, faute de pouvoir
+    ///   vérifier une signature. De l'argent part du compte du client vers une
+    ///   commande qui expirera. Un secret trop court est le même défaut avec un
+    ///   faux sentiment de sécurité : plus faible que HMAC-SHA256 lui-même.
+    ///
+    /// En mode `simule`, rien n'est exigé : le double ne joint personne et
+    /// signe avec son propre secret de test.
+    fn valider_paiement(&self) -> Result<(), config::ConfigError> {
+        if self.paiement_fournisseur != PaiementFournisseur::Agregateur {
+            return Ok(());
+        }
+        let requis = |champ: &str, valeur: &Option<String>| {
+            if valeur.as_deref().is_none_or(str::is_empty) {
+                Err(config::ConfigError::Message(format!(
+                    "PAIEMENT_FOURNISSEUR=agregateur exige {champ} : sans elle, \
+                     l'API ouvrirait des sessions qu'elle ne pourrait jamais \
+                     confirmer",
+                )))
+            } else {
+                Ok(())
+            }
+        };
+        requis("PAIEMENT_BASE_URL", &self.paiement_base_url)?;
+        requis("PAIEMENT_CLE_API", &self.paiement_cle_api)?;
+
+        let secret = self.paiement_webhook_secret.as_deref().unwrap_or_default();
+        if secret.len() < JWT_SECRET_OCTETS_MIN {
+            return Err(config::ConfigError::Message(format!(
+                "PAIEMENT_WEBHOOK_SECRET fait {} octets — minimum \
+                 {JWT_SECRET_OCTETS_MIN} (256 bits, HMAC-SHA256). Sans lui, \
+                 aucune notification ne peut être vérifiée : les clients \
+                 paieraient et leurs commandes expireraient. \
+                 Générer : openssl rand -hex 32",
+                secret.len(),
+            )));
+        }
         Ok(())
     }
 }
@@ -167,9 +270,25 @@ mod tests {
             jwt_secret: secret.to_owned(),
             plaque_secret: "p".repeat(32),
             sms_mode: SmsMode::Traces,
+            paiement_fournisseur: PaiementFournisseur::Simule,
+            paiement_base_url: None,
+            paiement_cle_api: None,
+            paiement_webhook_secret: None,
             sentry_dsn: None,
             app_env: AppEnv::Dev,
         }
+    }
+
+    /// Une configuration `agregateur` COMPLÈTE, dont chaque test retire une
+    /// pièce. Partir du valide et casser une chose à la fois isole ce qui est
+    /// vraiment exigé — partir de l'invalide ne prouverait que le premier refus.
+    fn config_agregateur_complete() -> Config {
+        let mut config = config_avec_secret(&"a".repeat(32));
+        config.paiement_fournisseur = PaiementFournisseur::Agregateur;
+        config.paiement_base_url = Some("https://exemple.invalid".to_owned());
+        config.paiement_cle_api = Some("cle".to_owned());
+        config.paiement_webhook_secret = Some("w".repeat(32));
+        config
     }
 
     #[test]
@@ -189,6 +308,77 @@ mod tests {
         config.plaque_secret = "court".to_owned();
         let erreur = config.valider().unwrap_err();
         assert!(erreur.to_string().contains("PLAQUE_SECRET"));
+    }
+
+    // ── Cycle PAY 011 (FR-045) — les trois configurations invalides ───────
+
+    /// Le défaut ne demande rien : un environnement de dev sans variable
+    /// `PAIEMENT_*` démarre et simule. C'est ce qui rend le mode `simule`
+    /// utilisable comme défaut sûr.
+    #[test]
+    fn le_mode_simule_n_exige_aucune_variable_de_paiement() {
+        let config = config_avec_secret(&"a".repeat(32));
+        assert_eq!(config.paiement_fournisseur, PaiementFournisseur::Simule);
+        assert!(config.valider().is_ok());
+    }
+
+    /// La configuration complète passe — sans ce test, les trois suivants
+    /// pourraient tous passer pour une raison qui n'est pas celle qu'ils
+    /// nomment.
+    #[test]
+    fn le_mode_agregateur_complet_demarre() {
+        assert!(config_agregateur_complete().valider().is_ok());
+    }
+
+    /// Sans URL de base, chaque ouverture de session rendrait `502` et les
+    /// commandes au-dessus du plafond cash redeviendraient impossibles.
+    #[test]
+    fn agregateur_sans_base_url_refuse_le_demarrage() {
+        let mut config = config_agregateur_complete();
+        config.paiement_base_url = None;
+        let erreur = config.valider().unwrap_err();
+        assert!(erreur.to_string().contains("PAIEMENT_BASE_URL"));
+
+        // Une chaîne VIDE est un manque, pas une valeur : un `.env` avec
+        // `PAIEMENT_BASE_URL=` doit échouer comme une variable absente.
+        config.paiement_base_url = Some(String::new());
+        assert!(config.valider().is_err(), "une valeur vide vaut une absence");
+    }
+
+    /// Sans clé d'API, le fournisseur refuse chaque appel : même effet, même
+    /// invisibilité.
+    #[test]
+    fn agregateur_sans_cle_api_refuse_le_demarrage() {
+        let mut config = config_agregateur_complete();
+        config.paiement_cle_api = None;
+        let erreur = config.valider().unwrap_err();
+        assert!(erreur.to_string().contains("PAIEMENT_CLE_API"));
+    }
+
+    /// Le cas le plus grave : l'API encaisserait sans jamais pouvoir confirmer.
+    #[test]
+    fn agregateur_sans_secret_de_webhook_refuse_le_demarrage() {
+        let mut config = config_agregateur_complete();
+        config.paiement_webhook_secret = None;
+        let erreur = config.valider().unwrap_err();
+        assert!(erreur.to_string().contains("PAIEMENT_WEBHOOK_SECRET"));
+
+        // Un secret court est le même défaut, avec un faux sentiment de
+        // sécurité : plus faible que l'algorithme qu'il alimente.
+        config.paiement_webhook_secret = Some("trop-court".to_owned());
+        let erreur = config.valider().unwrap_err();
+        assert!(erreur.to_string().contains("PAIEMENT_WEBHOOK_SECRET"));
+
+        config.paiement_webhook_secret = Some("w".repeat(32));
+        assert!(config.valider().is_ok(), "32 octets exactement suffisent");
+    }
+
+    /// Le segment d'URL du webhook est l'identifiant stable du fournisseur — et
+    /// aucune marque d'agrégateur n'y apparaît (FR-003).
+    #[test]
+    fn l_identifiant_de_fournisseur_ne_nomme_aucune_marque() {
+        assert_eq!(PaiementFournisseur::Simule.comme_str(), "simule");
+        assert_eq!(PaiementFournisseur::Agregateur.comme_str(), "agregateur");
     }
 
     #[test]
