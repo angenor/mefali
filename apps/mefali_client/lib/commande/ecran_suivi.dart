@@ -30,6 +30,7 @@ class EcranSuivi extends ConsumerWidget {
     this.onAppeler,
     this.onAnnuler,
     this.entete,
+    this.actions,
     super.key,
   });
 
@@ -50,13 +51,20 @@ class EcranSuivi extends ConsumerWidget {
   /// se contente de faire de la place à ce que le parcours lui donne.
   final Widget? entete;
 
+  /// Actions de barre — le reçu du cycle PAY 011 s'y accroche (FR-070).
+  ///
+  /// Dans la barre plutôt que dans le corps : le reçu se consulte à tout
+  /// moment, y compris pendant la course, et une carte de plus dans la liste
+  /// repousserait le bloc de remise que SC-009 veut lisible sans défilement.
+  final List<Widget>? actions;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = MefaliCoreLocalizations.of(context)!;
     final suivi = ref.watch(suiviProvider(commandeId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.suiviTitre)),
+      appBar: AppBar(title: Text(l10n.suiviTitre), actions: actions),
       body: suivi.when(
         loading: () => const Center(child: CircularProgressIndicator.adaptive()),
         error: (_, _) => Center(child: Text(l10n.commandeErreurInterne)),

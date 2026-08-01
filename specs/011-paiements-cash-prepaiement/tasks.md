@@ -189,8 +189,8 @@ tâche qui les enfreint est incomplète, même si son code marche :
 - [X] T060 [US5] Test d'intégration `backend/api/tests/paiements_recus.rs` : les deux reçus affichent des montants **identiques** au franc près, le reçu d'une commande prépayée porte `deja_regle: true` et `montant_a_remettre = 0`, `403` croisés (SC-009, FR-073)
 - [X] T061 [P] [US5] App coursier — montant net **et son explication** sur la carte d'arrêt dans `apps/mefali_pro/lib/coursier/course/carte_arret.dart` : « Articles 3 000 − Livraison offerte 500 = **2 500 à payer** » (FR-092) — réf. `docs/design/png/K3-course-active.png` état 1a
 - [X] T062 [P] [US5] App vendeur — réglage de l'offre de livraison dans `apps/mefali_pro/lib/vendeur/` : trois choix, saisie du seuil, rappel explicite que les commandes en cours ne changent pas — réf. `docs/design/png/V1-statut-boutique.png` (motifs de réglage) ; **écart assumé** : le badge client relève de VND-08
-- [ ] T063 [P] [US5] App vendeur — reçu d'un arrêt collecté dans `apps/mefali_pro/lib/vendeur/recu_arret.dart` : les trois montants, motif de retenue en clé i18n — réf. `docs/design/png/V3-commande-entrante.png`
-- [ ] T064 [P] [US5] App cliente — reçu de commande dans `apps/mefali_client/lib/parcours/recu_commande.dart` : détail des lignes, frais, retenue le cas échéant, « déjà réglé » si prépayée — réf. `docs/design/png/C4-suivi-commande.png`
+- [X] T063 [P] [US5] App vendeur — reçu d'un arrêt collecté dans `apps/mefali_pro/lib/vendeur/recu_arret.dart` : les trois montants, motif de retenue en clé i18n — réf. `docs/design/png/V3-commande-entrante.png`
+- [X] T064 [P] [US5] App cliente — reçu de commande dans `apps/mefali_client/lib/parcours/recu_commande.dart` : détail des lignes, frais, retenue le cas échéant, « déjà réglé » si prépayée — réf. `docs/design/png/C4-suivi-commande.png`
 
 **Checkpoint**: la retenue existe pour de vrai, et personne n'a à faire le calcul de tête.
 

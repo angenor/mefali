@@ -16,6 +16,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../commande/ecran_suivi.dart';
@@ -29,6 +30,7 @@ import '../panier/ecran_panier.dart';
 import '../panier/etat_confirmation.dart';
 import '../panier/etat_panier.dart';
 import 'actions_commande.dart';
+import 'recu_commande.dart';
 
 /// Ouvre le panier (C3-3a).
 void ouvrirPanier(BuildContext context) {
@@ -436,6 +438,20 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
           ref.read(actionsCommandeProvider).signalerAppel(widget.commandeId),
       onAnnuler: _annuler,
       entete: BandeauPaiementSuivi(commandeId: widget.commandeId),
+      // Le reçu (FR-070) — accessible à tout moment, y compris pendant la
+      // course : c'est là qu'Awa vérifie pourquoi le total a bougé et ce
+      // qu'elle doit encore au coursier.
+      actions: [
+        IconButton(
+          icon: const Icon(Symbols.receipt_long_rounded),
+          tooltip: AppLocalizations.of(context)!.recuTitre,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PageRecu(commandeId: widget.commandeId),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
