@@ -1264,7 +1264,13 @@ mod tests {
         // rien ne le fournissait. Ce sont des TEXTES d'affichage servis par la
         // liste blanche publique de `/config` — pas des seuils : ils ne
         // rejoignent donc pas les « sept paramètres » de research R17.
-        assert_eq!(apres_un.4, 90, "50 (pays) + 40 (ville) paramètres");
+        // + 4 (pays, cycle 011 : durée de session de prépaiement, fenêtre de
+        // réconciliation avant annulation, seuil d'alerte d'exposition en
+        // créances, et le coupe-circuit `paiement.moyens_actifs` — VIDE par
+        // défaut, donc sans effet : FR-011 interdit de masquer un moyen au
+        // client, il n'existe que pour couper en urgence un moyen défaillant
+        // chez l'agrégateur).
+        assert_eq!(apres_un.4, 94, "54 (pays) + 40 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

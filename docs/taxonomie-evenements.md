@@ -539,6 +539,93 @@ hors ligne et le taux de refus définitif au rejeu se dérivent tous de ces
   émettent ;
 - les **seeds** — chargement initial (patron des cycles 002 → 009).
 
+### Événements du cycle PAY (011 — chaîne cash tracée et prépaiement mobile money)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
+(constitution VI ; specs/011 `contracts/ports-paiements.md` §6). Registre posé
+**avant** l'implémentation (Definition of Done §0.4 point 4). **9 nouveaux**
+ci-dessous, plus **3 amendés** (§ suivant).
+
+**⚠ La règle la plus stricte de ce registre.** Aucune charge utile de ce cycle ne
+porte d'**accès de paiement** (l'URL de la page du fournisseur), de **signature**,
+ni d'**identifiant de session du fournisseur** (FR-103). Un événement outbox est
+lu par des consommateurs, archivé douze mois et exporté vers les métriques : y
+faire entrer une URL d'encaissement encore vivante en ferait une surface d'attaque
+sans usage. Le rapprochement avec le fournisseur se fait par la **table**
+`paiements.transaction`, jamais par le journal. Un test dédié
+(`paiements_secrets.rs`) parcourt tous les événements du module et échoue sur la
+présence d'une clé interdite.
+
+**Aucun nom d'agrégateur non plus.** `fournisseur` porte l'identifiant *stable*
+de l'implémentation câblée (`simule`, `agregateur`), jamais la marque commerciale
+retenue : la frontière de PAY-05 vaut aussi pour le journal.
+
+| Type | `entite_type` | `entite_id` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|---|
+| `paiement.session_ouverte` | `transaction` | `transaction.id` | `commande`, `montant`, `devise`, `fournisseur`, `expire_le` — **jamais** `acces_paiement` (FR-103) |
+| `paiement.confirme` | `transaction` | `transaction.id` | `commande`, `montant`, `devise`, `moyen`, `delai_confirmation_s` |
+| `paiement.echoue` | `transaction` | `transaction.id` | `commande`, `motif_cle` (REQUIS), `moyen` — la session **vit encore**, le client peut réessayer (FR-026) |
+| `paiement.session_expiree` | `transaction` | `transaction.id` | `commande`, `montant`, `devise`, `duree_s` — **contrat pour NTF** (FR-033) |
+| `paiement.hors_delai` | `transaction` | `transaction.id` | `commande`, `montant`, `devise`, `retard_s` — **contrat pour NTF** (FR-038) ; la commande n'est PAS ressuscitée (R8) |
+| `paiement.dossier_ouvert` | `dossier` | `dossier.id` | `type` (`montant_divergent` \| `devise_divergente` \| `paiement_hors_delai` \| `transaction_orpheline` \| `retenue_ecretee` \| `remboursement_client_du`), `commande`, `montant_constate`, `montant_attendu`, `devise`, `motif_cle` |
+| `caisse.creance_ouverte` | `creance` | `creance.id` | `coursier`, `commande`, `nature` (`avance_prepayee` \| `part_course`), `montant`, `devise` — une créance n'est **pas** une écriture de caisse (R12) |
+| `caisse.creance_reglee` | `creance` | `creance.id` | `coursier`, `montant`, `devise`, `regle_par` (acteur d'exploitation) |
+| `vendeur.offre_livraison_modifiee` | `prestataire` | `prestataire.id` | `offre` (`jamais` \| `toujours` \| `au_dela`), `seuil` (unités mineures, `null` hors `au_dela`), `acteur` |
+
+#### Événements existants **amendés** par ce cycle
+
+Aucun renommage, aucune suppression : les consommateurs existants (dispatch,
+caisse) continuent de lire exactement ce qu'ils lisaient.
+
+| Type | Ajout | Raison |
+|---|---|---|
+| `arret.collecte` (cycle QRC 006) | `montant_articles`, `retenue_appliquee`, `retenue_ecretee` (booléen) | R9 — `montant_avance` reste le **net** ; la caisse ne change pas de lecture, mais le reçu vendeur exige les trois montants (FR-071) |
+| `commande.terminee` (cycle CMD 008) | `total_du` **distinct** de `total_encaisse` (`0` si prépayé) | R11 — `collecte.rs:767` écrivait `total_encaisse = total_unites` quel que soit le mode : une commande prépayée déclarait un encaissement qui n'a jamais eu lieu |
+| `caisse.mouvement` (cycle CRS 010) | trois valeurs neuves de `type` : `frais_encaisses`, `reglement`, `reversement` | R13 — champ existant, valeurs nouvelles ; toutes trois sont des mouvements de trésorerie **réels**, jamais une créance |
+
+**Minimisation (ARTCI).** Aucune donnée de carte, aucun numéro de compte mobile
+money n'est reçu, stocké ni journalisé : le produit ne voit que le **moyen**
+employé, jamais l'identifiant du payeur. Les montants sont des **entiers en
+unités mineures** accompagnés de leur devise (constitution III). Aucun payload ne
+porte de coordonnée.
+
+**Qualification produit vs opérations (MET-01).** `paiement.session_ouverte`,
+`paiement.confirme` et `paiement.echoue` sont des événements **produit** — ils
+mesurent le parcours d'Awa devant son écran. Les six autres sont des événements
+d'**opérations**. Les six indicateurs de pilotage en dérivent tous, sans aucun
+KPI manuel (constitution VI) :
+
+| Indicateur | Dérivé de |
+|---|---|
+| Taux de conversion du prépaiement | `paiement.session_ouverte` → `paiement.confirme` |
+| Délai médian de confirmation | `delai_confirmation_s` de `paiement.confirme` |
+| Répartition par moyen de paiement | `moyen` de `paiement.confirme` |
+| Taux d'expiration | `paiement.session_expiree` / `paiement.session_ouverte` |
+| Exposition de créances | `caisse.creance_ouverte` − `caisse.creance_reglee` |
+| Fréquence de la retenue vendeur | `arret.collecte` avec `retenue_appliquee > 0` |
+
+**Ce qui n'émet PAS d'événement dans ce cycle** :
+
+- une **notification de fournisseur rejouée** (même fournisseur, même référence,
+  même empreinte de charge) — ni seconde ligne d'effet, ni second événement : le
+  rejeu est absorbé par la contrainte d'unicité de `paiements.notification_recue`,
+  et la réponse `{"traite": false}` n'est pas une transition (FR-021) ;
+- une **signature refusée** — la tentative est écrite en base
+  (`signature_valide = false`) et journalisée en `warn` **sans le corps**, mais
+  elle ne produit aucun fait métier : refuser n'est pas transiter (FR-020) ;
+- une **session échue lue avant le balayage** — la lecture respecte l'échéance
+  persistée et affiche « expirée » ; seule l'expiration effectivement écrite émet
+  `paiement.session_expiree` (patron des cycles 008 et 009) ;
+- un **rappel de `POST /commandes/{id}/paiement`** tant que la session vit — il
+  renvoie la session existante sans rien rouvrir chez le fournisseur (FR-015) ;
+- une **créance créée deux fois** par le rejeu du worker outbox ou d'une fin de
+  course hors-ligne — `creance.evenement_id UNIQUE` porte l'idempotence (FR-068) ;
+- un **appel à `refund`** — la méthode est définie pour honorer PAY-05, aucun
+  chemin du produit ne l'invoque (FR-041, FR-111) ;
+- les **lectures** de reçu, de registre, de dossiers ou de positions de caisse —
+  aucune transition ;
+- les **seeds** — chargement initial (patron des cycles 002 → 010).
+
 ## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
 
 Événements PRODUIT émis par les apps (cadrage §10.9), distincts du journal

@@ -472,7 +472,7 @@ métier (Postgres = vérité, pool reconstruit par heartbeats) ; maquette :
 docs/design/png/K2.
 ```
 
-### Cycle 9 — CRS(en cours)
+### Cycle 9 — CRS
 
 ```
 /speckit-specify
@@ -504,7 +504,7 @@ maquettes : docs/design/png/K1, K2, K3, K4, K5 — la checklist multi-arrêts de
 K3 est la cible exacte.
 ```
 
-### Cycle 10 — PAY
+### Cycle 10 — PAY(en cours)
 
 ```
 /speckit-specify

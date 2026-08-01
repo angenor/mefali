@@ -113,6 +113,18 @@ rand = "0.10.2"
 qrcode = { version = "0.14.1", default-features = false }
 printpdf = "0.12.4"
 
+# --- Vérification de signature de webhook (cycle PAY 011, research.md R6) ---
+# Comparaison en TEMPS CONSTANT de deux empreintes. `hmac` et `sha2` sont déjà
+# dans l'arbre (OTP du cycle 003) ; seul `subtle` s'ajoute — et il y était déjà
+# en dépendance transitive, donc aucune résolution nouvelle (constitution X).
+#
+# Pourquoi une dépendance plutôt qu'un `==` : comparer deux signatures avec
+# l'égalité de Rust s'arrête au premier octet différent. Le temps de réponse
+# fuit alors la position de l'erreur, et un attaquant reconstruit la signature
+# valide octet par octet. `ConstantTimeEq` parcourt toujours la longueur
+# entière.
+subtle = "2.6.1"
+
 [profile.release]
 strip = true
 lto = "thin"

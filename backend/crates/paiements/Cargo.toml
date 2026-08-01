@@ -6,4 +6,57 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# Domaine PUR (constitution II) : session de prépaiement, notification signée,
+# expiration réconciliée, dossiers d'anomalie, registre d'exploitation. Le crate
+# porte sqlx et SON schéma (`paiements`) ; tout le reste passe par des traits
+# doublables.
+#
+# Sens des dépendances, à ne jamais inverser (contracts/ports-paiements.md) :
+#
+#   paiements ──▶ commandes     port `CommandesAPayer` (total figé, confirmation,
+#                               annulation) — `commandes` n'apprend JAMAIS qu'un
+#                               fournisseur existe
+#   paiements ──▶ zones         les 4 paramètres du cycle, hérités pays → ville
+#   paiements ─╳▶ coursier      JAMAIS. La créance est de la CAISSE : elle vit
+#                               dans `coursier`, et ce crate ne la connaît pas
+#                               (research R12). Ce qu'il ne peut pas atteindre
+#                               par dépendance, il l'atteint par l'OUTBOX —
+#                               exactement comme `coursier` atteint `commandes`.
+#   paiements ─╳▶ prestataires  JAMAIS. L'offre de livraison est lue par
+#                               `commandes` au devis, pas ici.
+#
+# ⚠ FRONTIÈRE DU CYCLE : aucun nom d'agrégateur (CinetPay, PayDunya, Bizao,
+# HUB2) ne franchit `src/fournisseur/`. `scripts/verifier-frontiere-paiement.sh`
+# le vérifie mécaniquement en CI (T079, SC-010, FR-003).
 [dependencies]
+socle.workspace = true
+# Les 4 paramètres du cycle (durée de session, fenêtre de réconciliation, seuil
+# d'alerte de créances, coupe-circuit de moyens) — hérités, jamais en dur.
+zones.workspace = true
+# Total FIGÉ, `etat_paiement`, confirmation et annulation : tout ce dont le
+# paiement a besoin est déjà là (research R1).
+commandes.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+
+# --- Frontière fournisseur, et elle seule ---
+# Client HTTP sortant vers l'agrégateur. `rustls` plutôt que le TLS natif :
+# aligné sur sqlx (`tls-rustls-ring`), et le builder du Dockerfile n'a que
+# build-essential/pkg-config — pas OpenSSL.
+reqwest = { workspace = true, features = ["json", "rustls"] }
+# Vérification HMAC-SHA256 de la signature de webhook, en temps constant (R6).
+hmac.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+
+# Les routes HTTP vivent dans `backend/api` ; utoipa n'entre PAS ici. Ce crate
+# ne connaît ni Actix ni le contrat OpenAPI — il expose un domaine.
+
+[dev-dependencies]
+tokio.workspace = true
