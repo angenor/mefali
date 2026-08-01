@@ -25,9 +25,10 @@ publish = false
 #   paiements ─╳▶ prestataires  JAMAIS. L'offre de livraison est lue par
 #                               `commandes` au devis, pas ici.
 #
-# ⚠ FRONTIÈRE DU CYCLE : aucun nom d'agrégateur (CinetPay, PayDunya, Bizao,
-# HUB2) ne franchit `src/fournisseur/`. `scripts/verifier-frontiere-paiement.sh`
-# le vérifie mécaniquement en CI (T079, SC-010, FR-003).
+# ⚠ FRONTIÈRE DU CYCLE : aucun nom d'agrégateur ne franchit `src/fournisseur/`.
+# `scripts/verifier-frontiere-paiement.sh` le vérifie mécaniquement en CI (T079,
+# SC-010, FR-003) — et il a commencé par refuser CE commentaire, qui citait les
+# quatre candidats. C'est exactement ce qu'on lui demande.
 [dependencies]
 socle.workspace = true
 # Les 4 paramètres du cycle (durée de session, fenêtre de réconciliation, seuil
@@ -44,6 +45,10 @@ chrono.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
+# Délais d'attente du client sortant et latence pilotée du double. Le crate est
+# déjà asynchrone (reqwest le tire de toute façon) ; l'expliciter évite qu'un
+# `std::thread::sleep` s'y glisse un jour et bloque le runtime.
+tokio.workspace = true
 
 # --- Frontière fournisseur, et elle seule ---
 # Client HTTP sortant vers l'agrégateur. `rustls` plutôt que le TLS natif :

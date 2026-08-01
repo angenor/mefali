@@ -89,6 +89,38 @@ pub enum MoyenPaiement {
     Autre,
 }
 
+impl MoyenPaiement {
+    /// Libellé SQL — celui de l'énumération PostgreSQL, mot pour mot.
+    pub fn comme_str(self) -> &'static str {
+        match self {
+            MoyenPaiement::Inconnu => "inconnu",
+            MoyenPaiement::Wave => "wave",
+            MoyenPaiement::OrangeMoney => "orange_money",
+            MoyenPaiement::MtnMomo => "mtn_momo",
+            MoyenPaiement::MoovMoney => "moov_money",
+            MoyenPaiement::Carte => "carte",
+            MoyenPaiement::Autre => "autre",
+        }
+    }
+
+    /// Les moyens **effectivement proposables** — les cinq nommés.
+    ///
+    /// `Inconnu` et `Autre` n'y figurent pas : le premier est un état d'attente,
+    /// le second un fourre-tout de traduction. Ni l'un ni l'autre n'est un moyen
+    /// qu'un client choisit.
+    ///
+    /// Source unique de ces libellés : `config.rs` l'emploie plutôt que
+    /// d'écrire les chaînes, ce qui garde le contrôle de frontière (T079)
+    /// exempt de faux positifs **et** évite qu'une liste diverge de l'autre.
+    pub const PROPOSABLES: [MoyenPaiement; 5] = [
+        MoyenPaiement::Wave,
+        MoyenPaiement::OrangeMoney,
+        MoyenPaiement::MtnMomo,
+        MoyenPaiement::MoovMoney,
+        MoyenPaiement::Carte,
+    ];
+}
+
 /// Anomalie d'argent qui doit être **vue** par un humain (FR-082).
 ///
 /// Un dossier n'est pas un log : un log se perd dans le volume, un dossier a un

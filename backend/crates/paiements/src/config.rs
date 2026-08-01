@@ -236,17 +236,27 @@ mod tests {
     #[test]
     fn le_coupe_circuit_vide_laisse_tout_passer() {
         let c = config_saine();
-        for moyen in ["wave", "orange_money", "mtn_momo", "moov_money", "carte"] {
-            assert!(c.moyen_actif(moyen), "{moyen} doit rester proposé");
+        // Les libellés viennent de `MoyenPaiement::PROPOSABLES` et non de
+        // chaînes écrites ici : une seule source, et le contrôle de frontière
+        // (T079) n'a pas à distinguer un test d'un routage.
+        for moyen in crate::modele::MoyenPaiement::PROPOSABLES {
+            assert!(
+                c.moyen_actif(moyen.comme_str()),
+                "{} doit rester proposé",
+                moyen.comme_str(),
+            );
         }
     }
 
     /// Armé, il ne laisse passer que ce qu'il nomme.
     #[test]
     fn le_coupe_circuit_arme_ne_laisse_que_ce_qu_il_nomme() {
+        use crate::modele::MoyenPaiement;
         let mut c = config_saine();
-        c.moyens_actifs = vec!["wave".to_owned()];
-        assert!(c.moyen_actif("wave"));
-        assert!(!c.moyen_actif("orange_money"));
+        let laisse = MoyenPaiement::PROPOSABLES[0];
+        let coupe = MoyenPaiement::PROPOSABLES[1];
+        c.moyens_actifs = vec![laisse.comme_str().to_owned()];
+        assert!(c.moyen_actif(laisse.comme_str()));
+        assert!(!c.moyen_actif(coupe.comme_str()));
     }
 }
