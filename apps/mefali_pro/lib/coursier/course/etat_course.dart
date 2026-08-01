@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -187,6 +188,7 @@ class RemiseVue {
     this.arretRemiseId,
     this.arretRemiseStatut,
     this.arriveChezClientLe,
+    this.valideeLocalementLe,
   });
 
   /// Seuils de preuve d'échec de la zone — servis avec la course pour que
@@ -227,8 +229,17 @@ class RemiseVue {
   /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
   final DateTime? arriveChezClientLe;
 
+  /// Instant LOCAL d'une remise validée sans réseau (FR-041), en attente de
+  /// synchronisation. Nul dès que le serveur a repris la main.
+  final DateTime? valideeLocalementLe;
+
   /// Yao a-t-il déclaré son arrivée chez le client ? C'est ce qui ouvre K4.
   bool get arriveChezClient => arretRemiseStatut == 'arrive';
+
+  /// La remise a-t-elle été validée hors ligne, sans que le serveur l'ait
+  /// encore confirmée ? C'est ce qui ferme K4 : sans ce drapeau, l'écran
+  /// reproposait de scanner une commande déjà remise (T087).
+  bool get valideeLocalement => valideeLocalementLe != null;
 }
 
 /// Un arrêt de la course, fusion de la donnée serveur (pré-provisionnement) et
@@ -484,6 +495,16 @@ class EtatCourse {
 class EtatCourseActive extends _$EtatCourseActive {
   static const _uuid = Uuid();
 
+  /// Délai avant de retenter un drain qui a échoué sur le réseau.
+  ///
+  /// Court, parce que Yao attend devant le client ; pas trop, parce qu'un
+  /// réseau de marché revient par à-coups et qu'une rafale de tentatives ne
+  /// ferait que vider la batterie.
+  static const _delaiReprise = Duration(seconds: 5);
+
+  /// Minuteur de reprise en cours, ou `null`.
+  Timer? _reprise;
+
   @override
   Future<EtatCourse> build() async {
     // Session fermée ⇒ provider invalidé ⇒ état vide (patron etat_roles).
@@ -501,6 +522,14 @@ class EtatCourseActive extends _$EtatCourseActive {
       if (actuel.value == true) ref.invalidateSelf();
     });
 
+    // Et si le drain échoue quand même, il se reprogramme (voir `_drainerFile`).
+    // Le minuteur meurt avec la portée : un provider disposé ne réveille pas un
+    // état qui n'existe plus (constitution XII).
+    ref.onDispose(() {
+      _reprise?.cancel();
+      _reprise = null;
+    });
+
     // 1. Draine la file d'actions en attente AVANT de recharger (réconciliation
     //    serveur — le rejeu idempotent fait foi une seule fois).
     await _drainerFile(file, dio);
@@ -515,7 +544,12 @@ class EtatCourseActive extends _$EtatCourseActive {
         // (R6, FR-034) : une course finie ne laisse pas le téléphone du client
         // sur l'appareil.
         final derniere = await file.courseCache();
-        if (derniere != null) await file.effacerCourse(derniere.livraisonId);
+        if (derniere != null) {
+          await file.effacerCourse(derniere.livraisonId);
+          // La note vocale part avec le reste : c'est la voix du client, elle
+          // n'a rien à faire sur l'appareil une fois la course finie.
+          await const NotesVocalesLocales().effacer(derniere.livraisonId);
+        }
         return const EtatCourse();
       }
       await _mettreEnCache(file, course);
@@ -541,6 +575,15 @@ class EtatCourseActive extends _$EtatCourseActive {
       for (final a in await file.enAttente()) _arretDeEndpoint(a.endpoint),
     };
 
+    // La note vocale est rapatriée MAINTENANT — pendant qu'il y a du réseau,
+    // pas devant le portail (FR-024). L'URL présignée expire en dix minutes ;
+    // le fichier local, lui, se joue en mode avion (SC-012).
+    final noteVocale = await const NotesVocalesLocales().rapatrier(
+      url: c.client.repereVocalUrl,
+      cle: c.livraisonId,
+      dio: ref.read(clientSessionProvider).dio,
+    );
+
     await file.remplacerCourse(
       CourseCacheTableCompanion.insert(
         livraisonId: c.livraisonId,
@@ -551,6 +594,7 @@ class EtatCourseActive extends _$EtatCourseActive {
         clientNomUsage: Value(c.client.nomUsage ?? ''),
         clientTelephone: Value(c.client.telephone),
         repereTexte: Value(c.client.repereTexte),
+        repereVocalFichier: Value(noteVocale),
         repereVocalDureeS: Value(c.client.repereVocalDureeS),
         lieuLat: Value(c.client.lieuLat),
         lieuLon: Value(c.client.lieuLon),
@@ -652,7 +696,17 @@ class EtatCourseActive extends _$EtatCourseActive {
       } on DioException catch (e) {
         if (e.response == null) {
           await file.marquerEchec(action.uuidClient, 'reseau');
-          return; // réseau toujours coupé
+          // Réseau toujours coupé : on arrête là, et on REPROGRAMME.
+          //
+          // Sans cette reprise, un seul drain manqué gelait la file jusqu'au
+          // prochain cycle de connectivité : `connectivity_plus` annonce le
+          // réseau quelques centaines de millisecondes avant qu'il ne porte
+          // vraiment, l'envoi partait trop tôt, échouait — et plus rien ne le
+          // relançait. T087 a mesuré cinq minutes d'attente avec trois actions
+          // en vol, dont une remise. Il a fallu couper puis rétablir le réseau
+          // une seconde fois pour que la course se termine.
+          _reprogrammerDrain();
+          return;
         }
         // Refus métier réconcilié : l'arrêt reste à collecter, et le motif du
         // serveur — sa clé i18n — devient la ligne du journal.
@@ -664,6 +718,18 @@ class EtatCourseActive extends _$EtatCourseActive {
         await file.marquerRefusDefinitif(action.uuidClient, motif);
       }
     }
+  }
+
+  /// Réarme un drain après un échec réseau, une seule fois à la fois.
+  ///
+  /// Le minuteur est annulé à la disposition de la portée (constitution XII) :
+  /// un provider mort ne doit pas réveiller un état qui n'existe plus.
+  void _reprogrammerDrain() {
+    if (_reprise != null) return;
+    _reprise = Timer(_delaiReprise, () {
+      _reprise = null;
+      ref.invalidateSelf();
+    });
   }
 
   /// Extrait l'`arret_id` d'un endpoint `/courses/arrets/{id}/collecte`.
@@ -793,6 +859,7 @@ class EtatCourseActive extends _$EtatCourseActive {
         arretRemiseId: course?.arretRemiseId,
         arretRemiseStatut: course?.arretRemiseStatut,
         arriveChezClientLe: course?.arriveChezClientLe,
+        valideeLocalementLe: course?.remiseValideeLocalementLe,
       ),
       arrets: [
         for (final l in arretsCache)

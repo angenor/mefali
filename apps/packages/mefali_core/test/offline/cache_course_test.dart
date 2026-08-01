@@ -196,7 +196,7 @@ void main() {
   });
 
   group('schemaVersion (migration additive)', () {
-    test('la version monte à 8 et les neuf tables sont déclarées', () async {
+    test('la version monte à 9 et les neuf tables sont déclarées', () async {
       final base = BaseOffline.memoire();
       addTearDown(base.close);
 
@@ -204,8 +204,10 @@ void main() {
       // v6 : le classement d'issue d'un rejeu (`statut`, `refuse_le_local`).
       // v7 : le mode d'envoi (`multipart`) — les transitions sont du JSON.
       // v8 : le dernier état connu de la CAISSE (K5 s'ouvre hors ligne, FR-076).
+      // v9 : la remise validée SANS RÉSEAU (T087) — sans cette trace, l'écran
+      //      de remise restait ouvert sur « scanner » après une confirmation.
       // Toutes ADDITIVES : aucune table retirée, aucune action en vol perdue.
-      expect(base.schemaVersion, 8);
+      expect(base.schemaVersion, 9);
       final tables = base.allTables.map((t) => t.actualTableName).toSet();
       expect(
         tables,

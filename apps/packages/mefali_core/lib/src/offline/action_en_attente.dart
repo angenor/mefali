@@ -319,6 +319,16 @@ class CourseCacheTable extends Table {
   /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
   DateTimeColumn get arriveChezClientLe => dateTime().nullable()();
 
+  /// Remise validée LOCALEMENT, en attente de synchronisation (FR-041).
+  ///
+  /// L'heure est celle de l'appareil, et c'est assumé : elle ne fonde aucun
+  /// argent — le serveur réhorodate à la réconciliation. Elle ne sert qu'à une
+  /// chose, que T087 a montrée manquante : dire à Yao que c'est fini. Sans
+  /// elle, l'écran de remise restait ouvert après une confirmation hors ligne
+  /// réussie, proposant encore de scanner — le seul écran du parcours qui ne
+  /// suivait pas ce que Yao venait de faire.
+  DateTimeColumn get remiseValideeLocalementLe => dateTime().nullable()();
+
   /// Dernière mise en cache (local).
   DateTimeColumn get majLeLocal => dateTime()();
 
@@ -467,7 +477,7 @@ class BaseOffline extends _$BaseOffline {
   BaseOffline.memoire() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -529,6 +539,14 @@ class BaseOffline extends _$BaseOffline {
           // un écran de panne.
           if (from < 8) {
             await m.createTable(caisseCacheTable);
+          }
+          // v9 (cycle CRS, T087) : la remise validée SANS RÉSEAU laisse une
+          // trace locale. Une colonne AJOUTÉE, nulle par défaut — une course
+          // déjà en cours au moment de la mise à jour se comporte exactement
+          // comme avant.
+          if (from < 9) {
+            await m.addColumn(
+                courseCacheTable, courseCacheTable.remiseValideeLocalementLe);
           }
         },
       );

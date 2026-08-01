@@ -237,9 +237,21 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
         }
         if (code == null || !verificateur.codeCorrect(code)) {
           final essais = await file.ajouterEssaiHorsLigne(livraisonId);
+          // Le serveur doit l'apprendre DÈS MAINTENANT s'il y a du réseau.
+          //
+          // Le compteur local seul ne suffisait pas, pour deux raisons que
+          // T087 a mises au jour : l'exploitation ne voyait jamais un code
+          // bloqué (`GET /admin/remises/bloquees` restait vide alors que Yao
+          // était devant l'écran de blocage), et un compteur qui ne vit que
+          // dans l'appareil se remet à zéro à la réinstallation — un code à
+          // quatre chiffres se devinerait alors par lots de trois.
+          final refus = code == null
+              ? null
+              : await _signalerCodeFaux(livraisonId, code, essais);
           state = state.copieAvec(
             essaisHorsLigne: essais,
-            erreurCle: 'remise_incorrecte',
+            erreurCle: refus ?? 'remise_incorrecte',
+            bloqueServeur: refus == 'code_epuise' ? true : null,
           );
           return false;
         }
@@ -298,6 +310,11 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
           photoOctets: photo,
           creeLeLocal: DateTime.now(),
         );
+        // Trace locale : c'est elle qui ferme K4 et affiche « course terminée ».
+        // Sans elle, l'écran restait ouvert sur « scanner le QR du client »
+        // après une remise pourtant validée — le coursier n'avait aucun moyen
+        // de savoir que c'était fini, et pouvait ressaisir (T087, FR-041).
+        await file.marquerRemiseValideeLocalement(livraisonId, DateTime.now());
         state = state.copieAvec(
           confirmee: true,
           validationLocale: true,
@@ -315,6 +332,45 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
         bloqueServeur: cle == 'code_epuise' ? true : null,
       );
       return false;
+    }
+  }
+
+  /// Porte un code FAUX à la connaissance du serveur, quand il y a du réseau.
+  ///
+  /// Rend la clé de refus du serveur (`code_epuise` au troisième essai), ou
+  /// `null` s'il n'a pas pu être joint — le compteur local fait alors foi
+  /// jusqu'au prochain envoi, et il voyagera avec la remise (R5).
+  ///
+  /// L'`uuid_client` est NEUF à chaque essai : celui de la remise est réservé
+  /// à la confirmation qui aboutira, et le réutiliser ici ferait passer un
+  /// essai faux pour un rejeu de la vraie remise.
+  Future<String?> _signalerCodeFaux(
+    String livraisonId,
+    String code,
+    int essais,
+  ) async {
+    try {
+      final dio = ref.read(clientSessionProvider).dio;
+      await dio.post<dynamic>(
+        '/courses/$livraisonId/remise',
+        data: FormData.fromMap({
+          'demande': jsonEncode({
+            'uuid_client': _uuid.v7(),
+            'mode': 'code',
+            'code': code,
+            'essais_hors_ligne': essais,
+            'hors_ligne': false,
+            'confirme_le_local': DateTime.now().toUtc().toIso8601String(),
+          }),
+        }),
+      );
+      // Le serveur a ACCEPTÉ ce que l'empreinte locale disait faux : c'est lui
+      // qui a raison — la course est remise, on ne compte pas d'essai.
+      return null;
+    } on DioException catch (e) {
+      final corps = e.response?.data;
+      if (corps is Map && corps['code'] is String) return corps['code'] as String;
+      return null;
     }
   }
 }

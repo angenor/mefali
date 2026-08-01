@@ -83,6 +83,10 @@ Map<String, Object?> _course({
           'rayon_m': 100,
           'photos_min': 1,
         },
+        // La cible de « je suis arrivé chez le client » (FR-053). Sans elle, le
+        // bouton n'a rien à transitionner et ne fait rien.
+        'arret_remise_id': '019fa000-0000-7000-8000-0000000000e1',
+        'arret_remise_statut': 'a_collecter',
       },
     };
 
@@ -275,6 +279,57 @@ void main() {
     expect(find.textContaining('Collecté'), findsOneWidget);
     expect(find.text('Arrêt 2 / 2'), findsOneWidget);
     expect(find.text('Poisson fumé — 2'), findsOneWidget);
+  });
+
+  testWidgets('SANS RÉSEAU, « je suis arrivé chez le client » ouvre quand même K4',
+      (tester) async {
+    await _ecranHaut(tester);
+    final container = _conteneur(course: _course(toutCollecte: true), couperApres: 1);
+    await _poser(tester, container);
+
+    await tester.tap(find.text('Je suis arrivé chez le client'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // L'écran suit ce que Yao vient de faire, sans attendre un statut serveur
+    // qui ne peut pas venir. Sans état local, la course était intransmissible
+    // hors ligne : le bouton restait, indéfiniment (T087, SC-003).
+    expect(find.text('Je suis arrivé chez le client'), findsNothing);
+    expect(find.text('SCANNER LE QR DU CLIENT'), findsOneWidget);
+
+    // Démontage EXPLICITE : le drain a échoué (réseau coupé) et s'est
+    // reprogrammé. Le minuteur meurt avec la portée — encore faut-il fermer la
+    // portée avant que `flutter_test` ne compte les minuteurs en vol.
+    await tester.pumpWidget(const SizedBox.shrink());
+    container.dispose();
+  });
+
+  testWidgets('une remise validée SANS RÉSEAU ferme l\'écran de remise',
+      (tester) async {
+    await _ecranHaut(tester);
+    final container = _conteneur(course: _course(toutCollecte: true));
+    addTearDown(container.dispose);
+    await _poser(tester, container);
+
+    // Ce que `EtatRemiseNotifier.confirmer` écrit quand le réseau manque.
+    final file = container.read(fileActionsProvider);
+    await file.avancerRemiseLocalement(_livraison, 'arrive');
+    await file.marquerRemiseValideeLocalement(_livraison, DateTime.now());
+    container.invalidate(etatCourseActiveProvider);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Fini pour Yao — et dit sans mentir : rien n'est clos côté serveur.
+    expect(find.text('Course terminée'), findsOneWidget);
+    expect(
+      find.text(
+          'Validée sur place. Elle partira au serveur dès le retour du réseau.'),
+      findsOneWidget,
+    );
+    // Et surtout : plus aucune action. L'écran ne repropose pas de scanner une
+    // commande déjà remise.
+    expect(find.text('SCANNER LE QR DU CLIENT'), findsNothing);
+    expect(find.text('Saisir le code à 4 chiffres'), findsNothing);
   });
 
   testWidgets('sans course assignée, l\'écran le dit et ne bricole rien',

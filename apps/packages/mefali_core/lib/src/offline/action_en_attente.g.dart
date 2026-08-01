@@ -3039,6 +3039,17 @@ class $CourseCacheTableTable extends CourseCacheTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _remiseValideeLocalementLeMeta =
+      const VerificationMeta('remiseValideeLocalementLe');
+  @override
+  late final GeneratedColumn<DateTime> remiseValideeLocalementLe =
+      GeneratedColumn<DateTime>(
+        'remise_validee_localement_le',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _majLeLocalMeta = const VerificationMeta(
     'majLeLocal',
   );
@@ -3075,6 +3086,7 @@ class $CourseCacheTableTable extends CourseCacheTable
     arretRemiseId,
     arretRemiseStatut,
     arriveChezClientLe,
+    remiseValideeLocalementLe,
     majLeLocal,
   ];
   @override
@@ -3281,6 +3293,15 @@ class $CourseCacheTableTable extends CourseCacheTable
         ),
       );
     }
+    if (data.containsKey('remise_validee_localement_le')) {
+      context.handle(
+        _remiseValideeLocalementLeMeta,
+        remiseValideeLocalementLe.isAcceptableOrUnknown(
+          data['remise_validee_localement_le']!,
+          _remiseValideeLocalementLeMeta,
+        ),
+      );
+    }
     if (data.containsKey('maj_le_local')) {
       context.handle(
         _majLeLocalMeta,
@@ -3393,6 +3414,10 @@ class $CourseCacheTableTable extends CourseCacheTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}arrive_chez_client_le'],
       ),
+      remiseValideeLocalementLe: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}remise_validee_localement_le'],
+      ),
       majLeLocal: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}maj_le_local'],
@@ -3482,6 +3507,16 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
   /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
   final DateTime? arriveChezClientLe;
 
+  /// Remise validée LOCALEMENT, en attente de synchronisation (FR-041).
+  ///
+  /// L'heure est celle de l'appareil, et c'est assumé : elle ne fonde aucun
+  /// argent — le serveur réhorodate à la réconciliation. Elle ne sert qu'à une
+  /// chose, que T087 a montrée manquante : dire à Yao que c'est fini. Sans
+  /// elle, l'écran de remise restait ouvert après une confirmation hors ligne
+  /// réussie, proposant encore de scanner — le seul écran du parcours qui ne
+  /// suivait pas ce que Yao venait de faire.
+  final DateTime? remiseValideeLocalementLe;
+
   /// Dernière mise en cache (local).
   final DateTime majLeLocal;
   const CourseCache({
@@ -3508,6 +3543,7 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     this.arretRemiseId,
     this.arretRemiseStatut,
     this.arriveChezClientLe,
+    this.remiseValideeLocalementLe,
     required this.majLeLocal,
   });
   @override
@@ -3553,6 +3589,11 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     }
     if (!nullToAbsent || arriveChezClientLe != null) {
       map['arrive_chez_client_le'] = Variable<DateTime>(arriveChezClientLe);
+    }
+    if (!nullToAbsent || remiseValideeLocalementLe != null) {
+      map['remise_validee_localement_le'] = Variable<DateTime>(
+        remiseValideeLocalementLe,
+      );
     }
     map['maj_le_local'] = Variable<DateTime>(majLeLocal);
     return map;
@@ -3601,6 +3642,10 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       arriveChezClientLe: arriveChezClientLe == null && nullToAbsent
           ? const Value.absent()
           : Value(arriveChezClientLe),
+      remiseValideeLocalementLe:
+          remiseValideeLocalementLe == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remiseValideeLocalementLe),
       majLeLocal: Value(majLeLocal),
     );
   }
@@ -3642,6 +3687,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       arriveChezClientLe: serializer.fromJson<DateTime?>(
         json['arriveChezClientLe'],
       ),
+      remiseValideeLocalementLe: serializer.fromJson<DateTime?>(
+        json['remiseValideeLocalementLe'],
+      ),
       majLeLocal: serializer.fromJson<DateTime>(json['majLeLocal']),
     );
   }
@@ -3674,6 +3722,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       'arretRemiseId': serializer.toJson<String?>(arretRemiseId),
       'arretRemiseStatut': serializer.toJson<String?>(arretRemiseStatut),
       'arriveChezClientLe': serializer.toJson<DateTime?>(arriveChezClientLe),
+      'remiseValideeLocalementLe': serializer.toJson<DateTime?>(
+        remiseValideeLocalementLe,
+      ),
       'majLeLocal': serializer.toJson<DateTime>(majLeLocal),
     };
   }
@@ -3702,6 +3753,7 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     Value<String?> arretRemiseId = const Value.absent(),
     Value<String?> arretRemiseStatut = const Value.absent(),
     Value<DateTime?> arriveChezClientLe = const Value.absent(),
+    Value<DateTime?> remiseValideeLocalementLe = const Value.absent(),
     DateTime? majLeLocal,
   }) => CourseCache(
     livraisonId: livraisonId ?? this.livraisonId,
@@ -3740,6 +3792,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     arriveChezClientLe: arriveChezClientLe.present
         ? arriveChezClientLe.value
         : this.arriveChezClientLe,
+    remiseValideeLocalementLe: remiseValideeLocalementLe.present
+        ? remiseValideeLocalementLe.value
+        : this.remiseValideeLocalementLe,
     majLeLocal: majLeLocal ?? this.majLeLocal,
   );
   CourseCache copyWithCompanion(CourseCacheTableCompanion data) {
@@ -3803,6 +3858,9 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
       arriveChezClientLe: data.arriveChezClientLe.present
           ? data.arriveChezClientLe.value
           : this.arriveChezClientLe,
+      remiseValideeLocalementLe: data.remiseValideeLocalementLe.present
+          ? data.remiseValideeLocalementLe.value
+          : this.remiseValideeLocalementLe,
       majLeLocal: data.majLeLocal.present
           ? data.majLeLocal.value
           : this.majLeLocal,
@@ -3835,6 +3893,7 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
           ..write('arretRemiseId: $arretRemiseId, ')
           ..write('arretRemiseStatut: $arretRemiseStatut, ')
           ..write('arriveChezClientLe: $arriveChezClientLe, ')
+          ..write('remiseValideeLocalementLe: $remiseValideeLocalementLe, ')
           ..write('majLeLocal: $majLeLocal')
           ..write(')'))
         .toString();
@@ -3865,6 +3924,7 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
     arretRemiseId,
     arretRemiseStatut,
     arriveChezClientLe,
+    remiseValideeLocalementLe,
     majLeLocal,
   ]);
   @override
@@ -3894,6 +3954,7 @@ class CourseCache extends DataClass implements Insertable<CourseCache> {
           other.arretRemiseId == this.arretRemiseId &&
           other.arretRemiseStatut == this.arretRemiseStatut &&
           other.arriveChezClientLe == this.arriveChezClientLe &&
+          other.remiseValideeLocalementLe == this.remiseValideeLocalementLe &&
           other.majLeLocal == this.majLeLocal);
 }
 
@@ -3921,6 +3982,7 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
   final Value<String?> arretRemiseId;
   final Value<String?> arretRemiseStatut;
   final Value<DateTime?> arriveChezClientLe;
+  final Value<DateTime?> remiseValideeLocalementLe;
   final Value<DateTime> majLeLocal;
   final Value<int> rowid;
   const CourseCacheTableCompanion({
@@ -3947,6 +4009,7 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     this.arretRemiseId = const Value.absent(),
     this.arretRemiseStatut = const Value.absent(),
     this.arriveChezClientLe = const Value.absent(),
+    this.remiseValideeLocalementLe = const Value.absent(),
     this.majLeLocal = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3974,6 +4037,7 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     this.arretRemiseId = const Value.absent(),
     this.arretRemiseStatut = const Value.absent(),
     this.arriveChezClientLe = const Value.absent(),
+    this.remiseValideeLocalementLe = const Value.absent(),
     required DateTime majLeLocal,
     this.rowid = const Value.absent(),
   }) : livraisonId = Value(livraisonId),
@@ -4004,6 +4068,7 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     Expression<String>? arretRemiseId,
     Expression<String>? arretRemiseStatut,
     Expression<DateTime>? arriveChezClientLe,
+    Expression<DateTime>? remiseValideeLocalementLe,
     Expression<DateTime>? majLeLocal,
     Expression<int>? rowid,
   }) {
@@ -4034,6 +4099,8 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
       if (arretRemiseStatut != null) 'arret_remise_statut': arretRemiseStatut,
       if (arriveChezClientLe != null)
         'arrive_chez_client_le': arriveChezClientLe,
+      if (remiseValideeLocalementLe != null)
+        'remise_validee_localement_le': remiseValideeLocalementLe,
       if (majLeLocal != null) 'maj_le_local': majLeLocal,
       if (rowid != null) 'rowid': rowid,
     });
@@ -4063,6 +4130,7 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
     Value<String?>? arretRemiseId,
     Value<String?>? arretRemiseStatut,
     Value<DateTime?>? arriveChezClientLe,
+    Value<DateTime?>? remiseValideeLocalementLe,
     Value<DateTime>? majLeLocal,
     Value<int>? rowid,
   }) {
@@ -4091,6 +4159,8 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
       arretRemiseId: arretRemiseId ?? this.arretRemiseId,
       arretRemiseStatut: arretRemiseStatut ?? this.arretRemiseStatut,
       arriveChezClientLe: arriveChezClientLe ?? this.arriveChezClientLe,
+      remiseValideeLocalementLe:
+          remiseValideeLocalementLe ?? this.remiseValideeLocalementLe,
       majLeLocal: majLeLocal ?? this.majLeLocal,
       rowid: rowid ?? this.rowid,
     );
@@ -4172,6 +4242,11 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
         arriveChezClientLe.value,
       );
     }
+    if (remiseValideeLocalementLe.present) {
+      map['remise_validee_localement_le'] = Variable<DateTime>(
+        remiseValideeLocalementLe.value,
+      );
+    }
     if (majLeLocal.present) {
       map['maj_le_local'] = Variable<DateTime>(majLeLocal.value);
     }
@@ -4207,6 +4282,7 @@ class CourseCacheTableCompanion extends UpdateCompanion<CourseCache> {
           ..write('arretRemiseId: $arretRemiseId, ')
           ..write('arretRemiseStatut: $arretRemiseStatut, ')
           ..write('arriveChezClientLe: $arriveChezClientLe, ')
+          ..write('remiseValideeLocalementLe: $remiseValideeLocalementLe, ')
           ..write('majLeLocal: $majLeLocal, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -7105,6 +7181,7 @@ typedef $$CourseCacheTableTableCreateCompanionBuilder =
       Value<String?> arretRemiseId,
       Value<String?> arretRemiseStatut,
       Value<DateTime?> arriveChezClientLe,
+      Value<DateTime?> remiseValideeLocalementLe,
       required DateTime majLeLocal,
       Value<int> rowid,
     });
@@ -7133,6 +7210,7 @@ typedef $$CourseCacheTableTableUpdateCompanionBuilder =
       Value<String?> arretRemiseId,
       Value<String?> arretRemiseStatut,
       Value<DateTime?> arriveChezClientLe,
+      Value<DateTime?> remiseValideeLocalementLe,
       Value<DateTime> majLeLocal,
       Value<int> rowid,
     });
@@ -7258,6 +7336,11 @@ class $$CourseCacheTableTableFilterComposer
 
   ColumnFilters<DateTime> get arriveChezClientLe => $composableBuilder(
     column: $table.arriveChezClientLe,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get remiseValideeLocalementLe => $composableBuilder(
+    column: $table.remiseValideeLocalementLe,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7391,6 +7474,11 @@ class $$CourseCacheTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get remiseValideeLocalementLe => $composableBuilder(
+    column: $table.remiseValideeLocalementLe,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get majLeLocal => $composableBuilder(
     column: $table.majLeLocal,
     builder: (column) => ColumnOrderings(column),
@@ -7511,6 +7599,11 @@ class $$CourseCacheTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get remiseValideeLocalementLe => $composableBuilder(
+    column: $table.remiseValideeLocalementLe,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get majLeLocal => $composableBuilder(
     column: $table.majLeLocal,
     builder: (column) => column,
@@ -7573,6 +7666,8 @@ class $$CourseCacheTableTableTableManager
                 Value<String?> arretRemiseId = const Value.absent(),
                 Value<String?> arretRemiseStatut = const Value.absent(),
                 Value<DateTime?> arriveChezClientLe = const Value.absent(),
+                Value<DateTime?> remiseValideeLocalementLe =
+                    const Value.absent(),
                 Value<DateTime> majLeLocal = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CourseCacheTableCompanion(
@@ -7599,6 +7694,7 @@ class $$CourseCacheTableTableTableManager
                 arretRemiseId: arretRemiseId,
                 arretRemiseStatut: arretRemiseStatut,
                 arriveChezClientLe: arriveChezClientLe,
+                remiseValideeLocalementLe: remiseValideeLocalementLe,
                 majLeLocal: majLeLocal,
                 rowid: rowid,
               ),
@@ -7627,6 +7723,8 @@ class $$CourseCacheTableTableTableManager
                 Value<String?> arretRemiseId = const Value.absent(),
                 Value<String?> arretRemiseStatut = const Value.absent(),
                 Value<DateTime?> arriveChezClientLe = const Value.absent(),
+                Value<DateTime?> remiseValideeLocalementLe =
+                    const Value.absent(),
                 required DateTime majLeLocal,
                 Value<int> rowid = const Value.absent(),
               }) => CourseCacheTableCompanion.insert(
@@ -7653,6 +7751,7 @@ class $$CourseCacheTableTableTableManager
                 arretRemiseId: arretRemiseId,
                 arretRemiseStatut: arretRemiseStatut,
                 arriveChezClientLe: arriveChezClientLe,
+                remiseValideeLocalementLe: remiseValideeLocalementLe,
                 majLeLocal: majLeLocal,
                 rowid: rowid,
               ),

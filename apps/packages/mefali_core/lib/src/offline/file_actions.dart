@@ -177,16 +177,61 @@ class FileActions {
 
   /// Remplace le cache de course. Une seule course active à la fois : la
   /// précédente est effacée, **numéro de téléphone compris** (R6).
+  ///
+  /// Une remise déjà validée SANS RÉSEAU survit au remplacement, comme les
+  /// coches de la checklist : le serveur, qui n'a pas encore reçu l'action,
+  /// continue de servir une course « à remettre », et la laisser écraser le
+  /// drapeau local rouvrirait l'écran de remise sur une commande que Yao a déjà
+  /// donnée. Le drapeau ne disparaît qu'à la clôture ([effacerCourse]).
   Future<void> remplacerCourse(CourseCacheTableCompanion course) async {
     await _base.transaction(() async {
+      final precedente = await _base
+          .select(_base.courseCacheTable)
+          .getSingleOrNull();
+      final memeCourse = precedente != null &&
+          course.livraisonId.present &&
+          precedente.livraisonId == course.livraisonId.value;
       await _base.delete(_base.courseCacheTable).go();
-      await _base.into(_base.courseCacheTable).insert(course);
+      await _base.into(_base.courseCacheTable).insert(
+            memeCourse && precedente.remiseValideeLocalementLe != null
+                ? course.copyWith(
+                    remiseValideeLocalementLe:
+                        Value(precedente.remiseValideeLocalementLe),
+                  )
+                : course,
+          );
     });
   }
 
   /// La course en cache, ou `null` si aucune n'est active.
   Future<CourseCache?> courseCache() {
     return _base.select(_base.courseCacheTable).getSingleOrNull();
+  }
+
+  /// Avance LOCALEMENT le statut de l'arrêt de remise (`en_route` | `arrive`).
+  ///
+  /// Symétrique de [cocherOptimiste] pour les collectes. Sans elle, « je suis
+  /// arrivé chez le client » n'avait aucun effet visible hors ligne : l'action
+  /// partait bien dans la file, mais l'écran attendait un statut serveur qui ne
+  /// pouvait pas venir — la course ne pouvait donc pas se terminer sans réseau,
+  /// ce qui est précisément la promesse du cycle (T087, SC-003/SC-017).
+  ///
+  /// L'heure d'arrivée, elle, n'est PAS inventée : elle fonde une prime
+  /// d'attente et reste horodatée par le serveur (cycle 005).
+  Future<void> avancerRemiseLocalement(String livraisonId, String statut) async {
+    await (_base.update(_base.courseCacheTable)
+          ..where((c) => c.livraisonId.equals(livraisonId)))
+        .write(CourseCacheTableCompanion(arretRemiseStatut: Value(statut)));
+  }
+
+  /// Marque la remise validée hors ligne, en attente de synchronisation.
+  Future<void> marquerRemiseValideeLocalement(
+    String livraisonId,
+    DateTime le,
+  ) async {
+    await (_base.update(_base.courseCacheTable)
+          ..where((c) => c.livraisonId.equals(livraisonId)))
+        .write(CourseCacheTableCompanion(remiseValideeLocalementLe: Value(le)));
   }
 
   /// Remplace la checklist en **préservant les coches déjà posées**.

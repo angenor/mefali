@@ -124,11 +124,17 @@ class _CorpsCourse extends ConsumerWidget {
             const SizedBox(height: MefaliTokens.space2),
           ],
           Expanded(
-            // Trois phases, une seule décision : tant qu'il reste à collecter,
+            // Quatre phases, une seule décision : tant qu'il reste à collecter,
             // K3-1a/1b ; tout collecté, K3-1c « en route vers le client » ;
-            // arrivé, K4. La bascule est automatique (FR-021) — Yao ne navigue
-            // jamais, l'écran suit ce qu'il vient de faire.
-            child: switch ((etat.toutCollecte, etat.remise.arriveChezClient)) {
+            // arrivé, K4 ; remis sans réseau, l'écran de fin. La bascule est
+            // automatique (FR-021) — Yao ne navigue jamais, l'écran suit ce
+            // qu'il vient de faire.
+            //
+            // Le dernier cas passe AVANT les autres : une remise validée sur
+            // place ne doit plus jamais reproposer de scanner (T087, FR-041).
+            child: etat.remise.valideeLocalement
+                ? _CourseTerminee(etat: etat)
+                : switch ((etat.toutCollecte, etat.remise.arriveChezClient)) {
               (true, true) => EcranConfirmation(
                   etat: etat,
                   enLigne: enLigne,
@@ -178,6 +184,14 @@ class _CorpsCourse extends ConsumerWidget {
       arretId: arret,
       action: 'arrive',
     );
+    // Puis l'écran suit, avec ou sans réseau. Le serveur reste la vérité — il
+    // réécrira ce statut au prochain chargement — mais l'attendre pour ouvrir
+    // K4 rendait la course intransmissible hors ligne : Yao arrivait chez le
+    // client et l'app continuait de lui proposer d'arriver (T087, SC-003).
+    await ref
+        .read(fileActionsProvider)
+        .avancerRemiseLocalement(livraison, 'arrive');
+    ref.invalidate(etatCourseActiveProvider);
   }
 }
 
@@ -235,6 +249,60 @@ class _CompteurFile extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// La fin d'une course remise SANS RÉSEAU (FR-041).
+///
+/// Elle n'existe que dans ce cas : en ligne, le serveur clôt la course et
+/// `/courses/active` ne rend plus rien — l'app retombe d'elle-même sur le
+/// tableau de bord. Hors ligne, personne ne peut clore quoi que ce soit, et
+/// c'est pourtant fini POUR YAO : il a le code du client, il peut repartir.
+///
+/// L'écran le dit sans mentir — « validée sur place », pas « livrée » — et,
+/// surtout, il ne propose plus rien : le seul écran qui pouvait rester ouvert
+/// sur « scanner le QR du client » après une remise réussie était celui-là.
+class _CourseTerminee extends StatelessWidget {
+  const _CourseTerminee({required this.etat});
+
+  final EtatCourse etat;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Symbols.check_circle_rounded,
+              size: 72, color: MefaliTokens.success),
+          const SizedBox(height: MefaliTokens.space3),
+          Text(l10n.crsCourseTermineeTitre, style: textTheme.headlineSmall),
+          const SizedBox(height: MefaliTokens.space2),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: MefaliTokens.screenMargin),
+            child: Text(
+              l10n.crsCourseTermineeHorsLigne,
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium
+                  ?.copyWith(color: MefaliTokens.textMuted),
+            ),
+          ),
+          const SizedBox(height: MefaliTokens.space3),
+          Text(
+            l10n.crsCourseTermineeEncaisse(
+              formaterMontant(
+                etat.remise.montantAEncaisserUnites,
+                etat.devise,
+              ),
+            ),
+            style: textTheme.titleMedium,
+          ),
+        ],
+      ),
     );
   }
 }
