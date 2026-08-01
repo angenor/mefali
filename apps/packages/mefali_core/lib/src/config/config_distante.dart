@@ -62,6 +62,24 @@ class ConfigDistante {
   /// d'horodater un consentement sur une version inventée (FR-024).
   String? get consentementArtciVersion => donnees['consentement_artci_version'] as String?;
 
+  /// Nom de l'agence locale (« Tiassalé ») — clé `texte.nom_agence`.
+  ///
+  /// `null` si la config n'a jamais été chargée : l'écran de blocage dit alors
+  /// « appelez l'agence » sans la nommer, plutôt que d'inventer une ville.
+  String? get nomAgence => _texte('nom_agence');
+
+  /// Numéro de l'agence locale — clé `texte.telephone_agence` (FR-043).
+  ///
+  /// C'est la seule action que la maquette K4-1d met en avant quand la saisie
+  /// du code est bloquée. Il vient de la CONFIGURATION et jamais d'une
+  /// constante : un numéro en dur dans un binaire ne se change qu'au prochain
+  /// passage store.
+  String? get telephoneAgence => _texte('telephone_agence');
+
+  /// Un texte de la zone (`texte.*`, servi à plat dans `textes`).
+  String? _texte(String cle) =>
+      (donnees['textes'] as Map<String, dynamic>?)?[cle] as String?;
+
   /// Sérialise pour le cache local.
   String encoder() => jsonEncode(donnees);
 }

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coursier.preuve_photo (id, livraison_id, cle_objet, prise_le, uuid_client)\n               VALUES ($1, $2, $3, COALESCE($4, now()), $5)\n               ON CONFLICT (uuid_client) DO NOTHING\n               RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuve_photo",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d56c54dfdbadcad5740a37fc9ffc567241cecd31e8d52ef0c2674c756a3a9b87"
+}

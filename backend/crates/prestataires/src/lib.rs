@@ -30,6 +30,7 @@ pub mod rattachement;
 pub mod site;
 
 pub use catalogue::{Article, ModificationArticle, NouvelArticle, PrixFige};
+pub use consultation::ContactVendeur;
 pub use depot::{PgPrestataires, Prestataires, Vendeurs};
 pub use disponibilite::SignalementRecu;
 pub use plaque::ContextePlaque;

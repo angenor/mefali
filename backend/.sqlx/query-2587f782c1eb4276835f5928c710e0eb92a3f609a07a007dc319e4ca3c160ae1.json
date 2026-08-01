@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id AS commande_id, c.zone_id, c.essais_code,\n                      c.code_bloque_le AS \"bloque_le!\",\n                      l.id AS \"livraison_id?\", l.coursier_id\n               FROM commandes.commande c\n               LEFT JOIN commandes.livraison l ON l.commande_id = c.id\n               WHERE c.code_bloque_le IS NOT NULL\n                 AND (c.code_debloque_le IS NULL OR c.code_debloque_le < c.code_bloque_le)\n                 AND ($1::uuid IS NULL OR c.zone_id = $1)\n               ORDER BY c.code_bloque_le ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "essais_code",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "essais_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "bloque_le!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "code_bloque_le"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "livraison_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "coursier_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "2587f782c1eb4276835f5928c710e0eb92a3f609a07a007dc319e4ca3c160ae1"
+}

@@ -12,16 +12,17 @@ part 'resultat_remise.g.dart';
 ///
 /// Properties:
 /// * [commandeId] - Commande close.
-/// * [essaisCode] - Essais de code consommés.
+/// * [essaisCode] - Essais de code consommés (consolidés serveur + hors ligne).
 /// * [livraisonId] - Livraison close.
 /// * [modeRemise] - Mode retenu.
+/// * [rejeu] - `true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien n'a été réécrit ni ré-émis (R4).
 @BuiltValue()
 abstract class ResultatRemise implements Built<ResultatRemise, ResultatRemiseBuilder> {
   /// Commande close.
   @BuiltValueField(wireName: r'commande_id')
   String get commandeId;
 
-  /// Essais de code consommés.
+  /// Essais de code consommés (consolidés serveur + hors ligne).
   @BuiltValueField(wireName: r'essais_code')
   int get essaisCode;
 
@@ -32,6 +33,10 @@ abstract class ResultatRemise implements Built<ResultatRemise, ResultatRemiseBui
   /// Mode retenu.
   @BuiltValueField(wireName: r'mode_remise')
   String get modeRemise;
+
+  /// `true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien n'a été réécrit ni ré-émis (R4).
+  @BuiltValueField(wireName: r'rejeu')
+  bool get rejeu;
 
   ResultatRemise._();
 
@@ -75,6 +80,11 @@ class _$ResultatRemiseSerializer implements PrimitiveSerializer<ResultatRemise> 
     yield serializers.serialize(
       object.modeRemise,
       specifiedType: const FullType(String),
+    );
+    yield r'rejeu';
+    yield serializers.serialize(
+      object.rejeu,
+      specifiedType: const FullType(bool),
     );
   }
 
@@ -126,6 +136,13 @@ class _$ResultatRemiseSerializer implements PrimitiveSerializer<ResultatRemise> 
             specifiedType: const FullType(String),
           ) as String;
           result.modeRemise = valueDes;
+          break;
+        case r'rejeu':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.rejeu = valueDes;
           break;
         default:
           unhandled.add(key);

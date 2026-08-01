@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coursier.releve_presence\n                   (id, livraison_id, distance_m, releve_le_local, uuid_client)\n               SELECT g.id, $2, g.distance_m, g.local, g.uuid_client\n                 FROM UNNEST($1::uuid[], $3::int4[], $4::timestamptz[], $5::uuid[])\n                      AS g(id, distance_m, local, uuid_client)\n               ON CONFLICT (uuid_client) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid",
+        "Int4Array",
+        "TimestamptzArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4e4ef45c548559a1f5d30612c3adbeb1368b804de915c3e3d2e11ae48a4225c7"
+}

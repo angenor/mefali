@@ -173,10 +173,63 @@ impl PgCommandes {
             return Err(ErreurCommandes::ArretInconnu(demande.arret_id));
         }
 
+        let resultat = match self.transiter_sous_verrou(&mut tx, coursier, &demande, horodatage_serveur).await {
+            Ok(resultat) => resultat,
+            // ── Refus de PROPRIÉTÉ au rejeu (FR-006, FR-088) ─────────────
+            // La course a changé de porteur pendant la coupure. On abandonne la
+            // transaction (rien n'a été écrit) et on TRACE : l'exploitation doit
+            // voir passer ce cas — derrière lui, il y a une avance engagée par
+            // quelqu'un qui n'est plus assigné (SC-016).
+            Err(ErreurCommandes::NonProprietaire) => {
+                drop(tx);
+                self.tracer_refus_de_transition(demande.livraison_id, coursier, horodatage_serveur)
+                    .await?;
+                return Err(ErreurCommandes::NonProprietaire);
+            }
+            Err(autre) => return Err(autre),
+        };
+
+        tx.commit().await?;
+        Ok(resultat)
+    }
+
+    /// Le corps de [`Self::transiter_arret`], sous verrou — séparé pour que la
+    /// garde de propriété puisse être interceptée sans dupliquer les trois bras.
+    async fn transiter_sous_verrou(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        coursier: Uuid,
+        demande: &DemandeTransitionArret,
+        horodatage_serveur: DateTime<Utc>,
+    ) -> Result<TransitionArret, ErreurCommandes> {
+        // ── Rejeu d'une transition DÉJÀ appliquée, quel que soit son rang ──
+        // La file rejoue un LOT dans l'ordre, et le rejoue en entier tant
+        // qu'elle n'a pas pu retirer ses actions acquittées. Comparer au seul
+        // DERNIER `uuid_client` (cycle 008) faisait échouer le rejeu d'un
+        // « en-route » suivi d'un « arrivé » — sur la table fermée, donc en
+        // 409, donc classé « refus définitif » par l'app : Yao aurait vu une
+        // action réussie affichée comme rejetée (FR-089).
+        let ctx = self
+            .charger_arret_du_coursier(tx, demande.arret_id, coursier)
+            .await?;
+        let deja = sqlx::query_scalar!(
+            "SELECT EXISTS (
+                 SELECT 1 FROM commandes.transition_arret_rejouee WHERE uuid_client = $1
+             ) AS \"existe!\"",
+            demande.uuid_client,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+        if deja {
+            return self
+                .resultat_transition(tx, &ctx, ctx.statut, ctx.livraison_etat, true)
+                .await;
+        }
+
         let resultat = match demande.action {
             ActionArret::EnRoute => {
                 self.marquer_arret_en_route(
-                    &mut tx,
+                    tx,
                     demande.arret_id,
                     coursier,
                     demande.uuid_client,
@@ -187,7 +240,7 @@ impl PgCommandes {
             }
             ActionArret::Arrive => {
                 self.marquer_arret_arrive(
-                    &mut tx,
+                    tx,
                     demande.arret_id,
                     coursier,
                     demande.uuid_client,
@@ -198,7 +251,7 @@ impl PgCommandes {
             }
             ActionArret::Indisponible(motif) => {
                 self.marquer_arret_indisponible(
-                    &mut tx,
+                    tx,
                     demande.arret_id,
                     coursier,
                     demande.uuid_client,
@@ -210,8 +263,50 @@ impl PgCommandes {
             }
         };
 
-        tx.commit().await?;
+        // Mémorise l'UUID accepté — dans la MÊME transaction que la transition :
+        // une transition écrite dont l'UUID ne serait pas mémorisé se rejouerait
+        // et se ferait refuser.
+        sqlx::query!(
+            "INSERT INTO commandes.transition_arret_rejouee (uuid_client, arret_id, action)
+             VALUES ($1, $2, $3) ON CONFLICT (uuid_client) DO NOTHING",
+            demande.uuid_client,
+            demande.arret_id,
+            match demande.action {
+                ActionArret::EnRoute => "en_route",
+                ActionArret::Arrive => "arrive",
+                ActionArret::Indisponible(_) => "indisponible",
+            },
+        )
+        .execute(&mut **tx)
+        .await?;
+
         Ok(resultat)
+    }
+
+    /// Trace le refus d'une transition d'arrêt au rejeu (FR-088).
+    async fn tracer_refus_de_transition(
+        &self,
+        livraison_id: Uuid,
+        coursier: Uuid,
+        maintenant: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        let commande_id = sqlx::query_scalar!(
+            "SELECT commande_id FROM commandes.livraison WHERE id = $1",
+            livraison_id,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        let Some(commande_id) = commande_id else {
+            return Ok(());
+        };
+        self.tracer_action_refusee(
+            livraison_id,
+            commande_id,
+            coursier,
+            "transition",
+            maintenant,
+        )
+        .await
     }
 
     /// Charge et VERROUILLE un arrêt en vue d'une transition, en vérifiant que
@@ -735,9 +830,18 @@ pub enum PreuveRemise {
     /// Code à 4 chiffres dicté par le client (mode dégradé).
     Code(String),
     /// Dépôt convenu : photo sur place, aucun secret à présenter (§7.4-5).
+    ///
+    /// La photo voyage **avec** la demande (R18) — c'est ce qui rend cette
+    /// troisième voie utilisable hors ligne : référencer un objet « déjà
+    /// déposé » supposait le réseau au moment précis où il manque.
     Depot {
-        /// Clé de la photo déposée.
-        photo_cle: String,
+        /// Octets de la photo prise sur place, à déposer à la réception.
+        photo: Option<Vec<u8>>,
+        /// Type MIME de la photo.
+        mime: String,
+        /// Clé d'un objet **déjà** déposé — accepté pour ne casser aucun
+        /// appelant du cycle 008 ; l'app coursier ne l'utilise jamais (R18).
+        photo_cle: Option<String>,
     },
 }
 
@@ -763,6 +867,51 @@ pub struct RemiseFaite {
     pub mode_remise: String,
     /// Nombre d'essais de code consommés.
     pub essais_code: i16,
+    /// Rejeu du MÊME `uuid_client` : rien n'a été réécrit ni ré-émis (R4).
+    pub rejeu: bool,
+}
+
+/// Demande de remise reçue de la file hors-ligne du coursier (contrat §2).
+///
+/// Trois champs de plus qu'au cycle 008, et chacun répare un manque nommé :
+///
+/// - `uuid_client` rend l'action **idempotente** (R4) — sans lui, le test qui
+///   fait foi du module (FR-089) est impossible : couper le réseau entre le scan
+///   et la livraison, c'est précisément rejouer une remise ;
+/// - `essais_hors_ligne` transporte les essais **faux** consommés sans réseau,
+///   que l'app compte localement et n'envoie **pas un par un** (R5) ;
+/// - `hors_ligne` journalise le fait que la validation a eu lieu sur l'appareil
+///   — journalisé, **jamais décisif** : le serveur revalide ici même (FR-046).
+// Pas d'`Eq` : la position du dépôt est un couple de `f64`, et deux positions
+// « égales » au bit près ne veulent rien dire de plus qu'un `PartialEq`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DemandeRemise {
+    /// Identifiant d'action de la file — l'idempotence tient dessus.
+    pub uuid_client: Uuid,
+    /// Preuve présentée : jeton QR, code dicté, ou dépôt photographié.
+    pub preuve: PreuveRemise,
+    /// Essais faux consommés HORS LIGNE, à consolider avec le compteur serveur.
+    pub essais_hors_ligne: i16,
+    /// La validation a-t-elle eu lieu sans réseau ?
+    pub hors_ligne: bool,
+    /// Position du dépôt (mode `depot` uniquement) — arrondie, jamais un tracé.
+    pub depot_lat: Option<f64>,
+    /// Voir [`DemandeRemise::depot_lat`].
+    pub depot_lon: Option<f64>,
+}
+
+impl DemandeRemise {
+    /// Demande minimale : une preuve, un identifiant d'action, rien d'autre.
+    pub fn nouvelle(uuid_client: Uuid, preuve: PreuveRemise) -> Self {
+        Self {
+            uuid_client,
+            preuve,
+            essais_hors_ligne: 0,
+            hors_ligne: false,
+            depot_lat: None,
+            depot_lon: None,
+        }
+    }
 }
 
 impl PgCommandes {
@@ -780,82 +929,130 @@ impl PgCommandes {
         &self,
         livraison_id: Uuid,
         coursier: Uuid,
-        preuve: PreuveRemise,
+        demande: DemandeRemise,
         horodatage: DateTime<Utc>,
     ) -> Result<RemiseFaite, ErreurCommandes> {
+        // Une seule transaction, ouverte AVANT la lecture et verrouillant les
+        // deux lignes : sans elle, deux rejeux simultanés de la file (réseau qui
+        // revient pendant un drain) liraient tous deux « pas encore remise » et
+        // écriraient deux fois. L'unicité de `remise_uuid_client` rattraperait
+        // le doublon par une erreur SQL, ce qui est un filet, pas une garantie.
+        let mut tx = self.pool.begin().await?;
         let contexte = sqlx::query!(
             r#"SELECT l.commande_id, l.coursier_id, l.etat::text AS "etat!",
-                      c.code_livraison, c.jeton_reception, c.essais_code, c.zone_id
+                      l.remise_uuid_client, l.mode_remise,
+                      c.code_livraison, c.jeton_reception, c.essais_code, c.zone_id,
+                      c.depot_autorise,
+                      (c.code_bloque_le IS NOT NULL
+                       AND (c.code_debloque_le IS NULL
+                            OR c.code_debloque_le < c.code_bloque_le)) AS "code_bloque!"
                FROM commandes.livraison l
                JOIN commandes.commande c ON c.id = l.commande_id
-               WHERE l.id = $1"#,
+               WHERE l.id = $1
+               FOR UPDATE OF l, c"#,
             livraison_id,
         )
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut *tx)
         .await?
         .ok_or(ErreurCommandes::LivraisonInconnue(livraison_id))?;
 
+        // La propriété d'ABORD, y compris au rejeu (FR-006) : une course
+        // réassignée pendant une coupure ne se laisse pas clore par son ancien
+        // porteur, même s'il rejoue un UUID qu'il avait bien émis.
         if contexte.coursier_id != Some(coursier) {
+            // La transaction est abandonnée (rien n'a été écrit) ; la trace part
+            // dans la sienne — c'est un événement d'OPÉRATIONS, il ne partage
+            // pas le sort d'une mutation qui n'a pas eu lieu (FR-088).
+            drop(tx);
+            self.tracer_action_refusee(
+                livraison_id,
+                contexte.commande_id,
+                coursier,
+                "remise",
+                horodatage,
+            )
+            .await?;
             return Err(ErreurCommandes::NonProprietaire);
+        }
+
+        // ── Rejeu du MÊME uuid_client : l'état courant, rien de plus (R4) ──
+        // Ni écriture, ni événement, ni second `commande.terminee`. C'est la
+        // moitié serveur du test qui fait foi (FR-089).
+        if contexte.remise_uuid_client == Some(demande.uuid_client) {
+            return Ok(RemiseFaite {
+                commande_id: contexte.commande_id,
+                livraison_id,
+                mode_remise: contexte
+                    .mode_remise
+                    .unwrap_or_else(|| demande.preuve.mode().to_owned()),
+                essais_code: contexte.essais_code,
+                rejeu: true,
+            });
+        }
+
+        // ── Garde serveur du dépôt (FR-048, T034) ─────────────────────────
+        // L'app ne propose la voie dépôt que si le drapeau est ouvert ; la garde
+        // est des DEUX côtés parce qu'une file hors ligne peut avoir été remplie
+        // avant que l'exploitation ne referme le drapeau — et parce qu'un client
+        // HTTP n'est pas notre app.
+        if matches!(demande.preuve, PreuveRemise::Depot { .. }) && !contexte.depot_autorise {
+            return Err(ErreurCommandes::DepotNonAutorise);
         }
 
         let essais_max = self
             .parametre_i64(contexte.zone_id, "commande.essais_code_livraison")
             .await? as i16;
 
-        // Le verrou d'abord : un code déjà épuisé ne redonne pas d'essai parce
-        // qu'on a redémarré l'app.
-        if contexte.essais_code >= essais_max {
-            return Err(ErreurCommandes::CodeEpuise);
+        // ── Consolidation des essais : max(serveur, hors ligne) (R5) ───────
+        // Les essais faux consommés sans réseau ne voyagent pas un par un ; ils
+        // arrivent AVEC la demande. Le `max` est la seule règle qui ne perd
+        // jamais un essai et n'en invente jamais : un compteur purement local se
+        // remet à zéro à la réinstallation, un compteur purement serveur ne voit
+        // rien de ce qui s'est passé devant la porte.
+        let mut essais_code = contexte.essais_code.max(demande.essais_hors_ligne.max(0));
+        let mut bloque = contexte.code_bloque;
+        if essais_code > contexte.essais_code {
+            self.consigner_essais(
+                &mut tx,
+                contexte.commande_id,
+                livraison_id,
+                coursier,
+                essais_code,
+                essais_max,
+                bloque,
+                horodatage,
+            )
+            .await?;
+            bloque = bloque || essais_code >= essais_max;
         }
 
-        let mut essais_code = contexte.essais_code;
-        match &preuve {
-            // Le QR ne se devine pas : pas de compteur d'essais dessus.
+        match &demande.preuve {
+            // Le QR ne se devine pas : pas de compteur d'essais dessus, et —
+            // FR-043 — il reste la voie ouverte quand le code est bloqué. Le
+            // cycle 008 verrouillait les TROIS voies ; la maquette K4-1d montre
+            // « scan QR toujours proposé » à côté du blocage.
             PreuveRemise::Qr(jeton) if *jeton != contexte.jeton_reception => {
+                tx.commit().await?;
                 return Err(ErreurCommandes::RemiseIncorrecte);
+            }
+            PreuveRemise::Code(_) if bloque => {
+                tx.commit().await?;
+                return Err(ErreurCommandes::CodeEpuise);
             }
             PreuveRemise::Code(code) if *code != contexte.code_livraison => {
                 essais_code += 1;
-                let mut tx = self.pool.begin().await?;
-                sqlx::query!(
-                    "UPDATE commandes.commande SET essais_code = $2 WHERE id = $1",
+                self.consigner_essais(
+                    &mut tx,
                     contexte.commande_id,
+                    livraison_id,
+                    coursier,
                     essais_code,
+                    essais_max,
+                    bloque,
+                    horodatage,
                 )
-                .execute(&mut *tx)
                 .await?;
-
                 let epuise = essais_code >= essais_max;
-                if epuise {
-                    // Alerte ADMIN : trois codes faux sur une commande, c'est
-                    // soit un client qui ne trouve plus son SMS, soit quelqu'un
-                    // qui essaie. Les deux demandent un humain — et un humain ne
-                    // s'abonne pas à un `tracing::warn!`. L'événement part dans
-                    // la MÊME transaction que le compteur qui l'a déclenché : un
-                    // verrou sans alerte laisserait la commande bloquée à la
-                    // porte du client, sans que personne ne le sache.
-                    ecrire_evenement(
-                        &mut tx,
-                        NouvelEvenement {
-                            type_evenement: "remise.code_epuise",
-                            entite_type: "commande",
-                            entite_id: contexte.commande_id,
-                            payload: json!({
-                                "livraison": livraison_id,
-                                "essais": essais_code,
-                                "acteur": coursier,
-                            }),
-                            survenu_le: horodatage,
-                        },
-                    )
-                    .await?;
-                    tracing::warn!(
-                        commande = %contexte.commande_id,
-                        essais = essais_code,
-                        "code de remise ÉPUISÉ — intervention admin requise",
-                    );
-                }
                 tx.commit().await?;
 
                 if epuise {
@@ -866,22 +1063,65 @@ impl PgCommandes {
             _ => {}
         }
 
-        let mut tx = self.pool.begin().await?;
-        if let PreuveRemise::Depot { photo_cle } = &preuve {
+        if let PreuveRemise::Depot {
+            photo,
+            mime,
+            photo_cle,
+        } = &demande.preuve
+        {
+            // La photo prise sur place l'emporte sur une clé fournie : c'est la
+            // preuve du terrain, l'autre n'est qu'un chemin de compatibilité.
+            let cle = match photo {
+                Some(octets) => {
+                    let cle = format!("commandes/depots/{livraison_id}");
+                    self.objets
+                        .deposer(&cle, octets.clone(), mime)
+                        .await
+                        .map_err(|e| ErreurCommandes::Dependance(e.to_string()))?;
+                    cle
+                }
+                None => photo_cle
+                    .clone()
+                    // FR-048 : « photo sur place ET position ». Un dépôt sans
+                    // photo ne prouve rien — et c'est justement la voie dont on
+                    // pourrait le plus facilement abuser.
+                    .ok_or_else(|| {
+                        ErreurCommandes::PanierInvalide(
+                            "un dépôt exige une photo sur place".to_owned(),
+                        )
+                    })?,
+            };
             sqlx::query!(
-                "UPDATE commandes.livraison SET depot_photo_cle = $2 WHERE id = $1",
+                "UPDATE commandes.livraison
+                 SET depot_photo_cle = $2, depot_lat = $3, depot_lon = $4
+                 WHERE id = $1",
                 livraison_id,
-                photo_cle,
+                cle,
+                demande.depot_lat,
+                demande.depot_lon,
             )
             .execute(&mut *tx)
             .await?;
         }
 
+        // L'idempotence et la trace du hors-ligne AVANT la clôture : si la
+        // clôture échoue, la transaction entière tombe et l'UUID reste libre.
+        sqlx::query!(
+            "UPDATE commandes.livraison
+             SET remise_uuid_client = $2, remise_hors_ligne = $3
+             WHERE id = $1",
+            livraison_id,
+            demande.uuid_client,
+            demande.hors_ligne,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         self.cloturer_livraison_prouvee(
             &mut tx,
             livraison_id,
             contexte.commande_id,
-            preuve.mode(),
+            demande.preuve.mode(),
             essais_code,
             coursier,
             horodatage,
@@ -892,8 +1132,70 @@ impl PgCommandes {
         Ok(RemiseFaite {
             commande_id: contexte.commande_id,
             livraison_id,
-            mode_remise: preuve.mode().to_owned(),
+            mode_remise: demande.preuve.mode().to_owned(),
             essais_code,
+            rejeu: false,
         })
+    }
+
+    /// Écrit le compteur d'essais, et pose le blocage DURABLE au seuil.
+    ///
+    /// L'alerte d'exploitation part dans la MÊME transaction que le compteur qui
+    /// l'a déclenchée (FR-044) : un verrou sans alerte laisserait la commande
+    /// bloquée à la porte du client sans que personne ne le sache — et un humain
+    /// ne s'abonne pas à un `tracing::warn!`.
+    ///
+    /// Le blocage est un **état de la commande** (`code_bloque_le`), pas un
+    /// compteur volatil : un coursier qui réinstalle l'app ne repart pas à zéro
+    /// (R5).
+    #[allow(clippy::too_many_arguments)]
+    async fn consigner_essais(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        commande_id: Uuid,
+        livraison_id: Uuid,
+        coursier: Uuid,
+        essais: i16,
+        essais_max: i16,
+        deja_bloque: bool,
+        horodatage: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        let bloque_maintenant = !deja_bloque && essais >= essais_max;
+        sqlx::query!(
+            "UPDATE commandes.commande
+             SET essais_code = $2,
+                 code_bloque_le = CASE WHEN $3 THEN $4 ELSE code_bloque_le END
+             WHERE id = $1",
+            commande_id,
+            essais,
+            bloque_maintenant,
+            horodatage,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        if bloque_maintenant {
+            ecrire_evenement(
+                tx,
+                NouvelEvenement {
+                    type_evenement: "remise.code_epuise",
+                    entite_type: "commande",
+                    entite_id: commande_id,
+                    payload: json!({
+                        "livraison": livraison_id,
+                        "essais": essais,
+                        "acteur": coursier,
+                    }),
+                    survenu_le: horodatage,
+                },
+            )
+            .await?;
+            tracing::warn!(
+                commande = %commande_id,
+                essais,
+                "code de remise ÉPUISÉ — intervention admin requise",
+            );
+        }
+        Ok(())
     }
 }

@@ -13,12 +13,17 @@ class _$DemandeEchec extends DemandeEchec {
   final String motifCle;
   @override
   final String typeIssue;
+  @override
+  final String uuidClient;
 
   factory _$DemandeEchec([void Function(DemandeEchecBuilder)? updates]) =>
       (DemandeEchecBuilder()..update(updates))._build();
 
   _$DemandeEchec._(
-      {this.arretId, required this.motifCle, required this.typeIssue})
+      {this.arretId,
+      required this.motifCle,
+      required this.typeIssue,
+      required this.uuidClient})
       : super._();
   @override
   DemandeEchec rebuild(void Function(DemandeEchecBuilder) updates) =>
@@ -33,7 +38,8 @@ class _$DemandeEchec extends DemandeEchec {
     return other is DemandeEchec &&
         arretId == other.arretId &&
         motifCle == other.motifCle &&
-        typeIssue == other.typeIssue;
+        typeIssue == other.typeIssue &&
+        uuidClient == other.uuidClient;
   }
 
   @override
@@ -42,6 +48,7 @@ class _$DemandeEchec extends DemandeEchec {
     _$hash = $jc(_$hash, arretId.hashCode);
     _$hash = $jc(_$hash, motifCle.hashCode);
     _$hash = $jc(_$hash, typeIssue.hashCode);
+    _$hash = $jc(_$hash, uuidClient.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -51,7 +58,8 @@ class _$DemandeEchec extends DemandeEchec {
     return (newBuiltValueToStringHelper(r'DemandeEchec')
           ..add('arretId', arretId)
           ..add('motifCle', motifCle)
-          ..add('typeIssue', typeIssue))
+          ..add('typeIssue', typeIssue)
+          ..add('uuidClient', uuidClient))
         .toString();
   }
 }
@@ -72,6 +80,10 @@ class DemandeEchecBuilder
   String? get typeIssue => _$this._typeIssue;
   set typeIssue(String? typeIssue) => _$this._typeIssue = typeIssue;
 
+  String? _uuidClient;
+  String? get uuidClient => _$this._uuidClient;
+  set uuidClient(String? uuidClient) => _$this._uuidClient = uuidClient;
+
   DemandeEchecBuilder() {
     DemandeEchec._defaults(this);
   }
@@ -82,6 +94,7 @@ class DemandeEchecBuilder
       _arretId = $v.arretId;
       _motifCle = $v.motifCle;
       _typeIssue = $v.typeIssue;
+      _uuidClient = $v.uuidClient;
       _$v = null;
     }
     return this;
@@ -108,6 +121,8 @@ class DemandeEchecBuilder
               motifCle, r'DemandeEchec', 'motifCle'),
           typeIssue: BuiltValueNullFieldError.checkNotNull(
               typeIssue, r'DemandeEchec', 'typeIssue'),
+          uuidClient: BuiltValueNullFieldError.checkNotNull(
+              uuidClient, r'DemandeEchec', 'uuidClient'),
         );
     replace(_$result);
     return _$result;

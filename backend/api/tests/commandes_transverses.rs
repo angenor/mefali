@@ -194,7 +194,14 @@ async fn chaque_refus_de_l_api_porte_une_cle_i18n(pool: sqlx::PgPool) {
         bac.post(
             &format!("/courses/{}/echec", course.livraison),
             &bac.jeton_coursier,
-            json!({ "type_issue": "faux_billet", "motif_cle": "echec.motif.x" }),
+            json!({
+                // `uuid_client` OBLIGATOIRE depuis CRS 010 (idempotence, R4) :
+                // sans lui, la demande est mal formée et le refus n'est plus
+                // celui qu'on veut mesurer.
+                "uuid_client": Uuid::now_v7(),
+                "type_issue": "faux_billet",
+                "motif_cle": "echec.motif.x",
+            }),
         )
         .await,
     ];

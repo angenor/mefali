@@ -730,12 +730,27 @@ pub enum ErreurCommandes {
     /// Code ou jeton de remise incorrect.
     #[error("code ou jeton de remise incorrect")]
     RemiseIncorrecte,
+    /// Remise en mode `depot` sur une commande dont le dépôt n'est pas ouvert.
+    ///
+    /// La voie dépôt n'est **pas un droit du coursier** : elle s'ouvre commande
+    /// par commande, par l'exploitation, avec un motif tracé (FR-048, FR-116).
+    /// La garde est des deux côtés — l'app ne la propose pas, le serveur la
+    /// refuse — parce qu'une file hors ligne peut avoir été remplie avant que
+    /// l'exploitation ne referme le drapeau.
+    #[error("dépôt non autorisé sur cette commande")]
+    DepotNonAutorise,
     /// Échec déclaré sans preuves réunies (FR-056).
     #[error("preuves d'échec incomplètes")]
     PreuvesIncompletes,
     /// Motif d'annulation admin absent (FR-054).
     #[error("motif d'annulation obligatoire")]
     MotifRequis,
+    /// Levée demandée sur un code qui n'est pas bloqué (FR-055).
+    ///
+    /// Une levée « préventive » n'existe pas : un appel qui ne change rien ne
+    /// doit pas laisser l'exploitation croire qu'elle a agi.
+    #[error("le code de remise n'est pas bloqué")]
+    CodeNonBloque,
     /// Aucune règle tarifaire ne couvre ce trajet avec ce véhicule.
     ///
     /// **Situation MÉTIER, pas panne serveur** : la grille de la zone est
@@ -780,8 +795,10 @@ impl ErreurCommandes {
             ErreurCommandes::SubstitutionExpiree => "substitution_expiree",
             ErreurCommandes::CodeEpuise => "code_epuise",
             ErreurCommandes::RemiseIncorrecte => "remise_incorrecte",
+            ErreurCommandes::DepotNonAutorise => "depot_non_autorise",
             ErreurCommandes::PreuvesIncompletes => "preuves_incompletes",
             ErreurCommandes::MotifRequis => "motif_requis",
+            ErreurCommandes::CodeNonBloque => "code_non_bloque",
             // Techniques : Sql, StatutInconnu, ModeInconnu, Dependance.
             _ => return None,
         })
@@ -836,5 +853,33 @@ impl From<socle::OutboxError> for ErreurCommandes {
         match erreur {
             socle::OutboxError::Db(e) => ErreurCommandes::Sql(e),
         }
+    }
+}
+
+/// Référence **courte** d'une commande, pour l'affichage humain (`#a3f91c`).
+///
+/// Il n'existe aucune colonne `reference` en base, et ce cycle n'en crée pas :
+/// une seconde identité de commande serait une seconde vérité à maintenir
+/// synchrone, alors que l'UUIDv7 est déjà unique et **chronologique**. Ses six
+/// derniers hexadigits suffisent à ce que deux opérateurs parlent de la même
+/// commande au téléphone — c'est tout ce que la référence sert à faire.
+///
+/// ⚠ Jamais un identifiant : les collisions sont possibles à grande échelle.
+/// Toute API continue de porter l'UUID complet à côté.
+pub fn reference_courte(id: Uuid) -> String {
+    let simple = id.simple().to_string();
+    format!("#{}", &simple[simple.len() - 6..])
+}
+
+#[cfg(test)]
+mod tests_reference {
+    use super::*;
+
+    #[test]
+    fn la_reference_courte_est_stable_et_lisible() {
+        let id: Uuid = "0199a3f9-1c2d-7000-8000-00000012ab34".parse().unwrap();
+        assert_eq!(reference_courte(id), "#12ab34");
+        // Stable : deux appels ne divergent jamais (aucun aléa, aucune horloge).
+        assert_eq!(reference_courte(id), reference_courte(id));
     }
 }

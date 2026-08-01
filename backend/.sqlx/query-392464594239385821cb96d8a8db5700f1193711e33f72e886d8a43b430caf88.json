@@ -1,0 +1,260 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.id AS livraison_id, l.commande_id, l.etat::text AS \"etat!\",\n                      c.zone_id, c.devise, c.client_id,\n                      c.lieu_lat, c.lieu_lon, c.repere_texte, c.repere_vocal_cle,\n                      c.depot_autorise,\n                      c.code_livraison_hash, c.jeton_reception_hash, c.essais_code,\n                      -- Une levée ANTÉRIEURE au dernier blocage ne le lève pas :\n                      -- une commande rebloquée après une levée admin doit\n                      -- redevenir bloquée. Même prédicat que `valider_remise`.\n                      (c.code_bloque_le IS NOT NULL\n                       AND (c.code_debloque_le IS NULL\n                            OR c.code_debloque_le < c.code_bloque_le)) AS \"code_bloque!\",\n                      c.total_unites, c.mode_paiement::text AS \"mode_paiement!\",\n                      cp.telephone_e164, ad.repere_vocal_duree_s,\n                      -- L'arrêt de REMISE : il n'est pas dans la liste des\n                      -- arrêts (qui ne porte que les collectes), mais c'est lui\n                      -- que « je suis arrivé chez le client » transitionne. Sans\n                      -- son identifiant, l'app n'a rien à envoyer et le bouton\n                      -- de K3-1c ne fait rien.\n                      ar.id AS \"arret_remise_id?\",\n                      ar.statut::text AS \"arret_remise_statut?\",\n                      ar.arrive_le AS \"arrive_chez_client_le?\"\n               FROM commandes.livraison l\n               JOIN commandes.commande c ON c.id = l.commande_id\n               JOIN comptes.compte cp ON cp.id = c.client_id\n               LEFT JOIN comptes.adresse ad ON ad.id = c.adresse_id\n               LEFT JOIN LATERAL (\n                   SELECT a.id, a.statut, a.arrive_le\n                     FROM commandes.arret a\n                     JOIN commandes.segment s ON s.id = a.segment_id\n                    WHERE s.livraison_id = l.id AND a.type_arret = 'remise'\n                    ORDER BY s.ordre DESC, a.ordre DESC\n                    LIMIT 1\n               ) ar ON true\n               WHERE l.coursier_id = $1\n                 AND l.etat IN ('assignee', 'en_collecte', 'en_livraison')\n               ORDER BY l.assignee_le DESC NULLS LAST\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "lieu_lat",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "lieu_lat"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "lieu_lon",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "lieu_lon"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "repere_texte",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "repere_texte"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "repere_vocal_cle",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "repere_vocal_cle"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "depot_autorise",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "depot_autorise"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "code_livraison_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "code_livraison_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "jeton_reception_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "jeton_reception_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "essais_code",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "essais_code"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "code_bloque!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 15,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "mode_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 17,
+        "name": "telephone_e164",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "comptes.compte",
+            "name": "telephone_e164"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "repere_vocal_duree_s",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "comptes.adresse",
+            "name": "repere_vocal_duree_s"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "arret_remise_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "arret_remise_statut?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 21,
+        "name": "arrive_chez_client_le?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "arrive_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      null,
+      false,
+      true,
+      false,
+      null,
+      true
+    ]
+  },
+  "hash": "392464594239385821cb96d8a8db5700f1193711e33f72e886d8a43b430caf88"
+}

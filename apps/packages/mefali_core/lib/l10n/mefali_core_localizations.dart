@@ -823,6 +823,18 @@ abstract class MefaliCoreLocalizations {
   /// **'Un motif est obligatoire.'**
   String get commandeErreurMotifRequis;
 
+  /// Refus 422 depot_non_autorise (FR-048) — l'exploitation seule ouvre cette voie
+  ///
+  /// In fr, this message translates to:
+  /// **'Le dépôt n\'est pas autorisé sur cette commande.'**
+  String get commandeErreurDepotNonAutorise;
+
+  /// Refus 409 code_non_bloque (FR-055, admin) — une levée préventive n'existe pas
+  ///
+  /// In fr, this message translates to:
+  /// **'Le code de remise n\'est pas bloqué.'**
+  String get commandeErreurCodeNonBloque;
+
   /// Refus 423 code_epuise (CRS-04)
   ///
   /// In fr, this message translates to:
@@ -1018,6 +1030,36 @@ abstract class MefaliCoreLocalizations {
   /// In fr, this message translates to:
   /// **'Article retiré — rien à payer pour lui.'**
   String get substitutionRetireeNonFacturee;
+
+  /// Bandeau hors-ligne PARTAGÉ (cycle CRS 010, K3-1b, FR-026). Dans core parce que les deux apps l'affichent — et parce qu'un même message écrit deux fois finit par différer
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions enregistrées, synchronisation auto'**
+  String get coreHorsLigneActionsEnregistrees;
+
+  /// Explication du grisage d'une action qui exige VRAIMENT le réseau (cycle CRS 010)
+  ///
+  /// In fr, this message translates to:
+  /// **'Indisponible hors connexion'**
+  String get coreHorsLigneIndisponible;
+
+  /// Lecture d'une note vocale de repère (cycle CRS 010, K3-1c)
+  ///
+  /// In fr, this message translates to:
+  /// **'Écouter'**
+  String get coreNoteVocaleLire;
+
+  /// Arrêt de la lecture d'une note vocale
+  ///
+  /// In fr, this message translates to:
+  /// **'Arrêter'**
+  String get coreNoteVocaleArreter;
+
+  /// Durée d'une note vocale de repère
+  ///
+  /// In fr, this message translates to:
+  /// **'{secondes} s'**
+  String coreNoteVocaleDuree(int secondes);
 }
 
 class _MefaliCoreLocalizationsDelegate

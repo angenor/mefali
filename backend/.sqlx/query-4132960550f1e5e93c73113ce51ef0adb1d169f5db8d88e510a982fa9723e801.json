@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.coursier_id AS \"coursier_id!\",\n                      COALESCE(-SUM(e.montant_unites), 0)::bigint AS \"avance!\",\n                      COUNT(DISTINCT e.livraison_id)      AS \"courses!\",\n                      MAX(e.devise)                       AS \"devise!\"\n                 FROM coursier.ecriture_caisse e\n                WHERE e.type = 'avance'\n                  AND NOT EXISTS (\n                      SELECT 1 FROM coursier.ecriture_caisse r\n                       WHERE r.livraison_id = e.livraison_id\n                         AND r.type = 'remboursement')\n                GROUP BY e.coursier_id\n                HAVING COALESCE(-SUM(e.montant_unites), 0) <> 0\n                ORDER BY COALESCE(-SUM(e.montant_unites), 0) DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "coursier_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.ecriture_caisse",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "avance!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "courses!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "devise!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4132960550f1e5e93c73113ce51ef0adb1d169f5db8d88e510a982fa9723e801"
+}

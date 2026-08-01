@@ -17,7 +17,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use zones::{ConfigurationZones, PgZones};
 
-use crate::modele::{ArretPreProvisionne, DemandeCollecte, ErreurQr, ResultatCollecte};
+use crate::modele::{
+    ArretPreProvisionne, DemandeCollecte, ErreurQr, PlaqueResolue, ResultatCollecte,
+};
 use crate::ports::CompteurEssais;
 use crate::{plaque, verification};
 
@@ -151,6 +153,50 @@ impl PgQr {
             });
         }
         Ok(sortie)
+    }
+
+    /// Plaque résolue d'un SEUL prestataire, pour un montant d'arrêt donné
+    /// (cycle CRS 010).
+    ///
+    /// `pre_provisionnement` ne rend que les arrêts **restant à collecter**
+    /// d'une livraison **`en_collecte`** : c'est exactement ce dont le cycle 006
+    /// avait besoin, et exactement ce qui ne suffit plus. La course complète du
+    /// cycle 010 porte aussi les arrêts DÉJÀ collectés (K3-1b les affiche
+    /// repliés, avec leur heure) et démarre dès l'état `assignee`.
+    ///
+    /// Plutôt que d'élargir le filtre de `pre_provisionnement` — ce qui
+    /// changerait le contrat d'un endpoint en service — la résolution unitaire
+    /// est exposée telle quelle. La politique photo reste décidée **ici**,
+    /// c'est-à-dire dans le domaine à qui elle appartient.
+    ///
+    /// `None` = prestataire jamais agréé (aucune identité de plaque).
+    pub async fn plaque_resolue(
+        &self,
+        prestataire_id: Uuid,
+        montant_avance: i64,
+    ) -> Result<Option<PlaqueResolue>, ErreurQr> {
+        let Some(ctx) = self.prestataires.contexte_plaque(prestataire_id).await? else {
+            return Ok(None);
+        };
+        let seuil = self
+            .parametre_int(ctx.ville_id, "qr.photo_seuil_montant")
+            .await?
+            .unwrap_or(i64::MAX);
+        let distance_max_m = self
+            .parametre_int(ctx.ville_id, "qr.distance_scan_max_m")
+            .await?
+            .unwrap_or(100);
+        Ok(Some(PlaqueResolue {
+            nom: ctx.nom,
+            empreinte_jeton: verification::empreinte_jeton(&ctx.jeton_plaque),
+            empreinte_code: verification::empreinte_code(prestataire_id, &ctx.code_secours),
+            photo_exigee: verification::photo_exigee(
+                &ctx.politique_photo_base,
+                montant_avance,
+                seuil,
+            ),
+            distance_max_m,
+        }))
     }
 
     // ── QRC-02/03/04 : collecte d'un arrêt ─────────────────────────────────

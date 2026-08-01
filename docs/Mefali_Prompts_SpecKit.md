@@ -442,7 +442,7 @@ Points d'attention : dépendances = zones, comptes, prestataires, tarification
 (devis figé), QR (scan par arrêt) ; maquettes : docs/design/png/C3, C4.
 ```
 
-### Cycle 8 — DSP(en cours)
+### Cycle 8 — DSP
 
 ```
 /speckit-specify
@@ -472,7 +472,7 @@ métier (Postgres = vérité, pool reconstruit par heartbeats) ; maquette :
 docs/design/png/K2.
 ```
 
-### Cycle 9 — CRS
+### Cycle 9 — CRS(en cours)
 
 ```
 /speckit-specify

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, cle_objet, prise_le, purgee_le\n                 FROM coursier.preuve_photo\n                WHERE livraison_id = $1\n                ORDER BY prise_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuve_photo",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "cle_objet",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuve_photo",
+            "name": "cle_objet"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "prise_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuve_photo",
+            "name": "prise_le"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "purgee_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.preuve_photo",
+            "name": "purgee_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "059373a1fd8c6d584d39745fcff7f8d015ceaf4fda4a80a490944a86c16adceb"
+}

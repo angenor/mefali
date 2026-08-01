@@ -60,7 +60,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **enregistrerIssue**
-> IssueEchec enregistrerIssue(id, demandeEchec)
+> IssueEchec enregistrerIssue(id, demandeIssueAdmin)
 
 CMD-08 — un administrateur enregistre une issue de l'arbre §7.5.
 
@@ -72,10 +72,10 @@ import 'package:mefali_api_client/api.dart';
 
 final api = MefaliApiClient().getCommandesAdminApi();
 final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande concernée.
-final DemandeEchec demandeEchec = ; // DemandeEchec | 
+final DemandeIssueAdmin demandeIssueAdmin = ; // DemandeIssueAdmin | 
 
 try {
-    final response = api.enregistrerIssue(id, demandeEchec);
+    final response = api.enregistrerIssue(id, demandeIssueAdmin);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling CommandesAdminApi->enregistrerIssue: $e\n');
@@ -87,7 +87,7 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| Commande concernée. | 
- **demandeEchec** | [**DemandeEchec**](DemandeEchec.md)|  | 
+ **demandeIssueAdmin** | [**DemandeIssueAdmin**](DemandeIssueAdmin.md)|  | 
 
 ### Return type
 

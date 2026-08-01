@@ -123,6 +123,13 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `dispatch.bascule_prepaiement` | `commande` | `dispatch::pipeline` (cycle DSP) | **Opérations** — la capacité d'avance était le SEUL obstacle (FR-026) |
 | `dispatch.reassignation` | `livraison` | `dispatch::reprise` (cycle DSP) | **Opérations** — coursier retiré ; le devis figé n'est JAMAIS recalculé |
 | `dispatch.course_bloquee_escaladee` | `livraison` | `dispatch::reprise` (cycle DSP) | **Opérations** — un arrêt est collecté : aucune reprise automatique, l'exploitation tranche |
+| `preuves_echec.reunies` | `livraison` | `coursier::preuves` (cycle CRS) | **Produit** — les trois preuves d'un client absent sont réunies ; l'échec devient déclarable |
+| `caisse.mouvement` | `ecriture_caisse` | `coursier::caisse` (cycle CRS) | **Produit** — une écriture est portée au livre de caisse du coursier (append-only) |
+| `indemnisation.validee` | `indemnisation` | `coursier::indemnisation` (cycle CRS) | **Produit** — indemnisation validée par l'exploitation ; l'écriture de caisse suit dans la même transaction |
+| `indemnisation.refusee` | `indemnisation` | `coursier::indemnisation` (cycle CRS) | **Produit** — indemnisation refusée (motif requis) ; aucune écriture de caisse |
+| `remise.code_debloque` | `commande` | `commandes::collecte` (cycle CRS) | **Produit** — l'exploitation lève le blocage du code de remise (motif requis) |
+| `depot.autorise` | `commande` | `commandes::depot` (cycle CRS) | **Produit** — la voie « dépôt » est ouverte (ou refermée) sur une commande, avec sa trace |
+| `coursier.action_reconciliee` | `livraison` | `coursier::course` (cycle CRS) | **Opérations** — une action rejouée depuis la file a été rejouée ou refusée définitivement |
 
 ### Événements du cycle ZON (002 — zones & configuration héritée)
 
@@ -463,6 +470,74 @@ dégradé routier.
 - un **rejeu idempotent** d'acceptation, de refus ou de position — même
   `uuid_client`, ni seconde ligne ni second événement ;
 - le **seed** des 18 paramètres — un chargement n'est pas une transition.
+
+### Événements du cycle CRS (010 — app coursier : course active, cash, hors-ligne)
+
+Écrits via `socle::ecrire_evenement` dans la MÊME transaction que la transition
+(constitution VI ; specs/010 `contracts/ports-coursier.md` §3). Registre posé
+**avant** l'implémentation (Definition of Done §0.4 point 4). **7 nouveaux**
+ci-dessous, plus **deux existants qui changent de statut sans changer de forme** :
+
+- `appel.intention` (cycle CMD 008) gagne son **premier émetteur `de: coursier`**.
+  Sa forme ne bouge pas — la taxonomie prévoyait déjà cette valeur, personne ne
+  l'avait encore écrite. Le motif `client_absent` s'ajoute à l'énumération déjà
+  publiée (`suivi` | `substitution` | `expiration`) : c'est le seul motif compté
+  par la preuve d'échec (FR-035).
+- `remise.code_epuise` (cycle CMD 008) gagne enfin **un consommateur** :
+  `GET /admin/remises/bloquees` (FR-044). L'événement était émis depuis le cycle
+  008 sans que rien ne s'y abonne — le `tracing::warn!` qui l'accompagnait ne
+  s'abonnait pas non plus.
+
+**Minimisation (ARTCI).** AUCUN payload de ce cycle ne porte de secret ni de
+donnée personnelle : ni le code de remise à 4 chiffres, ni le jeton de réception,
+ni le code de secours vendeur, **pas même sous forme d'empreinte** ; aucun numéro
+de téléphone, alors même que ce cycle en sert **deux** dans le
+pré-provisionnement (client et vendeur, R6) ; aucune coordonnée brute — la
+présence est réduite à une **durée en secondes** et les relevés à des
+**distances arrondies** (patron `distance_scan_m` du cycle 006). Les montants
+sont des **entiers en unités mineures** accompagnés de leur devise. `acteur` est
+un UUID de compte. Un test transverse balaye les charges utiles du module et
+échoue sur la présence d'une clé interdite (SC-015, T085).
+
+| Type | `entite_type` | `entite_id` | Payload spécifique (en plus des propriétés standard) |
+|---|---|---|---|
+| `preuves_echec.reunies` | `livraison` | `livraison.id` | `commande`, `appels_retenus` (entier — motif `client_absent` uniquement), `presence_s` (durée retenue, trous exclus), `photos` (entier), `delai_depuis_arrivee_s` — l'**issue déclarée** des appels n'y figure pas : elle n'est pas un critère (R19) |
+| `caisse.mouvement` | `ecriture_caisse` | `ecriture_caisse.id` | `coursier`, `type` (`avance` \| `remboursement` \| `indemnisation` \| `correction`), `montant` (**signé**, unités mineures), `devise`, `commande`, `arret`, `source` (`outbox` \| `admin`) |
+| `indemnisation.validee` | `indemnisation` | `indemnisation.id` | `coursier`, `commande`, `montant`, `devise`, `litige` (`null` tant qu'AVI-04 n'existe pas), `acteur` |
+| `indemnisation.refusee` | `indemnisation` | `indemnisation.id` | `coursier`, `commande`, `montant`, `devise`, `motif_cle` (REQUIS), `acteur` |
+| `remise.code_debloque` | `commande` | `commande.id` | `livraison`, `essais_avant` (compteur au moment du blocage), `motif_cle` (REQUIS), `acteur` — **aucun code** |
+| `depot.autorise` | `commande` | `commande.id` | `livraison`, `autorise` (booléen — l'événement porte aussi la **fermeture**), `motif_cle` (REQUIS), `acteur` |
+| `coursier.action_reconciliee` | `livraison` | `livraison.id` | `commande`, `coursier`, `action` (`collecte` \| `transition` \| `remise` \| `echec`), `issue` (`rejouee` \| `refusee_definitivement`), `motif_cle`, `age_local_s` (âge de l'action dans la file, en secondes) |
+
+**Qualification produit vs opérations (MET-01).** `preuves_echec.reunies`,
+`caisse.mouvement`, `indemnisation.validee`, `indemnisation.refusee`,
+`remise.code_debloque` et `depot.autorise` sont des événements **produit** — des
+faits métier dont dépendent de l'argent et une décision d'exploitation.
+`coursier.action_reconciliee` est un événement d'**opérations** : il mesure la
+santé de la file hors-ligne, pas le parcours de Yao.
+
+**Aucun KPI manuel** (constitution VI) : le taux d'échec avec preuves, la durée
+moyenne de présence avant échec, l'exposition cash moyenne, le taux de remise
+hors ligne et le taux de refus définitif au rejeu se dérivent tous de ces
+événements et de ceux du cycle 008.
+
+**Ce qui n'émet PAS d'événement dans ce cycle** :
+
+- la **coche d'un article** de la checklist — c'est un aide-mémoire d'achat
+  strictement local à l'appareil, jamais un fait métier (R11) ;
+- un **relevé de présence** isolé — seul le franchissement du seuil émet
+  (`preuves_echec.reunies`) ; journaliser chaque échantillon noierait l'outbox
+  d'un fait qui n'intéresse personne à l'unité ;
+- une **lecture** de caisse, de journée ou de preuves — aucune transition ;
+- un **rejeu idempotent** (même `uuid_client` d'appel, de présence, de photo, de
+  remise ou d'échec) — ni seconde ligne, ni second événement. Un rejeu **refusé
+  définitivement**, lui, émet `coursier.action_reconciliee` : c'est précisément
+  le cas qu'il faut voir passer ;
+- une **demande** d'indemnisation créée par consommation de `indemnisation.due` —
+  l'événement source existe déjà (cycle 008) ; le redoubler à la consommation
+  compterait deux fois la même demande. Seules la **validation** et le **refus**
+  émettent ;
+- les **seeds** — chargement initial (patron des cycles 002 → 009).
 
 ## Taxonomie produit (MET-01) — déclarations en attente d'ingestion
 

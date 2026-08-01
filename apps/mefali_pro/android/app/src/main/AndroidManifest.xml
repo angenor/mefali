@@ -22,6 +22,15 @@
          la demande au runtime (repère vocal). La redéclarer ici ne changerait
          rien à l'apk. -->
 
+    <!-- Cycle CRS (010) — service continu, US7 (research R12).
+         FOREGROUND_SERVICE, WAKE_LOCK, POST_NOTIFICATIONS et
+         RECEIVE_BOOT_COMPLETED arrivent par le manifest de
+         `flutter_foreground_task` (le merger les fusionne). Ce qui manque et
+         qu'Android 14+ exige, c'est la permission qui CORRESPOND au type de
+         service déclaré ci-dessous : sans elle, le démarrage lève une
+         SecurityException à la première mise en ligne. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
@@ -48,6 +57,23 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Cycle CRS (010) — le service qui garde l'app vivante écran éteint
+             tant que Yao est en ligne (FR-111 à FR-115).
+
+             Type `location`, et pas `dataSync` : c'est bien de la position que
+             ce service publie, et `dataSync` est plafonné à 6 h par 24 h depuis
+             Android 15 — une journée de coursier le dépasse. Le nom de classe
+             est imposé par le plugin, ne pas le renommer.
+
+             Pas de `android:stopWithTask="true"` : le service DOIT survivre à
+             la fermeture de la tâche, sinon balayer l'app depuis les récentes
+             sortirait Yao du pool sans qu'il l'ait décidé. C'est la mise hors
+             ligne qui l'arrête, jamais le système d'exploitation seul. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

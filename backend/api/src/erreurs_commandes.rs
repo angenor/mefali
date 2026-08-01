@@ -85,12 +85,20 @@ pub fn statut(e: &ErreurCommandes) -> StatusCode {
         | ErreurCommandes::SubstitutionEcartPrix
         | ErreurCommandes::SubstitutionExpiree
         | ErreurCommandes::RemiseIncorrecte
+        // Lever un blocage qui n'existe pas : l'état s'y oppose, et il peut
+        // changer (trois codes faux plus tard, la levée aura du sens).
+        | ErreurCommandes::CodeNonBloque
         | ErreurCommandes::PreuvesIncompletes => StatusCode::CONFLICT,
 
         ErreurCommandes::CodeEpuise => StatusCode::LOCKED,
 
         ErreurCommandes::RepereManquant
         | ErreurCommandes::PanierInvalide(_)
+        // Le contrat §2 range explicitement le dépôt non autorisé en 422 :
+        // la DEMANDE est irrecevable (cette voie n'existe pas pour cette
+        // commande), et aucune action du coursier sur l'état n'y changera rien —
+        // c'est l'exploitation qui ouvre le drapeau.
+        | ErreurCommandes::DepotNonAutorise
         | ErreurCommandes::MotifRequis => StatusCode::UNPROCESSABLE_ENTITY,
 
         // Infrastructure : Sql, StatutInconnu, ModeInconnu, Dependance.
@@ -150,6 +158,8 @@ mod tests {
             ErreurCommandes::SubstitutionExpiree,
             ErreurCommandes::CodeEpuise,
             ErreurCommandes::RemiseIncorrecte,
+            ErreurCommandes::DepotNonAutorise,
+            ErreurCommandes::CodeNonBloque,
             ErreurCommandes::PreuvesIncompletes,
             ErreurCommandes::MotifRequis,
             ErreurCommandes::NonProprietaire,

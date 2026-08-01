@@ -26,6 +26,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/commandes/{commande_id}/code/debloquer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * **FR-055** — l'exploitation lève le blocage du code, avec motif tracé.
+         * @description Le compteur d'essais retombe à zéro : une levée qui laisserait le compteur
+         *     au plafond serait inopérante — le premier essai suivant rebloquerait la
+         *     commande, et l'exploitation croirait avoir agi.
+         */
+        post: operations["debloquer_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commandes/{commande_id}/depot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
+         * @description Le cadrage §7.4-5 dit « mode dépôt autorisé **par le client** ». Tant
+         *     qu'aucune surface cliente ne le porte, c'est l'exploitation qui l'ouvre à sa
+         *     demande, au téléphone, avec un motif tracé — le contrat ne changera pas
+         *     quand l'app cliente reprendra la main.
+         *
+         *     **Fermé par défaut** : un défaut ouvert aurait rendu le dépôt possible
+         *     partout sans que personne ne l'ait décidé.
+         */
+        post: operations["autoriser_depot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/commandes/{id}/annuler": {
         parameters: {
             query?: never;
@@ -123,6 +171,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/coursiers/exposition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).
+         * @description C'est le nombre qui dit combien d'argent de Mefali circule dans des poches.
+         *     Sans lui, une dérive ne se verrait qu'au comptage du soir.
+         */
+        get: operations["exposition_cash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/dispatch/alertes": {
         parameters: {
             query?: never;
@@ -189,6 +258,90 @@ export interface paths {
          *     omis : la carte ne montre que ce dont on connaît la position et l'âge.
          */
         get: operations["pool_dispatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/indemnisations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CRS-06 (exploitation) — la file des indemnisations (FR-071). */
+        get: operations["file_indemnisations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/indemnisations/{indemnisation_id}/refuser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.
+         * @description Aucune écriture de caisse : rien n'entre, rien ne sort. Ce que Yao doit
+         *     pouvoir lire, c'est la raison (FR-072).
+         */
+        post: operations["refuser_indemnisation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/indemnisations/{indemnisation_id}/valider": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-06 (exploitation) — valide une indemnisation : l'argent entre au livre.
+         * @description L'écriture de caisse et l'événement partent dans la MÊME transaction que le
+         *     changement d'état : une validation sans son écriture laisserait Yao avec une
+         *     promesse et rien dans sa caisse.
+         */
+        post: operations["valider_indemnisation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/livraisons/{livraison_id}/preuves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-05 (exploitation) — le dossier de preuves d'une livraison (FR-063).
+         * @description C'est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles
+         *     existeraient en base sans que personne ne puisse répondre à un client qui
+         *     conteste un échec — et une preuve que personne ne lit ne protège personne.
+         *
+         *     ⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.
+         */
+        get: operations["preuves_de_livraison"];
         put?: never;
         post?: never;
         delete?: never;
@@ -559,6 +712,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/remises/bloquees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * **FR-044** — les remises dont le code est épuisé et le blocage non levé.
+         * @description Le verrou du code protège un secret à quatre chiffres, mais il laisse une
+         *     commande à la porte du client. Sans cette lecture, l'alerte
+         *     `remise.code_epuise` partirait dans l'outbox sans que personne ne puisse
+         *     répondre — et un humain ne s'abonne pas à un journal.
+         */
+        get: operations["remises_bloquees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/tarification/brouillon/{grille_id}/publier": {
         parameters: {
             query?: never;
@@ -905,7 +1081,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** QRC-02 — course active du coursier + pré-provisionnement hors-ligne. */
+        /**
+         * CRS-03 — course active du coursier, **complète** et pré-provisionnée.
+         * @description Cet endpoint a déménagé de `qr_http` : son contenu n'a plus rien à faire
+         *     dans un domaine dont l'objet est la plaque. Le chemin ne bouge pas, et les
+         *     champs du cycle 006 restent là — l'app livrée continue de fonctionner
+         *     pendant la transition.
+         *
+         *     `204` sans course : ce n'est pas une erreur, c'est une journée qui commence.
+         */
         get: operations["course_active"];
         put?: never;
         post?: never;
@@ -1006,6 +1190,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{livraison_id}/appels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-03 — journalise un appel passé **via l'app** (FR-030, FR-031, FR-033).
+         * @description ⚠ **Aucun numéro** n'est transmis ni journalisé : le serveur ne voit pas
+         *     l'appel, il part du téléphone. Il en garde l'intention, la direction, le
+         *     motif et l'issue déclarée.
+         *
+         *     Idempotent par `uuid_client` : le rejeu rend `200` et le même corps, sans
+         *     seconde ligne ni second événement.
+         */
+        post: operations["journaliser_appel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).
+         * @description Le serveur ne peut pas l'observer : l'appel part du téléphone. Cette issue
+         *     sert l'affichage de K4-1e et **n'est jamais un critère de preuve** — un
+         *     coursier qui déclarerait « sans réponse » à tort ne gagne rien.
+         */
+        patch: operations["declarer_issue_appel"];
+        trace?: never;
+    };
     "/courses/{livraison_id}/arrets/{arret_id}/arrive": {
         parameters: {
             query?: never;
@@ -1094,6 +1309,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{livraison_id}/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
+         * @description L'app envoie des **échantillons**, jamais une durée : c'est le serveur qui
+         *     compte, en ignorant tout intervalle supérieur au « trou » de la zone. Sans
+         *     cette règle, deux relevés espacés de dix minutes vaudraient dix minutes de
+         *     présence, et un aller-retour vaudrait une attente (R8).
+         *
+         *     Idempotent par `uuid_client` : un lot rejoué par la file rend le même corps.
+         */
+        post: operations["enregistrer_presence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/preuves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
+         * @description C'est la **même fonction** que celle qui garde `POST /courses/{id}/echec` :
+         *     l'écran et le serveur ne peuvent pas diverger (FR-059, FR-060). Un bouton
+         *     actif dont la déclaration serait refusée serait pire qu'un bouton inactif.
+         */
+        get: operations["etat_preuves"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{livraison_id}/preuves/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CRS-05 — dépose une photo de preuve d'échec (FR-056, FR-064).
+         * @description **Multipart** pour la même raison que la remise (R18) : la photo voyage AVEC
+         *     la demande, donc dans la file hors-ligne. Une preuve qui exigerait du réseau
+         *     au moment de la prise serait une preuve qu'on ne peut pas réunir là où elle
+         *     sert — devant une porte close, dans un quartier sans couverture.
+         *
+         *     Idempotent par `uuid_client` : le rejeu ne redépose rien et ne compte pas une
+         *     seconde photo.
+         */
+        post: operations["deposer_photo_preuve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses/{livraison_id}/remise": {
         parameters: {
             query?: never;
@@ -1109,8 +1397,14 @@ export interface paths {
          *     l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu
          *     côté serveur, sur la valeur stockée.
          *
-         *     Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention
-         *     admin : quatre chiffres se devinent en quelques minutes sans plafond.
+         *     Trois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à
+         *     intervention admin : quatre chiffres se devinent en quelques minutes sans
+         *     plafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa
+         *     long, il ne se devine pas.
+         *
+         *     **Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la
+         *     demande, donc dans la file hors-ligne. Référencer un objet « déjà déposé »
+         *     faisait de la voie dépôt la seule des trois à exiger du réseau.
          */
         post: operations["remise"];
         delete?: never;
@@ -1251,6 +1545,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moi/caisse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-06 — la caisse du coursier (FR-067 → FR-077).
+         * @description Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le
+         *     client. Entre les deux, il porte le risque : cet endpoint est la seule façon
+         *     qu'il a de vérifier que « le coursier ne perd jamais » est vrai.
+         *
+         *     ⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces
+         *     (PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que
+         *     masquée — la masquer la ferait disparaître de l'écran dont c'est la seule
+         *     raison d'être (R10, FR-117).
+         */
+        get: operations["ma_caisse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moi/commandes": {
         parameters: {
             query?: never;
@@ -1315,6 +1636,33 @@ export interface paths {
          *     rôle (FR-015).
          */
         post: operations["soumettre_dossier_coursier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moi/journee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CRS-01 — la journée du coursier (FR-091 → FR-095).
+         * @description ⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les
+         *     avances viennent de `coursier`, le plafond retenu et le taux d'acceptation de
+         *     `dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une
+         *     arête permanente entre deux domaines qui n'ont rien à se dire
+         *     (`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.
+         *
+         *     La **note reste absente** : le module d'avis n'existe pas, et K1 afficherait
+         *     un « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.
+         */
+        get: operations["ma_journee"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1742,6 +2090,45 @@ export interface components {
             /** @description Plateforme. */
             plateforme: components["schemas"]["PlateformeDto"];
         };
+        /** @description Ce que le serveur rend après avoir journalisé un appel. */
+        AppelEnregistre: {
+            /**
+             * Format: uuid
+             * @description Appel journalisé.
+             */
+            appel_id: string;
+            /** @description Cet appel compte-t-il pour la preuve d'échec ? */
+            compte_pour_preuve: boolean;
+        };
+        /** @description Un appel journalisé, tel que l'exploitation le lit. */
+        AppelJournalise: {
+            /**
+             * Format: uuid
+             * @description Appel.
+             */
+            id: string;
+            /** @description Issue DÉCLARÉE par le coursier — affichée, jamais un critère (R19). */
+            issue: string;
+            /** @description `suivi` | `substitution` | `client_absent`. */
+            motif: string;
+            /**
+             * Format: date-time
+             * @description Horodatage **serveur** — celui qui fonde l'espacement.
+             */
+            passe_le: string;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil — observation seulement.
+             */
+            passe_le_local: string;
+            /**
+             * Format: uuid
+             * @description Prestataire appelé (si `vers = vendeur`).
+             */
+            prestataire_id?: string | null;
+            /** @description `client` | `vendeur`. **Aucun numéro** — le serveur n'en a jamais vu. */
+            vers: string;
+        };
         /** @description L'arrêt où en est le coursier. */
         ArretCourantSuivi: {
             /**
@@ -1758,6 +2145,79 @@ export interface components {
             prestataire_nom?: string | null;
             /** @description Statut de l'arrêt. */
             statut: string;
+        };
+        /** @description Un arrêt de collecte, complet. */
+        ArretCourse: {
+            /**
+             * Format: uuid
+             * @description Arrêt de la course.
+             */
+            arret_id: string;
+            /**
+             * Format: date-time
+             * @description Arrivée sur l'arrêt.
+             */
+            arrive_le?: string | null;
+            /**
+             * Format: date-time
+             * @description Collecte validée.
+             */
+            collecte_le?: string | null;
+            /**
+             * Format: int64
+             * @description Rayon max de scan (m).
+             */
+            distance_max_m: number;
+            /**
+             * Format: int64
+             * @description Distance depuis l'arrêt précédent (m). **Absente** : le tronçon n'est pas
+             *     figé au devis et ce cycle ne recalcule aucun itinéraire (FR-009).
+             */
+            distance_precedent_m?: number | null;
+            /** @description base16(sha256(prestataire ‖ code)) — mode dégradé hors-ligne. */
+            empreinte_code: string;
+            /** @description base16(sha256(jeton)) — match hors-ligne du QR de plaque. */
+            empreinte_jeton: string;
+            /**
+             * Format: date-time
+             * @description Départ déclaré vers l'arrêt.
+             */
+            en_route_le?: string | null;
+            /** @description Articles à acheter chez ce vendeur. */
+            lignes: components["schemas"]["LigneArret"][];
+            /**
+             * Format: int64
+             * @description Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+             */
+            montant_avance: number;
+            /** @description Nom du vendeur. */
+            nom: string;
+            /**
+             * Format: int32
+             * @description Rang dans l'ordre optimisé.
+             */
+            ordre: number;
+            /** @description Photo de récupération exigée (politique résolue). */
+            photo_exigee: boolean;
+            /**
+             * Format: uuid
+             * @description Prestataire visé.
+             */
+            prestataire_id: string;
+            /**
+             * Format: double
+             * @description Position attendue du site.
+             */
+            site_lat: number;
+            /**
+             * Format: double
+             * @description Position attendue du site.
+             */
+            site_lon: number;
+            /** @description `a_collecter` | `en_route` | `arrive` | `collecte` | `indisponible`. */
+            statut: string;
+            /** @description Contact du vendeur — appel HORS LIGNE (R6). Jamais journalisé. */
+            telephone_vendeur?: string | null;
         };
         /** @description Un arrêt de l'offre, tel que K2 l'affiche. */
         ArretOffre: {
@@ -1778,49 +2238,6 @@ export interface components {
              * @description Prestataire visé.
              */
             prestataire_id?: string | null;
-        };
-        /** @description Arrêt pré-provisionné (empreintes, jamais de secret). */
-        ArretPreProvisionne: {
-            /**
-             * Format: uuid
-             * @description Arrêt à collecter.
-             */
-            arret_id: string;
-            /** @description Devise ISO 4217. */
-            devise: string;
-            /**
-             * Format: int64
-             * @description Rayon max de scan (m) — validation de proximité hors-ligne.
-             */
-            distance_max_m: number;
-            /** @description base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne. */
-            empreinte_code: string;
-            /** @description base16(sha256(jeton)) — match hors-ligne du QR scanné. */
-            empreinte_jeton: string;
-            /**
-             * Format: int64
-             * @description Montant avancé (unités mineures).
-             */
-            montant_avance: number;
-            /** @description Nom du prestataire (affiché sur la carte K3). */
-            nom: string;
-            /** @description Photo exigée (politique résolue). */
-            photo_exigee: boolean;
-            /**
-             * Format: uuid
-             * @description Prestataire visé.
-             */
-            prestataire_id: string;
-            /**
-             * Format: double
-             * @description Position attendue du site.
-             */
-            site_lat: number;
-            /**
-             * Format: double
-             * @description Position attendue du site.
-             */
-            site_lon: number;
         };
         /** @description Article du catalogue public. */
         ArticlePublic: {
@@ -1991,6 +2408,40 @@ export interface components {
             url: string;
             /** @description Version de charte en vigueur à la signature. */
             version_charte: string;
+        };
+        /** @description Le client et son repère (K3-1c, K4). */
+        ClientCourse: {
+            /** @description La voie « dépôt » est-elle ouverte sur cette commande (FR-039) ? */
+            depot_autorise: boolean;
+            /**
+             * Format: double
+             * @description Point de livraison.
+             */
+            lieu_lat?: number | null;
+            /**
+             * Format: double
+             * @description Point de livraison.
+             */
+            lieu_lon?: number | null;
+            /**
+             * @description Nom d'usage. **Absent** tant que le produit n'en porte aucun (cycle CPT
+             *     003 : « un numéro vérifié, rien d'autre ») — l'app affiche le repère.
+             */
+            nom_usage?: string | null;
+            /** @description Repère écrit. */
+            repere_texte?: string | null;
+            /**
+             * Format: int32
+             * @description Durée de la note vocale (s).
+             */
+            repere_vocal_duree_s?: number | null;
+            /**
+             * @description URL **présignée** de la note vocale — à télécharger tout de suite pour
+             *     la jouer hors ligne (FR-024).
+             */
+            repere_vocal_url?: string | null;
+            /** @description Contact du client. Jamais journalisé, effacé du cache à la clôture (R6). */
+            telephone?: string | null;
         };
         /**
          * @description Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler
@@ -2296,15 +2747,28 @@ export interface components {
              */
             ville_id?: string | null;
         };
-        /** @description Course active du coursier + arrêts pré-provisionnés. */
-        CourseActive: {
-            /** @description Arrêts à collecter, avec empreintes. */
-            arrets: components["schemas"]["ArretPreProvisionne"][];
+        /** @description La course active, pré-provisionnée pour fonctionner hors ligne. */
+        CourseActiveComplete: {
+            /** @description Arrêts de collecte, dans l'ordre de passage. */
+            arrets: components["schemas"]["ArretCourse"][];
+            /** @description Le client et son repère. */
+            client: components["schemas"]["ClientCourse"];
             /**
              * Format: uuid
-             * @description Livraison active (première des arrêts), `None` si aucune.
+             * @description Commande portée.
              */
-            livraison_id?: string | null;
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description `assignee` | `en_collecte` | `en_livraison`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Livraison active.
+             */
+            livraison_id: string;
+            /** @description De quoi confirmer la remise hors ligne. */
+            remise: components["schemas"]["RemisePreprovisionnee"];
         };
         /** @description Une course assignée qui n'avance pas (FR-075). */
         CourseBloquee: {
@@ -2437,6 +2901,26 @@ export interface components {
              */
             ville_id: string;
         };
+        /** @description État de la voie dépôt après décision. */
+        DecisionDepot: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description La voie dépôt est-elle ouverte ? */
+            depot_autorise: boolean;
+            /** @description Motif retenu. */
+            motif_cle: string;
+        };
+        /** @description Corps d'une décision d'indemnisation. */
+        DecisionIndemnisation: {
+            /**
+             * @description Clé i18n du motif — **obligatoire au refus** (FR-072). Un refus sans
+             *     raison rend la promesse d'indemnisation invérifiable.
+             */
+            motif_cle?: string | null;
+        };
         /** @description Décision sur une offre — accepter ou refuser. */
         DecisionOffre: {
             /**
@@ -2472,6 +2956,36 @@ export interface components {
              *     pour le client — il n'a pas à se justifier.
              */
             motif_cle?: string | null;
+        };
+        /** @description Corps de déclaration d'un appel passé via l'app. */
+        DemandeAppel: {
+            /**
+             * @description Issue DÉCLARÉE : `inconnue` | `sans_reponse` | `repondu`. Facultative —
+             *     le serveur ne voit pas l'appel, il ne peut que la recevoir (R19).
+             */
+            issue?: string | null;
+            /**
+             * @description `suivi` | `substitution` | `client_absent`. **Seul `client_absent`
+             *     compte** pour la preuve d'échec (FR-035).
+             */
+            motif: string;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil — observation seulement.
+             */
+            passe_le_local: string;
+            /**
+             * Format: uuid
+             * @description Prestataire appelé — obligatoire si `vers = vendeur`.
+             */
+            prestataire_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 client, constitution V).
+             */
+            uuid_client: string;
+            /** @description `client` | `vendeur`. */
+            vers: string;
         };
         /** @description Corps de la demande de collecte (partie `demande` JSON du multipart). */
         DemandeCollecte: {
@@ -2528,6 +3042,18 @@ export interface components {
              */
             zone_id: string;
         };
+        /** @description Motif d'une décision d'exploitation — **jamais du texte libre**. */
+        DemandeDeblocage: {
+            /** @description Clé i18n du motif (obligatoire). */
+            motif_cle: string;
+        };
+        /** @description Ouverture ou fermeture de la voie « dépôt » sur une commande. */
+        DemandeDepot: {
+            /** @description `true` ouvre la voie, `false` la referme. */
+            autorise: boolean;
+            /** @description Clé i18n du motif (obligatoire dans les deux sens). */
+            motif_cle: string;
+        };
         /** @description Demande de devis de panier — **aucun effet de bord** (P4). */
         DemandeDevisPanier: {
             /** @description Catégorie de service (`marche`, `restauration`…). */
@@ -2555,6 +3081,34 @@ export interface components {
             motif_cle: string;
             /** @description Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…). */
             type_issue: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             *
+             *     **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue
+             *     jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois
+             *     — deux sanctions, deux indemnisations, deux litiges (R4).
+             */
+            uuid_client: string;
+        };
+        /**
+         * @description Enregistrement d'une issue §7.5 **par l'exploitation**.
+         *
+         *     Volontairement distinct du DTO coursier : celui-ci exige un `uuid_client`
+         *     (sa file hors-ligne rejoue), l'admin n'en a pas — chaque clic est une action
+         *     neuve, sur un écran connecté. Partager le DTO aurait obligé l'exploitation à
+         *     fabriquer un identifiant d'idempotence qui ne correspond à rien chez elle.
+         */
+        DemandeIssueAdmin: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné — absent = à la remise.
+             */
+            arret_id?: string | null;
+            /** @description Clé i18n du motif — jamais du texte libre. */
+            motif_cle: string;
+            /** @description Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…). */
+            type_issue: string;
         };
         /** @description Corps de `POST /auth/otp/demander`. */
         DemandeOtp: {
@@ -2566,21 +3120,72 @@ export interface components {
              */
             zone: string;
         };
+        /** @description Partie `demande` du multipart de photo de preuve. */
+        DemandePhotoPreuve: {
+            /**
+             * Format: date-time
+             * @description Horodatage de la prise de vue sur l'appareil. **Observation** — retenu
+             *     comme date de prise pour que l'ordre des photos reste celui du terrain.
+             */
+            prise_le_local?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             */
+            uuid_client: string;
+        };
         /** @description Corps de `POST /auth/rafraichir`. */
         DemandeRafraichissement: {
             /** @description Jeton de renouvellement opaque courant. */
             rafraichissement: string;
         };
-        /** @description Preuve de remise présentée par le coursier. */
+        /** @description Preuve de remise présentée par le coursier — partie `demande` du multipart. */
         DemandeRemise: {
             /** @description Code à 4 chiffres dicté par le client (mode `code`). */
             code?: string | null;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'appareil. **Observation seulement**.
+             */
+            confirme_le_local?: string | null;
+            /**
+             * Format: double
+             * @description Latitude du coursier au dépôt (mode `depot`, FR-048).
+             */
+            depot_lat?: number | null;
+            /**
+             * Format: double
+             * @description Longitude du coursier au dépôt (mode `depot`, FR-048).
+             */
+            depot_lon?: number | null;
+            /**
+             * Format: int32
+             * @description Essais faux consommés **hors ligne**, consolidés en `max()` côté serveur
+             *     contre le seuil de zone `commande.essais_code_livraison` (R5).
+             */
+            essais_hors_ligne?: number;
+            /**
+             * @description La validation a-t-elle eu lieu sans réseau ? Journalisé, jamais décisif —
+             *     le serveur revalide la preuve ici même (FR-046).
+             */
+            hors_ligne?: boolean;
             /** @description Jeton lu dans le QR de réception (mode `qr`). */
             jeton?: string | null;
             /** @description `qr` | `code` | `depot`. */
             mode: string;
-            /** @description Clé de la photo déposée sur place (mode `depot`). */
+            /**
+             * @description Clé d'une photo **déjà** déposée (mode `depot`) — compatibilité du cycle
+             *     008 ; l'app coursier envoie la partie binaire `photo` (R18).
+             */
             photo_cle?: string | null;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence (UUIDv7 produit par l'app, constitution V).
+             *
+             *     **Obligatoire** depuis CRS 010 : sans elle, un rejeu de la file clôturait
+             *     deux fois la même course (R4).
+             */
+            uuid_client: string;
         };
         /** @description Demande de reprise manuelle — **motif obligatoire**. */
         DemandeReprise: {
@@ -3017,6 +3622,27 @@ export interface components {
              */
             reouverture_estimee?: string | null;
         };
+        /** @description L'état des trois preuves, et **ce qui manque** (contrat §1.4). */
+        EtatPreuves: {
+            /** @description Preuve « appels ». */
+            appels: components["schemas"]["PreuveAppels"];
+            /** @description Preuve « photo ». */
+            photos: components["schemas"]["PreuvePhotos"];
+            /** @description Preuve « présence ». */
+            presence: components["schemas"]["PreuvePresence"];
+            /** @description Les trois sont réunies — l'échec devient déclarable. */
+            reunies: boolean;
+            /**
+             * Format: int32
+             * @description Compteur « N sur 3 » de K4-1e.
+             */
+            reunies_sur: number;
+            /**
+             * Format: int32
+             * @description Toujours 3 — le compteur n'a de sens que si le total est explicite.
+             */
+            total: number;
+        };
         /** @description Ce que la publication rend à l'app. */
         EtatPublicationPosition: {
             /** @description Vrai si le coursier est (re)devenu membre du pool. */
@@ -3045,6 +3671,24 @@ export interface components {
             role: string;
             /** @description Statut courant. */
             statut: string;
+        };
+        /** @description Ce que l'exploitation voit du cash en circulation (FR-075). */
+        ExpositionCash: {
+            /**
+             * Format: date-time
+             * @description Instant de la lecture — l'exposition est vraie **à quelques secondes**
+             *     près (délai du worker outbox, SC-010 l'accepte explicitement).
+             */
+            au: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Détail, du plus exposé au moins exposé. */
+            par_coursier: components["schemas"]["LigneExposition"][];
+            /**
+             * Format: int64
+             * @description Total en circulation.
+             */
+            total_unites: number;
         };
         /**
          * @description Fiche publique : le sous-ensemble EXACT de FR-027 — ni contact
@@ -3082,6 +3726,11 @@ export interface components {
         FileAttenteCoursier: {
             /** @description Commandes en attente, **la plus ancienne d'abord** (FIFO par âge). */
             commandes: components["schemas"]["CommandeEnAttente"][];
+        };
+        /** @description La file des indemnisations. */
+        FileIndemnisations: {
+            /** @description Indemnisations, la plus récente d'abord. */
+            indemnisations: components["schemas"]["IndemnisationVue"][];
         };
         /**
          * @description Mode de forçage (contrat) — mappé sur [`zones::Forcage`].
@@ -3198,6 +3847,64 @@ export interface components {
             /** @description Plages par jour (lundi → dimanche). */
             jours: components["schemas"]["PlageDto"][][];
         };
+        /** @description Ce qu'une décision produit. */
+        IndemnisationDecidee: {
+            /**
+             * Format: uuid
+             * @description Écriture de caisse produite — **seulement** à la validation.
+             */
+            ecriture_id?: string | null;
+            /** @description `validee` | `refusee`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Indemnisation décidée.
+             */
+            id: string;
+        };
+        /** @description Une indemnisation, telle que la caisse l'affiche. */
+        IndemnisationVue: {
+            /**
+             * Format: uuid
+             * @description Commande d'origine.
+             */
+            commande_id: string;
+            /** @description Référence lisible de la commande. */
+            commande_reference: string;
+            /**
+             * Format: date-time
+             * @description Naissance de la demande.
+             */
+            cree_le: string;
+            /**
+             * Format: date-time
+             * @description Quand la décision a été prise.
+             */
+            decide_le?: string | null;
+            /** @description Clé i18n du motif de décision (refus surtout). */
+            decision_motif_cle?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description `demandee` | `validee` | `refusee`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Indemnisation.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Litige rattaché — **absent** tant qu'AVI-04 n'existe pas (R16).
+             */
+            litige_id?: string | null;
+            /**
+             * Format: int64
+             * @description Montant (unités mineures, positif).
+             */
+            montant_unites: number;
+            /** @description Clé i18n du motif. */
+            motif_cle: string;
+        };
         /** @description Corps de `POST /auth/inscription`. */
         Inscription: {
             /** @description Version du texte ARTCI accepté — servie par la config de zone. */
@@ -3209,6 +3916,16 @@ export interface components {
         IntentionAppel: {
             /** @description `suivi` (défaut) | `substitution` | `expiration`. */
             motif?: string | null;
+        };
+        /** @description Corps de mise à jour de l'issue déclarée d'un appel. */
+        IssueAppelDeclaree: {
+            /** @description `inconnue` | `sans_reponse` | `repondu`. */
+            issue: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence de l'appel à mettre à jour.
+             */
+            uuid_client: string;
         };
         /** @description Une issue de l'arbre §7.5, telle qu'elle est enregistrée. */
         IssueEchec: {
@@ -3309,6 +4026,50 @@ export interface components {
             /** @description Opaque 256 bits — tourne à chaque usage. */
             rafraichissement: string;
         };
+        /** @description Ce que Yao a gagné aujourd'hui, et ce qu'il peut encore engager (K1-1a). */
+        JourneeCoursier: {
+            /**
+             * Format: int64
+             * @description Argent encore dehors, à l'origine de l'amputation ci-dessus.
+             */
+            avances_en_cours_unites: number;
+            /**
+             * Format: int64
+             * @description Courses dont la remise est validée dans le jour civil **de la zone**.
+             */
+            courses_livrees: number;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Somme des parts coursier de ces courses (devis FIGÉ du cycle 007).
+             */
+            gains_unites: number;
+            /**
+             * Format: int32
+             * @description **Toujours `null`** tant qu'AVI n'est pas construit (FR-094) : l'absence
+             *     vaut mieux qu'un chiffre inventé.
+             */
+            note_centiemes?: number | null;
+            /**
+             * Format: int64
+             * @description Plafond d'avance qui s'applique — `min(déclaré, palier de la grille)`.
+             */
+            plafond_retenu_unites: number;
+            /**
+             * Format: int64
+             * @description Ce qu'il reste engageable : plafond retenu **moins** avances en cours
+             *     (FR-095). Jamais négatif — un « reste » négatif ne veut rien dire à
+             *     l'écran ; l'écart, lui, est signalé par la caisse (FR-078).
+             */
+            reste_disponible_unites: number;
+            /**
+             * Format: int32
+             * @description Taux d'acceptation tenu par le dispatch, ou `null` si aucune offre
+             *     décidable n'a été émise sur la fenêtre (FR-093).
+             */
+            taux_acceptation_pourcent?: number | null;
+        };
         /** @description Position d'un lieu (pin GPS). */
         Lieu: {
             /**
@@ -3321,6 +4082,30 @@ export interface components {
              * @description Longitude.
              */
             lon: number;
+        };
+        /** @description Une ligne d'article à acheter chez un vendeur (K3). */
+        LigneArret: {
+            /** @description Libellé de l'article. */
+            libelle: string;
+            /**
+             * Format: uuid
+             * @description Ligne de commande.
+             */
+            ligne_id: string;
+            /** @description `remplacer` | `appeler` | `retirer`. */
+            preference_substitution: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire VERROUILLÉ à la création (unités mineures).
+             */
+            prix_unitaire_unites: number;
+            /**
+             * Format: int32
+             * @description Quantité commandée.
+             */
+            quantite: number;
+            /** @description `presente` | `remplacee` | `retiree`. */
+            statut: string;
         };
         /** @description Une ligne résolue contre le catalogue. */
         LigneDevis: {
@@ -3349,6 +4134,69 @@ export interface components {
              */
             sous_total_unites: number;
         };
+        /** @description L'exposition d'un coursier. */
+        LigneExposition: {
+            /**
+             * Format: int64
+             * @description Avance en cours (unités mineures, positif).
+             */
+            avance_unites: number;
+            /**
+             * Format: int64
+             * @description Courses concernées.
+             */
+            courses: number;
+            /**
+             * Format: uuid
+             * @description Coursier.
+             */
+            coursier_id: string;
+            /**
+             * @description Nom d'usage. **Vide** tant que le produit n'en porte aucun (cycle CPT
+             *     003 : « un numéro vérifié, rien d'autre ») — un nom fabriqué depuis le
+             *     numéro serait pire qu'une absence.
+             */
+            nom: string;
+        };
+        /** @description Une course de l'historique du jour — **trois chiffres** (K5-1a). */
+        LigneHistoriqueCaisse: {
+            /**
+             * Format: int64
+             * @description Ce que le coursier a avancé (positif).
+             */
+            avance_unites: number;
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Avance NON SOLDÉE parce que la commande était prépayée (R10, FR-117). */
+            en_attente_reglement: boolean;
+            /**
+             * Format: int64
+             * @description Sa part sur cette course (devis figé du cycle 007).
+             */
+            gain_unites: number;
+            /**
+             * Format: date-time
+             * @description Heure de la première écriture (horodatage serveur).
+             */
+            heure: string;
+            /**
+             * Format: uuid
+             * @description Livraison concernée.
+             */
+            livraison_id?: string | null;
+            /** @description Référence lisible (`#418`) — de quoi se parler au téléphone. */
+            reference: string;
+            /**
+             * Format: int64
+             * @description Ce qu'il a récupéré (positif).
+             */
+            rembourse_unites: number;
+            /** @description La course est-elle terminée ? */
+            terminee: boolean;
+        };
         /** @description Une ligne de panier soumise. */
         LignePanier: {
             /**
@@ -3372,6 +4220,33 @@ export interface components {
              */
             quantite: number;
         };
+        /** @description Un litige en cours vu par le coursier (K5-1c). */
+        LitigeVu: {
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id: string;
+            /** @description Clé i18n de l'état affiché. */
+            etat_cle: string;
+            /**
+             * Format: uuid
+             * @description Litige.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Montant en jeu (unités mineures).
+             */
+            montant_unites: number;
+            /**
+             * Format: date-time
+             * @description Ouverture.
+             */
+            ouvert_le: string;
+            /** @description Référence lisible. */
+            reference: string;
+        };
         /** @description La livraison créée avec la commande. */
         LivraisonCommande: {
             /** @description Devis FIGÉ copié à la création — jamais recalculé (R11). */
@@ -3388,6 +4263,11 @@ export interface components {
              * @description Nombre d'arrêts (collectes + remise).
              */
             nb_arrets: number;
+        };
+        /** @description Lot de relevés — la file peut en avoir accumulé plusieurs minutes. */
+        LotDePresence: {
+            /** @description Les échantillons du lot. */
+            releves: components["schemas"]["ReleveDePresence"][];
         };
         /** @description La liste des commandes du compte. */
         MesCommandes: {
@@ -3580,6 +4460,51 @@ export interface components {
             /** @description URL présignée (TTL 10 min). */
             url: string;
         };
+        /** @description Une photo de preuve, présignée. */
+        PhotoPreuve: {
+            /**
+             * Format: uuid
+             * @description Photo.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Prise le.
+             */
+            prise_le: string;
+            /**
+             * Format: date-time
+             * @description Purgée le — la preuve reste **datée**, ses octets sont partis.
+             */
+            purgee_le?: string | null;
+            /** @description URL présignée de courte durée. Absente si purgée ou indisponible. */
+            url?: string | null;
+        };
+        /** @description Ce que le serveur rend après le dépôt d'une photo de preuve. */
+        PhotoPreuveDeposee: {
+            /**
+             * Format: uuid
+             * @description Photo enregistrée.
+             */
+            photo_id: string;
+            /**
+             * Format: int64
+             * @description Photos de preuve de cette livraison après dépôt.
+             */
+            photos: number;
+            /** @description `true` si la photo existait déjà (rejeu de la file) — rien n'a été redéposé. */
+            rejeu: boolean;
+        };
+        /** @description Schéma OpenAPI du multipart de photo de preuve (partie `demande` + `photo`). */
+        PhotoPreuveMultipart: {
+            /** @description Partie JSON `demande`. */
+            demande: components["schemas"]["DemandePhotoPreuve"];
+            /**
+             * Format: binary
+             * @description Photo de la porte close.
+             */
+            photo: string;
+        };
         /** @description Une plage d'ouverture, heures locales `HH:MM` (FR-031). */
         PlageDto: {
             /**
@@ -3650,6 +4575,24 @@ export interface components {
              */
             lon: number;
         };
+        /** @description Ce que le serveur rend après avoir enregistré un lot de présence. */
+        PresenceEnregistree: {
+            /**
+             * Format: int64
+             * @description Présence **recalculée par le serveur**, en secondes (FR-060).
+             */
+            presence_s: number;
+            /**
+             * Format: int64
+             * @description Durée exigée par la zone.
+             */
+            requis_s: number;
+            /**
+             * Format: int64
+             * @description Relevés du lot connus du serveur — identique au rejeu (constitution V).
+             */
+            retenus: number;
+        };
         /** @description Résumé admin d'un prestataire. */
         PrestataireAdmin: {
             /** @description Slug de la catégorie de service. */
@@ -3717,6 +4660,78 @@ export interface components {
             nom: string;
             /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
             statut: components["schemas"]["StatutPrestataire"];
+        };
+        /** @description Preuve « appels » — nombre ET espacement (FR-056). */
+        PreuveAppels: {
+            /** @description Faux dès qu'un appel a été écarté pour cause d'espacement. */
+            espacement_ok: boolean;
+            /**
+             * Format: int64
+             * @description Appels `client_absent` **retenus** (espacement respecté).
+             */
+            faits: number;
+            /** @description Horodatages **serveur** des appels retenus (affichage K4-1e). */
+            horodatages: string[];
+            /** @description Issues DÉCLARÉES par le coursier — affichées, jamais un critère (R19). */
+            issues: string[];
+            /** @description Pourquoi elle ne l'est pas — clé i18n. */
+            motif_cle?: string | null;
+            /** @description Preuve réunie. */
+            ok: boolean;
+            /**
+             * Format: int64
+             * @description Appels exigés par la zone.
+             */
+            requis: number;
+        };
+        /** @description Preuve « photo » (FR-056). */
+        PreuvePhotos: {
+            /**
+             * Format: int64
+             * @description Photos déposées.
+             */
+            faites: number;
+            /** @description Preuve réunie. */
+            ok: boolean;
+            /**
+             * Format: int64
+             * @description Photos exigées.
+             */
+            requis: number;
+        };
+        /** @description Preuve « présence » — durée mesurée, trous exclus (FR-056). */
+        PreuvePresence: {
+            /** @description Pourquoi elle ne l'est pas — clé i18n. */
+            motif_cle?: string | null;
+            /** @description Preuve réunie. */
+            ok: boolean;
+            /**
+             * Format: int64
+             * @description Durée exigée par la zone.
+             */
+            requis: number;
+            /**
+             * Format: int64
+             * @description Durée retenue (s), recalculée par le serveur.
+             */
+            secondes: number;
+        };
+        /** @description Le dossier de preuves d'une livraison (FR-063). */
+        PreuvesExploitation: {
+            /**
+             * @description **Tous** les appels — ceux qui ne comptent pas éclairent autant que les
+             *     autres quand un client conteste.
+             */
+            appels: components["schemas"]["AppelJournalise"][];
+            /** @description L'état recalculé des trois preuves, et ce qui manque. */
+            etat: components["schemas"]["EtatPreuves"];
+            /** @description Photos de preuve. */
+            photos: components["schemas"]["PhotoPreuve"][];
+            /**
+             * Format: date-time
+             * @description Instant du basculement — absent si les trois preuves ne l'ont jamais été.
+             */
+            reunies_le?: string | null;
         };
         /** @description Progression de la course, en ARRÊTS DE COLLECTE. */
         ProgressionSuivi: {
@@ -3945,6 +4960,118 @@ export interface components {
             /** @description Slug du véhicule (référentiel `zones.type_transport`). */
             transport_slug: string;
         };
+        /** @description Un échantillon de présence tel que l'app le déclare. */
+        ReleveDePresence: {
+            /**
+             * Format: int64
+             * @description Éloignement du point de livraison, en mètres **arrondis**.
+             *
+             *     ⚠ Une distance, **jamais une position** : le serveur ne stocke aucune
+             *     coordonnée, donc n'en fuite aucune (R8, patron ARTCI du cycle 006).
+             */
+            distance_m: number;
+            /**
+             * Format: date-time
+             * @description Horodatage de l'échantillon sur l'appareil.
+             */
+            releve_le_local: string;
+            /**
+             * Format: uuid
+             * @description Clé d'idempotence du relevé (UUIDv7 client, constitution V).
+             */
+            uuid_client: string;
+        };
+        /** @description Une commande dont le code de remise est bloqué. */
+        RemiseBloquee: {
+            /**
+             * Format: date-time
+             * @description Instant du blocage — **l'ordre de la liste**, le plus ancien d'abord.
+             */
+            bloque_le: string;
+            /**
+             * Format: uuid
+             * @description Commande verrouillée.
+             */
+            commande_id: string;
+            /**
+             * Format: uuid
+             * @description Coursier assigné, s'il l'est encore.
+             */
+            coursier_id?: string | null;
+            /**
+             * Format: int32
+             * @description Essais consommés au blocage.
+             */
+            essais_code: number;
+            /**
+             * Format: uuid
+             * @description Livraison portée — celle où le coursier est resté devant la porte.
+             */
+            livraison_id?: string | null;
+            /** @description Référence courte, pour se parler au téléphone. */
+            reference: string;
+            /**
+             * Format: uuid
+             * @description Zone de la commande.
+             */
+            zone_id: string;
+        };
+        /** @description Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`). */
+        RemiseMultipart: {
+            /** @description Partie JSON `demande`. */
+            demande: components["schemas"]["DemandeRemise"];
+            /**
+             * Format: binary
+             * @description Photo du dépôt sur place (mode `depot` — FR-048).
+             */
+            photo?: string | null;
+        };
+        /** @description De quoi confirmer la remise **sans réseau** (K4). */
+        RemisePreprovisionnee: {
+            /**
+             * Format: uuid
+             * @description Arrêt de REMISE — la cible de « je suis arrivé chez le client »
+             *     (FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes.
+             */
+            arret_remise_id?: string | null;
+            /** @description Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`). */
+            arret_remise_statut?: string | null;
+            /**
+             * Format: date-time
+             * @description Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052).
+             */
+            arrive_chez_client_le?: string | null;
+            /** @description Saisie du code bloquée (K4-1d). */
+            code_bloque: boolean;
+            /** @description Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037). */
+            empreinte_code: string;
+            /** @description Empreinte du jeton de réception — **jamais le jeton**. */
+            empreinte_jeton: string;
+            /**
+             * Format: int32
+             * @description Essais faux déjà comptés côté serveur.
+             */
+            essais_consommes: number;
+            /**
+             * Format: int64
+             * @description Seuil de zone `commande.essais_code_livraison` (cycle 008, réutilisé).
+             */
+            essais_max: number;
+            /** @description `cash` | `mobile_money`. */
+            mode_paiement: string;
+            /**
+             * Format: int64
+             * @description Total à encaisser chez le client (unités mineures).
+             */
+            montant_a_encaisser_unites: number;
+            /** @description Seuils de preuve de la zone. */
+            preuves: components["schemas"]["SeuilsPreuves"];
+        };
+        /** @description La file des blocages d'une zone. */
+        RemisesBloquees: {
+            /** @description Commandes bloquées, **la plus ancienne d'abord**. */
+            remises: components["schemas"]["RemiseBloquee"][];
+        };
         /** @description Nouveau repère parlé pour une adresse existante. */
         RemplacementRepereVocal: {
             /**
@@ -4056,7 +5183,7 @@ export interface components {
             commande_id: string;
             /**
              * Format: int32
-             * @description Essais de code consommés.
+             * @description Essais de code consommés (consolidés serveur + hors ligne).
              */
             essais_code: number;
             /**
@@ -4066,6 +5193,11 @@ export interface components {
             livraison_id: string;
             /** @description Mode retenu. */
             mode_remise: string;
+            /**
+             * @description `true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien
+             *     n'a été réécrit ni ré-émis (R4).
+             */
+            rejeu: boolean;
         };
         /** @description Résultat COMPLET d'une simulation (FR-020). */
         ResultatSimulation: {
@@ -4157,6 +5289,34 @@ export interface components {
             jetons: components["schemas"]["JetonsDto"];
             /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
             resultat: components["schemas"]["DiscriminantSession"];
+        };
+        /** @description Les seuils de preuve d'échec de la zone. */
+        SeuilsPreuves: {
+            /**
+             * Format: int64
+             * @description Appels `client_absent` exigés.
+             */
+            appels_min: number;
+            /**
+             * Format: int64
+             * @description Espacement minimal entre deux appels retenus (s).
+             */
+            espacement_s: number;
+            /**
+             * Format: int64
+             * @description Photos exigées.
+             */
+            photos_min: number;
+            /**
+             * Format: int64
+             * @description Présence continue exigée (s).
+             */
+            presence_s: number;
+            /**
+             * Format: int64
+             * @description Rayon dans lequel un relevé compte (m).
+             */
+            rayon_m: number;
         };
         /** @description Issue du signalement. */
         SignalementRecuDto: {
@@ -4372,6 +5532,34 @@ export interface components {
              */
             zone: string;
         };
+        /** @description Tout l'écran caisse (K5-1a), en une lecture. */
+        VueCaisse: {
+            /**
+             * Format: int64
+             * @description Argent avancé et non encore récupéré (FR-067) — toujours positif.
+             */
+            avance_en_cours_unites: number;
+            /**
+             * Format: int64
+             * @description Part que le cash ne soldera jamais (commandes prépayées, R10, FR-117).
+             */
+            avances_en_attente_reglement_unites: number;
+            /**
+             * Format: int64
+             * @description Combien de courses portent cette avance.
+             */
+            courses_concernees: number;
+            /** @description Devise ISO 4217 de la zone. */
+            devise: string;
+            /** @description Les avances en cours dépassent le plafond déclaré du jour (FR-078). */
+            ecart_plafond: boolean;
+            /** @description Historique du jour civil **de la zone**. */
+            historique_du_jour: components["schemas"]["LigneHistoriqueCaisse"][];
+            /** @description Indemnisations rattachées. */
+            indemnisations: components["schemas"]["IndemnisationVue"][];
+            /** @description Litiges en cours — vide tant qu'AVI-04 n'existe pas. */
+            litiges_en_cours: components["schemas"]["LitigeVu"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -4413,6 +5601,139 @@ export interface operations {
             };
             /** @description Rôle admin requis. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    debloquer_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande dont le code est bloqué. */
+                commande_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeDeblocage"];
+            };
+        };
+        responses: {
+            /** @description Blocage levé, compteur remis à zéro, événement émis. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Le code n'est pas bloqué. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    autoriser_depot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande concernée. */
+                commande_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeDepot"];
+            };
+        };
+        responses: {
+            /** @description Décision enregistrée et tracée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionDepot"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4506,7 +5827,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DemandeEchec"];
+                "application/json": components["schemas"]["DemandeIssueAdmin"];
             };
         };
         responses: {
@@ -4722,6 +6043,44 @@ export interface operations {
             };
         };
     };
+    exposition_cash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Somme des avances non soldées, par coursier et au total. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpositionCash"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     alertes_dispatch: {
         parameters: {
             query?: never;
@@ -4842,6 +6201,228 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PoolDeZone"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    file_indemnisations: {
+        parameters: {
+            query?: {
+                /** @description `demandee` | `validee` | `refusee`. Absent = toutes. */
+                etat?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File des indemnisations, la plus récente d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileIndemnisations"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État de filtre inconnu. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    refuser_indemnisation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Indemnisation à refuser. */
+                indemnisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIndemnisation"];
+            };
+        };
+        responses: {
+            /** @description Refusée — aucune écriture de caisse. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndemnisationDecidee"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Indemnisation inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Déjà validée ou refusée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    valider_indemnisation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Indemnisation à valider. */
+                indemnisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validée — écriture de caisse portée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndemnisationDecidee"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Indemnisation inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Déjà validée ou refusée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    preuves_de_livraison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison dont on lit les preuves. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossier de preuves complet. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreuvesExploitation"];
                 };
             };
             /** @description Session absente, invalide ou révoquée. */
@@ -6153,6 +7734,47 @@ export interface operations {
             };
         };
     };
+    remises_bloquees: {
+        parameters: {
+            query?: {
+                /** @description Zone dont on veut les blocages. Absente = toutes les zones. */
+                zone_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Blocages en cours, le plus ancien d'abord. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemisesBloquees"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     publier: {
         parameters: {
             query?: never;
@@ -7095,14 +8717,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Course active du coursier (vide si aucune assignée). */
+            /** @description Course active complète : arrêts, lignes, client, empreintes de remise. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CourseActive"];
+                    "application/json": components["schemas"]["CourseActiveComplete"];
                 };
+            };
+            /** @description Aucune course assignée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Session absente/révoquée. */
             401: {
@@ -7359,6 +8988,123 @@ export interface operations {
             };
             /** @description Offre déjà conclue. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    journaliser_appel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeAppel"];
+            };
+        };
+        responses: {
+            /** @description Rejeu idempotent — même corps, aucune écriture. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppelEnregistre"];
+                };
+            };
+            /** @description Appel journalisé. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppelEnregistre"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Demande mal formée (appel vendeur sans prestataire). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    declarer_issue_appel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueAppelDeclaree"];
+            };
+        };
+        responses: {
+            /** @description Issue mise à jour. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppelEnregistre"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Appel inconnu pour cette livraison. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7626,6 +9372,165 @@ export interface operations {
             };
         };
     };
+    enregistrer_presence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotDePresence"];
+            };
+        };
+        responses: {
+            /** @description Lot enregistré, présence recalculée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceEnregistree"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Lot vide, trop grand, ou distance invalide. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    etat_preuves: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État détaillé des trois preuves. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatPreuves"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    deposer_photo_preuve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Livraison de la course active du coursier. */
+                livraison_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Partie `demande` (JSON) + `photo` binaire. */
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PhotoPreuveMultipart"];
+            };
+        };
+        responses: {
+            /** @description Rejeu idempotent — aucune écriture. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoPreuveDeposee"];
+                };
+            };
+            /** @description Photo déposée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoPreuveDeposee"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Course d'un autre coursier, ou rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Photo vide ou partie `demande` illisible. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     remise: {
         parameters: {
             query?: never;
@@ -7636,13 +9541,14 @@ export interface operations {
             };
             cookie?: never;
         };
+        /** @description Partie `demande` (JSON) + `photo` binaire du dépôt. */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DemandeRemise"];
+                "multipart/form-data": components["schemas"]["RemiseMultipart"];
             };
         };
         responses: {
-            /** @description Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. */
+            /** @description Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. `rejeu = true` si le même `uuid_client` avait déjà abouti. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -7687,7 +9593,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErreurApi"];
                 };
             };
-            /** @description Demande mal formée (jeton, code ou photo manquant). */
+            /** @description Demande mal formée (jeton, code ou photo manquant), ou **dépôt non autorisé** sur cette commande. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8145,6 +10051,44 @@ export interface operations {
             };
         };
     };
+    ma_caisse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Avances en cours, historique du jour, indemnisations, litiges. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VueCaisse"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     mes_commandes: {
         parameters: {
             query?: never;
@@ -8382,6 +10326,53 @@ export interface operations {
             };
             /** @description Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ma_journee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gains du jour, plafond retenu, reste disponible, taux d'acceptation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JourneeCoursier"];
+                };
+            };
+            /** @description Session absente/révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle coursier requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier coursier invalide. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

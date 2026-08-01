@@ -198,7 +198,11 @@ impl PgDispatch {
     /// **Les non-réponses FRANCHES sont exclues** (FR-052) : les trois premières
     /// du jour ne coûtent rien, et les compter ici les transformerait en
     /// pénalité déguisée.
-    pub(crate) async fn taux_acceptation_pourcent(
+    ///
+    /// `pub` depuis le cycle CRS 010 : c'est un compteur RÉELLEMENT tenu, et
+    /// K1-1a l'affiche à Yao (FR-093). Le handler `GET /moi/journee` le lit
+    /// directement — aucun crate n'apprend l'existence de l'autre (contrat §2).
+    pub async fn taux_acceptation_pourcent(
         &self,
         coursier: Uuid,
         config: &ConfigDispatch,

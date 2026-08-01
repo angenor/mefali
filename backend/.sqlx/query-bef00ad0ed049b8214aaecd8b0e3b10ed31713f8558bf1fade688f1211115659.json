@@ -1,0 +1,200 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.id AS arret_id, a.ordre AS \"arret_ordre!\",\n                      a.prestataire_id AS \"prestataire_id!\",\n                      a.site_lat, a.site_lon, a.montant_avance,\n                      a.statut::text AS \"statut!\",\n                      a.en_route_le, a.arrive_le, a.collecte_le,\n                      lc.id AS \"ligne_id?\", art.nom AS \"libelle?\",\n                      lc.quantite AS \"quantite?\",\n                      COALESCE(lc.remplace_prix_unites, pf.prix_unites) AS \"prix_unitaire?\",\n                      lc.preference::text AS \"preference?\",\n                      lc.statut::text AS \"ligne_statut?\",\n                      lc.cree_le AS \"ligne_cree_le?\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               LEFT JOIN commandes.ligne_commande lc ON lc.arret_id = a.id\n               LEFT JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id\n               LEFT JOIN prestataires.article art\n                      ON art.id = COALESCE(lc.remplace_par_article_id, lc.article_id)\n               WHERE s.livraison_id = $1 AND a.type_arret = 'collecte'\n               ORDER BY s.ordre, a.ordre, lc.cree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "arret_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "arret_ordre!",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "ordre"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "prestataire_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "prestataire_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "site_lat",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "site_lat"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "site_lon",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "site_lon"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "montant_avance",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "montant_avance"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "en_route_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "en_route_le"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "arrive_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "arrive_le"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "collecte_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "collecte_le"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "ligne_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.ligne_commande",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "libelle?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prestataires.article",
+            "name": "nom"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "quantite?",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.ligne_commande",
+            "name": "quantite"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "prix_unitaire?",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "preference?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 15,
+        "name": "ligne_statut?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 16,
+        "name": "ligne_cree_le?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.ligne_commande",
+            "name": "cree_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "bef00ad0ed049b8214aaecd8b0e3b10ed31713f8558bf1fade688f1211115659"
+}

@@ -582,6 +582,14 @@
   "@commandeErreurMotifRequis": {
     "description": "Refus 422 motif_requis (FR-054, admin)"
   },
+  "commandeErreurDepotNonAutorise": "Le dépôt n'est pas autorisé sur cette commande.",
+  "@commandeErreurDepotNonAutorise": {
+    "description": "Refus 422 depot_non_autorise (FR-048) — l'exploitation seule ouvre cette voie"
+  },
+  "commandeErreurCodeNonBloque": "Le code de remise n'est pas bloqué.",
+  "@commandeErreurCodeNonBloque": {
+    "description": "Refus 409 code_non_bloque (FR-055, admin) — une levée préventive n'existe pas"
+  },
   "commandeErreurCodeEpuise": "Trop d'essais. Un conseiller va vous contacter.",
   "@commandeErreurCodeEpuise": {
     "description": "Refus 423 code_epuise (CRS-04)"
@@ -743,5 +751,27 @@
   "substitutionRetireeNonFacturee": "Article retiré — rien à payer pour lui.",
   "@substitutionRetireeNonFacturee": {
     "description": "Confirmation d'un retrait : seul le montant des articles bouge (FR-050)"
+  },
+
+  "coreHorsLigneActionsEnregistrees": "Actions enregistrées, synchronisation auto",
+  "@coreHorsLigneActionsEnregistrees": {
+    "description": "Bandeau hors-ligne PARTAGÉ (cycle CRS 010, K3-1b, FR-026). Dans core parce que les deux apps l'affichent — et parce qu'un même message écrit deux fois finit par différer"
+  },
+  "coreHorsLigneIndisponible": "Indisponible hors connexion",
+  "@coreHorsLigneIndisponible": {
+    "description": "Explication du grisage d'une action qui exige VRAIMENT le réseau (cycle CRS 010)"
+  },
+  "coreNoteVocaleLire": "Écouter",
+  "@coreNoteVocaleLire": {
+    "description": "Lecture d'une note vocale de repère (cycle CRS 010, K3-1c)"
+  },
+  "coreNoteVocaleArreter": "Arrêter",
+  "@coreNoteVocaleArreter": {
+    "description": "Arrêt de la lecture d'une note vocale"
+  },
+  "coreNoteVocaleDuree": "{secondes} s",
+  "@coreNoteVocaleDuree": {
+    "description": "Durée d'une note vocale de repère",
+    "placeholders": { "secondes": { "type": "int" } }
   }
 }

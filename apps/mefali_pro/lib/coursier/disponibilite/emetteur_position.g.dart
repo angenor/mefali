@@ -246,7 +246,7 @@ final class EmetteurPositionProvider
   }
 }
 
-String _$emetteurPositionHash() => r'970cf311a02f6c517ee45de36835ea110fb1c695';
+String _$emetteurPositionHash() => r'76447b53d064bdd49ba7c28e05a838cdccb3ac6f';
 
 /// Émetteur de position — **jetable** (`@riverpod` nu, autoDispose) : il ne vit
 /// que tant qu'un écran de dispatch l'observe.

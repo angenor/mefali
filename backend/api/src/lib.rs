@@ -6,6 +6,8 @@
 
 /// Surface HTTP admin du cycle CMD (file d'attente, annulation, issues).
 pub mod admin_commandes_http;
+/// Surface HTTP admin du cycle CRS (blocages, dépôt, caisse, indemnisations).
+pub mod admin_coursier_http;
 /// Surface HTTP admin du cycle DSP (alertes, pool, reprise manuelle).
 pub mod admin_dispatch_http;
 pub mod admin_prestataires_http;
@@ -19,6 +21,7 @@ pub mod course_http;
 /// Surface réservée au dev — montée hors production seulement (voir le module).
 pub mod dev_http;
 /// Surface HTTP coursier du cycle DSP (disponibilité, position, offres).
+pub mod coursier_http;
 pub mod dispatch_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
 pub mod erreurs_commandes;
@@ -107,8 +110,23 @@ pub fn api_openapi() -> OpenApi {
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
         .service(qr_http::telecharger_plaque)
-        .service(qr_http::course_active)
         .service(qr_http::collecter)
+        .service(coursier_http::course_active)
+        .service(coursier_http::journaliser_appel)
+        .service(coursier_http::declarer_issue_appel)
+        .service(coursier_http::enregistrer_presence)
+        .service(coursier_http::deposer_photo_preuve)
+        .service(coursier_http::etat_preuves)
+        .service(coursier_http::ma_caisse)
+        .service(coursier_http::ma_journee)
+        .service(admin_coursier_http::remises_bloquees)
+        .service(admin_coursier_http::debloquer_code)
+        .service(admin_coursier_http::autoriser_depot)
+        .service(admin_coursier_http::preuves_de_livraison)
+        .service(admin_coursier_http::exposition_cash)
+        .service(admin_coursier_http::file_indemnisations)
+        .service(admin_coursier_http::valider_indemnisation)
+        .service(admin_coursier_http::refuser_indemnisation)
         .service(admin_tarification_http::grille_de_zone)
         .service(admin_tarification_http::creer_brouillon)
         .service(admin_tarification_http::ecrire_regle)
@@ -401,6 +419,67 @@ async fn job_purge_photos_collecte(depot: qr::PgQr) {
     }
 }
 
+/// **Second consommateur réel du produit** (CRS-06, R9) — le livre de caisse.
+///
+/// Adaptateur seulement : toute la traduction événement → écriture vit dans le
+/// crate `coursier`. C'est ce qui permet de la tester sans monter un worker, et
+/// ce qui évite qu'une règle d'argent finisse dans la couche HTTP.
+///
+/// Trois types consommés, tout le reste ignoré — un consommateur reçoit TOUT le
+/// journal (contrat `socle`).
+struct CaisseOutbox {
+    depot: coursier::PgCoursier,
+}
+
+#[async_trait::async_trait]
+impl socle::ConsommateurOutbox for CaisseOutbox {
+    fn nom(&self) -> &'static str {
+        "caisse"
+    }
+
+    async fn consommer(
+        &self,
+        evenement: &socle::EvenementPublie,
+    ) -> Result<(), socle::ConsommationError> {
+        match self.depot.consommer_pour_caisse(evenement).await {
+            Ok(()) => Ok(()),
+            // Panne d'infrastructure : l'événement reste non publié et sera
+            // rejoué. L'idempotence par `evenement_id` rend le rejeu inoffensif.
+            Err(coursier::ErreurCoursier::Sql(e)) => {
+                Err(socle::ConsommationError(format!("base de données : {e}")))
+            }
+            // Refus métier ou configuration : journalisé, JAMAIS rejoué —
+            // rejouer ne changerait rien et bloquerait la ligne pour tout le
+            // monde (patron `DispatchOutbox`).
+            Err(e) => {
+                tracing::warn!(
+                    evenement = %evenement.id, type_evenement = %evenement.type_evenement,
+                    erreur = %e, "caisse sans effet — l'événement reste consommé",
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
+/// Purge périodique des photos de **preuve d'échec** échues (CRS-05, FR-064).
+///
+/// Même patron que [`job_purge_photos_collecte`], à une différence près : la
+/// LIGNE survit à la purge de ses octets. Un échec déclaré il y a un an ne doit
+/// pas redevenir « non prouvé » le jour où la rétention expire — seule la photo
+/// disparaît, la preuve reste datée.
+async fn job_purge_photos_preuve(depot: coursier::PgCoursier) {
+    let mut horloge = tokio::time::interval(PURGE_INTERVALLE);
+    loop {
+        horloge.tick().await;
+        match depot.purger_photos_preuve().await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!(purgees = n, "photos de preuve purgées (rétention de zone)"),
+            Err(e) => tracing::error!(erreur = %e, "purge des photos de preuve échouée"),
+        }
+    }
+}
+
 /// Supprime du stockage objet une donnée personnelle que la transaction qui
 /// vient d'être COMMITÉE a rendue orpheline (constitution VIII).
 ///
@@ -424,7 +503,8 @@ pub(crate) async fn supprimer_objet_orphelin(depot: &PgComptes, cle: &str, quoi:
     }
 }
 
-/// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
+/// Démarre le serveur Actix (lie `0.0.0.0:8080`, ou `API_PORT`) et le worker
+/// outbox.
 pub async fn run() -> std::io::Result<()> {
     // Gate UNIQUE des surfaces réservées au dev (Swagger UI, `/dev/otp`).
     // Défaut fermé, lu avant `Config::from_env` : voir `AppEnv::depuis_env`.
@@ -443,6 +523,7 @@ pub async fn run() -> std::io::Result<()> {
     let mut tarification_opt: Option<tarification::PgTarification> = None;
     let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
     let mut dispatch_opt: Option<dispatch::PgDispatch> = None;
+    let mut coursier_opt: Option<coursier::PgCoursier> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -562,9 +643,10 @@ pub async fn run() -> std::io::Result<()> {
                     Arc::new(depot.clone()),
                     objets.clone(),
                     positions,
-                    // CRS-05 n'existe pas : aucune preuve n'est réunie en
-                    // production, donc AUCUN échec n'est déclarable — exact et
-                    // voulu, comme l'affectation avant DSP (research R10/R16).
+                    // Port PROVISOIRE : `PgCoursier` le remplace quelques lignes
+                    // plus bas, dès qu'il existe. Les deux ne peuvent pas se
+                    // construire l'un dans l'autre — `coursier` dépend de
+                    // `commandes`, jamais l'inverse (constitution II).
                     Arc::new(commandes::PreuvesFixes::nouveau()),
                 );
                 // Le compteur d'essais du code dégradé passe par Redis
@@ -577,11 +659,40 @@ pub async fn run() -> std::io::Result<()> {
                     pool.clone(),
                     depot_commandes.clone(),
                     presta.clone(),
-                    objets,
+                    objets.clone(),
                     essais_qr,
                 ));
                 tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
                 eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+
+                // CRS 010 — domaine coursier. Câblé APRÈS `qr` (dont il
+                // consomme la plaque résolue) et AVANT le dispatch : aucune
+                // arête entre les deux, `/moi/journee` les compose ICI.
+                let depot_coursier = coursier::PgCoursier::new(
+                    pool.clone(),
+                    depot_commandes.clone(),
+                    qr_opt.clone().expect("PgQr câblé"),
+                    presta.clone(),
+                    // Même client S3 que le reste : la photo de preuve suit le
+                    // chemin de la photo de récupération du cycle 006.
+                    objets,
+                );
+                // ⭐ LE branchement du cycle (T058) : le port `PreuvesEchec`,
+                // conçu au cycle 008 pour être implémenté ailleurs, reçoit son
+                // implémentation réelle. `PreuvesFixes` quitte la production —
+                // à partir d'ici, un échec exige ses trois preuves mesurées, et
+                // l'écran K4-1e lit exactement la même fonction que la garde.
+                let depot_commandes =
+                    depot_commandes.avec_preuves(Arc::new(depot_coursier.clone()));
+                tokio::spawn(job_purge_photos_preuve(depot_coursier.clone()));
+                eprintln!(
+                    "domaine CRS câblé (PgCoursier ; preuves d'échec RÉELLES ; \
+                     litiges AVI-04 non construits) ; job de purge des photos de preuve démarré"
+                );
+                // Poignée retenue pour le consommateur outbox, câblé plus bas
+                // avec le worker (le dépôt lui-même part dans `web::Data`).
+                let depot_coursier_pour_caisse = depot_coursier.clone();
+                coursier_opt = Some(depot_coursier);
 
                 tokio::spawn(job_expirer_substitutions(depot_commandes.clone()));
                 tokio::spawn(job_purge_photos_substitution(depot_commandes.clone()));
@@ -628,9 +739,19 @@ pub async fn run() -> std::io::Result<()> {
                 // son premier consommateur réel (research R1).
                 let worker = socle::WorkerOutbox::new(
                     pool.clone(),
-                    vec![Arc::new(DispatchOutbox {
-                        depot: depot_dispatch.clone(),
-                    })],
+                    vec![
+                        Arc::new(DispatchOutbox {
+                            depot: depot_dispatch.clone(),
+                        }),
+                        // CRS-06 — le SECOND consommateur réel du produit. Il
+                        // alimente la caisse sans qu'aucune arête n'apparaisse
+                        // entre `commandes` et `coursier` : l'outbox est
+                        // précisément ce qui permet de réagir à un domaine sans
+                        // en dépendre (constitution II, R9).
+                        Arc::new(CaisseOutbox {
+                            depot: depot_coursier_pour_caisse,
+                        }),
+                    ],
                 );
                 tokio::spawn(worker.run());
                 tokio::spawn(job_tic_dispatch(depot_dispatch.clone(), pool.clone()));
@@ -657,7 +778,16 @@ pub async fn run() -> std::io::Result<()> {
         }
     };
 
-    let addr = ("0.0.0.0", 8080);
+    // Port d'écoute : 8080 par défaut, surchargeable par `API_PORT` — un poste
+    // de dev fait tourner plusieurs projets, et 8080 n'est pas toujours libre.
+    // Une valeur illisible retombe sur le défaut plutôt que d'empêcher le
+    // démarrage : le port n'est pas un secret, une faute de frappe ne doit pas
+    // coûter le service.
+    let port = std::env::var("API_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(8080);
+    let addr = ("0.0.0.0", port);
     println!(
         "Mefali api — démarrage sur http://{}:{} (production={prod})",
         addr.0, addr.1
@@ -732,8 +862,23 @@ pub async fn run() -> std::io::Result<()> {
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .service(qr_http::telecharger_plaque)
-            .service(qr_http::course_active)
             .service(qr_http::collecter)
+            .service(coursier_http::course_active)
+            .service(coursier_http::journaliser_appel)
+            .service(coursier_http::declarer_issue_appel)
+            .service(coursier_http::enregistrer_presence)
+            .service(coursier_http::deposer_photo_preuve)
+            .service(coursier_http::etat_preuves)
+            .service(coursier_http::ma_caisse)
+            .service(coursier_http::ma_journee)
+            .service(admin_coursier_http::remises_bloquees)
+            .service(admin_coursier_http::debloquer_code)
+            .service(admin_coursier_http::autoriser_depot)
+            .service(admin_coursier_http::preuves_de_livraison)
+            .service(admin_coursier_http::exposition_cash)
+            .service(admin_coursier_http::file_indemnisations)
+            .service(admin_coursier_http::valider_indemnisation)
+            .service(admin_coursier_http::refuser_indemnisation)
             .service(admin_tarification_http::grille_de_zone)
             .service(admin_tarification_http::creer_brouillon)
             .service(admin_tarification_http::ecrire_regle)
@@ -800,6 +945,9 @@ pub async fn run() -> std::io::Result<()> {
             app = app.app_data(web::Data::new(depot));
         }
         if let Some(depot) = dispatch_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = coursier_opt.clone() {
             app = app.app_data(web::Data::new(depot));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
@@ -1103,8 +1251,20 @@ mod tests {
         // `effort.plafond_eclatement_m` reste DORMANT) + 3 (ville, cycle 008 :
         // 2 plafonds cash et l'escalade d'attente coursier)
         // + 11 (ville, cycle 009 : rayon, grille d'avance, 4 poids, plafond
-        // d'inactivité, 2 seuils de broadcast, 2 seuils de réassignation).
-        assert_eq!(apres_un.4, 81, "43 (pays) + 38 (ville) paramètres");
+        // d'inactivité, 2 seuils de broadcast, 2 seuils de réassignation)
+        // + 7 (pays, cycle 010 : 2 seuils d'appels de preuve, 3 seuils de
+        // présence, rétention de la photo de preuve, période d'interrogation
+        // d'offre en arrière-plan). SEPT et pas huit : le nombre d'essais du
+        // code de remise EXISTE depuis le cycle 008 et est réutilisé tel quel —
+        // deux clés pour un même seuil divergeraient au premier réglage
+        // d'exploitation (research 010 R5, FR-106).
+        // + 2 (ville, cycle 010 : `texte.nom_agence` et
+        // `texte.telephone_agence`). DÉCOUVERTS en implémentant K4-1d : FR-043
+        // exige d'afficher « le numéro de l'agence » sur l'écran de blocage, et
+        // rien ne le fournissait. Ce sont des TEXTES d'affichage servis par la
+        // liste blanche publique de `/config` — pas des seuils : ils ne
+        // rejoignent donc pas les « sept paramètres » de research R17.
+        assert_eq!(apres_un.4, 90, "50 (pays) + 40 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

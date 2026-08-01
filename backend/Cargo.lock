@@ -342,6 +342,7 @@ dependencies = [
  "chrono-tz",
  "commandes",
  "comptes",
+ "coursier",
  "deadpool-redis",
  "dispatch",
  "prestataires",
@@ -1299,6 +1300,23 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "coursier"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "commandes",
+ "prestataires",
+ "qr",
+ "serde",
+ "serde_json",
+ "socle",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+ "zones",
+]
 
 [[package]]
 name = "cpubits"

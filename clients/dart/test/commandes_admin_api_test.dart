@@ -20,7 +20,7 @@ void main() {
     //
     // La même table de décision que la surface coursier, par une autre porte : ce que le support tranche au téléphone doit produire exactement les mêmes deux détenteurs, le même litige et la même sanction qu'une déclaration terrain. Deux chemins qui divergeraient seraient deux vérités sur le même incident.
     //
-    //Future<IssueEchec> enregistrerIssue(String id, DemandeEchec demandeEchec) async
+    //Future<IssueEchec> enregistrerIssue(String id, DemandeIssueAdmin demandeIssueAdmin) async
     test('test enregistrerIssue', () async {
       // TODO
     });

@@ -614,5 +614,453 @@
   "offreErreurInconnue": "Cette offre n'existe plus.",
   "@offreErreurInconnue": { "description": "Refus 404 dispatch.erreur.offre_inconnue (garde de propriété)" },
   "offreErreurCourseActive": "Terminez votre course en cours avant d'en accepter une autre.",
-  "@offreErreurCourseActive": { "description": "Refus 409 dispatch.erreur.course_active (FR-007)" }
+  "@offreErreurCourseActive": { "description": "Refus 409 dispatch.erreur.course_active (FR-007)" },
+
+  "crsArretSurTotal": "Arrêt {n} / {total}",
+  "@crsArretSurTotal": {
+    "description": "Entête de course K3-1a — rang de l'arrêt courant",
+    "placeholders": { "n": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "crsDistanceM": "à {metres} m",
+  "@crsDistanceM": {
+    "description": "Distance jusqu'à l'arrêt, en mètres (K3-1a)",
+    "placeholders": { "metres": { "type": "int" } }
+  },
+  "crsDistanceKm": "{km} km",
+  "@crsDistanceKm": {
+    "description": "Distance jusqu'au client, en kilomètres (K3-1c)",
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "crsItineraire": "Itinéraire",
+  "@crsItineraire": { "description": "Action d'itinéraire — GRISÉE hors connexion (FR-026)" },
+  "crsAppeler": "Appeler",
+  "@crsAppeler": { "description": "Action d'appel — GRISÉE hors connexion" },
+  "crsIndisponible": "Indisponible",
+  "@crsIndisponible": { "description": "Déclarer un article indisponible (K3-1a)" },
+  "crsLigneIndisponibleAppeler": "Indisponible — le client veut être appelé",
+  "@crsLigneIndisponibleAppeler": { "description": "Ligne barrée, préférence `appeler` (FR-016)" },
+  "crsLigneIndisponibleRetiree": "Indisponible — retirée du montant",
+  "@crsLigneIndisponibleRetiree": { "description": "Ligne barrée, préférence `retirer`" },
+  "crsLigneIndisponibleRemplacer": "Indisponible — proposez un remplacement",
+  "@crsLigneIndisponibleRemplacer": { "description": "Ligne barrée, préférence `remplacer`" },
+  "crsAppelerClientMaintenant": "Appeler le client maintenant",
+  "@crsAppelerClientMaintenant": { "description": "Action principale rouge de K3-1a après une indisponibilité `appeler`" },
+  "crsPayezA": "Payez à {vendeur}",
+  "@crsPayezA": {
+    "description": "Montant dû à CE vendeur (K3-1b)",
+    "placeholders": { "vendeur": { "type": "String" } }
+  },
+  "crsPayezAArticles": "Payez à {vendeur} ({pris, plural, =0{aucun article pris} =1{1 article pris} other{{pris} articles pris}})",
+  "@crsPayezAArticles": {
+    "description": "Montant dû après retrait d'articles (K3-1a)",
+    "placeholders": { "vendeur": { "type": "String" }, "pris": { "type": "int" } }
+  },
+  "crsScannerQrVendeur": "SCANNER LE QR du vendeur",
+  "@crsScannerQrVendeur": { "description": "Action principale de collecte (K3-1a)" },
+  "crsArretACollecter": "À collecter",
+  "@crsArretACollecter": { "description": "Chip d'un arrêt pas encore atteint" },
+  "crsArretCollecteA": "Collecté {heure}",
+  "@crsArretCollecteA": {
+    "description": "Chip d'un arrêt replié, avec son heure (K3-1b)",
+    "placeholders": { "heure": { "type": "String" } }
+  },
+  "crsJePars": "Je pars vers cet arrêt",
+  "@crsJePars": { "description": "Transition un tap `arret.en_route` (FR-020)" },
+  "crsJeSuisArrive": "Je suis arrivé",
+  "@crsJeSuisArrive": { "description": "Transition un tap `arret.arrive` (FR-020)" },
+  "crsHorsLigneBandeau": "Actions enregistrées, synchronisation auto",
+  "@crsHorsLigneBandeau": { "description": "Bandeau warning de K3-1b (FR-026)" },
+  "crsHorsLigneActionsGrisees": "Itinéraire et appel indisponibles hors connexion",
+  "@crsHorsLigneActionsGrisees": { "description": "Explication du grisage — SEULES ces deux actions exigent le réseau" },
+  "crsHorsLigneScanEtCoches": "Le scan et les coches fonctionnent hors connexion",
+  "@crsHorsLigneScanEtCoches": { "description": "Rassurance de K3-1b : l'essentiel reste actif" },
+  "crsActionsEnAttente": "{n, plural, =1{1 action en attente} other{{n} actions en attente}}",
+  "@crsActionsEnAttente": {
+    "description": "Compteur de la file locale (FR-083)",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsActionsEnAttentePhotos": "{n, plural, =1{1 action en attente} other{{n} actions en attente}} · {ko} Ko de photos",
+  "@crsActionsEnAttentePhotos": {
+    "description": "Compteur de file avec le poids des photos restantes (FR-083)",
+    "placeholders": { "n": { "type": "int" }, "ko": { "type": "int" } }
+  },
+  "crsCourseTermineeTitre": "Course terminée",
+  "@crsCourseTermineeTitre": { "description": "Écran de fin après une remise validée hors ligne (FR-041)" },
+  "crsCourseTermineeHorsLigne": "Validée sur place. Elle partira au serveur dès le retour du réseau.",
+  "@crsCourseTermineeHorsLigne": { "description": "Sous-titre de l'écran de fin hors ligne — rien n'est clos côté serveur" },
+  "crsCourseTermineeEncaisse": "Encaissé : {montant}",
+  "@crsCourseTermineeEncaisse": {
+    "description": "Rappel du montant encaissé sur l'écran de fin",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+  "crsArretIndisponibleTitre": "Cet arrêt est impossible",
+  "@crsArretIndisponibleTitre": { "description": "Feuille d'arrêt entièrement indisponible (FR-018)" },
+  "crsArretMotifVendeurFerme": "Le vendeur est fermé",
+  "@crsArretMotifVendeurFerme": { "description": "Motif prédéfini d'arrêt indisponible" },
+  "crsArretMotifRienEnStock": "Plus rien en stock",
+  "@crsArretMotifRienEnStock": { "description": "Motif prédéfini d'arrêt indisponible" },
+  "crsArretMotifIntrouvable": "Vendeur introuvable sur place",
+  "@crsArretMotifIntrouvable": { "description": "Motif prédéfini d'arrêt indisponible" },
+  "crsArretIndisponibleConfirmer": "Déclarer cet arrêt impossible",
+  "@crsArretIndisponibleConfirmer": { "description": "Action de confirmation — le montant de l'arrêt tombe à zéro" },
+  "crsRemplacementTitre": "Proposer un remplacement",
+  "@crsRemplacementTitre": { "description": "Feuille de proposition, préférence `remplacer` (FR-017)" },
+  "crsRemplacementPhoto": "Photo de l'article proposé",
+  "@crsRemplacementPhoto": { "description": "Prise de vue obligatoire de la proposition" },
+  "crsRemplacementPrix": "Prix demandé",
+  "@crsRemplacementPrix": { "description": "Saisie du prix du remplacement" },
+  "crsRemplacementEnvoyer": "Envoyer au client",
+  "@crsRemplacementEnvoyer": { "description": "Action d'envoi de la proposition" },
+  "crsRemplacementAttente": "Le client répond dans {secondes} s",
+  "@crsRemplacementAttente": {
+    "description": "Fenêtre de décision restante — vient du serveur, jamais d'une constante",
+    "placeholders": { "secondes": { "type": "int" } }
+  },
+  "crsRemplacementAcceptee": "Remplacement accepté",
+  "@crsRemplacementAcceptee": { "description": "Issue d'une substitution" },
+  "crsRemplacementRefusee": "Remplacement refusé — article retiré",
+  "@crsRemplacementRefusee": { "description": "Issue d'une substitution" },
+  "crsRemplacementExpiree": "Sans réponse — article retiré",
+  "@crsRemplacementExpiree": { "description": "Issue d'une substitution expirée" },
+  "crsEnRouteVersClient": "En route vers le client",
+  "@crsEnRouteVersClient": { "description": "Bandeau success de K3-1c" },
+  "crsToutEstDansLeSac": "{n} arrêts collectés — tout est dans le sac",
+  "@crsToutEstDansLeSac": {
+    "description": "Sous-titre du bandeau de K3-1c",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsRepereNoteVocale": "Repère du client — note vocale",
+  "@crsRepereNoteVocale": { "description": "Bloc orange de K3-1c (FR-024)" },
+  "crsRepereVocalIndisponible": "Note vocale non téléchargée",
+  "@crsRepereVocalIndisponible": { "description": "La note n'a pas pu être mise en cache — on le dit plutôt que de laisser un bouton muet" },
+  "crsEncaissezArrivee": "Encaissez à l'arrivée (articles + livraison)",
+  "@crsEncaissezArrivee": { "description": "Libellé du montant total de K3-1c" },
+  "crsJeSuisArriveChezClient": "Je suis arrivé chez le client",
+  "@crsJeSuisArriveChezClient": { "description": "Action principale de K3-1c" },
+  "crsAppelsSeulsViaAppComptent": "Seuls les appels passés depuis l'app comptent comme preuve",
+  "@crsAppelsSeulsViaAppComptent": { "description": "Mention explicite (FR-033) — un appel depuis le répertoire ne prouve rien" },
+  "crsAppelIssueQuestion": "Le client a-t-il répondu ?",
+  "@crsAppelIssueQuestion": { "description": "Déclaration de l'issue au retour d'appel (R19)" },
+  "crsAppelIssueRepondu": "Il a répondu",
+  "@crsAppelIssueRepondu": { "description": "Issue déclarée `repondu`" },
+  "crsAppelIssueSansReponse": "Pas de réponse",
+  "@crsAppelIssueSansReponse": { "description": "Issue déclarée `sans_reponse`" },
+
+  "crsRemiseTitre": "Livraison — {client}",
+  "@crsRemiseTitre": {
+    "description": "Entête de K4-1a : nom d'usage du client (FR-052)",
+    "placeholders": { "client": { "type": "String" } }
+  },
+  "crsRemiseRepereArrivee": "{repere} · arrivé {heure}",
+  "@crsRemiseRepereArrivee": {
+    "description": "Repère et heure d'arrivée de K4-1a (FR-052)",
+    "placeholders": { "repere": { "type": "String" }, "heure": { "type": "String" } }
+  },
+  "crsRemiseEncaissez": "Encaissez — l'appoint a été demandé au client",
+  "@crsRemiseEncaissez": { "description": "Libellé du montant de K4-1a" },
+  "crsRemiseJamaisPartiel": "Jamais de paiement partiel : totalité en cash ou totalité en mobile money.",
+  "@crsRemiseJamaisPartiel": { "description": "Rappel de la constitution III, affiché à Yao (FR-049)" },
+  "crsRemiseJamaisPartielHorsLigne": "Jamais de paiement partiel : totalité en cash uniquement hors connexion.",
+  "@crsRemiseJamaisPartielHorsLigne": { "description": "Variante hors ligne de K4-1c" },
+  "crsRemiseLienMobileMoneyIndisponible": "Lien mobile money — indisponible hors connexion",
+  "@crsRemiseLienMobileMoneyIndisponible": { "description": "Option GRISÉE et non construite : PAY-03 (FR-050)" },
+  "crsRemiseScannerQrClient": "SCANNER LE QR DU CLIENT",
+  "@crsRemiseScannerQrClient": { "description": "Voie PRINCIPALE de K4-1a" },
+  "crsRemiseSaisirCode": "Saisir le code à 4 chiffres",
+  "@crsRemiseSaisirCode": { "description": "Voie secondaire de K4-1a" },
+  "crsRemiseDepot": "Client absent — dépôt autorisé (photo + position)",
+  "@crsRemiseDepot": { "description": "Troisième voie, affichée SEULEMENT si le dépôt est ouvert (FR-039)" },
+  "crsRemiseCodeTitre": "Code de réception",
+  "@crsRemiseCodeTitre": { "description": "Titre du pavé de saisie (K4-1b)" },
+  "crsRemiseCodeConsigne": "Demandez au client son code à 4 chiffres",
+  "@crsRemiseCodeConsigne": { "description": "Consigne du pavé de saisie" },
+  "crsRemiseCodeFauxEssais": "Code faux — {essais, plural, =1{il reste 1 essai} other{il reste {essais} essais}}",
+  "@crsRemiseCodeFauxEssais": {
+    "description": "Chip warning de K4-1b — le nombre vient du paramètre de zone du cycle 008",
+    "placeholders": { "essais": { "type": "int" } }
+  },
+  "crsRemiseCodeValider": "Valider le code",
+  "@crsRemiseCodeValider": { "description": "Action du pavé de saisie" },
+  "crsRemiseCodeEffacer": "Effacer le dernier chiffre",
+  "@crsRemiseCodeEffacer": { "description": "Étiquette d'accessibilité de la touche retour du pavé K4-1b (icône seule à l'écran)" },
+  "crsRemiseDepotSansPhoto": "Le dépôt exige une photo du colis sur place",
+  "@crsRemiseDepotSansPhoto": { "description": "Refus local avant envoi — FR-048 exige photo ET position" },
+  "crsRemiseDepotPrendrePhoto": "Prendre la photo du dépôt",
+  "@crsRemiseDepotPrendrePhoto": { "description": "Action de la voie dépôt (K4-1a, lien discret)" },
+  "crsRemiseDepotConfirmer": "Confirmer le dépôt",
+  "@crsRemiseDepotConfirmer": { "description": "Validation de la voie dépôt une fois photo et position réunies" },
+  "crsRemiseValidationLocale": "Validation locale — sera synchronisée",
+  "@crsRemiseValidationLocale": { "description": "Bandeau de K4-1c : la validation locale n'engage rien, le serveur revalide (FR-046)" },
+  "crsRemiseScanEtCodeSansReseau": "Le scan QR et le code fonctionnent sans réseau",
+  "@crsRemiseScanEtCodeSansReseau": { "description": "Rassurance de K4-1c" },
+  "crsRemiseBloqueeTitre": "3 codes faux — saisie bloquée",
+  "@crsRemiseBloqueeTitre": { "description": "Titre de K4-1d (FR-043)" },
+  "crsRemiseBloqueeTexte": "Pour protéger le client, la confirmation par code est fermée pour cette livraison. Appelez l'équipe Mefali : elle vérifie et débloque.",
+  "@crsRemiseBloqueeTexte": { "description": "Message de K4-1d — en langage clair, avec la raison" },
+  "crsRemiseAppelerAgence": "Appelez Mefali {ville} — {numero}",
+  "@crsRemiseAppelerAgence": {
+    "description": "Action principale de K4-1d",
+    "placeholders": { "ville": { "type": "String" }, "numero": { "type": "String" } }
+  },
+  "crsRemiseReessayerScan": "Réessayer avec le scan QR",
+  "@crsRemiseReessayerScan": { "description": "Le scan reste proposé même code bloqué (K4-1d)" },
+  "crsRemiseDepotPhoto": "Photo du colis déposé",
+  "@crsRemiseDepotPhoto": { "description": "Preuve de dépôt, envoyée AVEC la demande (R18)" },
+  "crsRemiseDepotPositionManquante": "Position introuvable — le dépôt exige un point GPS",
+  "@crsRemiseDepotPositionManquante": { "description": "Refus local du dépôt sans position" },
+  "crsRemiseConfirmee": "Course terminée",
+  "@crsRemiseConfirmee": { "description": "Confirmation après remise validée" },
+
+  "crsPreuvesTitre": "Livraison impossible",
+  "@crsPreuvesTitre": { "description": "Titre de K4-1e" },
+  "crsPreuvesConsigne": "Le client ne répond pas ? Réunissez les 3 preuves avant de déclarer la livraison impossible.",
+  "@crsPreuvesConsigne": { "description": "Consigne de K4-1e (FR-056)" },
+  "crsPreuveAppels": "{n} appels via l'app",
+  "@crsPreuveAppels": {
+    "description": "Première preuve de K4-1e",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsPreuveAppelsFaits": "Fait — {heures}",
+  "@crsPreuveAppelsFaits": {
+    "description": "Horodatages et issue déclarée des appels retenus (R19)",
+    "placeholders": { "heures": { "type": "String" } }
+  },
+  "crsPreuveAppelsTropRapproches": "Attendez {secondes} s entre deux appels",
+  "@crsPreuveAppelsTropRapproches": {
+    "description": "Motif de non-progression — l'espacement vient de la zone",
+    "placeholders": { "secondes": { "type": "int" } }
+  },
+  "crsPreuvePresence": "{minutes} min sur place",
+  "@crsPreuvePresence": {
+    "description": "Deuxième preuve de K4-1e",
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "crsPreuvePresenceEnCours": "En cours — encore {minutes} min",
+  "@crsPreuvePresenceEnCours": {
+    "description": "Décompte de présence (K4-1e)",
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "crsPreuvePresenceRatio": "{fait} / {requis} min",
+  "@crsPreuvePresenceRatio": {
+    "description": "Chip de progression de la présence",
+    "placeholders": { "fait": { "type": "int" }, "requis": { "type": "int" } }
+  },
+  "crsPreuvePresenceGpsAbsent": "Position indisponible — le décompte est en pause",
+  "@crsPreuvePresenceGpsAbsent": { "description": "Motif de non-progression : sans GPS, rien ne se mesure — on le DIT au lieu de laisser un compteur figé" },
+  "crsPreuvePresenceTropLoin": "Trop loin du point de livraison ({metres} m)",
+  "@crsPreuvePresenceTropLoin": {
+    "description": "Motif de non-progression : hors du rayon de zone",
+    "placeholders": { "metres": { "type": "int" } }
+  },
+  "crsPreuvePhoto": "{n} photo du lieu",
+  "@crsPreuvePhoto": {
+    "description": "Troisième preuve de K4-1e",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsPreuveAFaire": "À faire",
+  "@crsPreuveAFaire": { "description": "État d'une preuve non commencée" },
+  "crsPreuvePhotoAction": "Photo",
+  "@crsPreuvePhotoAction": { "description": "Action de prise de vue de la preuve" },
+  "crsPreuvesCompteur": "{fait} preuve sur {total} réunie",
+  "@crsPreuvesCompteur": {
+    "description": "Compteur global de K4-1e",
+    "placeholders": { "fait": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "crsPreuvesDeclarer": "Déclarer livraison impossible",
+  "@crsPreuvesDeclarer": { "description": "Action GRISÉE tant que les 3 preuves ne sont pas réunies (FR-058)" },
+  "crsPreuvesRappelerClient": "Rappeler le client",
+  "@crsPreuvesRappelerClient": { "description": "Action secondaire de K4-1e — c'est elle qui fait progresser la preuve" },
+
+  "crsCaisseTitre": "Caisse",
+  "@crsCaisseTitre": { "description": "Titre de K5" },
+  "crsCaisseAvanceEnCours": "Argent avancé en cours",
+  "@crsCaisseAvanceEnCours": { "description": "Libellé du solde de K5-1b (aucune course)" },
+  "crsCaisseAvanceEnCoursCourses": "Argent avancé en cours ({n, plural, =1{1 course} other{{n} courses}})",
+  "@crsCaisseAvanceEnCoursCourses": {
+    "description": "Libellé du solde de K5-1a (FR-067)",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsCaisseRembourseALEncaissement": "Remboursé dès l'encaissement chez le client",
+  "@crsCaisseRembourseALEncaissement": { "description": "Sous-titre rassurant du solde (K5-1a)" },
+  "crsCaisseEnAttenteReglement": "{montant} en attente de règlement (commande prépayée)",
+  "@crsCaisseEnAttenteReglement": {
+    "description": "Avance NON soldée d'une commande prépayée — visible plutôt que disparue (FR-117, R10)",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+  "crsCaisseHistoriqueTitre": "Historique du jour",
+  "@crsCaisseHistoriqueTitre": { "description": "Section de K5-1a" },
+  "crsCaisseLigneAvanceGain": "Avancé {avance} · remboursé ✓ · gain {gain}",
+  "@crsCaisseLigneAvanceGain": {
+    "description": "Les trois chiffres d'une course terminée (K5-1a)",
+    "placeholders": { "avance": { "type": "String" }, "gain": { "type": "String" } }
+  },
+  "crsCaisseLigneEnCours": "En cours · avancé {avance} · gain {gain}",
+  "@crsCaisseLigneEnCours": {
+    "description": "Les trois chiffres d'une course non terminée (K5-1a)",
+    "placeholders": { "avance": { "type": "String" }, "gain": { "type": "String" } }
+  },
+  "crsCaisseLigneSansAvance": "Sans avance · gain {gain}",
+  "@crsCaisseLigneSansAvance": {
+    "description": "Course sans argent avancé (K5-1a)",
+    "placeholders": { "gain": { "type": "String" } }
+  },
+  "crsCaisseChipEnCours": "En cours",
+  "@crsCaisseChipEnCours": { "description": "Chip d'une course non terminée" },
+  "crsCaisseChipTerminee": "✓ {heure}",
+  "@crsCaisseChipTerminee": {
+    "description": "Chip d'une course terminée, à l'heure SERVEUR de sa première écriture (K5-1a)",
+    "placeholders": { "heure": { "type": "String" } }
+  },
+  "crsCaisseLigneCourse": "Course {reference}",
+  "@crsCaisseLigneCourse": {
+    "description": "Titre d'une ligne d'historique ou d'indemnisation (K5-1a). La maquette y ajoute le type de course (« marché, 3 arrêts ») — la caisse ne le sert pas.",
+    "placeholders": { "reference": { "type": "String" } }
+  },
+  "crsCaisseLignePrepayee": "Avance non soldée — commande prépayée",
+  "@crsCaisseLignePrepayee": { "description": "Une avance qu'aucun cash ne remboursera (FR-117, R10)" },
+  "crsCaisseIndemnisationsTitre": "Indemnisations",
+  "@crsCaisseIndemnisationsTitre": { "description": "Section de K5-1a" },
+  "crsCaisseIndemnisationMontant": "Indemnisation {montant}",
+  "@crsCaisseIndemnisationMontant": {
+    "description": "Montant d'une indemnisation (K5-1a)",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+  "crsCaisseIndemnisationLieeLitige": "Indemnisation {montant} — liée au litige",
+  "@crsCaisseIndemnisationLieeLitige": {
+    "description": "Indemnisation rattachée à un litige (K5-1c)",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+  "crsCaisseIndemnisationDemandee": "Demandée",
+  "@crsCaisseIndemnisationDemandee": { "description": "Chip d'état d'indemnisation" },
+  "crsCaisseIndemnisationValidee": "Validée",
+  "@crsCaisseIndemnisationValidee": { "description": "Chip d'état d'indemnisation" },
+  "crsCaisseIndemnisationRefusee": "Refusée",
+  "@crsCaisseIndemnisationRefusee": { "description": "Chip d'état d'indemnisation" },
+  "crsCaisseAucuneCourse": "Aucune course aujourd'hui",
+  "@crsCaisseAucuneCourse": { "description": "État vide de K5-1b" },
+  "crsCaisseAucuneCourseTexte": "Vos avances, remboursements et gains s'afficheront ici course par course.",
+  "@crsCaisseAucuneCourseTexte": { "description": "Explication de l'état vide (K5-1b)" },
+  "crsCaissePasserEnLigne": "Passer en ligne",
+  "@crsCaissePasserEnLigne": { "description": "Action de l'état vide (K5-1b)" },
+  "crsCaisseLitigeBadge": "{n, plural, =1{1 litige} other{{n} litiges}}",
+  "@crsCaisseLitigeBadge": {
+    "description": "Badge d'entête de K5-1c",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsCaisseDate": "{date}",
+  "@crsCaisseDate": {
+    "description": "Chip de date de l'entête de K5-1a (« sam. 12 juil. »)",
+    "placeholders": { "date": { "type": "DateTime", "format": "MMMEd" } }
+  },
+  "crsCaisseLitigeTitre": "Litige en cours — course {reference}",
+  "@crsCaisseLitigeTitre": {
+    "description": "Carte de litige de K5-1c",
+    "placeholders": { "reference": { "type": "String" } }
+  },
+  "crsCaisseLitigeEnExamen": "En examen",
+  "@crsCaisseLitigeEnExamen": { "description": "Chip d'état d'un litige" },
+  "crsCaisseLitigeVoir": "Voir le litige",
+  "@crsCaisseLitigeVoir": { "description": "Action de la carte de litige — AVI-04 non construit, elle informe seulement" },
+  "crsCaisseLitigeEngagement": "Indemnisation demandée : {montant}. L'agence vous rappelle.",
+  "@crsCaisseLitigeEngagement": {
+    "description": "Engagement de rappel de K5-1c. La maquette dit « avant 17 h » — aucun délai n'est tenu en base, l'inventer serait une promesse que rien ne garantit.",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+  "crsCaisseHorsLigne": "Dernier état connu — hors connexion",
+  "@crsCaisseHorsLigne": { "description": "La caisse se lit hors ligne, et se DIT périmée (FR-076)" },
+  "crsCaisseEcartPlafond": "Vos avances dépassent votre plafond du jour — l'agence est prévenue",
+  "@crsCaisseEcartPlafond": { "description": "Signalement d'incident (FR-078) : l'écart se voit, il ne se tait pas" },
+  "crsCaisseErreur": "La caisse n'a pas pu être lue.",
+  "@crsCaisseErreur": { "description": "Refus SERVEUR — un réseau muet, lui, sert le dernier état connu (FR-076)" },
+  "crsCaisseReessayer": "Réessayer",
+  "@crsCaisseReessayer": { "description": "Action de reprise après un refus serveur" },
+
+  "crsJourneeCoursesLivrees": "{n, plural, =0{Gains du jour — aucune course livrée} =1{Gains du jour — 1 course livrée} other{Gains du jour — {n} courses livrées}}",
+  "@crsJourneeCoursesLivrees": {
+    "description": "Bandeau de gains de K1-1a (FR-091)",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsJourneeResteDisponible": "Reste disponible : {montant}",
+  "@crsJourneeResteDisponible": {
+    "description": "Ce qui reste engageable = plafond − avances en cours (FR-093)",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+  "crsJourneeNoteAbsente": "—",
+  "@crsJourneeNoteAbsente": { "description": "Note du jour ABSENTE tant qu'AVI n'existe pas : un tiret, jamais un 5,0 inventé" },
+  "crsJourneeNoteTitre": "Note du jour",
+  "@crsJourneeNoteTitre": { "description": "Tuile de K1-1a — la valeur reste un tiret tant qu'AVI n'est pas construit (FR-094)" },
+  "crsJourneeAcceptationTitre": "Acceptation",
+  "@crsJourneeAcceptationTitre": { "description": "Tuile de K1-1a — compteur RÉELLEMENT tenu par le dispatch (FR-093)" },
+  "crsJourneeAcceptationValeur": "{n} %",
+  "@crsJourneeAcceptationValeur": {
+    "description": "Taux d'acceptation ; absent tant qu'aucune offre décidable n'a été émise",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsNavTableau": "Tableau",
+  "@crsNavTableau": { "description": "Destination de la barre basse (K1, K5)" },
+  "crsNavCourses": "Courses",
+  "@crsNavCourses": { "description": "Destination de la barre basse" },
+  "crsNavCaisse": "Caisse",
+  "@crsNavCaisse": { "description": "Destination de la barre basse" },
+  "crsCaisseRaccourci": "{montant} en main — à déposer ce soir",
+  "@crsCaisseRaccourci": {
+    "description": "Raccourci Caisse du tableau de bord (K1-1a)",
+    "placeholders": { "montant": { "type": "String" } }
+  },
+
+  "crsServiceNotificationTitre": "Mefali — en ligne",
+  "@crsServiceNotificationTitre": { "description": "Notification PERMANENTE du service continu (FR-115) : Yao doit savoir que l'app tourne" },
+  "crsServiceNotificationTexte": "Vous recevez les offres de course, écran éteint.",
+  "@crsServiceNotificationTexte": { "description": "Corps de la notification permanente — dit ce que le service fait, pas qu'il existe" },
+  "crsServicePermissionRefusee": "Sans autorisation de notification, vous ne serez pas réveillé par une offre.",
+  "@crsServicePermissionRefusee": { "description": "Refus de permission : message explicite plutôt que silence (FR-115)" },
+  "crsServiceArreteParSysteme": "Le service a été arrêté par le téléphone. Repassez en ligne pour recevoir des offres.",
+  "@crsServiceArreteParSysteme": { "description": "Arrêt subi : Yao doit l'apprendre, pas le découvrir en ne recevant rien" },
+  "crsServiceCanalOffreNom": "Offres de course",
+  "@crsServiceCanalOffreNom": { "description": "Nom du canal de notification dédié (haute importance, son prolongé)" },
+  "crsServiceOffreTitre": "Une course pour vous",
+  "@crsServiceOffreTitre": { "description": "Titre de la sonnerie d'offre — aucune adresse, aucun montant (contrat du cycle 009)" },
+  "crsServiceOffreTexte": "Il vous reste {n} s pour répondre.",
+  "@crsServiceOffreTexte": {
+    "description": "Corps de la sonnerie, avec le temps RÉELLEMENT restant (FR-100) — jamais la durée nominale du timer",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsServiceCanalOffreDescription": "Sonnerie prolongée quand une course vous est proposée.",
+  "@crsServiceCanalOffreDescription": { "description": "Description du canal, visible dans les réglages Android" },
+
+  "crsReconciliationCourseRetiree": "Cette course ne vous est plus attribuée",
+  "@crsReconciliationCourseRetiree": { "description": "Refus définitif au rejeu (FR-084) — l'app le DIT, elle ne réessaie pas en boucle" },
+  "crsReconciliationArretDejaCollecte": "Cet arrêt est déjà collecté",
+  "@crsReconciliationArretDejaCollecte": { "description": "Refus définitif au rejeu (FR-084)" },
+  "crsReconciliationEtatIncompatible": "Le serveur a refusé cette action : son état a changé",
+  "@crsReconciliationEtatIncompatible": { "description": "Refus définitif générique au rejeu" },
+  "crsReconciliationJournalTitre": "Actions refusées",
+  "@crsReconciliationJournalTitre": { "description": "Trace consultable des refus définitifs (FR-086)" },
+  "crsReconciliationRefuses": "{n, plural, =1{1 action refusée} other{{n} actions refusées}}",
+  "@crsReconciliationRefuses": {
+    "description": "Compteur des refus définitifs dans le bandeau de course (FR-083, FR-086)",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "crsReconciliationJournalEffacer": "Effacer la trace",
+  "@crsReconciliationJournalEffacer": { "description": "Yao a parlé à l'exploitation : la trace a fait son travail" },
+  "crsReconciliationFaiteA": "Action faite à {heure}",
+  "@crsReconciliationFaiteA": {
+    "description": "Heure de l'ACTION (pas du refus) — c'est le moment dont Yao se souvient",
+    "placeholders": { "heure": { "type": "String" } }
+  },
+  "crsReconciliationJournalVide": "Aucune action refusée",
+  "@crsReconciliationJournalVide": { "description": "État vide du journal de réconciliation" },
+  "crsReconciliationAvanceEngagee": "Vous aviez déjà avancé de l'argent sur cette course. L'agence ouvre un dossier.",
+  "@crsReconciliationAvanceEngagee": { "description": "Course reprise alors qu'une avance était engagée (SC-016) — Yao ne perd jamais" },
+
+  "crsErreurCourseNonProprietaire": "Cette course ne vous est plus attribuée.",
+  "@crsErreurCourseNonProprietaire": { "description": "Refus 403 coursier.erreur.course_non_proprietaire (FR-006)" },
+  "crsErreurPreuvesIncompletes": "Les 3 preuves ne sont pas encore réunies.",
+  "@crsErreurPreuvesIncompletes": { "description": "Refus 409 coursier.erreur.preuves_incompletes (FR-056)" },
+  "crsErreurDepotNonAutorise": "Le dépôt n'est pas autorisé sur cette commande.",
+  "@crsErreurDepotNonAutorise": { "description": "Refus 422 coursier.erreur.depot_non_autorise (FR-048)" },
+  "crsErreurCodeEpuise": "Saisie du code bloquée — appelez l'agence.",
+  "@crsErreurCodeEpuise": { "description": "Refus 423 à la remise (FR-043)" },
+  "crsErreurCodeIncorrect": "Code incorrect.",
+  "@crsErreurCodeIncorrect": { "description": "Refus 409 à la remise" }
 }

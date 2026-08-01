@@ -36,6 +36,7 @@ pub mod creation;
 pub mod depot;
 pub mod echec;
 pub mod etats;
+pub mod exploitation;
 pub mod modele;
 pub mod panier;
 pub mod ports;
@@ -46,24 +47,27 @@ pub mod workflow;
 pub use annulation::{AnnulationFaite, AuteurAnnulation};
 pub use echec::{DemandeEchec, IssueEnregistree, ResolutionIssue};
 pub use collecte::{
-    ActionArret, DemandeTransitionArret, MotifIndisponible, PreuveRemise, RemiseFaite,
-    TransitionArret,
+    ActionArret, DemandeRemise, DemandeTransitionArret, MotifIndisponible, PreuveRemise,
+    RemiseFaite, TransitionArret,
 };
 pub use depot::PgCommandes;
 pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};
+pub use exploitation::{DecisionDepot, RemiseBloquee};
 pub use modele::{
     ArretACollecter, Detenteur, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement,
     IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
-    Restrictions, Sanction, StatutArret, StatutLigne, TypeArret, TypeIssueEchec,
+    reference_courte, Restrictions, Sanction, StatutArret, StatutLigne, TypeArret,
+    TypeIssueEchec,
 };
 pub use panier::{
     CauseScission, DetailsVertical, GroupeVendeur, LignePanier, LigneValidee, PanierValide,
 };
 pub use ports::{
-    AffectationSimulee, ArretsDeCollecte, ArretsFixes, Capacite, CommandeADispatcher,
-    CommandesADispatcher, EtatProgression, MotifPrepaiementDispatch, PaiementSimule,
-    PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes, RestrictionsCompte,
-    RestrictionsSimulees, TarifFixe,
+    AffectationSimulee, ArretDeCourse, ArretsDeCollecte, ArretsFixes, Capacite, ClientDeCourse,
+    CommandeADispatcher, CommandesADispatcher, CourseCoursier, CourseDuCoursier, CourseFixe,
+    EtatProgression, LigneDeCourse, LivraisonLivree, Montant, MotifPrepaiementDispatch,
+    PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
+    RemiseDeCourse, RestrictionsCompte, RestrictionsSimulees, TarifFixe,
 };
 pub use substitution::{
     DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,

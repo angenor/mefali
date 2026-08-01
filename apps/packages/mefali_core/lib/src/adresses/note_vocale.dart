@@ -33,10 +33,20 @@ typedef CapturerNote = Future<NoteVocaleCaptee?> Function();
 typedef JouerNote = Future<void> Function(String url);
 
 /// Implémentation réelle de la lecture (`just_audio`).
+///
+/// Accepte une URL présignée **ou un chemin de fichier local**. Cette seconde
+/// forme est ce qui rend le repère du client jouable en mode avion (cycle CRS
+/// 010, FR-024, SC-012) : l'app télécharge la note à l'assignation et joue le
+/// fichier, parce qu'une URL présignée expire — et qu'elle expire précisément
+/// quand le réseau manque.
 Future<void> jouerNoteReseau(String url) async {
   final lecteur = AudioPlayer();
   try {
-    await lecteur.setUrl(url);
+    if (url.startsWith('http')) {
+      await lecteur.setUrl(url);
+    } else {
+      await lecteur.setFilePath(url);
+    }
     await lecteur.play();
     // `play()` rend la main dès le démarrage : on attend la fin réelle pour que
     // l'appelant sache quand le bouton doit reprendre son état de repos.

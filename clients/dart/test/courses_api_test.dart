@@ -54,9 +54,9 @@ void main() {
 
     // CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
     //
-    // ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond.
+    // ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa long, il ne se devine pas.  **Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la demande, donc dans la file hors-ligne. Référencer un objet « déjà déposé » faisait de la voie dépôt la seule des trois à exiger du réseau.
     //
-    //Future<ResultatRemise> remise(String livraisonId, DemandeRemise demandeRemise) async
+    //Future<ResultatRemise> remise(String livraisonId, DemandeRemise demande, { MultipartFile photo }) async
     test('test remise', () async {
       // TODO
     });

@@ -37,6 +37,7 @@ export 'src/format/montant.dart';
 export 'src/offline/action_en_attente.dart';
 export 'src/offline/cache_commandes.dart';
 export 'src/offline/file_actions.dart';
+export 'src/offline/notes_vocales.dart';
 export 'src/portee.dart';
 export 'src/theme/etats.dart';
 export 'src/theme/mefali_theme.dart';

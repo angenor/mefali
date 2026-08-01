@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.statut::text AS \"statut!\", a.collecte_uuid_client,\n                      a.segment_id, s.livraison_id, l.commande_id,\n                      a.prestataire_id, a.devise,\n                      l.etat::text AS \"etat_livraison!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE a.id = $1\n               FOR UPDATE OF a",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "collecte_uuid_client",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "collecte_uuid_client"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "segment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "segment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.segment",
+            "name": "livraison_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "prestataire_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "prestataire_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "etat_livraison!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "0bf3a7b157e68b8458e60b0203c536d8371e23496b1e70dbfd09da9b08229fa4"
+}

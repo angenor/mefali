@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(-SUM(montant_unites), 0)::bigint AS \"total!\"\n                 FROM coursier.ecriture_caisse\n                WHERE livraison_id = $1 AND type = 'avance'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d59d9f9889812d1f6113920306c25254f11ea0998de3fe6385cb60b9c6bd0a2a"
+}

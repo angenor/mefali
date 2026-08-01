@@ -50,6 +50,13 @@ utilisateur en clés i18n fr).
   ⚠ L'API doit signer ses URLs présignées avec la MÊME ip que l'appareil peut
   joindre : `S3_ENDPOINT=http://<ip-lan-du-poste>:3900`, sinon les repères
   vocaux ne se lisent pas. iOS n'est pas vérifié (Xcode/CocoaPods à installer).
+  ⚠ **Trois plugins natifs** dans `mefali_pro` depuis le cycle CRS 010 :
+  service de premier plan, notifications locales, `url_launcher`. Shorebird ne
+  patche que le Dart — toute correction qui les touche passe par le store.
+  Ils sont donc figés par lockfile ; `./scripts/verifier-accord-locks.sh` doit
+  rester vert dans les trois paquets. Le **service continu** ne démarre qu'à la
+  mise en ligne et s'arrête à la mise hors ligne : sur émulateur, vérifier la
+  notification permanente plutôt que de supposer qu'il tourne.
 - Web : `pnpm dev` / `pnpm build` dans `web/`
 
 ## Règles impératives (elles changent le comportement — les respecter toutes)

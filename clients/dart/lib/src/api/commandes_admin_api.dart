@@ -10,7 +10,7 @@ import 'package:dio/dio.dart';
 
 import 'package:mefali_api_client/src/api_util.dart';
 import 'package:mefali_api_client/src/model/demande_annulation.dart';
-import 'package:mefali_api_client/src/model/demande_echec.dart';
+import 'package:mefali_api_client/src/model/demande_issue_admin.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
 import 'package:mefali_api_client/src/model/issue_echec.dart';
@@ -132,7 +132,7 @@ class CommandesAdminApi {
   ///
   /// Parameters:
   /// * [id] - Commande concernée.
-  /// * [demandeEchec] 
+  /// * [demandeIssueAdmin] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -144,7 +144,7 @@ class CommandesAdminApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<IssueEchec>> enregistrerIssue({ 
     required String id,
-    required DemandeEchec demandeEchec,
+    required DemandeIssueAdmin demandeIssueAdmin,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -175,8 +175,8 @@ class CommandesAdminApi {
     dynamic _bodyData;
 
     try {
-      const _type = FullType(DemandeEchec);
-      _bodyData = _serializers.serialize(demandeEchec, specifiedType: _type);
+      const _type = FullType(DemandeIssueAdmin);
+      _bodyData = _serializers.serialize(demandeIssueAdmin, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(

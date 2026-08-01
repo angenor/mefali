@@ -62,12 +62,47 @@ async fn course_en_livraison_mode(bac: &Bac, categorie: &str, mode: &str) -> Cou
     }
 }
 
+/// `POST /courses/{livraison}/remise` — **multipart** depuis CRS 010 (R18).
+///
+/// La partie `demande` porte désormais un `uuid_client` obligatoire : sans lui,
+/// un rejeu de la file clôturait deux fois la même course (R4). Chaque appel de
+/// ce helper émet un UUID neuf — c'est un appel distinct, pas un rejeu.
+async fn remise(bac: &Bac, livraison: Uuid, mut demande: Value, avec_photo: bool) -> (u16, Value) {
+    demande["uuid_client"] = json!(Uuid::now_v7());
+    bac.post_multipart(
+        &format!("/courses/{livraison}/remise"),
+        &bac.jeton_coursier,
+        demande,
+        avec_photo,
+    )
+    .await
+}
+
+/// Ouvre la voie dépôt sur une commande (FR-048) : l'exploitation seule le peut,
+/// et le serveur refuse un dépôt sans ce drapeau (T034).
+async fn ouvrir_depot(bac: &Bac, commande: Uuid) {
+    sqlx::query(
+        "UPDATE commandes.commande
+         SET depot_autorise = true, depot_autorise_le = now(),
+             depot_autorise_par = $2, depot_motif_cle = 'depot.demande_client_par_telephone'
+         WHERE id = $1",
+    )
+    .bind(commande)
+    .bind(bac.admin)
+    .execute(&bac.pool)
+    .await
+    .unwrap();
+}
+
 /// `POST /courses/{livraison}/echec`.
 async fn declarer_echec(bac: &Bac, course: &Course, type_issue: &str) -> (u16, Value) {
     bac.post(
         &format!("/courses/{}/echec", course.livraison),
         &bac.jeton_coursier,
         json!({
+            // `uuid_client` OBLIGATOIRE depuis CRS 010 : un échec déclaré sans
+            // réseau se rejoue, et l'arbre §7.5 ne doit se dérouler qu'une fois.
+            "uuid_client": Uuid::now_v7(),
             "type_issue": type_issue,
             "motif_cle": "echec.motif.client_injoignable",
         }),
@@ -399,10 +434,7 @@ async fn remise_par_qr_par_code_et_en_depot(pool: sqlx::PgPool) {
     // UN bac, trois courses : chaque `#[sqlx::test]` n'a qu'une base, et deux
     // bacs sur la même base se disputeraient les slugs de catégorie.
     let bac = Bac::nouveau(pool).await;
-    for (rang, (mode, cle)) in [("qr", "jeton"), ("code", "code"), ("depot", "photo_cle")]
-        .into_iter()
-        .enumerate()
-    {
+    for (rang, mode) in ["qr", "code", "depot"].into_iter().enumerate() {
         let course = course_en_livraison(&bac, "marche").await;
 
         // Le client seul connaît ses secrets ; le test les relit comme lui.
@@ -414,20 +446,20 @@ async fn remise_par_qr_par_code_et_en_depot(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
-        let valeur = match cle {
-            "jeton" => jeton,
-            "code" => code,
-            _ => "commandes/depots/photo".to_owned(),
+        let demande = match mode {
+            "qr" => json!({ "mode": "qr", "jeton": jeton }),
+            "code" => json!({ "mode": "code", "code": code }),
+            // La voie dépôt n'est pas un droit du coursier : sans le drapeau,
+            // le serveur refuse (T034, testé plus bas).
+            _ => {
+                ouvrir_depot(&bac, course.commande).await;
+                json!({ "mode": "depot", "depot_lat": 5.898, "depot_lon": -4.822 })
+            }
         };
-        let (statut, corps) = bac
-            .post(
-                &format!("/courses/{}/remise", course.livraison),
-                &bac.jeton_coursier,
-                json!({ "mode": mode, cle: valeur }),
-            )
-            .await;
+        let (statut, corps) = remise(&bac, course.livraison, demande, mode == "depot").await;
         assert_eq!(statut, 200, "mode {mode} : {corps}");
         assert_eq!(corps["mode_remise"], mode);
+        assert_eq!(corps["rejeu"], false, "premier envoi : ce n'est pas un rejeu");
 
         assert_eq!(bac.etat_livraison(course.livraison).await, "livree");
         assert_eq!(bac.etat_commande(course.commande).await, "terminee");
@@ -451,21 +483,28 @@ async fn remise_par_qr_par_code_et_en_depot(pool: sqlx::PgPool) {
 async fn trois_codes_faux_verrouillent_la_remise(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
     let course = course_en_livraison(&bac, "marche").await;
-    let uri = format!("/courses/{}/remise", course.livraison);
 
     // Deux erreurs : refusées, mais la porte reste ouverte.
     for essai in 1..=2 {
-        let (statut, corps) = bac
-            .post(&uri, &bac.jeton_coursier, json!({ "mode": "code", "code": "0000" }))
-            .await;
+        let (statut, corps) = remise(
+            &bac,
+            course.livraison,
+            json!({ "mode": "code", "code": "0000" }),
+            false,
+        )
+        .await;
         assert_eq!(statut, 409, "essai {essai} : {corps}");
         assert_eq!(corps["code"], "remise_incorrecte");
     }
 
     // La troisième VERROUILLE.
-    let (statut, corps) = bac
-        .post(&uri, &bac.jeton_coursier, json!({ "mode": "code", "code": "0000" }))
-        .await;
+    let (statut, corps) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "code", "code": "0000" }),
+        false,
+    )
+    .await;
     assert_eq!(statut, 423, "{corps}");
     assert_eq!(corps["code"], "code_epuise");
 
@@ -496,15 +535,192 @@ async fn trois_codes_faux_verrouillent_la_remise(pool: sqlx::PgPool) {
             .fetch_one(&bac.pool)
             .await
             .unwrap();
-    let (statut, _) = bac
-        .post(
-            &uri,
-            &bac.jeton_coursier,
-            json!({ "mode": "code", "code": vrai_code }),
-        )
-        .await;
+    let (statut, _) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "code", "code": vrai_code }),
+        false,
+    )
+    .await;
     assert_eq!(statut, 423);
     assert_eq!(bac.etat_commande(course.commande).await, "en_cours");
+
+    // …mais le **scan QR reste ouvert** (FR-043, maquette K4-1d). Le cycle 008
+    // verrouillait les trois voies : un coursier honnête, devant un client qui a
+    // mal dicté son code trois fois, se retrouvait sans aucun moyen de clore une
+    // course qu'il avait faite. Le jeton est un aléa long — il ne se devine pas,
+    // le plafond n'a jamais eu à le protéger.
+    let jeton: String =
+        sqlx::query_scalar("SELECT jeton_reception FROM commandes.commande WHERE id = $1")
+            .bind(course.commande)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
+    let (statut, corps) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "qr", "jeton": jeton }),
+        false,
+    )
+    .await;
+    assert_eq!(statut, 200, "le QR passe malgré le code bloqué : {corps}");
+    assert_eq!(bac.etat_commande(course.commande).await, "terminee");
+}
+
+/// **T034 / FR-048** — la voie dépôt n'est pas un droit du coursier : sans le
+/// drapeau posé par l'exploitation, le serveur refuse. La garde est des DEUX
+/// côtés parce qu'une file hors-ligne peut avoir été remplie avant que
+/// l'exploitation ne referme le drapeau — et parce qu'un client HTTP
+/// quelconque n'est pas notre app.
+#[sqlx::test(migrations = "../migrations")]
+async fn un_depot_sur_commande_non_autorisee_est_refuse(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = course_en_livraison(&bac, "marche").await;
+
+    let (statut, corps) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "depot", "depot_lat": 5.898, "depot_lon": -4.822 }),
+        true,
+    )
+    .await;
+    assert_eq!(statut, 422, "{corps}");
+    assert_eq!(corps["code"], "depot_non_autorise");
+    assert_eq!(
+        bac.etat_livraison(course.livraison).await,
+        "en_livraison",
+        "un refus ne clôt rien",
+    );
+
+    // Le drapeau ouvert, la MÊME demande passe — et la position est écrite.
+    ouvrir_depot(&bac, course.commande).await;
+    let (statut, corps) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "depot", "depot_lat": 5.898, "depot_lon": -4.822 }),
+        true,
+    )
+    .await;
+    assert_eq!(statut, 200, "{corps}");
+    let (cle, lat): (Option<String>, Option<f64>) = sqlx::query_as(
+        "SELECT depot_photo_cle, depot_lat FROM commandes.livraison WHERE id = $1",
+    )
+    .bind(course.livraison)
+    .fetch_one(&bac.pool)
+    .await
+    .unwrap();
+    assert!(
+        cle.is_some(),
+        "la photo voyage AVEC la demande, et sa clé est écrite (R18)",
+    );
+    assert_eq!(lat, Some(5.898), "photo ET position : FR-048 exige les deux");
+}
+
+/// **T033 / R4** — le rejeu du MÊME `uuid_client` rend le même résultat sans
+/// rien réécrire : ni second `livraison.livree`, ni second `commande.terminee`.
+/// C'est la moitié serveur du test qui fait foi du module (FR-089).
+#[sqlx::test(migrations = "../migrations")]
+async fn le_rejeu_d_une_remise_ne_cloture_qu_une_fois(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = course_en_livraison(&bac, "marche").await;
+    let code: String =
+        sqlx::query_scalar("SELECT code_livraison FROM commandes.commande WHERE id = $1")
+            .bind(course.commande)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
+
+    let uuid = Uuid::now_v7();
+    let demande = json!({ "mode": "code", "code": code, "uuid_client": uuid, "hors_ligne": true });
+    let uri = format!("/courses/{}/remise", course.livraison);
+
+    let (statut, corps) = bac
+        .post_multipart(&uri, &bac.jeton_coursier, demande.clone(), false)
+        .await;
+    assert_eq!(statut, 200, "{corps}");
+    assert_eq!(corps["rejeu"], false);
+
+    // Deux rejeux de plus — la file insiste jusqu'à acquittement.
+    for tour in 1..=2 {
+        let (statut, corps) = bac
+            .post_multipart(&uri, &bac.jeton_coursier, demande.clone(), false)
+            .await;
+        assert_eq!(statut, 200, "rejeu {tour} : {corps}");
+        assert_eq!(corps["rejeu"], true, "rejeu {tour} : rien n'a été réécrit");
+        assert_eq!(corps["mode_remise"], "code");
+    }
+
+    assert_eq!(bac.nb_evenements("livraison.livree").await, 1);
+    assert_eq!(bac.nb_evenements("commande.terminee").await, 1);
+
+    // Le hors-ligne est JOURNALISÉ (jamais décisif — le serveur a revalidé).
+    let hors_ligne: bool =
+        sqlx::query_scalar("SELECT remise_hors_ligne FROM commandes.livraison WHERE id = $1")
+            .bind(course.livraison)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
+    assert!(hors_ligne, "la trace du hors-ligne survit au rejeu (FR-046)");
+}
+
+/// **T033 / R5** — les essais consommés HORS LIGNE ne voyagent pas un par un :
+/// ils arrivent avec la demande, et le serveur retient `max(serveur, local)`.
+/// Deux essais faux devant la porte + un code faux en ligne = seuil atteint.
+#[sqlx::test(migrations = "../migrations")]
+async fn les_essais_hors_ligne_se_consolident_en_max(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = course_en_livraison(&bac, "marche").await;
+
+    // Le serveur n'a rien vu ; l'app a compté 2 essais faux sans réseau.
+    let (statut, corps) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "code", "code": "0000", "essais_hors_ligne": 2 }),
+        false,
+    )
+    .await;
+    assert_eq!(statut, 423, "2 hors ligne + 1 ici = seuil de zone : {corps}");
+    assert_eq!(corps["code"], "code_epuise");
+
+    let (essais, bloque): (i16, Option<chrono::DateTime<chrono::Utc>>) = sqlx::query_as(
+        "SELECT essais_code, code_bloque_le FROM commandes.commande WHERE id = $1",
+    )
+    .bind(course.commande)
+    .fetch_one(&bac.pool)
+    .await
+    .unwrap();
+    assert_eq!(essais, 3, "aucun essai perdu, aucun inventé");
+    assert!(bloque.is_some(), "le blocage est un ÉTAT durable (R5)");
+    assert_eq!(bac.nb_evenements("remise.code_epuise").await, 1);
+}
+
+/// Un compteur hors ligne **inférieur** au compteur serveur ne le fait pas
+/// reculer : `max()`, jamais une écrasure. Un coursier qui réinstalle l'app
+/// repartirait sinon à zéro — et le plafond ne protégerait plus rien.
+#[sqlx::test(migrations = "../migrations")]
+async fn un_compteur_hors_ligne_en_retard_ne_fait_pas_reculer_le_serveur(pool: sqlx::PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = course_en_livraison(&bac, "marche").await;
+
+    // Deux essais faux vus par le serveur.
+    for _ in 0..2 {
+        remise(
+            &bac,
+            course.livraison,
+            json!({ "mode": "code", "code": "0000" }),
+            false,
+        )
+        .await;
+    }
+    // L'app, réinstallée, croit repartir de zéro.
+    let (statut, corps) = remise(
+        &bac,
+        course.livraison,
+        json!({ "mode": "code", "code": "0000", "essais_hors_ligne": 0 }),
+        false,
+    )
+    .await;
+    assert_eq!(statut, 423, "le serveur ne recule pas : {corps}");
 }
 
 /// Le QR ne se devine pas : un jeton faux est refusé **sans** consommer
@@ -515,13 +731,13 @@ async fn un_jeton_faux_ne_consomme_pas_d_essai_de_code(pool: sqlx::PgPool) {
     let course = course_en_livraison(&bac, "marche").await;
 
     for _ in 0..5 {
-        let (statut, _) = bac
-            .post(
-                &format!("/courses/{}/remise", course.livraison),
-                &bac.jeton_coursier,
-                json!({ "mode": "qr", "jeton": "jeton-invente" }),
-            )
-            .await;
+        let (statut, _) = remise(
+            &bac,
+            course.livraison,
+            json!({ "mode": "qr", "jeton": "jeton-invente" }),
+            false,
+        )
+        .await;
         assert_eq!(statut, 409);
     }
     let essais: i16 = sqlx::query_scalar("SELECT essais_code FROM commandes.commande WHERE id = $1")

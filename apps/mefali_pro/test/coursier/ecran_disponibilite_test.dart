@@ -25,6 +25,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_pro/coursier/disponibilite/ecran_disponibilite.dart';
 import 'package:mefali_pro/coursier/disponibilite/emetteur_position.dart';
+import 'package:riverpod_annotation/experimental/scope.dart';
+import 'package:mefali_pro/coursier/service_continu/canal_offre.dart';
+import 'package:mefali_pro/coursier/service_continu/service_continu.dart';
 import 'package:mefali_pro/coursier/disponibilite/etat_disponibilite.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
 
@@ -103,6 +106,7 @@ Position _positionTiassale() => Position(
 /// d'un coursier arrêté.
 Future<Position?> _relevePonctuelFixe() async => _positionTiassale();
 
+@Dependencies([ServiceContinu])
 Widget _monter(ProviderContainer container) => harnaisApp(
       container: container,
       localizationsDelegates: const [
@@ -116,11 +120,18 @@ Widget _monter(ProviderContainer container) => harnaisApp(
           // Aucun dialogue système dans un test widget.
           permissionPositionProvider.overrideWithValue(_permissionAccordee),
           relevePonctuelProvider.overrideWithValue(_relevePonctuelFixe),
+          // Cycle CRS 010 — K1 lit l'état du service continu (bandeau FR-115).
+          // Un service INERTE : un test widget n'a ni service de premier plan
+          // ni canal de notification.
+          servicePremierPlanProvider
+              .overrideWithValue(ServicePremierPlanInerte()),
+          canalOffreProvider.overrideWithValue(CanalOffreMuet()),
         ],
         child: const EcranDisponibilite(),
       ),
     );
 
+@Dependencies([EmetteurPosition, ServiceContinu])
 void main() {
   testWidgets(
     'le plafond retenu est affiché avec sa source — Yao voit lequel s\'applique',
@@ -306,6 +317,9 @@ void main() {
               sourcePositionsProvider.overrideWithValue(capteurMuet),
               permissionPositionProvider.overrideWithValue(_permissionAccordee),
               relevePonctuelProvider.overrideWithValue(_relevePonctuelFixe),
+              servicePremierPlanProvider
+                  .overrideWithValue(ServicePremierPlanInerte()),
+              canalOffreProvider.overrideWithValue(CanalOffreMuet()),
             ],
             child: const EcranDisponibilite(),
           ),

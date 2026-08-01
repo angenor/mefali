@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.transition_arret_rejouee (uuid_client, arret_id, action)\n             VALUES ($1, $2, $3) ON CONFLICT (uuid_client) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8594490d0245832e21d5027e4781dac35cb10367bfa4acaad11f9578c5cbfa91"
+}

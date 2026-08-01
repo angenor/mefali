@@ -14,6 +14,7 @@ part 'demande_echec.g.dart';
 /// * [arretId] - Arrêt concerné — absent = à la remise.
 /// * [motifCle] - Clé i18n du motif — jamais du texte libre.
 /// * [typeIssue] - Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…).
+/// * [uuidClient] - Clé d'idempotence (UUIDv7 produit par l'app, constitution V).  **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois — deux sanctions, deux indemnisations, deux litiges (R4).
 @BuiltValue()
 abstract class DemandeEchec implements Built<DemandeEchec, DemandeEchecBuilder> {
   /// Arrêt concerné — absent = à la remise.
@@ -27,6 +28,10 @@ abstract class DemandeEchec implements Built<DemandeEchec, DemandeEchecBuilder> 
   /// Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…).
   @BuiltValueField(wireName: r'type_issue')
   String get typeIssue;
+
+  /// Clé d'idempotence (UUIDv7 produit par l'app, constitution V).  **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois — deux sanctions, deux indemnisations, deux litiges (R4).
+  @BuiltValueField(wireName: r'uuid_client')
+  String get uuidClient;
 
   DemandeEchec._();
 
@@ -66,6 +71,11 @@ class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
     yield r'type_issue';
     yield serializers.serialize(
       object.typeIssue,
+      specifiedType: const FullType(String),
+    );
+    yield r'uuid_client';
+    yield serializers.serialize(
+      object.uuidClient,
       specifiedType: const FullType(String),
     );
   }
@@ -112,6 +122,13 @@ class _$DemandeEchecSerializer implements PrimitiveSerializer<DemandeEchec> {
             specifiedType: const FullType(String),
           ) as String;
           result.typeIssue = valueDes;
+          break;
+        case r'uuid_client':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.uuidClient = valueDes;
           break;
         default:
           unhandled.add(key);

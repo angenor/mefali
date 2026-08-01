@@ -111,7 +111,23 @@ Class | Method | HTTP request | Description
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerEchec**](doc/CoursesApi.md#declarerechec) | **POST** /courses/{livraison_id}/echec | CMD-08 — le coursier déclare l&#39;échec ; le serveur déroule l&#39;arbre §7.5.
 [*CoursesApi*](doc/CoursesApi.md) | [**declarerRupture**](doc/CoursesApi.md#declarerrupture) | **POST** /courses/{livraison_id}/substitutions | CMD-06 — le coursier déclare un article indisponible et applique la préférence du client (FR-044/045).
 [*CoursesApi*](doc/CoursesApi.md) | [**remise**](doc/CoursesApi.md#remise) | **POST** /courses/{livraison_id}/remise | CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
+[*CoursierApi*](doc/CoursierApi.md) | [**courseActive**](doc/CoursierApi.md#courseactive) | **GET** /courses/active | CRS-03 — course active du coursier, **complète** et pré-provisionnée.
+[*CoursierApi*](doc/CoursierApi.md) | [**declarerIssueAppel**](doc/CoursierApi.md#declarerissueappel) | **PATCH** /courses/{livraison_id}/appels | CRS-03 — déclare (ou corrige) l&#39;issue d&#39;un appel (FR-036, R19).
+[*CoursierApi*](doc/CoursierApi.md) | [**deposerPhotoPreuve**](doc/CoursierApi.md#deposerphotopreuve) | **POST** /courses/{livraison_id}/preuves/photo | CRS-05 — dépose une photo de preuve d&#39;échec (FR-056, FR-064).
+[*CoursierApi*](doc/CoursierApi.md) | [**enregistrerPresence**](doc/CoursierApi.md#enregistrerpresence) | **POST** /courses/{livraison_id}/presence | CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).
+[*CoursierApi*](doc/CoursierApi.md) | [**etatPreuves**](doc/CoursierApi.md#etatpreuves) | **GET** /courses/{livraison_id}/preuves | CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).
+[*CoursierApi*](doc/CoursierApi.md) | [**journaliserAppel**](doc/CoursierApi.md#journaliserappel) | **POST** /courses/{livraison_id}/appels | CRS-03 — journalise un appel passé **via l&#39;app** (FR-030, FR-031, FR-033).
+[*CoursierApi*](doc/CoursierApi.md) | [**maCaisse**](doc/CoursierApi.md#macaisse) | **GET** /moi/caisse | CRS-06 — la caisse du coursier (FR-067 → FR-077).
+[*CoursierApi*](doc/CoursierApi.md) | [**maJournee**](doc/CoursierApi.md#majournee) | **GET** /moi/journee | CRS-01 — la journée du coursier (FR-091 → FR-095).
 [*CoursierApi*](doc/CoursierApi.md) | [**signalerRupture**](doc/CoursierApi.md#signalerrupture) | **POST** /coursier/signalements-rupture | Signale un article introuvable — REFUSÉ (et compté nulle part) sans commande active comportant un arrêt chez ce prestataire (FR-038).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**autoriserDepot**](doc/CoursierAdminApi.md#autoriserdepot) | **POST** /admin/commandes/{commande_id}/depot | **FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**debloquerCode**](doc/CoursierAdminApi.md#debloquercode) | **POST** /admin/commandes/{commande_id}/code/debloquer | **FR-055** — l&#39;exploitation lève le blocage du code, avec motif tracé.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**expositionCash**](doc/CoursierAdminApi.md#expositioncash) | **GET** /admin/coursiers/exposition | CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**fileIndemnisations**](doc/CoursierAdminApi.md#fileindemnisations) | **GET** /admin/indemnisations | CRS-06 (exploitation) — la file des indemnisations (FR-071).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**preuvesDeLivraison**](doc/CoursierAdminApi.md#preuvesdelivraison) | **GET** /admin/livraisons/{livraison_id}/preuves | CRS-05 (exploitation) — le dossier de preuves d&#39;une livraison (FR-063).
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**refuserIndemnisation**](doc/CoursierAdminApi.md#refuserindemnisation) | **POST** /admin/indemnisations/{indemnisation_id}/refuser | CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**remisesBloquees**](doc/CoursierAdminApi.md#remisesbloquees) | **GET** /admin/remises/bloquees | **FR-044** — les remises dont le code est épuisé et le blocage non levé.
+[*CoursierAdminApi*](doc/CoursierAdminApi.md) | [**validerIndemnisation**](doc/CoursierAdminApi.md#validerindemnisation) | **POST** /admin/indemnisations/{indemnisation_id}/valider | CRS-06 (exploitation) — valide une indemnisation : l&#39;argent entre au livre.
 [*DispatchApi*](doc/DispatchApi.md) | [**accepterOffre**](doc/DispatchApi.md#accepteroffre) | **POST** /courses/offres/{offre_id}/accepter | &#x60;POST /courses/offres/{offre_id}/accepter&#x60; — prendre la course.
 [*DispatchApi*](doc/DispatchApi.md) | [**basculerDisponibiliteCoursier**](doc/DispatchApi.md#basculerdisponibilitecoursier) | **PUT** /moi/disponibilite | &#x60;PUT /moi/disponibilite&#x60; — se mettre en ligne ou hors ligne.
 [*DispatchApi*](doc/DispatchApi.md) | [**lireDisponibilite**](doc/DispatchApi.md#liredisponibilite) | **GET** /moi/disponibilite | &#x60;GET /moi/disponibilite&#x60; — l&#39;état courant, tel que K1 l&#39;affiche.
@@ -135,7 +151,6 @@ Class | Method | HTTP request | Description
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
-[*QrApi*](doc/QrApi.md) | [**courseActive**](doc/QrApi.md#courseactive) | **GET** /courses/active | QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
 [*QrApi*](doc/QrApi.md) | [**telechargerPlaque**](doc/QrApi.md#telechargerplaque) | **GET** /admin/prestataires/{id}/plaque | QRC-01 — télécharge (génère au besoin) le PDF de plaque d&#39;un prestataire.
 [*SocleApi*](doc/SocleApi.md) | [**health**](doc/SocleApi.md#health) | **GET** /health | Sonde de vie du service. Répond &#x60;200 {status:\&quot;ok\&quot;, version}&#x60;.
 [*TarificationApi*](doc/TarificationApi.md) | [**creerBrouillon**](doc/TarificationApi.md#creerbrouillon) | **POST** /admin/tarification/zones/{zone_id}/brouillon | Crée (ou rend) le brouillon de la zone — **idempotent**.
@@ -170,9 +185,11 @@ Class | Method | HTTP request | Description
  - [AffichageRupture](doc/AffichageRupture.md)
  - [AlertesDispatch](doc/AlertesDispatch.md)
  - [AppareilDto](doc/AppareilDto.md)
+ - [AppelEnregistre](doc/AppelEnregistre.md)
+ - [AppelJournalise](doc/AppelJournalise.md)
  - [ArretCourantSuivi](doc/ArretCourantSuivi.md)
+ - [ArretCourse](doc/ArretCourse.md)
  - [ArretOffre](doc/ArretOffre.md)
- - [ArretPreProvisionne](doc/ArretPreProvisionne.md)
  - [ArticlePublic](doc/ArticlePublic.md)
  - [ArticleVendeur](doc/ArticleVendeur.md)
  - [Attente](doc/Attente.md)
@@ -183,6 +200,7 @@ Class | Method | HTTP request | Description
  - [CapaciteCoursier](doc/CapaciteCoursier.md)
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
+ - [ClientCourse](doc/ClientCourse.md)
  - [Commande](doc/Commande.md)
  - [CommandeEnAttente](doc/CommandeEnAttente.md)
  - [CommandeProposee](doc/CommandeProposee.md)
@@ -195,21 +213,28 @@ Class | Method | HTTP request | Description
  - [CorpsActionBoutique](doc/CorpsActionBoutique.md)
  - [CorpsForcage](doc/CorpsForcage.md)
  - [CorrigerDto](doc/CorrigerDto.md)
- - [CourseActive](doc/CourseActive.md)
+ - [CourseActiveComplete](doc/CourseActiveComplete.md)
  - [CourseBloquee](doc/CourseBloquee.md)
  - [CoursierDuPool](doc/CoursierDuPool.md)
  - [CoursierSuivi](doc/CoursierSuivi.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
+ - [DecisionDepot](doc/DecisionDepot.md)
+ - [DecisionIndemnisation](doc/DecisionIndemnisation.md)
  - [DecisionOffre](doc/DecisionOffre.md)
  - [DecisionRole](doc/DecisionRole.md)
  - [DecisionSubstitution](doc/DecisionSubstitution.md)
  - [DemandeAnnulation](doc/DemandeAnnulation.md)
+ - [DemandeAppel](doc/DemandeAppel.md)
  - [DemandeCollecte](doc/DemandeCollecte.md)
  - [DemandeCreationCommande](doc/DemandeCreationCommande.md)
+ - [DemandeDeblocage](doc/DemandeDeblocage.md)
+ - [DemandeDepot](doc/DemandeDepot.md)
  - [DemandeDevisPanier](doc/DemandeDevisPanier.md)
  - [DemandeEchec](doc/DemandeEchec.md)
+ - [DemandeIssueAdmin](doc/DemandeIssueAdmin.md)
  - [DemandeOtp](doc/DemandeOtp.md)
+ - [DemandePhotoPreuve](doc/DemandePhotoPreuve.md)
  - [DemandeRafraichissement](doc/DemandeRafraichissement.md)
  - [DemandeRemise](doc/DemandeRemise.md)
  - [DemandeReprise](doc/DemandeReprise.md)
@@ -231,10 +256,13 @@ Class | Method | HTTP request | Description
  - [EtatCategorie](doc/EtatCategorie.md)
  - [EtatDisponibilite](doc/EtatDisponibilite.md)
  - [EtatEffectifBoutique](doc/EtatEffectifBoutique.md)
+ - [EtatPreuves](doc/EtatPreuves.md)
  - [EtatPublicationPosition](doc/EtatPublicationPosition.md)
  - [EtatRoleDto](doc/EtatRoleDto.md)
+ - [ExpositionCash](doc/ExpositionCash.md)
  - [FichePublique](doc/FichePublique.md)
  - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
+ - [FileIndemnisations](doc/FileIndemnisations.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [GainOffre](doc/GainOffre.md)
  - [Grille](doc/Grille.md)
@@ -242,16 +270,25 @@ Class | Method | HTTP request | Description
  - [GroupeVendeur](doc/GroupeVendeur.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HorairesSemaineDto](doc/HorairesSemaineDto.md)
+ - [IndemnisationDecidee](doc/IndemnisationDecidee.md)
+ - [IndemnisationVue](doc/IndemnisationVue.md)
  - [Inscription](doc/Inscription.md)
  - [IntentionAppel](doc/IntentionAppel.md)
+ - [IssueAppelDeclaree](doc/IssueAppelDeclaree.md)
  - [IssueEchec](doc/IssueEchec.md)
  - [IssueRupture](doc/IssueRupture.md)
  - [ItineraireSimule](doc/ItineraireSimule.md)
  - [JetonsDto](doc/JetonsDto.md)
+ - [JourneeCoursier](doc/JourneeCoursier.md)
  - [Lieu](doc/Lieu.md)
+ - [LigneArret](doc/LigneArret.md)
  - [LigneDevis](doc/LigneDevis.md)
+ - [LigneExposition](doc/LigneExposition.md)
+ - [LigneHistoriqueCaisse](doc/LigneHistoriqueCaisse.md)
  - [LignePanier](doc/LignePanier.md)
+ - [LitigeVu](doc/LitigeVu.md)
  - [LivraisonCommande](doc/LivraisonCommande.md)
+ - [LotDePresence](doc/LotDePresence.md)
  - [MesCommandes](doc/MesCommandes.md)
  - [ModeCollecte](doc/ModeCollecte.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
@@ -262,15 +299,22 @@ Class | Method | HTTP request | Description
  - [PaiementCommande](doc/PaiementCommande.md)
  - [PaiementPanier](doc/PaiementPanier.md)
  - [PhotoAdminDto](doc/PhotoAdminDto.md)
+ - [PhotoPreuve](doc/PhotoPreuve.md)
+ - [PhotoPreuveDeposee](doc/PhotoPreuveDeposee.md)
  - [PlageDto](doc/PlageDto.md)
  - [PlaqueUrl](doc/PlaqueUrl.md)
  - [PlateformeDto](doc/PlateformeDto.md)
  - [Point](doc/Point.md)
  - [PoolDeZone](doc/PoolDeZone.md)
  - [PositionSuivi](doc/PositionSuivi.md)
+ - [PresenceEnregistree](doc/PresenceEnregistree.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
  - [PrestatairePilotable](doc/PrestatairePilotable.md)
+ - [PreuveAppels](doc/PreuveAppels.md)
+ - [PreuvePhotos](doc/PreuvePhotos.md)
+ - [PreuvePresence](doc/PreuvePresence.md)
+ - [PreuvesExploitation](doc/PreuvesExploitation.md)
  - [ProgressionSuivi](doc/ProgressionSuivi.md)
  - [PublicationPosition](doc/PublicationPosition.md)
  - [RattachementDto](doc/RattachementDto.md)
@@ -279,6 +323,10 @@ Class | Method | HTTP request | Description
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
+ - [ReleveDePresence](doc/ReleveDePresence.md)
+ - [RemiseBloquee](doc/RemiseBloquee.md)
+ - [RemisePreprovisionnee](doc/RemisePreprovisionnee.md)
+ - [RemisesBloquees](doc/RemisesBloquees.md)
  - [RepriseFaite](doc/RepriseFaite.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatAnnulation](doc/ResultatAnnulation.md)
@@ -291,6 +339,7 @@ Class | Method | HTTP request | Description
  - [SecretsRemise](doc/SecretsRemise.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SeuilsPreuves](doc/SeuilsPreuves.md)
  - [SignalementRecuDto](doc/SignalementRecuDto.md)
  - [SignalerRuptureDto](doc/SignalerRuptureDto.md)
  - [SiteAdminDto](doc/SiteAdminDto.md)
@@ -304,6 +353,7 @@ Class | Method | HTTP request | Description
  - [UrlPresignee](doc/UrlPresignee.md)
  - [VehiculeDeclare](doc/VehiculeDeclare.md)
  - [VerificationOtp](doc/VerificationOtp.md)
+ - [VueCaisse](doc/VueCaisse.md)
 
 
 ## Documentation For Authorization

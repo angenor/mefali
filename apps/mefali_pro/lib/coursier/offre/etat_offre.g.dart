@@ -54,7 +54,7 @@ final class OffreEnCoursProvider
   OffreEnCours create() => OffreEnCours();
 }
 
-String _$offreEnCoursHash() => r'beda9be0811963ea65a47fe2357cb14042b08fff';
+String _$offreEnCoursHash() => r'aff9b738c354811068d4096e9bced3d77b94579a';
 
 /// L'offre courante — **jetable**, rechargée par l'écran qui l'affiche.
 ///

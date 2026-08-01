@@ -38,6 +38,10 @@ class _EcranScanState extends ConsumerState<EcranScan> {
   DateTime? _dernierTraite;
   static const _refroidissement = Duration(seconds: 3);
 
+  /// Au-delà, on cesse d'attendre le GPS : mieux vaut la dernière position
+  /// connue qu'un écran figé devant un vendeur qui attend son argent.
+  static const _delaiPosition = Duration(seconds: 8);
+
   @override
   void dispose() {
     _controleurScan.dispose();
@@ -55,7 +59,15 @@ class _EcranScanState extends ConsumerState<EcranScan> {
     return valeur;
   }
 
-  /// Position courante (porte de présence). `null` si permission refusée.
+  /// Position courante (porte de présence). `null` si permission refusée **ou
+  /// si le capteur ne répond pas** dans le temps imparti.
+  ///
+  /// Le délai est explicite, et c'est le point : sans lui, `getCurrentPosition`
+  /// attend jusqu'à quatre-vingt-dix secondes avant de lever une
+  /// `TimeoutException` que personne n'attrapait. Yao voyait alors le bouton
+  /// « Valider le code » rester gris, son essai décompté, et aucun message —
+  /// il concluait que son code était faux (T087). Un capteur muet est un motif
+  /// de non-progression, pas une erreur : on rend `null`, l'écran le dit.
   Future<Position?> _position() async {
     var perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) {
@@ -64,7 +76,19 @@ class _EcranScanState extends ConsumerState<EcranScan> {
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
       return null;
     }
-    return Geolocator.getCurrentPosition();
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(timeLimit: _delaiPosition),
+      );
+    } on Exception {
+      // Dernier recours : la dernière position connue vaut mieux que rien —
+      // le serveur revérifie la proximité de toute façon (FR-012).
+      try {
+        return await Geolocator.getLastKnownPosition();
+      } on Exception {
+        return null;
+      }
+    }
   }
 
   Future<void> _surScan(BarcodeCapture capture) async {
@@ -83,18 +107,29 @@ class _EcranScanState extends ConsumerState<EcranScan> {
   Future<void> _surCode() async {
     if (_enCours) return;
     if (_essais >= _maxEssais) return;
-    setState(() => _essais++);
-    await _collecter(mode: ModeScan.codeSecours, code: _codeCtrl.text.trim());
+    // L'essai ne se décompte qu'au VRAI refus du code. Le compter d'avance
+    // faisait afficher « 2 essais restants » à quelqu'un qui n'avait rien
+    // raté : le temps que le GPS réponde, l'écran annonçait un échec qui
+    // n'avait pas eu lieu, et trois saisies lentes bloquaient le pavé (T087).
+    final erreur =
+        await _collecter(mode: ModeScan.codeSecours, code: _codeCtrl.text.trim());
+    if (erreur == 'code_incorrect' && mounted) setState(() => _essais++);
   }
 
-  Future<void> _collecter({required ModeScan mode, String? jeton, String? code}) async {
+  /// Tente la collecte. Rend la clé d'erreur, ou `null` si elle a abouti —
+  /// c'est elle qui décide si un essai de code doit être décompté.
+  Future<String?> _collecter({
+    required ModeScan mode,
+    String? jeton,
+    String? code,
+  }) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _enCours = true);
     try {
       final pos = await _position();
       if (pos == null) {
         _message(l10n.scanPermissionPosition);
-        return;
+        return 'position_indisponible';
       }
       // Photo si exigée par la politique résolue (image_picker délègue à la caméra).
       List<int>? photo;
@@ -102,7 +137,7 @@ class _EcranScanState extends ConsumerState<EcranScan> {
         final xfile = await ImagePicker().pickImage(source: ImageSource.camera);
         if (xfile == null) {
           _message(l10n.collecteErreurPhotoRequise);
-          return;
+          return 'photo_requise';
         }
         photo = await xfile.readAsBytes();
       }
@@ -116,12 +151,13 @@ class _EcranScanState extends ConsumerState<EcranScan> {
             positionLon: pos.longitude,
             photo: photo,
           );
-      if (!mounted) return;
+      if (!mounted) return erreur;
       if (erreur == null) {
         Navigator.of(context).pop();
-        return;
+        return null;
       }
       _message(_messageErreur(l10n, erreur));
+      return erreur;
     } finally {
       if (mounted) setState(() => _enCours = false);
     }

@@ -482,6 +482,13 @@ S13–S14 : bêta fermée. S15–S16 : correctifs, P1 restants, lancement.
 | Grille d'effort — supplément/arrêt (selon distance au précédent) | < 100 m : +25 ; 100 m–1 km : +50 ; > 1 km : +100 | TRF-06 |
 | Grille d'effort — plafond d'éclatement (détour max) | seuil à définir | TRF-06 |
 | Catégories mixables au panier | courses : oui ; restauration : non | CMD-01 |
+| Appels `client_absent` exigés par la preuve d'échec | 2 | CRS-05 |
+| Espacement minimal entre deux appels retenus | 180 s | CRS-05 |
+| Présence continue exigée devant la porte | 600 s | CRS-05 |
+| Rayon dans lequel un relevé de présence compte | 100 m | CRS-05 |
+| « Trou » au-delà duquel la présence n'est plus continue | 120 s | CRS-05 |
+| Rétention des photos de preuve d'échec | 365 j | CRS-05 |
+| Interrogation d'offre en arrière-plan (écran éteint) | 5 s | CRS-02 |
 
 ---
 

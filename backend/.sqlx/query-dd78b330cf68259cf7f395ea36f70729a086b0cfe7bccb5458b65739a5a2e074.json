@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE coursier.indemnisation\n                  SET etat = 'refusee', decide_par = $2, decide_le = now(),\n                      decision_motif_cle = $3\n                WHERE id = $1 AND etat = 'demandee'\n            RETURNING coursier_id, commande_id, montant_unites, devise",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.indemnisation",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.indemnisation",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "montant_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "coursier.indemnisation",
+            "name": "montant_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coursier.indemnisation",
+            "name": "devise"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dd78b330cf68259cf7f395ea36f70729a086b0cfe7bccb5458b65739a5a2e074"
+}

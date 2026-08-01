@@ -14,13 +14,6 @@ void main() {
       // TODO
     });
 
-    // QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
-    //
-    //Future<CourseActive> courseActive() async
-    test('test courseActive', () async {
-      // TODO
-    });
-
     // QRC-01 — télécharge (génère au besoin) le PDF de plaque d'un prestataire.
     //
     //Future<PlaqueUrl> telechargerPlaque(String id) async

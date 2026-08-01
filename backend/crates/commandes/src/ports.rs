@@ -20,7 +20,10 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::modele::{ArretACollecter, ErreurCommandes, Restrictions, Sanction};
+use crate::modele::{
+    ArretACollecter, ErreurCommandes, EtatLivraison, ModePaiement, PreferenceSubstitution,
+    Restrictions, Sanction, StatutArret, StatutLigne,
+};
 
 /// Lecture de l'arrêt à collecter d'un coursier chez un prestataire donné.
 #[async_trait]
@@ -317,6 +320,308 @@ impl AffectationSimulee {
         };
         depot.affecter(commande, coursier).await?;
         Ok(Some(coursier))
+    }
+}
+
+// ── OFFERT à CRS : la course active complète (cycle 010) ───────────────────
+
+/// Une ligne d'article à acheter chez un vendeur (K3, FR-012).
+///
+/// Elle vient de `commandes.ligne_commande`. La **coche** de l'article reste
+/// locale à l'appareil (specs/010 R11) : le serveur ne connaît que « présente /
+/// remplacée / retirée », et inventer un état « article coché » créerait une
+/// troisième vérité que rien ne consomme.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LigneDeCourse {
+    /// Ligne de commande.
+    pub ligne_id: Uuid,
+    /// Libellé de l'article, figé à la création.
+    pub libelle: String,
+    /// Quantité commandée.
+    pub quantite: i16,
+    /// Prix unitaire VERROUILLÉ à la création (unités mineures).
+    pub prix_unitaire_unites: i64,
+    /// Ce que le client a choisi si l'article manque (FR-016).
+    pub preference: PreferenceSubstitution,
+    /// Présente, remplacée ou retirée.
+    pub statut: StatutLigne,
+}
+
+/// Un arrêt de collecte, avec ses lignes et sa progression.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArretDeCourse {
+    /// Arrêt de la course.
+    pub arret_id: Uuid,
+    /// Rang dans l'ordre optimisé.
+    pub ordre: i16,
+    /// Prestataire visé.
+    pub prestataire_id: Uuid,
+    /// Position attendue du site.
+    pub site_lat: f64,
+    /// Position attendue du site.
+    pub site_lon: f64,
+    /// Distance depuis l'arrêt précédent (m).
+    ///
+    /// ⚠ `None` aujourd'hui, et pour une raison qu'il faut connaître : le cycle
+    /// 007 a figé la distance TOTALE du devis (`livraison.devis_distance_m`)
+    /// mais pas le détail par tronçon, et ce cycle **ne recalcule aucun
+    /// itinéraire** (FR-009, constitution IV). Servir une distance à vol
+    /// d'oiseau ici la ferait passer pour un trajet. K3 affiche « à 800 m » ;
+    /// tant que le tronçon n'est pas figé à la création, l'app masque la ligne
+    /// plutôt que d'afficher un chiffre faux.
+    pub distance_precedent_m: Option<i64>,
+    /// Montant à avancer à CE vendeur (unités mineures).
+    pub montant_avance: i64,
+    /// Où en est cet arrêt.
+    pub statut: StatutArret,
+    /// Départ vers l'arrêt déclaré (horodatage serveur).
+    pub en_route_le: Option<DateTime<Utc>>,
+    /// Arrivée sur l'arrêt.
+    pub arrive_le: Option<DateTime<Utc>>,
+    /// Collecte validée.
+    pub collecte_le: Option<DateTime<Utc>>,
+    /// Articles à acheter chez ce vendeur.
+    pub lignes: Vec<LigneDeCourse>,
+}
+
+/// Le client, tel que le coursier en a besoin **hors ligne** (specs/010 R6).
+///
+/// ⚠ `nom_usage` est `None` aujourd'hui, et ce n'est pas un oubli : le cycle
+/// CPT 003 a posé « identité Mefali = un numéro vérifié, rien d'autre », et
+/// aucune colonne nominative n'existe. La maquette K4-1a montre « Awa K. » ; le
+/// champ est servi optionnel pour que l'app se contente du repère aujourd'hui
+/// et affiche le nom le jour où le produit en aura un — sans changement de
+/// contrat. Fabriquer un nom depuis le numéro serait créer la donnée
+/// nominative que la minimisation ARTCI a délibérément écartée.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClientDeCourse {
+    /// Compte client.
+    pub compte_id: Uuid,
+    /// Nom d'usage — `None` tant que le produit n'en porte pas (voir ci-dessus).
+    pub nom_usage: Option<String>,
+    /// Contact du client — l'appel doit marcher SANS RÉSEAU (R6). Jamais
+    /// journalisé, jamais servi hors du coursier assigné.
+    pub telephone: Option<String>,
+    /// Repère écrit.
+    pub repere_texte: Option<String>,
+    /// Clé objet de la note vocale de repère — l'appelant la présigne.
+    pub repere_vocal_cle: Option<String>,
+    /// Durée de la note vocale (s), lue sur l'adresse d'origine. `None` si la
+    /// commande a été créée sans adresse enregistrée (pin ponctuel) : l'app
+    /// affiche alors le lecteur sans compteur, plutôt qu'un « 0:00 » faux.
+    pub repere_vocal_duree_s: Option<i16>,
+    /// Point de livraison.
+    pub lieu_lat: f64,
+    /// Point de livraison.
+    pub lieu_lon: f64,
+    /// La voie « dépôt » est-elle ouverte sur CETTE commande (FR-039) ?
+    pub depot_autorise: bool,
+}
+
+/// Ce qu'il faut pour confirmer la remise **sans réseau** (K4).
+///
+/// ⚠ Seules des EMPREINTES : ni le code à 4 chiffres, ni le jeton ne sortent
+/// jamais du serveur (FR-037). Elles existent en base depuis le cycle 008
+/// (migration 0009, commentées « empreinte salée → coursier (offline CRS-04) »)
+/// sans que personne ne les ait encore lues — ce port est leur premier lecteur.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RemiseDeCourse {
+    /// Empreinte salée du code à 4 chiffres.
+    pub empreinte_code: String,
+    /// Empreinte du jeton de réception encodé dans le QR client.
+    pub empreinte_jeton: String,
+    /// Essais faux déjà comptés côté serveur.
+    pub essais_consommes: i16,
+    /// Saisie du code bloquée par l'exploitation ou par épuisement (FR-043).
+    pub code_bloque: bool,
+    /// Total à encaisser chez le client (unités mineures) — recalculé après
+    /// substitutions (FR-023).
+    pub montant_a_encaisser_unites: i64,
+    /// Cash ou prépayé : décide s'il y a quelque chose à encaisser.
+    pub mode_paiement: ModePaiement,
+    /// Arrêt de REMISE — celui que « je suis arrivé chez le client »
+    /// transitionne (FR-053).
+    ///
+    /// Il ne figure pas dans [`CourseDuCoursier::arrets`], qui ne porte que les
+    /// collectes : c'est ce qui permet à l'app de savoir que la course est
+    /// « toute collectée ». Mais sans son identifiant, le bouton de K3-1c
+    /// n'aurait rien à envoyer.
+    pub arret_remise_id: Option<Uuid>,
+    /// Statut de l'arrêt de remise (`a_collecter` → `en_route` → `arrive`).
+    pub arret_remise_statut: Option<StatutArret>,
+    /// Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052) et
+    /// base du délai des preuves d'échec.
+    pub arrive_chez_client_le: Option<DateTime<Utc>>,
+}
+
+/// La course active d'un coursier, telle que `commandes` la connaît.
+///
+/// Ce n'est PAS la structure servie à l'app : le crate `coursier` la compose
+/// avec les empreintes de plaque (`qr`) et le contact du vendeur
+/// (`prestataires`) pour produire sa propre `CourseComplete`. La frontière est
+/// exactement celle des domaines — `commandes` ne sait rien d'une plaque.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CourseDuCoursier {
+    /// Livraison active.
+    pub livraison_id: Uuid,
+    /// Commande portée.
+    pub commande_id: Uuid,
+    /// Zone de la commande — résout les paramètres de configuration.
+    pub zone_id: Uuid,
+    /// Où en est la livraison.
+    pub etat: EtatLivraison,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Arrêts de collecte, dans l'ordre de passage.
+    pub arrets: Vec<ArretDeCourse>,
+    /// Le client et son repère.
+    pub client: ClientDeCourse,
+    /// De quoi confirmer la remise hors ligne.
+    pub remise: RemiseDeCourse,
+}
+
+/// Un montant : un entier d'unités mineures et sa devise, jamais l'un sans
+/// l'autre (constitution III).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Montant {
+    /// Unités mineures.
+    pub unites: i64,
+    /// Code ISO 4217.
+    pub devise: String,
+}
+
+/// Une livraison remise dans la journée — base du bandeau de gains (FR-091).
+#[derive(Debug, Clone, PartialEq)]
+pub struct LivraisonLivree {
+    /// Livraison.
+    pub livraison_id: Uuid,
+    /// Commande portée.
+    pub commande_id: Uuid,
+    /// Part coursier du devis FIGÉ (unités mineures) — jamais recalculée.
+    pub part_coursier_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Instant de remise (horodatage serveur).
+    pub livree_le: DateTime<Utc>,
+}
+
+/// Contrat offert à **CRS** (coursier), cycle 010.
+///
+/// Une seule lecture doit suffire à faire fonctionner TOUTE la course hors
+/// ligne (FR-011, FR-028) : c'est pourquoi `course_active` rend les arrêts,
+/// leurs lignes, le client et les empreintes de remise d'un bloc, plutôt que de
+/// laisser l'appelant recoudre trois requêtes au pire moment.
+///
+/// Aucune dépendance inverse : `commandes` ne dépendra jamais de `coursier`,
+/// comme il ne dépend jamais de `dispatch`.
+#[async_trait]
+pub trait CourseCoursier: Send + Sync {
+    /// Course active complète d'un coursier. `None` si aucune course.
+    ///
+    /// « Active » = livraison `assignee`, `en_collecte` ou `en_livraison`. Une
+    /// livraison `livree` n'en est plus une : l'app doit basculer, pas garder
+    /// une course close à l'écran.
+    async fn course_active(
+        &self,
+        coursier: Uuid,
+    ) -> Result<Option<CourseDuCoursier>, ErreurCommandes>;
+
+    /// Montant total à encaisser, recalculé après substitutions (FR-023).
+    async fn montant_a_encaisser(&self, livraison: Uuid) -> Result<Montant, ErreurCommandes>;
+
+    /// Livraisons dont la remise est validée sur un jour civil de zone
+    /// (bandeau de gains, FR-091).
+    ///
+    /// Le jour est passé par l'appelant, déjà résolu dans le fuseau de la zone :
+    /// `commandes` n'a pas à connaître `zone.fuseau_horaire`, et un jour calculé
+    /// dans le fuseau du serveur ferait basculer les gains de Yao à minuit
+    /// UTC — c'est-à-dire à minuit tout court à Abidjan, mais par accident.
+    async fn livrees_du_jour(
+        &self,
+        coursier: Uuid,
+        debut: DateTime<Utc>,
+        fin: DateTime<Utc>,
+    ) -> Result<Vec<LivraisonLivree>, ErreurCommandes>;
+}
+
+/// Double de test de [`CourseCoursier`] : une course posée d'avance.
+///
+/// Patron `ArretsFixes` / `PreuvesFixes`. Il permet d'exercer la composition du
+/// crate `coursier` — plaque, contact vendeur, seuils de preuve — sans monter
+/// une base de commandes complète.
+#[derive(Debug, Default)]
+pub struct CourseFixe {
+    courses: Mutex<HashMap<Uuid, CourseDuCoursier>>,
+    livrees: Mutex<HashMap<Uuid, Vec<LivraisonLivree>>>,
+}
+
+impl CourseFixe {
+    /// Nouveau double : aucun coursier n'a de course.
+    pub fn nouveau() -> Self {
+        Self::default()
+    }
+
+    /// Pose la course active d'un coursier.
+    pub fn definir(&self, coursier: Uuid, course: CourseDuCoursier) {
+        self.courses
+            .lock()
+            .expect("courses")
+            .insert(coursier, course);
+    }
+
+    /// Retire la course (simule une clôture ou une réassignation).
+    pub fn retirer(&self, coursier: Uuid) {
+        self.courses.lock().expect("courses").remove(&coursier);
+    }
+
+    /// Pose les livraisons du jour d'un coursier.
+    pub fn definir_livrees(&self, coursier: Uuid, livrees: Vec<LivraisonLivree>) {
+        self.livrees
+            .lock()
+            .expect("livrees")
+            .insert(coursier, livrees);
+    }
+}
+
+#[async_trait]
+impl CourseCoursier for CourseFixe {
+    async fn course_active(
+        &self,
+        coursier: Uuid,
+    ) -> Result<Option<CourseDuCoursier>, ErreurCommandes> {
+        Ok(self.courses.lock().expect("courses").get(&coursier).cloned())
+    }
+
+    async fn montant_a_encaisser(&self, livraison: Uuid) -> Result<Montant, ErreurCommandes> {
+        let courses = self.courses.lock().expect("courses");
+        let course = courses
+            .values()
+            .find(|c| c.livraison_id == livraison)
+            .ok_or(ErreurCommandes::LivraisonInconnue(livraison))?;
+        Ok(Montant {
+            unites: course.remise.montant_a_encaisser_unites,
+            devise: course.devise.clone(),
+        })
+    }
+
+    async fn livrees_du_jour(
+        &self,
+        coursier: Uuid,
+        debut: DateTime<Utc>,
+        fin: DateTime<Utc>,
+    ) -> Result<Vec<LivraisonLivree>, ErreurCommandes> {
+        Ok(self
+            .livrees
+            .lock()
+            .expect("livrees")
+            .get(&coursier)
+            .map(|v| {
+                v.iter()
+                    .filter(|l| l.livree_le >= debut && l.livree_le < fin)
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default())
     }
 }
 
@@ -728,6 +1033,134 @@ mod tests {
             .await
             .unwrap()
             .is_none());
+    }
+
+    fn course_fixe_type(coursier: Uuid) -> CourseDuCoursier {
+        CourseDuCoursier {
+            livraison_id: Uuid::now_v7(),
+            commande_id: Uuid::now_v7(),
+            zone_id: Uuid::now_v7(),
+            etat: EtatLivraison::EnCollecte,
+            devise: "XOF".to_owned(),
+            arrets: vec![ArretDeCourse {
+                arret_id: Uuid::now_v7(),
+                ordre: 0,
+                prestataire_id: coursier,
+                site_lat: 5.898,
+                site_lon: -4.823,
+                distance_precedent_m: None,
+                montant_avance: 1_500,
+                statut: StatutArret::ACollecter,
+                en_route_le: None,
+                arrive_le: None,
+                collecte_le: None,
+                lignes: vec![LigneDeCourse {
+                    ligne_id: Uuid::now_v7(),
+                    libelle: "Tomates".to_owned(),
+                    quantite: 2,
+                    prix_unitaire_unites: 400,
+                    preference: PreferenceSubstitution::Appeler,
+                    statut: StatutLigne::Presente,
+                }],
+            }],
+            client: ClientDeCourse {
+                compte_id: Uuid::now_v7(),
+                nom_usage: None,
+                telephone: Some("+2250700000002".to_owned()),
+                repere_texte: Some("Cour verte après la pharmacie".to_owned()),
+                repere_vocal_cle: None,
+                repere_vocal_duree_s: None,
+                lieu_lat: 5.905,
+                lieu_lon: -4.830,
+                depot_autorise: false,
+            },
+            remise: RemiseDeCourse {
+                empreinte_code: "a1b2".to_owned(),
+                empreinte_jeton: "c3d4".to_owned(),
+                essais_consommes: 0,
+                code_bloque: false,
+                montant_a_encaisser_unites: 5_800,
+                mode_paiement: ModePaiement::Cash,
+                arret_remise_id: None,
+                arret_remise_statut: None,
+                arrive_chez_client_le: None,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn course_fixe_pose_et_retire_une_course() {
+        let coursier = Uuid::now_v7();
+        let fixe = CourseFixe::nouveau();
+        assert!(fixe.course_active(coursier).await.unwrap().is_none());
+
+        let course = course_fixe_type(coursier);
+        let livraison = course.livraison_id;
+        fixe.definir(coursier, course);
+        let vue = fixe.course_active(coursier).await.unwrap().unwrap();
+        assert_eq!(vue.arrets.len(), 1);
+        assert_eq!(vue.arrets[0].lignes.len(), 1);
+        assert_eq!(
+            fixe.montant_a_encaisser(livraison).await.unwrap(),
+            Montant {
+                unites: 5_800,
+                devise: "XOF".to_owned()
+            },
+        );
+
+        // Réassignation : la course disparaît du coursier, et le montant d'une
+        // livraison qu'il ne porte plus n'est plus lisible par lui.
+        fixe.retirer(coursier);
+        assert!(fixe.course_active(coursier).await.unwrap().is_none());
+        assert!(fixe.montant_a_encaisser(livraison).await.is_err());
+    }
+
+    /// Le double ne SERT que ce qui tombe dans la fenêtre du jour : sans ce
+    /// filtre, un test de bascule de jour civil (SC-013) passerait en comptant
+    /// les gains de la veille.
+    #[tokio::test]
+    async fn course_fixe_filtre_les_livrees_sur_la_fenetre() {
+        let coursier = Uuid::now_v7();
+        let fixe = CourseFixe::nouveau();
+        let minuit = "2026-07-28T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        let demain = "2026-07-29T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        let livree = |quand: &str| LivraisonLivree {
+            livraison_id: Uuid::now_v7(),
+            commande_id: Uuid::now_v7(),
+            part_coursier_unites: 1_200,
+            devise: "XOF".to_owned(),
+            livree_le: quand.parse().unwrap(),
+        };
+        fixe.definir_livrees(
+            coursier,
+            vec![
+                livree("2026-07-27T23:59:00Z"), // la veille
+                livree("2026-07-28T14:32:00Z"), // le jour
+                livree("2026-07-29T00:00:01Z"), // le lendemain
+            ],
+        );
+
+        let jour = fixe.livrees_du_jour(coursier, minuit, demain).await.unwrap();
+        assert_eq!(jour.len(), 1, "seule la course du jour compte");
+        assert_eq!(jour[0].part_coursier_unites, 1_200);
+    }
+
+    /// Aucun secret ne peut être posé dans la course : les champs n'existent
+    /// pas. Un test qui compile est ici la moitié de la preuve — l'autre moitié
+    /// est cette assertion sur ce qui EST servi (FR-037).
+    #[tokio::test]
+    async fn la_course_ne_porte_que_des_empreintes() {
+        let coursier = Uuid::now_v7();
+        let fixe = CourseFixe::nouveau();
+        fixe.definir(coursier, course_fixe_type(coursier));
+        let vue = fixe.course_active(coursier).await.unwrap().unwrap();
+        assert_eq!(vue.remise.empreinte_code, "a1b2");
+        assert_eq!(vue.remise.empreinte_jeton, "c3d4");
+        assert!(
+            vue.client.nom_usage.is_none(),
+            "aucune donnée nominative n'existe au MVP (cycle CPT 003) — le champ \
+             est servi optionnel, jamais fabriqué depuis le numéro",
+        );
     }
 
     #[tokio::test]

@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coursier.ecriture_caisse\n                   (id, coursier_id, type, montant_unites, devise, commande_id,\n                    livraison_id, arret_id, indemnisation_id, evenement_id)\n               VALUES ($1, $2, $3::text::coursier.type_ecriture, $4, $5, $6, $7, $8, $9, $10)\n               ON CONFLICT (evenement_id) DO NOTHING\n               RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.ecriture_caisse",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int8",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "410dbec019037880843d1d7c89b7f08183995d8fc078643199688be84b6a0316"
+}

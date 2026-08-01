@@ -25,5 +25,11 @@ void main() {
       // TODO
     });
 
+    // Clé d'idempotence (UUIDv7 produit par l'app, constitution V).  **Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue jusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois — deux sanctions, deux indemnisations, deux litiges (R4).
+    // String uuidClient
+    test('to test the property `uuidClient`', () async {
+      // TODO
+    });
+
   });
 }

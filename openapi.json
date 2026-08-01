@@ -64,6 +64,187 @@
         ]
       }
     },
+    "/admin/commandes/{commande_id}/code/debloquer": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "**FR-055** — l'exploitation lève le blocage du code, avec motif tracé.",
+        "description": "Le compteur d'essais retombe à zéro : une levée qui laisserait le compteur\nau plafond serait inopérante — le premier essai suivant rebloquerait la\ncommande, et l'exploitation croirait avoir agi.",
+        "operationId": "debloquer_code",
+        "parameters": [
+          {
+            "name": "commande_id",
+            "in": "path",
+            "description": "Commande dont le code est bloqué.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDeblocage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Blocage levé, compteur remis à zéro, événement émis."
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Le code n'est pas bloqué.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/commandes/{commande_id}/depot": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "**FR-116** — ouvre (ou referme) la voie « dépôt convenu » sur une commande.",
+        "description": "Le cadrage §7.4-5 dit « mode dépôt autorisé **par le client** ». Tant\nqu'aucune surface cliente ne le porte, c'est l'exploitation qui l'ouvre à sa\ndemande, au téléphone, avec un motif tracé — le contrat ne changera pas\nquand l'app cliente reprendra la main.\n\n**Fermé par défaut** : un défaut ouvert aurait rendu le dépôt possible\npartout sans que personne ne l'ait décidé.",
+        "operationId": "autoriser_depot",
+        "parameters": [
+          {
+            "name": "commande_id",
+            "in": "path",
+            "description": "Commande concernée.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDepot"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Décision enregistrée et tracée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionDepot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/commandes/{id}/annuler": {
       "post": {
         "tags": [
@@ -187,7 +368,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DemandeEchec"
+                "$ref": "#/components/schemas/DemandeIssueAdmin"
               }
             }
           },
@@ -500,6 +681,53 @@
         ]
       }
     },
+    "/admin/coursiers/exposition": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — le cash que la flotte porte en ce moment (FR-075).",
+        "description": "C'est le nombre qui dit combien d'argent de Mefali circule dans des poches.\nSans lui, une dérive ne se verrait qu'au comptage du soir.",
+        "operationId": "exposition_cash",
+        "responses": {
+          "200": {
+            "description": "Somme des avances non soldées, par coursier et au total.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpositionCash"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/dispatch/alertes": {
       "get": {
         "tags": [
@@ -662,6 +890,313 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PoolDeZone"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/indemnisations": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — la file des indemnisations (FR-071).",
+        "operationId": "file_indemnisations",
+        "parameters": [
+          {
+            "name": "etat",
+            "in": "query",
+            "description": "`demandee` | `validee` | `refusee`. Absent = toutes.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File des indemnisations, la plus récente d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileIndemnisations"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "État de filtre inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/indemnisations/{indemnisation_id}/refuser": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — refuse une indemnisation, **motif obligatoire**.",
+        "description": "Aucune écriture de caisse : rien n'entre, rien ne sort. Ce que Yao doit\npouvoir lire, c'est la raison (FR-072).",
+        "operationId": "refuser_indemnisation",
+        "parameters": [
+          {
+            "name": "indemnisation_id",
+            "in": "path",
+            "description": "Indemnisation à refuser.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIndemnisation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Refusée — aucune écriture de caisse.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndemnisationDecidee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Indemnisation inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà validée ou refusée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/indemnisations/{indemnisation_id}/valider": {
+      "post": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-06 (exploitation) — valide une indemnisation : l'argent entre au livre.",
+        "description": "L'écriture de caisse et l'événement partent dans la MÊME transaction que le\nchangement d'état : une validation sans son écriture laisserait Yao avec une\npromesse et rien dans sa caisse.",
+        "operationId": "valider_indemnisation",
+        "parameters": [
+          {
+            "name": "indemnisation_id",
+            "in": "path",
+            "description": "Indemnisation à valider.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validée — écriture de caisse portée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndemnisationDecidee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Indemnisation inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà validée ou refusée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/livraisons/{livraison_id}/preuves": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "CRS-05 (exploitation) — le dossier de preuves d'une livraison (FR-063).",
+        "description": "C'est ce qui rend les preuves **lisibles**. Sans cet endpoint, elles\nexisteraient en base sans que personne ne puisse répondre à un client qui\nconteste un échec — et une preuve que personne ne lit ne protège personne.\n\n⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.",
+        "operationId": "preuves_de_livraison",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison dont on lit les preuves.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dossier de preuves complet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreuvesExploitation"
                 }
               }
             }
@@ -2521,6 +3056,68 @@
         ]
       }
     },
+    "/admin/remises/bloquees": {
+      "get": {
+        "tags": [
+          "coursier-admin"
+        ],
+        "summary": "**FR-044** — les remises dont le code est épuisé et le blocage non levé.",
+        "description": "Le verrou du code protège un secret à quatre chiffres, mais il laisse une\ncommande à la porte du client. Sans cette lecture, l'alerte\n`remise.code_epuise` partirait dans l'outbox sans que personne ne puisse\nrépondre — et un humain ne s'abonne pas à un journal.",
+        "operationId": "remises_bloquees",
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "description": "Zone dont on veut les blocages. Absente = toutes les zones.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blocages en cours, le plus ancien d'abord.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemisesBloquees"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/tarification/brouillon/{grille_id}/publier": {
       "post": {
         "tags": [
@@ -3759,20 +4356,24 @@
     "/courses/active": {
       "get": {
         "tags": [
-          "qr"
+          "coursier"
         ],
-        "summary": "QRC-02 — course active du coursier + pré-provisionnement hors-ligne.",
+        "summary": "CRS-03 — course active du coursier, **complète** et pré-provisionnée.",
+        "description": "Cet endpoint a déménagé de `qr_http` : son contenu n'a plus rien à faire\ndans un domaine dont l'objet est la plaque. Le chemin ne bouge pas, et les\nchamps du cycle 006 restent là — l'app livrée continue de fonctionner\npendant la transition.\n\n`204` sans course : ce n'est pas une erreur, c'est une journée qui commence.",
         "operationId": "course_active",
         "responses": {
           "200": {
-            "description": "Course active du coursier (vide si aucune assignée).",
+            "description": "Course active complète : arrêts, lignes, client, empreintes de remise.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CourseActive"
+                  "$ref": "#/components/schemas/CourseActiveComplete"
                 }
               }
             }
+          },
+          "204": {
+            "description": "Aucune course assignée."
           },
           "401": {
             "description": "Session absente/révoquée.",
@@ -4113,6 +4714,172 @@
           },
           "409": {
             "description": "Offre déjà conclue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/appels": {
+      "post": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-03 — journalise un appel passé **via l'app** (FR-030, FR-031, FR-033).",
+        "description": "⚠ **Aucun numéro** n'est transmis ni journalisé : le serveur ne voit pas\nl'appel, il part du téléphone. Il en garde l'intention, la direction, le\nmotif et l'issue déclarée.\n\nIdempotent par `uuid_client` : le rejeu rend `200` et le même corps, sans\nseconde ligne ni second événement.",
+        "operationId": "journaliser_appel",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeAppel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu idempotent — même corps, aucune écriture.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppelEnregistre"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Appel journalisé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppelEnregistre"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Demande mal formée (appel vendeur sans prestataire).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-03 — déclare (ou corrige) l'issue d'un appel (FR-036, R19).",
+        "description": "Le serveur ne peut pas l'observer : l'appel part du téléphone. Cette issue\nsert l'affichage de K4-1e et **n'est jamais un critère de preuve** — un\ncoursier qui déclarerait « sans réponse » à tort ne gagne rien.",
+        "operationId": "declarer_issue_appel",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueAppelDeclaree"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Issue mise à jour.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppelEnregistre"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Appel inconnu pour cette livraison.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4515,13 +5282,241 @@
         ]
       }
     },
+    "/courses/{livraison_id}/presence": {
+      "post": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-05 — enregistre un lot de relevés de présence (FR-061, FR-064).",
+        "description": "L'app envoie des **échantillons**, jamais une durée : c'est le serveur qui\ncompte, en ignorant tout intervalle supérieur au « trou » de la zone. Sans\ncette règle, deux relevés espacés de dix minutes vaudraient dix minutes de\nprésence, et un aller-retour vaudrait une attente (R8).\n\nIdempotent par `uuid_client` : un lot rejoué par la file rend le même corps.",
+        "operationId": "enregistrer_presence",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotDePresence"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Lot enregistré, présence recalculée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceEnregistree"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Lot vide, trop grand, ou distance invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/preuves": {
+      "get": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-05 — état des trois preuves et **ce qui manque** (FR-058, FR-062).",
+        "description": "C'est la **même fonction** que celle qui garde `POST /courses/{id}/echec` :\nl'écran et le serveur ne peuvent pas diverger (FR-059, FR-060). Un bouton\nactif dont la déclaration serait refusée serait pire qu'un bouton inactif.",
+        "operationId": "etat_preuves",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "État détaillé des trois preuves.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtatPreuves"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/courses/{livraison_id}/preuves/photo": {
+      "post": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-05 — dépose une photo de preuve d'échec (FR-056, FR-064).",
+        "description": "**Multipart** pour la même raison que la remise (R18) : la photo voyage AVEC\nla demande, donc dans la file hors-ligne. Une preuve qui exigerait du réseau\nau moment de la prise serait une preuve qu'on ne peut pas réunir là où elle\nsert — devant une porte close, dans un quartier sans couverture.\n\nIdempotent par `uuid_client` : le rejeu ne redépose rien et ne compte pas une\nseconde photo.",
+        "operationId": "deposer_photo_preuve",
+        "parameters": [
+          {
+            "name": "livraison_id",
+            "in": "path",
+            "description": "Livraison de la course active du coursier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Partie `demande` (JSON) + `photo` binaire.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoPreuveMultipart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rejeu idempotent — aucune écriture.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoPreuveDeposee"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Photo déposée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoPreuveDeposee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Course d'un autre coursier, ou rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Photo vide ou partie `demande` illisible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/courses/{livraison_id}/remise": {
       "post": {
         "tags": [
           "courses"
         ],
         "summary": "CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.",
-        "description": "⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a\nl'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu\ncôté serveur, sur la valeur stockée.\n\nTrois codes faux et le code est **verrouillé** (`423`) jusqu'à intervention\nadmin : quatre chiffres se devinent en quelques minutes sans plafond.",
+        "description": "⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a\nl'empreinte, et c'est le client qui le lui dicte. La comparaison a lieu\ncôté serveur, sur la valeur stockée.\n\nTrois codes faux et la **saisie par code** est verrouillée (`423`) jusqu'à\nintervention admin : quatre chiffres se devinent en quelques minutes sans\nplafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa\nlong, il ne se devine pas.\n\n**Multipart** depuis CRS 010 (R18) : la partie `photo` voyage AVEC la\ndemande, donc dans la file hors-ligne. Référencer un objet « déjà déposé »\nfaisait de la voie dépôt la seule des trois à exiger du réseau.",
         "operationId": "remise",
         "parameters": [
           {
@@ -4536,10 +5531,11 @@
           }
         ],
         "requestBody": {
+          "description": "Partie `demande` (JSON) + `photo` binaire du dépôt.",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/DemandeRemise"
+                "$ref": "#/components/schemas/RemiseMultipart"
               }
             }
           },
@@ -4547,7 +5543,7 @@
         },
         "responses": {
           "200": {
-            "description": "Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé.",
+            "description": "Remise validée : livraison LIVRÉE, commande TERMINÉE, paiement réglé. `rejeu = true` si le même `uuid_client` avait déjà abouti.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4597,7 +5593,7 @@
             }
           },
           "422": {
-            "description": "Demande mal formée (jeton, code ou photo manquant).",
+            "description": "Demande mal formée (jeton, code ou photo manquant), ou **dépôt non autorisé** sur cette commande.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5225,6 +6221,53 @@
         ]
       }
     },
+    "/moi/caisse": {
+      "get": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-06 — la caisse du coursier (FR-067 → FR-077).",
+        "description": "Yao sort de l'argent de sa poche à chaque arrêt et le récupère chez le\nclient. Entre les deux, il porte le risque : cet endpoint est la seule façon\nqu'il a de vérifier que « le coursier ne perd jamais » est vrai.\n\n⚠ Une avance sur commande **prépayée** ne sera jamais soldée en espèces\n(PAY, tranche T3) : elle reste comptée et **annoncée comme telle** plutôt que\nmasquée — la masquer la ferait disparaître de l'écran dont c'est la seule\nraison d'être (R10, FR-117).",
+        "operationId": "ma_caisse",
+        "responses": {
+          "200": {
+            "description": "Avances en cours, historique du jour, indemnisations, litiges.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VueCaisse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/commandes": {
       "get": {
         "tags": [
@@ -5518,6 +6561,63 @@
           },
           "422": {
             "description": "Incomplet, véhicule hors zone, fichier trop volumineux ou type refusé, en-tête d'idempotence absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/moi/journee": {
+      "get": {
+        "tags": [
+          "coursier"
+        ],
+        "summary": "CRS-01 — la journée du coursier (FR-091 → FR-095).",
+        "description": "⚠ **Composé DANS CE HANDLER**, et c'est le seul du cycle : les gains et les\navances viennent de `coursier`, le plafond retenu et le taux d'acceptation de\n`dispatch`. Faire dépendre l'un de l'autre pour deux nombres créerait une\narête permanente entre deux domaines qui n'ont rien à se dire\n(`contracts/ports-coursier.md` §2). `api` détient déjà les deux dépôts.\n\nLa **note reste absente** : le module d'avis n'existe pas, et K1 afficherait\nun « 4,8 / 5 » que rien ne peut alimenter. Le cycle 009 avait déjà tranché.",
+        "operationId": "ma_journee",
+        "responses": {
+          "200": {
+            "description": "Gains du jour, plafond retenu, reste disponible, taux d'acceptation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneeCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente/révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier coursier invalide.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6940,6 +8040,74 @@
           }
         }
       },
+      "AppelEnregistre": {
+        "type": "object",
+        "description": "Ce que le serveur rend après avoir journalisé un appel.",
+        "required": [
+          "appel_id",
+          "compte_pour_preuve"
+        ],
+        "properties": {
+          "appel_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Appel journalisé."
+          },
+          "compte_pour_preuve": {
+            "type": "boolean",
+            "description": "Cet appel compte-t-il pour la preuve d'échec ?"
+          }
+        }
+      },
+      "AppelJournalise": {
+        "type": "object",
+        "description": "Un appel journalisé, tel que l'exploitation le lit.",
+        "required": [
+          "id",
+          "vers",
+          "motif",
+          "issue",
+          "passe_le",
+          "passe_le_local"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Appel."
+          },
+          "issue": {
+            "type": "string",
+            "description": "Issue DÉCLARÉE par le coursier — affichée, jamais un critère (R19)."
+          },
+          "motif": {
+            "type": "string",
+            "description": "`suivi` | `substitution` | `client_absent`."
+          },
+          "passe_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage **serveur** — celui qui fonde l'espacement."
+          },
+          "passe_le_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil — observation seulement."
+          },
+          "prestataire_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Prestataire appelé (si `vers = vendeur`)."
+          },
+          "vers": {
+            "type": "string",
+            "description": "`client` | `vendeur`. **Aucun numéro** — le serveur n'en a jamais vu."
+          }
+        }
+      },
       "ArretCourantSuivi": {
         "type": "object",
         "description": "L'arrêt où en est le coursier.",
@@ -6969,6 +8137,128 @@
           "statut": {
             "type": "string",
             "description": "Statut de l'arrêt."
+          }
+        }
+      },
+      "ArretCourse": {
+        "type": "object",
+        "description": "Un arrêt de collecte, complet.",
+        "required": [
+          "arret_id",
+          "ordre",
+          "prestataire_id",
+          "nom",
+          "site_lat",
+          "site_lon",
+          "empreinte_jeton",
+          "empreinte_code",
+          "montant_avance",
+          "photo_exigee",
+          "distance_max_m",
+          "statut",
+          "lignes"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt de la course."
+          },
+          "arrive_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Arrivée sur l'arrêt."
+          },
+          "collecte_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Collecte validée."
+          },
+          "distance_max_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rayon max de scan (m)."
+          },
+          "distance_precedent_m": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Distance depuis l'arrêt précédent (m). **Absente** : le tronçon n'est pas\nfigé au devis et ce cycle ne recalcule aucun itinéraire (FR-009)."
+          },
+          "empreinte_code": {
+            "type": "string",
+            "description": "base16(sha256(prestataire ‖ code)) — mode dégradé hors-ligne."
+          },
+          "empreinte_jeton": {
+            "type": "string",
+            "description": "base16(sha256(jeton)) — match hors-ligne du QR de plaque."
+          },
+          "en_route_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Départ déclaré vers l'arrêt."
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneArret"
+            },
+            "description": "Articles à acheter chez ce vendeur."
+          },
+          "montant_avance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant à avancer à CE vendeur, lignes retirées exclues (FR-013)."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom du vendeur."
+          },
+          "ordre": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Rang dans l'ordre optimisé."
+          },
+          "photo_exigee": {
+            "type": "boolean",
+            "description": "Photo de récupération exigée (politique résolue)."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Prestataire visé."
+          },
+          "site_lat": {
+            "type": "number",
+            "format": "double",
+            "description": "Position attendue du site."
+          },
+          "site_lon": {
+            "type": "number",
+            "format": "double",
+            "description": "Position attendue du site."
+          },
+          "statut": {
+            "type": "string",
+            "description": "`a_collecter` | `en_route` | `arrive` | `collecte` | `indisponible`."
+          },
+          "telephone_vendeur": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Contact du vendeur — appel HORS LIGNE (R6). Jamais journalisé."
           }
         }
       },
@@ -7002,75 +8292,6 @@
             ],
             "format": "uuid",
             "description": "Prestataire visé."
-          }
-        }
-      },
-      "ArretPreProvisionne": {
-        "type": "object",
-        "description": "Arrêt pré-provisionné (empreintes, jamais de secret).",
-        "required": [
-          "arret_id",
-          "prestataire_id",
-          "nom",
-          "empreinte_jeton",
-          "empreinte_code",
-          "site_lat",
-          "site_lon",
-          "montant_avance",
-          "devise",
-          "photo_exigee",
-          "distance_max_m"
-        ],
-        "properties": {
-          "arret_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Arrêt à collecter."
-          },
-          "devise": {
-            "type": "string",
-            "description": "Devise ISO 4217."
-          },
-          "distance_max_m": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Rayon max de scan (m) — validation de proximité hors-ligne."
-          },
-          "empreinte_code": {
-            "type": "string",
-            "description": "base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne."
-          },
-          "empreinte_jeton": {
-            "type": "string",
-            "description": "base16(sha256(jeton)) — match hors-ligne du QR scanné."
-          },
-          "montant_avance": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Montant avancé (unités mineures)."
-          },
-          "nom": {
-            "type": "string",
-            "description": "Nom du prestataire (affiché sur la carte K3)."
-          },
-          "photo_exigee": {
-            "type": "boolean",
-            "description": "Photo exigée (politique résolue)."
-          },
-          "prestataire_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Prestataire visé."
-          },
-          "site_lat": {
-            "type": "number",
-            "format": "double",
-            "description": "Position attendue du site."
-          },
-          "site_lon": {
-            "type": "number",
-            "format": "double",
-            "description": "Position attendue du site."
           }
         }
       },
@@ -7406,6 +8627,71 @@
           "version_charte": {
             "type": "string",
             "description": "Version de charte en vigueur à la signature."
+          }
+        }
+      },
+      "ClientCourse": {
+        "type": "object",
+        "description": "Le client et son repère (K3-1c, K4).",
+        "required": [
+          "depot_autorise"
+        ],
+        "properties": {
+          "depot_autorise": {
+            "type": "boolean",
+            "description": "La voie « dépôt » est-elle ouverte sur cette commande (FR-039) ?"
+          },
+          "lieu_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Point de livraison."
+          },
+          "lieu_lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Point de livraison."
+          },
+          "nom_usage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nom d'usage. **Absent** tant que le produit n'en porte aucun (cycle CPT\n003 : « un numéro vérifié, rien d'autre ») — l'app affiche le repère."
+          },
+          "repere_texte": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Repère écrit."
+          },
+          "repere_vocal_duree_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Durée de la note vocale (s)."
+          },
+          "repere_vocal_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL **présignée** de la note vocale — à télécharger tout de suite pour\nla jouer hors ligne (FR-024)."
+          },
+          "telephone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Contact du client. Jamais journalisé, effacé du cache à la clôture (R6)."
           }
         }
       },
@@ -7929,27 +9215,51 @@
           }
         }
       },
-      "CourseActive": {
+      "CourseActiveComplete": {
         "type": "object",
-        "description": "Course active du coursier + arrêts pré-provisionnés.",
+        "description": "La course active, pré-provisionnée pour fonctionner hors ligne.",
         "required": [
-          "arrets"
+          "livraison_id",
+          "commande_id",
+          "etat",
+          "devise",
+          "arrets",
+          "client",
+          "remise"
         ],
         "properties": {
           "arrets": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ArretPreProvisionne"
+              "$ref": "#/components/schemas/ArretCourse"
             },
-            "description": "Arrêts à collecter, avec empreintes."
+            "description": "Arrêts de collecte, dans l'ordre de passage."
+          },
+          "client": {
+            "$ref": "#/components/schemas/ClientCourse",
+            "description": "Le client et son repère."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande portée."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`assignee` | `en_collecte` | `en_livraison`."
           },
           "livraison_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "format": "uuid",
-            "description": "Livraison active (première des arrêts), `None` si aucune."
+            "description": "Livraison active."
+          },
+          "remise": {
+            "$ref": "#/components/schemas/RemisePreprovisionnee",
+            "description": "De quoi confirmer la remise hors ligne."
           }
         }
       },
@@ -8171,6 +9481,43 @@
           }
         }
       },
+      "DecisionDepot": {
+        "type": "object",
+        "description": "État de la voie dépôt après décision.",
+        "required": [
+          "commande_id",
+          "depot_autorise",
+          "motif_cle"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "depot_autorise": {
+            "type": "boolean",
+            "description": "La voie dépôt est-elle ouverte ?"
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Motif retenu."
+          }
+        }
+      },
+      "DecisionIndemnisation": {
+        "type": "object",
+        "description": "Corps d'une décision d'indemnisation.",
+        "properties": {
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif — **obligatoire au refus** (FR-072). Un refus sans\nraison rend la promesse d'indemnisation invérifiable."
+          }
+        }
+      },
       "DecisionOffre": {
         "type": "object",
         "description": "Décision sur une offre — accepter ou refuser.",
@@ -8235,6 +9582,51 @@
               "null"
             ],
             "description": "Clé i18n du motif. **Obligatoire pour un admin** (FR-054), facultative\npour le client — il n'a pas à se justifier."
+          }
+        }
+      },
+      "DemandeAppel": {
+        "type": "object",
+        "description": "Corps de déclaration d'un appel passé via l'app.",
+        "required": [
+          "uuid_client",
+          "vers",
+          "motif",
+          "passe_le_local"
+        ],
+        "properties": {
+          "issue": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Issue DÉCLARÉE : `inconnue` | `sans_reponse` | `repondu`. Facultative —\nle serveur ne voit pas l'appel, il ne peut que la recevoir (R19)."
+          },
+          "motif": {
+            "type": "string",
+            "description": "`suivi` | `substitution` | `client_absent`. **Seul `client_absent`\ncompte** pour la preuve d'échec (FR-035)."
+          },
+          "passe_le_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'appareil — observation seulement."
+          },
+          "prestataire_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Prestataire appelé — obligatoire si `vers = vendeur`."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 client, constitution V)."
+          },
+          "vers": {
+            "type": "string",
+            "description": "`client` | `vendeur`."
           }
         }
       },
@@ -8359,6 +9751,37 @@
           }
         }
       },
+      "DemandeDeblocage": {
+        "type": "object",
+        "description": "Motif d'une décision d'exploitation — **jamais du texte libre**.",
+        "required": [
+          "motif_cle"
+        ],
+        "properties": {
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif (obligatoire)."
+          }
+        }
+      },
+      "DemandeDepot": {
+        "type": "object",
+        "description": "Ouverture ou fermeture de la voie « dépôt » sur une commande.",
+        "required": [
+          "autorise",
+          "motif_cle"
+        ],
+        "properties": {
+          "autorise": {
+            "type": "boolean",
+            "description": "`true` ouvre la voie, `false` la referme."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif (obligatoire dans les deux sens)."
+          }
+        }
+      },
       "DemandeDevisPanier": {
         "type": "object",
         "description": "Demande de devis de panier — **aucun effet de bord** (P4).",
@@ -8399,6 +9822,38 @@
       "DemandeEchec": {
         "type": "object",
         "description": "Déclaration d'un échec (arbre §7.5).",
+        "required": [
+          "uuid_client",
+          "type_issue",
+          "motif_cle"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt concerné — absent = à la remise."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif — jamais du texte libre."
+          },
+          "type_issue": {
+            "type": "string",
+            "description": "Ligne de l'arbre §7.5 (`refus_perissable`, `faux_billet`…)."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V).\n\n**Obligatoire** depuis CRS 010 : un échec déclaré sans réseau se rejoue\njusqu'à acquittement, et sans elle l'arbre §7.5 se déroulait deux fois\n— deux sanctions, deux indemnisations, deux litiges (R4)."
+          }
+        }
+      },
+      "DemandeIssueAdmin": {
+        "type": "object",
+        "description": "Enregistrement d'une issue §7.5 **par l'exploitation**.\n\nVolontairement distinct du DTO coursier : celui-ci exige un `uuid_client`\n(sa file hors-ligne rejoue), l'admin n'en a pas — chaque clic est une action\nneuve, sur un écran connecté. Partager le DTO aurait obligé l'exploitation à\nfabriquer un identifiant d'idempotence qui ne correspond à rien chez elle.",
         "required": [
           "type_issue",
           "motif_cle"
@@ -8441,6 +9896,28 @@
           }
         }
       },
+      "DemandePhotoPreuve": {
+        "type": "object",
+        "description": "Partie `demande` du multipart de photo de preuve.",
+        "required": [
+          "uuid_client"
+        ],
+        "properties": {
+          "prise_le_local": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Horodatage de la prise de vue sur l'appareil. **Observation** — retenu\ncomme date de prise pour que l'ordre des photos reste celui du terrain."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V)."
+          }
+        }
+      },
       "DemandeRafraichissement": {
         "type": "object",
         "description": "Corps de `POST /auth/rafraichir`.",
@@ -8456,8 +9933,9 @@
       },
       "DemandeRemise": {
         "type": "object",
-        "description": "Preuve de remise présentée par le coursier.",
+        "description": "Preuve de remise présentée par le coursier — partie `demande` du multipart.",
         "required": [
+          "uuid_client",
           "mode"
         ],
         "properties": {
@@ -8467,6 +9945,39 @@
               "null"
             ],
             "description": "Code à 4 chiffres dicté par le client (mode `code`)."
+          },
+          "confirme_le_local": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Horodatage de l'appareil. **Observation seulement**."
+          },
+          "depot_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Latitude du coursier au dépôt (mode `depot`, FR-048)."
+          },
+          "depot_lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Longitude du coursier au dépôt (mode `depot`, FR-048)."
+          },
+          "essais_hors_ligne": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais faux consommés **hors ligne**, consolidés en `max()` côté serveur\ncontre le seuil de zone `commande.essais_code_livraison` (R5)."
+          },
+          "hors_ligne": {
+            "type": "boolean",
+            "description": "La validation a-t-elle eu lieu sans réseau ? Journalisé, jamais décisif —\nle serveur revalide la preuve ici même (FR-046)."
           },
           "jeton": {
             "type": [
@@ -8484,7 +9995,12 @@
               "string",
               "null"
             ],
-            "description": "Clé de la photo déposée sur place (mode `depot`)."
+            "description": "Clé d'une photo **déjà** déposée (mode `depot`) — compatibilité du cycle\n008 ; l'app coursier envoie la partie binaire `photo` (R18)."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence (UUIDv7 produit par l'app, constitution V).\n\n**Obligatoire** depuis CRS 010 : sans elle, un rejeu de la file clôturait\ndeux fois la même course (R4)."
           }
         }
       },
@@ -9272,6 +10788,48 @@
           }
         }
       },
+      "EtatPreuves": {
+        "type": "object",
+        "description": "L'état des trois preuves, et **ce qui manque** (contrat §1.4).",
+        "required": [
+          "appels",
+          "presence",
+          "photos",
+          "reunies",
+          "reunies_sur",
+          "total"
+        ],
+        "properties": {
+          "appels": {
+            "$ref": "#/components/schemas/PreuveAppels",
+            "description": "Preuve « appels »."
+          },
+          "photos": {
+            "$ref": "#/components/schemas/PreuvePhotos",
+            "description": "Preuve « photo »."
+          },
+          "presence": {
+            "$ref": "#/components/schemas/PreuvePresence",
+            "description": "Preuve « présence »."
+          },
+          "reunies": {
+            "type": "boolean",
+            "description": "Les trois sont réunies — l'échec devient déclarable."
+          },
+          "reunies_sur": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Compteur « N sur 3 » de K4-1e.",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Toujours 3 — le compteur n'a de sens que si le total est explicite.",
+            "minimum": 0
+          }
+        }
+      },
       "EtatPublicationPosition": {
         "type": "object",
         "description": "Ce que la publication rend à l'app.",
@@ -9327,6 +10885,39 @@
           "statut": {
             "type": "string",
             "description": "Statut courant."
+          }
+        }
+      },
+      "ExpositionCash": {
+        "type": "object",
+        "description": "Ce que l'exploitation voit du cash en circulation (FR-075).",
+        "required": [
+          "total_unites",
+          "devise",
+          "au",
+          "par_coursier"
+        ],
+        "properties": {
+          "au": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant de la lecture — l'exposition est vraie **à quelques secondes**\nprès (délai du worker outbox, SC-010 l'accepte explicitement)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "par_coursier": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneExposition"
+            },
+            "description": "Détail, du plus exposé au moins exposé."
+          },
+          "total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total en circulation."
           }
         }
       },
@@ -9409,6 +11000,22 @@
               "$ref": "#/components/schemas/CommandeEnAttente"
             },
             "description": "Commandes en attente, **la plus ancienne d'abord** (FIFO par âge)."
+          }
+        }
+      },
+      "FileIndemnisations": {
+        "type": "object",
+        "description": "La file des indemnisations.",
+        "required": [
+          "indemnisations"
+        ],
+        "properties": {
+          "indemnisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndemnisationVue"
+            },
+            "description": "Indemnisations, la plus récente d'abord."
           }
         }
       },
@@ -9625,6 +11232,108 @@
           }
         }
       },
+      "IndemnisationDecidee": {
+        "type": "object",
+        "description": "Ce qu'une décision produit.",
+        "required": [
+          "id",
+          "etat"
+        ],
+        "properties": {
+          "ecriture_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Écriture de caisse produite — **seulement** à la validation."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`validee` | `refusee`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Indemnisation décidée."
+          }
+        }
+      },
+      "IndemnisationVue": {
+        "type": "object",
+        "description": "Une indemnisation, telle que la caisse l'affiche.",
+        "required": [
+          "id",
+          "commande_id",
+          "commande_reference",
+          "montant_unites",
+          "devise",
+          "etat",
+          "motif_cle",
+          "cree_le"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande d'origine."
+          },
+          "commande_reference": {
+            "type": "string",
+            "description": "Référence lisible de la commande."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Naissance de la demande."
+          },
+          "decide_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Quand la décision a été prise."
+          },
+          "decision_motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif de décision (refus surtout)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`demandee` | `validee` | `refusee`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Indemnisation."
+          },
+          "litige_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Litige rattaché — **absent** tant qu'AVI-04 n'existe pas (R16)."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant (unités mineures, positif)."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif."
+          }
+        }
+      },
       "Inscription": {
         "type": "object",
         "description": "Corps de `POST /auth/inscription`.",
@@ -9653,6 +11362,25 @@
               "null"
             ],
             "description": "`suivi` (défaut) | `substitution` | `expiration`."
+          }
+        }
+      },
+      "IssueAppelDeclaree": {
+        "type": "object",
+        "description": "Corps de mise à jour de l'issue déclarée d'un appel.",
+        "required": [
+          "uuid_client",
+          "issue"
+        ],
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "`inconnue` | `sans_reponse` | `repondu`."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence de l'appel à mettre à jour."
           }
         }
       },
@@ -9838,6 +11566,65 @@
           }
         }
       },
+      "JourneeCoursier": {
+        "type": "object",
+        "description": "Ce que Yao a gagné aujourd'hui, et ce qu'il peut encore engager (K1-1a).",
+        "required": [
+          "courses_livrees",
+          "gains_unites",
+          "devise",
+          "plafond_retenu_unites",
+          "reste_disponible_unites",
+          "avances_en_cours_unites"
+        ],
+        "properties": {
+          "avances_en_cours_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Argent encore dehors, à l'origine de l'amputation ci-dessus."
+          },
+          "courses_livrees": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Courses dont la remise est validée dans le jour civil **de la zone**."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "gains_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Somme des parts coursier de ces courses (devis FIGÉ du cycle 007)."
+          },
+          "note_centiemes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "**Toujours `null`** tant qu'AVI n'est pas construit (FR-094) : l'absence\nvaut mieux qu'un chiffre inventé."
+          },
+          "plafond_retenu_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Plafond d'avance qui s'applique — `min(déclaré, palier de la grille)`."
+          },
+          "reste_disponible_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qu'il reste engageable : plafond retenu **moins** avances en cours\n(FR-095). Jamais négatif — un « reste » négatif ne veut rien dire à\nl'écran ; l'écart, lui, est signalé par la caisse (FR-078)."
+          },
+          "taux_acceptation_pourcent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Taux d'acceptation tenu par le dispatch, ou `null` si aucune offre\ndécidable n'a été émise sur la fenêtre (FR-093)."
+          }
+        }
+      },
       "Lieu": {
         "type": "object",
         "description": "Position d'un lieu (pin GPS).",
@@ -9855,6 +11642,47 @@
             "type": "number",
             "format": "double",
             "description": "Longitude."
+          }
+        }
+      },
+      "LigneArret": {
+        "type": "object",
+        "description": "Une ligne d'article à acheter chez un vendeur (K3).",
+        "required": [
+          "ligne_id",
+          "libelle",
+          "quantite",
+          "prix_unitaire_unites",
+          "preference_substitution",
+          "statut"
+        ],
+        "properties": {
+          "libelle": {
+            "type": "string",
+            "description": "Libellé de l'article."
+          },
+          "ligne_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ligne de commande."
+          },
+          "preference_substitution": {
+            "type": "string",
+            "description": "`remplacer` | `appeler` | `retirer`."
+          },
+          "prix_unitaire_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix unitaire VERROUILLÉ à la création (unités mineures)."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité commandée."
+          },
+          "statut": {
+            "type": "string",
+            "description": "`presente` | `remplacee` | `retiree`."
           }
         }
       },
@@ -9900,6 +11728,98 @@
           }
         }
       },
+      "LigneExposition": {
+        "type": "object",
+        "description": "L'exposition d'un coursier.",
+        "required": [
+          "coursier_id",
+          "nom",
+          "avance_unites",
+          "courses"
+        ],
+        "properties": {
+          "avance_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Avance en cours (unités mineures, positif)."
+          },
+          "courses": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Courses concernées."
+          },
+          "coursier_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Coursier."
+          },
+          "nom": {
+            "type": "string",
+            "description": "Nom d'usage. **Vide** tant que le produit n'en porte aucun (cycle CPT\n003 : « un numéro vérifié, rien d'autre ») — un nom fabriqué depuis le\nnuméro serait pire qu'une absence."
+          }
+        }
+      },
+      "LigneHistoriqueCaisse": {
+        "type": "object",
+        "description": "Une course de l'historique du jour — **trois chiffres** (K5-1a).",
+        "required": [
+          "commande_id",
+          "reference",
+          "avance_unites",
+          "rembourse_unites",
+          "gain_unites",
+          "terminee",
+          "en_attente_reglement",
+          "heure"
+        ],
+        "properties": {
+          "avance_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce que le coursier a avancé (positif)."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "en_attente_reglement": {
+            "type": "boolean",
+            "description": "Avance NON SOLDÉE parce que la commande était prépayée (R10, FR-117)."
+          },
+          "gain_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sa part sur cette course (devis figé du cycle 007)."
+          },
+          "heure": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Heure de la première écriture (horodatage serveur)."
+          },
+          "livraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Livraison concernée."
+          },
+          "reference": {
+            "type": "string",
+            "description": "Référence lisible (`#418`) — de quoi se parler au téléphone."
+          },
+          "rembourse_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qu'il a récupéré (positif)."
+          },
+          "terminee": {
+            "type": "boolean",
+            "description": "La course est-elle terminée ?"
+          }
+        }
+      },
       "LignePanier": {
         "type": "object",
         "description": "Une ligne de panier soumise.",
@@ -9933,6 +11853,48 @@
           }
         }
       },
+      "LitigeVu": {
+        "type": "object",
+        "description": "Un litige en cours vu par le coursier (K5-1c).",
+        "required": [
+          "id",
+          "commande_id",
+          "reference",
+          "etat_cle",
+          "montant_unites",
+          "ouvert_le"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "etat_cle": {
+            "type": "string",
+            "description": "Clé i18n de l'état affiché."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Litige."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant en jeu (unités mineures)."
+          },
+          "ouvert_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ouverture."
+          },
+          "reference": {
+            "type": "string",
+            "description": "Référence lisible."
+          }
+        }
+      },
       "LivraisonCommande": {
         "type": "object",
         "description": "La livraison créée avec la commande.",
@@ -9960,6 +11922,22 @@
             "type": "integer",
             "format": "int64",
             "description": "Nombre d'arrêts (collectes + remise)."
+          }
+        }
+      },
+      "LotDePresence": {
+        "type": "object",
+        "description": "Lot de relevés — la file peut en avoir accumulé plusieurs minutes.",
+        "required": [
+          "releves"
+        ],
+        "properties": {
+          "releves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleveDePresence"
+            },
+            "description": "Les échantillons du lot."
           }
         }
       },
@@ -10311,6 +12289,85 @@
           }
         }
       },
+      "PhotoPreuve": {
+        "type": "object",
+        "description": "Une photo de preuve, présignée.",
+        "required": [
+          "id",
+          "prise_le"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Photo."
+          },
+          "prise_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Prise le."
+          },
+          "purgee_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Purgée le — la preuve reste **datée**, ses octets sont partis."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL présignée de courte durée. Absente si purgée ou indisponible."
+          }
+        }
+      },
+      "PhotoPreuveDeposee": {
+        "type": "object",
+        "description": "Ce que le serveur rend après le dépôt d'une photo de preuve.",
+        "required": [
+          "photo_id",
+          "photos",
+          "rejeu"
+        ],
+        "properties": {
+          "photo_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Photo enregistrée."
+          },
+          "photos": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Photos de preuve de cette livraison après dépôt."
+          },
+          "rejeu": {
+            "type": "boolean",
+            "description": "`true` si la photo existait déjà (rejeu de la file) — rien n'a été redéposé."
+          }
+        }
+      },
+      "PhotoPreuveMultipart": {
+        "type": "object",
+        "description": "Schéma OpenAPI du multipart de photo de preuve (partie `demande` + `photo`).",
+        "required": [
+          "demande",
+          "photo"
+        ],
+        "properties": {
+          "demande": {
+            "$ref": "#/components/schemas/DemandePhotoPreuve",
+            "description": "Partie JSON `demande`."
+          },
+          "photo": {
+            "type": "string",
+            "format": "binary",
+            "description": "Photo de la porte close."
+          }
+        }
+      },
       "PlageDto": {
         "type": "object",
         "description": "Une plage d'ouverture, heures locales `HH:MM` (FR-031).",
@@ -10423,6 +12480,32 @@
             "type": "number",
             "format": "double",
             "description": "Longitude."
+          }
+        }
+      },
+      "PresenceEnregistree": {
+        "type": "object",
+        "description": "Ce que le serveur rend après avoir enregistré un lot de présence.",
+        "required": [
+          "retenus",
+          "presence_s",
+          "requis_s"
+        ],
+        "properties": {
+          "presence_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Présence **recalculée par le serveur**, en secondes (FR-060)."
+          },
+          "requis_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée exigée par la zone."
+          },
+          "retenus": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Relevés du lot connus du serveur — identique au rejeu (constitution V)."
           }
         }
       },
@@ -10591,6 +12674,154 @@
           "statut": {
             "$ref": "#/components/schemas/StatutPrestataire",
             "description": "Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact."
+          }
+        }
+      },
+      "PreuveAppels": {
+        "type": "object",
+        "description": "Preuve « appels » — nombre ET espacement (FR-056).",
+        "required": [
+          "faits",
+          "requis",
+          "espacement_ok",
+          "horodatages",
+          "issues",
+          "ok"
+        ],
+        "properties": {
+          "espacement_ok": {
+            "type": "boolean",
+            "description": "Faux dès qu'un appel a été écarté pour cause d'espacement."
+          },
+          "faits": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appels `client_absent` **retenus** (espacement respecté)."
+          },
+          "horodatages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Horodatages **serveur** des appels retenus (affichage K4-1e)."
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Issues DÉCLARÉES par le coursier — affichées, jamais un critère (R19)."
+          },
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pourquoi elle ne l'est pas — clé i18n."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "Preuve réunie."
+          },
+          "requis": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appels exigés par la zone."
+          }
+        }
+      },
+      "PreuvePhotos": {
+        "type": "object",
+        "description": "Preuve « photo » (FR-056).",
+        "required": [
+          "faites",
+          "requis",
+          "ok"
+        ],
+        "properties": {
+          "faites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Photos déposées."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "Preuve réunie."
+          },
+          "requis": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Photos exigées."
+          }
+        }
+      },
+      "PreuvePresence": {
+        "type": "object",
+        "description": "Preuve « présence » — durée mesurée, trous exclus (FR-056).",
+        "required": [
+          "secondes",
+          "requis",
+          "ok"
+        ],
+        "properties": {
+          "motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pourquoi elle ne l'est pas — clé i18n."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "Preuve réunie."
+          },
+          "requis": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée exigée par la zone."
+          },
+          "secondes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Durée retenue (s), recalculée par le serveur."
+          }
+        }
+      },
+      "PreuvesExploitation": {
+        "type": "object",
+        "description": "Le dossier de preuves d'une livraison (FR-063).",
+        "required": [
+          "appels",
+          "photos",
+          "etat"
+        ],
+        "properties": {
+          "appels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppelJournalise"
+            },
+            "description": "**Tous** les appels — ceux qui ne comptent pas éclairent autant que les\nautres quand un client conteste."
+          },
+          "etat": {
+            "$ref": "#/components/schemas/EtatPreuves",
+            "description": "L'état recalculé des trois preuves, et ce qui manque."
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhotoPreuve"
+            },
+            "description": "Photos de preuve."
+          },
+          "reunies_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Instant du basculement — absent si les trois preuves ne l'ont jamais été."
           }
         }
       },
@@ -10966,6 +13197,196 @@
           }
         }
       },
+      "ReleveDePresence": {
+        "type": "object",
+        "description": "Un échantillon de présence tel que l'app le déclare.",
+        "required": [
+          "uuid_client",
+          "distance_m",
+          "releve_le_local"
+        ],
+        "properties": {
+          "distance_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Éloignement du point de livraison, en mètres **arrondis**.\n\n⚠ Une distance, **jamais une position** : le serveur ne stocke aucune\ncoordonnée, donc n'en fuite aucune (R8, patron ARTCI du cycle 006)."
+          },
+          "releve_le_local": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage de l'échantillon sur l'appareil."
+          },
+          "uuid_client": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Clé d'idempotence du relevé (UUIDv7 client, constitution V)."
+          }
+        }
+      },
+      "RemiseBloquee": {
+        "type": "object",
+        "description": "Une commande dont le code de remise est bloqué.",
+        "required": [
+          "commande_id",
+          "reference",
+          "zone_id",
+          "essais_code",
+          "bloque_le"
+        ],
+        "properties": {
+          "bloque_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Instant du blocage — **l'ordre de la liste**, le plus ancien d'abord."
+          },
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande verrouillée."
+          },
+          "coursier_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Coursier assigné, s'il l'est encore."
+          },
+          "essais_code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais consommés au blocage."
+          },
+          "livraison_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Livraison portée — celle où le coursier est resté devant la porte."
+          },
+          "reference": {
+            "type": "string",
+            "description": "Référence courte, pour se parler au téléphone."
+          },
+          "zone_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Zone de la commande."
+          }
+        }
+      },
+      "RemiseMultipart": {
+        "type": "object",
+        "description": "Schéma OpenAPI du multipart de remise (partie `demande` + partie `photo`).",
+        "required": [
+          "demande"
+        ],
+        "properties": {
+          "demande": {
+            "$ref": "#/components/schemas/DemandeRemise",
+            "description": "Partie JSON `demande`."
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Photo du dépôt sur place (mode `depot` — FR-048)."
+          }
+        }
+      },
+      "RemisePreprovisionnee": {
+        "type": "object",
+        "description": "De quoi confirmer la remise **sans réseau** (K4).",
+        "required": [
+          "empreinte_code",
+          "empreinte_jeton",
+          "essais_consommes",
+          "essais_max",
+          "code_bloque",
+          "montant_a_encaisser_unites",
+          "mode_paiement",
+          "preuves"
+        ],
+        "properties": {
+          "arret_remise_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt de REMISE — la cible de « je suis arrivé chez le client »\n(FR-053). Il n'est PAS dans `arrets`, qui ne porte que les collectes."
+          },
+          "arret_remise_statut": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Statut de l'arrêt de remise (`a_collecter` | `en_route` | `arrive`)."
+          },
+          "arrive_chez_client_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Instant SERVEUR d'arrivée chez le client — affiché sur K4-1a (FR-052)."
+          },
+          "code_bloque": {
+            "type": "boolean",
+            "description": "Saisie du code bloquée (K4-1d)."
+          },
+          "empreinte_code": {
+            "type": "string",
+            "description": "Empreinte salée du code à 4 chiffres — **jamais le code** (FR-037)."
+          },
+          "empreinte_jeton": {
+            "type": "string",
+            "description": "Empreinte du jeton de réception — **jamais le jeton**."
+          },
+          "essais_consommes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Essais faux déjà comptés côté serveur."
+          },
+          "essais_max": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Seuil de zone `commande.essais_code_livraison` (cycle 008, réutilisé)."
+          },
+          "mode_paiement": {
+            "type": "string",
+            "description": "`cash` | `mobile_money`."
+          },
+          "montant_a_encaisser_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total à encaisser chez le client (unités mineures)."
+          },
+          "preuves": {
+            "$ref": "#/components/schemas/SeuilsPreuves",
+            "description": "Seuils de preuve de la zone."
+          }
+        }
+      },
+      "RemisesBloquees": {
+        "type": "object",
+        "description": "La file des blocages d'une zone.",
+        "required": [
+          "remises"
+        ],
+        "properties": {
+          "remises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RemiseBloquee"
+            },
+            "description": "Commandes bloquées, **la plus ancienne d'abord**."
+          }
+        }
+      },
       "RemplacementRepereVocal": {
         "type": "object",
         "description": "Nouveau repère parlé pour une adresse existante.",
@@ -11144,7 +13565,8 @@
           "commande_id",
           "livraison_id",
           "mode_remise",
-          "essais_code"
+          "essais_code",
+          "rejeu"
         ],
         "properties": {
           "commande_id": {
@@ -11155,7 +13577,7 @@
           "essais_code": {
             "type": "integer",
             "format": "int32",
-            "description": "Essais de code consommés."
+            "description": "Essais de code consommés (consolidés serveur + hors ligne)."
           },
           "livraison_id": {
             "type": "string",
@@ -11165,6 +13587,10 @@
           "mode_remise": {
             "type": "string",
             "description": "Mode retenu."
+          },
+          "rejeu": {
+            "type": "boolean",
+            "description": "`true` si l'appel n'était qu'un **rejeu** du même `uuid_client` : rien\nn'a été réécrit ni ré-émis (R4)."
           }
         }
       },
@@ -11345,6 +13771,44 @@
           "resultat": {
             "$ref": "#/components/schemas/DiscriminantSession",
             "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
+      "SeuilsPreuves": {
+        "type": "object",
+        "description": "Les seuils de preuve d'échec de la zone.",
+        "required": [
+          "appels_min",
+          "espacement_s",
+          "presence_s",
+          "rayon_m",
+          "photos_min"
+        ],
+        "properties": {
+          "appels_min": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appels `client_absent` exigés."
+          },
+          "espacement_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Espacement minimal entre deux appels retenus (s)."
+          },
+          "photos_min": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Photos exigées."
+          },
+          "presence_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Présence continue exigée (s)."
+          },
+          "rayon_m": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rayon dans lequel un relevé compte (m)."
           }
         }
       },
@@ -11763,6 +14227,66 @@
             "type": "string",
             "format": "uuid",
             "description": "Zone de l'app."
+          }
+        }
+      },
+      "VueCaisse": {
+        "type": "object",
+        "description": "Tout l'écran caisse (K5-1a), en une lecture.",
+        "required": [
+          "avance_en_cours_unites",
+          "courses_concernees",
+          "avances_en_attente_reglement_unites",
+          "historique_du_jour",
+          "indemnisations",
+          "litiges_en_cours",
+          "devise",
+          "ecart_plafond"
+        ],
+        "properties": {
+          "avance_en_cours_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Argent avancé et non encore récupéré (FR-067) — toujours positif."
+          },
+          "avances_en_attente_reglement_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part que le cash ne soldera jamais (commandes prépayées, R10, FR-117)."
+          },
+          "courses_concernees": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combien de courses portent cette avance."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217 de la zone."
+          },
+          "ecart_plafond": {
+            "type": "boolean",
+            "description": "Les avances en cours dépassent le plafond déclaré du jour (FR-078)."
+          },
+          "historique_du_jour": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneHistoriqueCaisse"
+            },
+            "description": "Historique du jour civil **de la zone**."
+          },
+          "indemnisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndemnisationVue"
+            },
+            "description": "Indemnisations rattachées."
+          },
+          "litiges_en_cours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LitigeVu"
+            },
+            "description": "Litiges en cours — vide tant qu'AVI-04 n'existe pas."
           }
         }
       }

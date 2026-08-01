@@ -553,11 +553,12 @@ class CoursesApi {
   }
 
   /// CMD-08 — remise au client : QR, code de secours, ou dépôt convenu.
-  /// ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l&#39;empreinte, et c&#39;est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et le code est **verrouillé** (&#x60;423&#x60;) jusqu&#39;à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond.
+  /// ⚠ Le coursier ne reçoit **JAMAIS** le code (research R6) : il en a l&#39;empreinte, et c&#39;est le client qui le lui dicte. La comparaison a lieu côté serveur, sur la valeur stockée.  Trois codes faux et la **saisie par code** est verrouillée (&#x60;423&#x60;) jusqu&#39;à intervention admin : quatre chiffres se devinent en quelques minutes sans plafond. Le **scan QR reste ouvert** (FR-043, K4-1d) — le jeton est un aléa long, il ne se devine pas.  **Multipart** depuis CRS 010 (R18) : la partie &#x60;photo&#x60; voyage AVEC la demande, donc dans la file hors-ligne. Référencer un objet « déjà déposé » faisait de la voie dépôt la seule des trois à exiger du réseau.
   ///
   /// Parameters:
   /// * [livraisonId] - Course assignée à l'appelant.
-  /// * [demandeRemise] 
+  /// * [demande] - Partie JSON `demande`.
+  /// * [photo] - Photo du dépôt sur place (mode `depot` — FR-048).
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -569,7 +570,8 @@ class CoursesApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<ResultatRemise>> remise({ 
     required String livraisonId,
-    required DemandeRemise demandeRemise,
+    required DemandeRemise demande,
+    MultipartFile? photo,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -593,15 +595,17 @@ class CoursesApi {
         ],
         ...?extra,
       },
-      contentType: 'application/json',
+      contentType: 'multipart/form-data',
       validateStatus: validateStatus,
     );
 
     dynamic _bodyData;
 
     try {
-      const _type = FullType(DemandeRemise);
-      _bodyData = _serializers.serialize(demandeRemise, specifiedType: _type);
+      _bodyData = FormData.fromMap(<String, dynamic>{
+        r'demande': encodeFormParameter(_serializers, demande, const FullType(DemandeRemise)),
+        r'photo': photo,
+      });
 
     } catch(error, stackTrace) {
       throw DioException(

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(\n                          lc.quantite * COALESCE(lc.remplace_prix_unites, pf.prix_unites)\n                      ) FILTER (WHERE lc.statut <> 'retiree'), 0)::bigint AS \"montant!\"\n                 FROM commandes.ligne_commande lc\n                 JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id\n                WHERE lc.arret_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "montant!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5200d4f024516c2667a80e4cb97ae5327fb155d631a98548227ed780e47e617f"
+}

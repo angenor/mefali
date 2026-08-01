@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.arrive_le\n                 FROM commandes.arret a\n                 JOIN commandes.segment s ON s.id = a.segment_id\n                WHERE s.livraison_id = $1 AND a.type_arret = 'remise'\n                ORDER BY s.ordre DESC, a.ordre DESC\n                LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "arrive_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "commandes.arret",
+            "name": "arrive_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "912d370f28808c47e558f1f9979667f4315ff121a280a19241aa25759aab5a31"
+}

@@ -10,7 +10,6 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**collecter**](QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
-[**courseActive**](QrApi.md#courseactive) | **GET** /courses/active | QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
 [**telechargerPlaque**](QrApi.md#telechargerplaque) | **GET** /admin/prestataires/{id}/plaque | QRC-01 — télécharge (génère au besoin) le PDF de plaque d&#39;un prestataire.
 
 
@@ -55,43 +54,6 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: multipart/form-data
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **courseActive**
-> CourseActive courseActive()
-
-QRC-02 — course active du coursier + pré-provisionnement hors-ligne.
-
-### Example
-```dart
-import 'package:mefali_api_client/api.dart';
-
-final api = MefaliApiClient().getQrApi();
-
-try {
-    final response = api.courseActive();
-    print(response);
-} on DioException catch (e) {
-    print('Exception when calling QrApi->courseActive: $e\n');
-}
-```
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-[**CourseActive**](CourseActive.md)
-
-### Authorization
-
-[bearerAuth](../README.md#bearerAuth)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
