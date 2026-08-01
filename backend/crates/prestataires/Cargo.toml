@@ -19,6 +19,12 @@ zones.workspace = true
 # Attribution du rôle vendeur au rattachement (`PgComptes::decider_role`, R11)
 # et types `Role`/`StatutRole` de la machine à états du cycle 003.
 comptes.workspace = true
+# VND-08 minimal (cycle 011, research R10) : `offre_livraison` rend le type
+# `tarification::OffreLivraison` TEL QUEL — le moteur de tarification est déjà
+# le seul à arbitrer l'offre contre le drapeau de zone. Le traduire ici
+# créerait une seconde vérité tarifaire. Aucun cycle de dépendances : le crate
+# `tarification` ne connaît pas `prestataires`.
+tarification.workspace = true
 sqlx.workspace = true
 serde.workspace = true
 serde_json.workspace = true

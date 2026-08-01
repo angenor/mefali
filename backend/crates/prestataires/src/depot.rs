@@ -125,4 +125,38 @@ impl PgPrestataires {
     pub fn zones(&self) -> &dyn ConfigurationZones {
         &self.zones
     }
+
+    /// VND-08 minimal — l'offre de livraison déclarée par le vendeur, telle que
+    /// `tarification` sait la lire (cycle 011, research R10).
+    ///
+    /// `None` couvre le cas `jamais` : le devis ne reçoit alors AUCUNE offre, ce
+    /// qui est exactement ce que `DemandeDevis::offre_livraison_vendeur: None`
+    /// signifie déjà. Un troisième variant « aucune » ferait dire deux fois la
+    /// même chose à deux types.
+    ///
+    /// La cohérence `au_dela ⇒ seuil > 0` est tenue par le `CHECK`
+    /// `offre_livraison_seuil_coherent` (migration 0021) : si la base la
+    /// violait, ce serait une corruption, pas un cas métier — d'où le
+    /// `PrestataireInconnu` plutôt qu'une variante d'erreur nouvelle.
+    pub async fn offre_livraison(
+        &self,
+        prestataire: Uuid,
+    ) -> Result<Option<tarification::OffreLivraison>, ErreurPrestataires> {
+        let ligne = sqlx::query!(
+            r#"SELECT offre_livraison::text AS "offre!", offre_livraison_seuil_unites
+               FROM prestataires.prestataire WHERE id = $1"#,
+            prestataire,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(ErreurPrestataires::PrestataireInconnu(prestataire))?;
+
+        Ok(match ligne.offre.as_str() {
+            "toujours" => Some(tarification::OffreLivraison::Toujours),
+            "au_dela" => ligne
+                .offre_livraison_seuil_unites
+                .map(tarification::OffreLivraison::AuDela),
+            _ => None,
+        })
+    }
 }
