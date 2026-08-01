@@ -20,7 +20,8 @@ use zones::PgZones;
 
 use crate::config::ConfigPaiements;
 use crate::modele::{
-    Dossier, ErreurPaiements, EtatDossier, EtatTransaction, MoyenPaiement, Transaction, TypeDossier,
+    Dossier, ErreurPaiements, EtatDossier, EtatTransaction, LigneRegistre, MoyenPaiement,
+    Transaction, TypeDossier,
 };
 
 /// Dépôt Postgres du domaine paiement.
@@ -461,6 +462,109 @@ impl PgPaiements {
             clos_le: l.clos_le,
             clos_motif_cle: l.clos_motif_cle,
         }))
+    }
+
+    /// Registre des transactions, filtrable (FR-080, FR-081).
+    ///
+    /// Chaque ligne porte `reference_fournisseur` ET `commande_id` : le
+    /// rapprochement dans les deux sens se lit sans jointure manuelle. Une
+    /// transaction est marquée **orpheline** quand elle a encaissé de l'argent
+    /// que plus aucune commande vivante n'attend — c'est le cas exact du
+    /// paiement hors délai (R8), et c'est ce que l'exploitation cherche.
+    pub async fn registre_transactions(
+        &self,
+        etat: Option<&str>,
+        moyen: Option<&str>,
+        commande: Option<Uuid>,
+        depuis: Option<DateTime<Utc>>,
+        jusqu_a: Option<DateTime<Utc>>,
+    ) -> Result<Vec<LigneRegistre>, ErreurPaiements> {
+        let lignes = sqlx::query!(
+            r#"SELECT t.id, t.commande_id, t.montant_unites, t.devise,
+                      t.etat::text  AS "etat!",
+                      t.moyen::text AS "moyen!",
+                      t.fournisseur, t.reference_fournisseur,
+                      t.ouverte_le, t.issue_le,
+                      c.etat::text AS "etat_commande?"
+                 FROM paiements.transaction t
+                 LEFT JOIN commandes.commande c ON c.id = t.commande_id
+                WHERE ($1::text IS NULL OR t.etat::text = $1)
+                  AND ($2::text IS NULL OR t.moyen::text = $2)
+                  AND ($3::uuid IS NULL OR t.commande_id = $3)
+                  AND ($4::timestamptz IS NULL OR t.ouverte_le >= $4)
+                  AND ($5::timestamptz IS NULL OR t.ouverte_le <= $5)
+                ORDER BY t.ouverte_le DESC, t.id DESC"#,
+            etat,
+            moyen,
+            commande,
+            depuis,
+            jusqu_a,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(lignes
+            .into_iter()
+            .map(|l| LigneRegistre {
+                // De l'argent encaissé qu'aucune commande vivante n'attend.
+                orpheline: l.etat == "payee_hors_delai"
+                    || l.etat_commande.as_deref() == Some("annulee"),
+                id: l.id,
+                commande_id: l.commande_id,
+                montant_unites: l.montant_unites,
+                devise: l.devise,
+                etat: l.etat,
+                moyen: l.moyen,
+                fournisseur: l.fournisseur,
+                reference_fournisseur: l.reference_fournisseur,
+                ouverte_le: l.ouverte_le,
+                issue_le: l.issue_le,
+            })
+            .collect())
+    }
+
+    /// File des dossiers d'anomalie, filtrable (FR-082).
+    pub async fn lister_dossiers(
+        &self,
+        etat: Option<&str>,
+        type_dossier: Option<&str>,
+    ) -> Result<Vec<Dossier>, ErreurPaiements> {
+        let lignes = sqlx::query!(
+            r#"SELECT id,
+                      type_dossier AS "type_dossier!: TypeDossier",
+                      etat AS "etat!: EtatDossier",
+                      commande_id, transaction_id, arret_id,
+                      montant_constate, montant_attendu, devise, motif_cle,
+                      ouvert_le, clos_par, clos_le, clos_motif_cle
+                 FROM paiements.dossier
+                WHERE ($1::text IS NULL OR etat::text = $1)
+                  AND ($2::text IS NULL OR type_dossier::text = $2)
+                ORDER BY ouvert_le DESC, id DESC"#,
+            etat,
+            type_dossier,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(lignes
+            .into_iter()
+            .map(|l| Dossier {
+                id: l.id,
+                type_dossier: l.type_dossier,
+                etat: l.etat,
+                commande_id: l.commande_id,
+                transaction_id: l.transaction_id,
+                arret_id: l.arret_id,
+                montant_constate: l.montant_constate,
+                montant_attendu: l.montant_attendu,
+                devise: l.devise,
+                motif_cle: l.motif_cle,
+                ouvert_le: l.ouvert_le,
+                clos_par: l.clos_par,
+                clos_le: l.clos_le,
+                clos_motif_cle: l.clos_motif_cle,
+            })
+            .collect())
     }
 
     /// Clôt un dossier. **Refuse** un second appel : la clôture n'est pas une

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(\n                          CASE WHEN e.type = 'frais_encaisses'\n                               THEN LEAST(e.montant_unites, COALESCE(l.devis_marge, 0))\n                               -- Un reversement est NÉGATIF au livre : le\n                               -- sommer tel quel retranche déjà ce que Yao a\n                               -- rendu.\n                               ELSE e.montant_unites\n                          END), 0)::bigint AS \"total!\"\n                 FROM coursier.ecriture_caisse e\n                 LEFT JOIN commandes.livraison l ON l.id = e.livraison_id\n                WHERE e.coursier_id = $1\n                  AND e.type IN ('frais_encaisses', 'reversement')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "38ad70a6b62f26f67db6bfc40f023aef603952dda8b584d2d270eb08a1bb62ea"
+}

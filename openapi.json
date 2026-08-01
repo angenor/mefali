@@ -728,6 +728,187 @@
         ]
       }
     },
+    "/admin/creances": {
+      "get": {
+        "tags": [
+          "paiements-admin"
+        ],
+        "summary": "File des créances de coursiers (FR-083).",
+        "operationId": "file_creances",
+        "parameters": [
+          {
+            "name": "etat",
+            "in": "query",
+            "description": "`due` | `reglee`. Absent = toutes.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "coursier_id",
+            "in": "query",
+            "description": "Créances d'un coursier donné.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Créances, la plus récente d'abord, avec le total dû. Elles naissent SEULES à la livraison : l'exploitation les règle, elle ne les crée pas (FR-063).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileCreances"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "État de filtre inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/creances/{id}/regler": {
+      "post": {
+        "tags": [
+          "paiements-admin"
+        ],
+        "summary": "Marque une créance réglée et écrit son mouvement de caisse (FR-067).",
+        "operationId": "regler_creance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Créance due.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglerCreanceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Réglée — la créance et son écriture de caisse `reglement` sont écrites dans la MÊME transaction (research R12). Émet `caisse.creance_reglee`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Creance"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Créance inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Créance déjà réglée. Le marquage n'est pas une bascule : une erreur se corrige par une écriture INVERSE au livre (FR-064).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/dispatch/alertes": {
       "get": {
         "tags": [
@@ -1197,6 +1378,287 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PreuvesExploitation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/paiements/dossiers": {
+      "get": {
+        "tags": [
+          "paiements-admin"
+        ],
+        "summary": "File des anomalies d'argent (FR-082).",
+        "operationId": "file_dossiers",
+        "parameters": [
+          {
+            "name": "etat",
+            "in": "query",
+            "description": "`ouvert` | `clos`. Absent = tous.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Type de dossier (`montant_divergent`, `retenue_ecretee`, …).",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dossiers, le plus récent d'abord. Quatre familles y apparaissent : divergence de montant ou de devise, paiement hors délai, transaction orpheline, retenue écrêtée, remboursement dû.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileDossiers"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/paiements/dossiers/{id}/clore": {
+      "post": {
+        "tags": [
+          "paiements-admin"
+        ],
+        "summary": "Clôt un dossier, avec motif (FR-082).",
+        "operationId": "clore_dossier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Dossier ouvert.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloreDossierDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Clos — l'auteur et l'instant sont conservés.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierPaiement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dossier inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dossier déjà clos. La clôture n'est pas une bascule : rouvrir effacerait la trace de ce qui a été décidé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Motif absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/paiements/transactions": {
+      "get": {
+        "tags": [
+          "paiements-admin"
+        ],
+        "summary": "Registre filtrable des transactions de paiement (FR-080, FR-081).",
+        "operationId": "registre_transactions",
+        "parameters": [
+          {
+            "name": "etat",
+            "in": "query",
+            "description": "`ouverte` | `reglee` | `echouee` | `expiree` | `payee_hors_delai`.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "moyen",
+            "in": "query",
+            "description": "Moyen employé (`wave`, `orange_money`, …).",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "commande_id",
+            "in": "query",
+            "description": "Rapprochement par commande — l'autre sens de FR-081.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "depuis",
+            "in": "query",
+            "description": "Borne basse d'ouverture (incluse).",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "jusqu_a",
+            "in": "query",
+            "description": "Borne haute d'ouverture (incluse).",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registre, la plus récente d'abord. Chaque ligne porte la référence fournisseur ET la commande : le rapprochement se lit dans les deux sens sans jointure manuelle (FR-081).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistreTransactions"
                 }
               }
             }
@@ -9218,6 +9680,19 @@
           }
         }
       },
+      "CloreDossierDto": {
+        "type": "object",
+        "description": "Corps de clôture — le motif est **obligatoire**.",
+        "required": [
+          "motif_cle"
+        ],
+        "properties": {
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif de clôture. Un dossier clos sans motif ne dit pas ce\nqui a été fait de l'argent — c'est-à-dire rien."
+          }
+        }
+      },
       "CollecteMultipart": {
         "type": "object",
         "description": "Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler\nlit bien un `multipart/form-data`, pas un JSON — le client généré produit\nalors un vrai multipart). Sert UNIQUEMENT à `#[utoipa::path]`.",
@@ -9926,6 +10401,61 @@
               "null"
             ],
             "description": "Prénom — **toujours `null` ce cycle** : `comptes.compte` ne porte aucun\nnom (cycle CPT), et rien ne sera inventé pour remplir un champ."
+          }
+        }
+      },
+      "Creance": {
+        "type": "object",
+        "description": "Une créance de coursier (FR-094).",
+        "required": [
+          "id",
+          "commande_id",
+          "nature",
+          "montant_unites",
+          "devise",
+          "etat",
+          "cree_le"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande d'origine."
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Naissance — automatique, à la livraison (FR-063)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`due` | `reglee`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifiant."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant dû (unités mineures)."
+          },
+          "nature": {
+            "type": "string",
+            "description": "`avance_prepayee` | `part_course`."
+          },
+          "regle_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Instant du règlement, `null` tant qu'elle est due."
           }
         }
       },
@@ -11034,6 +11564,103 @@
           }
         }
       },
+      "DossierPaiement": {
+        "type": "object",
+        "description": "Un dossier d'anomalie.",
+        "required": [
+          "id",
+          "type",
+          "etat",
+          "motif_cle",
+          "ouvert_le"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Arrêt concerné (retenue écrêtée)."
+          },
+          "clos_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Clôture."
+          },
+          "clos_motif_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motif de clôture — clé i18n également."
+          },
+          "commande_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Commande concernée."
+          },
+          "devise": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "`ouvert` | `clos`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Dossier."
+          },
+          "montant_attendu": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant attendu."
+          },
+          "montant_constate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant constaté."
+          },
+          "motif_cle": {
+            "type": "string",
+            "description": "Motif — **clé i18n**, jamais un texte libre."
+          },
+          "ouvert_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ouverture."
+          },
+          "transaction_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Transaction concernée."
+          },
+          "type": {
+            "type": "string",
+            "description": "Famille d'anomalie."
+          }
+        }
+      },
       "DrapeauxZone": {
         "type": "object",
         "description": "Drapeaux de zone appliqués.",
@@ -11523,6 +12150,44 @@
               "$ref": "#/components/schemas/CommandeEnAttente"
             },
             "description": "Commandes en attente, **la plus ancienne d'abord** (FIFO par âge)."
+          }
+        }
+      },
+      "FileCreances": {
+        "type": "object",
+        "description": "La file des créances, avec son total dû.",
+        "required": [
+          "creances",
+          "total_du_unites"
+        ],
+        "properties": {
+          "creances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Creance"
+            },
+            "description": "Créances, la plus récente d'abord."
+          },
+          "total_du_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Somme des créances **dues** de la sélection — l'exposition de Mefali\nenvers ses coursiers (FR-065)."
+          }
+        }
+      },
+      "FileDossiers": {
+        "type": "object",
+        "description": "La file des anomalies d'argent.",
+        "required": [
+          "dossiers"
+        ],
+        "properties": {
+          "dossiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DossierPaiement"
+            },
+            "description": "Dossiers, le plus récent d'abord."
           }
         }
       },
@@ -12412,6 +13077,78 @@
           }
         }
       },
+      "LigneRegistre": {
+        "type": "object",
+        "description": "Une ligne du registre.",
+        "required": [
+          "id",
+          "commande_id",
+          "montant_unites",
+          "devise",
+          "etat",
+          "moyen",
+          "fournisseur",
+          "ouverte_le",
+          "orpheline"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande rapprochée — le rapprochement se lit sans jointure manuelle."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État de la transaction."
+          },
+          "fournisseur": {
+            "type": "string",
+            "description": "Fournisseur qui a encaissé."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Transaction."
+          },
+          "issue_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Issue définitive."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant figé."
+          },
+          "moyen": {
+            "type": "string",
+            "description": "Moyen employé — `inconnu` tant que le fournisseur ne l'a pas dit."
+          },
+          "orpheline": {
+            "type": "boolean",
+            "description": "De l'argent encaissé qu'aucune commande vivante n'attend (FR-082)."
+          },
+          "ouverte_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ouverture."
+          },
+          "reference_fournisseur": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Référence côté fournisseur — le rapprochement dans l'AUTRE sens."
+          }
+        }
+      },
       "LitigeVu": {
         "type": "object",
         "description": "Un litige en cours vu par le coursier (K5-1c).",
@@ -13114,6 +13851,32 @@
           }
         }
       },
+      "PositionsCaisse": {
+        "type": "object",
+        "description": "Les trois positions de la caisse — « où est cet argent ? » (FR-060).\n\nElles ne se recouvrent pas : avancé non récupéré (Yao a sorti l'argent),\ndû par Mefali (une dette formelle, qui se règle), détenu pour Mefali (il a\nde l'argent qui n'est PAS à lui).",
+        "required": [
+          "avance_non_recuperee_unites",
+          "du_par_mefali_unites",
+          "detenu_pour_mefali_unites"
+        ],
+        "properties": {
+          "avance_non_recuperee_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Σ avances non compensées par un remboursement."
+          },
+          "detenu_pour_mefali_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Marge encaissée non reversée — **0 au MVP** (marge nulle jusqu'à M4).\nS'affiche quand même : une position absente se lirait comme une position\noubliée."
+          },
+          "du_par_mefali_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Σ créances dues."
+          }
+        }
+      },
       "PresenceEnregistree": {
         "type": "object",
         "description": "Ce que le serveur rend après avoir enregistré un lot de présence.",
@@ -13727,6 +14490,28 @@
           }
         }
       },
+      "RegistreTransactions": {
+        "type": "object",
+        "description": "Le registre, avec son total.",
+        "required": [
+          "transactions",
+          "total_regle_unites"
+        ],
+        "properties": {
+          "total_regle_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Somme des montants **réglés** de la sélection — ce que le fournisseur\ndoit avoir encaissé."
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneRegistre"
+            },
+            "description": "Lignes, la plus récente d'abord."
+          }
+        }
+      },
       "Regle": {
         "type": "object",
         "description": "Règle servie à l'admin.",
@@ -13978,6 +14763,19 @@
           "transport_slug": {
             "type": "string",
             "description": "Slug du véhicule (référentiel `zones.type_transport`)."
+          }
+        }
+      },
+      "ReglerCreanceDto": {
+        "type": "object",
+        "description": "Corps du règlement — motif **obligatoire**.",
+        "required": [
+          "motif_cle"
+        ],
+        "properties": {
+          "motif_cle": {
+            "type": "string",
+            "description": "Clé i18n du motif (`creance.reglement.virement_agence`, …). Sans lui,\n« réglée » ne dit pas COMMENT — et c'est la première question posée\nquand un coursier conteste."
           }
         }
       },
@@ -15099,6 +15897,8 @@
           "mouvements",
           "indemnisations",
           "litiges_en_cours",
+          "positions",
+          "creances",
           "devise",
           "ecart_plafond"
         ],
@@ -15117,6 +15917,13 @@
             "type": "integer",
             "format": "int64",
             "description": "Combien de courses portent cette avance."
+          },
+          "creances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Creance"
+            },
+            "description": "Créances du coursier, les plus récentes d'abord. Additif également."
           },
           "devise": {
             "type": "string",
@@ -15153,6 +15960,10 @@
               "$ref": "#/components/schemas/MouvementCaisse"
             },
             "description": "Mouvements du livre du jour, du plus récent au plus ancien."
+          },
+          "positions": {
+            "$ref": "#/components/schemas/PositionsCaisse",
+            "description": "**Les trois positions** (cycle PAY 011, FR-060/FR-094).\n\nChamp ADDITIF : l'app livrée l'ignore et continue de fonctionner\npendant la transition."
           }
         }
       }

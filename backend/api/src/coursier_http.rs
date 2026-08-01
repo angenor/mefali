@@ -77,10 +77,14 @@ pub fn statut_coursier(e: &ErreurCoursier) -> StatusCode {
     match e {
         ErreurCoursier::AucuneCourseActive => StatusCode::NO_CONTENT,
         ErreurCoursier::CourseNonProprietaire => StatusCode::FORBIDDEN,
-        ErreurCoursier::IndemnisationInconnue(_) => StatusCode::NOT_FOUND,
+        ErreurCoursier::IndemnisationInconnue(_)
+        | ErreurCoursier::CreanceInconnue(_) => StatusCode::NOT_FOUND,
         ErreurCoursier::PreuvesIncompletes
         | ErreurCoursier::IndemnisationDejaDecidee
-        | ErreurCoursier::CodeNonBloque => StatusCode::CONFLICT,
+        | ErreurCoursier::CodeNonBloque
+        // Le marquage n'est PAS une bascule : une créance réglée à tort se
+        // corrige par une écriture inverse, jamais par un second appel.
+        | ErreurCoursier::CreanceDejaReglee => StatusCode::CONFLICT,
         ErreurCoursier::DepotNonAutorise
         | ErreurCoursier::MotifRequis
         // Une énumération mal orthographiée par l'appelant : sa demande est
@@ -941,6 +945,61 @@ pub struct LitigeVuDto {
     pub ouvert_le: DateTime<Utc>,
 }
 
+/// Les trois positions de la caisse — « où est cet argent ? » (FR-060).
+///
+/// Elles ne se recouvrent pas : avancé non récupéré (Yao a sorti l'argent),
+/// dû par Mefali (une dette formelle, qui se règle), détenu pour Mefali (il a
+/// de l'argent qui n'est PAS à lui).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PositionsCaisse)]
+pub struct PositionsCaisseDto {
+    /// Σ avances non compensées par un remboursement.
+    pub avance_non_recuperee_unites: i64,
+    /// Σ créances dues.
+    pub du_par_mefali_unites: i64,
+    /// Marge encaissée non reversée — **0 au MVP** (marge nulle jusqu'à M4).
+    /// S'affiche quand même : une position absente se lirait comme une position
+    /// oubliée.
+    pub detenu_pour_mefali_unites: i64,
+}
+
+/// Une créance de coursier (FR-094).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = Creance)]
+pub struct CreanceDto {
+    /// Identifiant.
+    pub id: Uuid,
+    /// Commande d'origine.
+    pub commande_id: Uuid,
+    /// `avance_prepayee` | `part_course`.
+    pub nature: String,
+    /// Montant dû (unités mineures).
+    pub montant_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// `due` | `reglee`.
+    pub etat: String,
+    /// Naissance — automatique, à la livraison (FR-063).
+    pub cree_le: DateTime<Utc>,
+    /// Instant du règlement, `null` tant qu'elle est due.
+    pub regle_le: Option<DateTime<Utc>>,
+}
+
+impl From<coursier::Creance> for CreanceDto {
+    fn from(c: coursier::Creance) -> Self {
+        Self {
+            id: c.id,
+            commande_id: c.commande_id,
+            nature: c.nature.comme_str().to_owned(),
+            montant_unites: c.montant_unites,
+            devise: c.devise,
+            etat: c.etat.comme_str().to_owned(),
+            cree_le: c.cree_le,
+            regle_le: c.regle_le,
+        }
+    }
+}
+
 /// Tout l'écran caisse (K5-1a), en une lecture.
 #[derive(Debug, Serialize, ToSchema)]
 #[schema(as = VueCaisse)]
@@ -959,6 +1018,13 @@ pub struct VueCaisseDto {
     pub indemnisations: Vec<IndemnisationDto>,
     /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
     pub litiges_en_cours: Vec<LitigeVuDto>,
+    /// **Les trois positions** (cycle PAY 011, FR-060/FR-094).
+    ///
+    /// Champ ADDITIF : l'app livrée l'ignore et continue de fonctionner
+    /// pendant la transition.
+    pub positions: PositionsCaisseDto,
+    /// Créances du coursier, les plus récentes d'abord. Additif également.
+    pub creances: Vec<CreanceDto>,
     /// Devise ISO 4217 de la zone.
     pub devise: String,
     /// Les avances en cours dépassent le plafond déclaré du jour (FR-078).
@@ -968,6 +1034,12 @@ pub struct VueCaisseDto {
 impl From<coursier::VueCaisse> for VueCaisseDto {
     fn from(v: coursier::VueCaisse) -> Self {
         Self {
+            positions: PositionsCaisseDto {
+                avance_non_recuperee_unites: v.positions.avance_non_recuperee_unites,
+                du_par_mefali_unites: v.positions.du_par_mefali_unites,
+                detenu_pour_mefali_unites: v.positions.detenu_pour_mefali_unites,
+            },
+            creances: v.creances.into_iter().map(CreanceDto::from).collect(),
             avance_en_cours_unites: v.avance_en_cours_unites,
             courses_concernees: v.courses_concernees,
             avances_en_attente_reglement_unites: v.avances_en_attente_reglement_unites,

@@ -29,6 +29,7 @@ doc/CapaciteCoursier.md
 doc/CategorieDto.md
 doc/CharteAdminDto.md
 doc/ClientCourse.md
+doc/CloreDossierDto.md
 doc/Commande.md
 doc/CommandeEnAttente.md
 doc/CommandeProposee.md
@@ -50,6 +51,7 @@ doc/CoursierAdminApi.md
 doc/CoursierApi.md
 doc/CoursierDuPool.md
 doc/CoursierSuivi.md
+doc/Creance.md
 doc/CreerArticleDto.md
 doc/CreerPrestataireDto.md
 doc/DecisionDepot.md
@@ -84,6 +86,7 @@ doc/DispatchAdminApi.md
 doc/DispatchApi.md
 doc/DossierCoursier.md
 doc/DossierCoursierAdmin.md
+doc/DossierPaiement.md
 doc/DrapeauxZone.md
 doc/ErreurApi.md
 doc/EscaladeDispatch.md
@@ -97,6 +100,8 @@ doc/EtatRoleDto.md
 doc/ExpositionCash.md
 doc/FichePublique.md
 doc/FileAttenteCoursier.md
+doc/FileCreances.md
+doc/FileDossiers.md
 doc/FileIndemnisations.md
 doc/ForcageDto.md
 doc/GainOffre.md
@@ -122,6 +127,7 @@ doc/LigneExposition.md
 doc/LigneHistoriqueCaisse.md
 doc/LignePanier.md
 doc/LigneRecu.md
+doc/LigneRegistre.md
 doc/LitigeVu.md
 doc/LivraisonCommande.md
 doc/LotDePresence.md
@@ -137,6 +143,7 @@ doc/OffreLivraisonDeclaration.md
 doc/OffreLivraisonVendeur.md
 doc/PaiementCommande.md
 doc/PaiementPanier.md
+doc/PaiementsAdminApi.md
 doc/PaiementsApi.md
 doc/PhotoAdminDto.md
 doc/PhotoPreuve.md
@@ -147,6 +154,7 @@ doc/PlateformeDto.md
 doc/Point.md
 doc/PoolDeZone.md
 doc/PositionSuivi.md
+doc/PositionsCaisse.md
 doc/PresenceEnregistree.md
 doc/PrestataireAdmin.md
 doc/PrestataireAdminDetail.md
@@ -164,9 +172,11 @@ doc/RattacherCompteDto.md
 doc/RecuArret.md
 doc/RecuCommande.md
 doc/RefusOffre.md
+doc/RegistreTransactions.md
 doc/Regle.md
 doc/RegleRetenue.md
 doc/RegleUpsert.md
+doc/ReglerCreanceDto.md
 doc/ReleveDePresence.md
 doc/RemiseBloquee.md
 doc/RemisePreprovisionnee.md
@@ -216,6 +226,7 @@ lib/src/api/coursier_api.dart
 lib/src/api/dispatch_admin_api.dart
 lib/src/api/dispatch_api.dart
 lib/src/api/moi_api.dart
+lib/src/api/paiements_admin_api.dart
 lib/src/api/paiements_api.dart
 lib/src/api/prestataires_api.dart
 lib/src/api/qr_api.dart
@@ -255,6 +266,7 @@ lib/src/model/capacite_coursier.dart
 lib/src/model/categorie_dto.dart
 lib/src/model/charte_admin_dto.dart
 lib/src/model/client_course.dart
+lib/src/model/clore_dossier_dto.dart
 lib/src/model/commande.dart
 lib/src/model/commande_en_attente.dart
 lib/src/model/commande_proposee.dart
@@ -271,6 +283,7 @@ lib/src/model/course_active_complete.dart
 lib/src/model/course_bloquee.dart
 lib/src/model/coursier_du_pool.dart
 lib/src/model/coursier_suivi.dart
+lib/src/model/creance.dart
 lib/src/model/creer_article_dto.dart
 lib/src/model/creer_prestataire_dto.dart
 lib/src/model/date.dart
@@ -304,6 +317,7 @@ lib/src/model/discriminant_consentement.dart
 lib/src/model/discriminant_session.dart
 lib/src/model/dossier_coursier.dart
 lib/src/model/dossier_coursier_admin.dart
+lib/src/model/dossier_paiement.dart
 lib/src/model/drapeaux_zone.dart
 lib/src/model/erreur_api.dart
 lib/src/model/escalade_dispatch.dart
@@ -317,6 +331,8 @@ lib/src/model/etat_role_dto.dart
 lib/src/model/exposition_cash.dart
 lib/src/model/fiche_publique.dart
 lib/src/model/file_attente_coursier.dart
+lib/src/model/file_creances.dart
+lib/src/model/file_dossiers.dart
 lib/src/model/file_indemnisations.dart
 lib/src/model/forcage_dto.dart
 lib/src/model/gain_offre.dart
@@ -342,6 +358,7 @@ lib/src/model/ligne_exposition.dart
 lib/src/model/ligne_historique_caisse.dart
 lib/src/model/ligne_panier.dart
 lib/src/model/ligne_recu.dart
+lib/src/model/ligne_registre.dart
 lib/src/model/litige_vu.dart
 lib/src/model/livraison_commande.dart
 lib/src/model/lot_de_presence.dart
@@ -365,6 +382,7 @@ lib/src/model/plateforme_dto.dart
 lib/src/model/point.dart
 lib/src/model/pool_de_zone.dart
 lib/src/model/position_suivi.dart
+lib/src/model/positions_caisse.dart
 lib/src/model/presence_enregistree.dart
 lib/src/model/prestataire_admin.dart
 lib/src/model/prestataire_admin_detail.dart
@@ -380,9 +398,11 @@ lib/src/model/rattacher_compte_dto.dart
 lib/src/model/recu_arret.dart
 lib/src/model/recu_commande.dart
 lib/src/model/refus_offre.dart
+lib/src/model/registre_transactions.dart
 lib/src/model/regle.dart
 lib/src/model/regle_retenue.dart
 lib/src/model/regle_upsert.dart
+lib/src/model/regler_creance_dto.dart
 lib/src/model/releve_de_presence.dart
 lib/src/model/remise_bloquee.dart
 lib/src/model/remise_preprovisionnee.dart
@@ -445,6 +465,7 @@ test/capacite_coursier_test.dart
 test/categorie_dto_test.dart
 test/charte_admin_dto_test.dart
 test/client_course_test.dart
+test/clore_dossier_dto_test.dart
 test/commande_en_attente_test.dart
 test/commande_proposee_test.dart
 test/commande_resumee_test.dart
@@ -466,6 +487,7 @@ test/coursier_admin_api_test.dart
 test/coursier_api_test.dart
 test/coursier_du_pool_test.dart
 test/coursier_suivi_test.dart
+test/creance_test.dart
 test/creer_article_dto_test.dart
 test/creer_prestataire_dto_test.dart
 test/decision_depot_test.dart
@@ -500,6 +522,7 @@ test/dispatch_admin_api_test.dart
 test/dispatch_api_test.dart
 test/dossier_coursier_admin_test.dart
 test/dossier_coursier_test.dart
+test/dossier_paiement_test.dart
 test/drapeaux_zone_test.dart
 test/erreur_api_test.dart
 test/escalade_dispatch_test.dart
@@ -513,6 +536,8 @@ test/etat_role_dto_test.dart
 test/exposition_cash_test.dart
 test/fiche_publique_test.dart
 test/file_attente_coursier_test.dart
+test/file_creances_test.dart
+test/file_dossiers_test.dart
 test/file_indemnisations_test.dart
 test/forcage_dto_test.dart
 test/gain_offre_test.dart
@@ -538,6 +563,7 @@ test/ligne_exposition_test.dart
 test/ligne_historique_caisse_test.dart
 test/ligne_panier_test.dart
 test/ligne_recu_test.dart
+test/ligne_registre_test.dart
 test/litige_vu_test.dart
 test/livraison_commande_test.dart
 test/lot_de_presence_test.dart
@@ -553,6 +579,7 @@ test/offre_livraison_declaration_test.dart
 test/offre_livraison_vendeur_test.dart
 test/paiement_commande_test.dart
 test/paiement_panier_test.dart
+test/paiements_admin_api_test.dart
 test/paiements_api_test.dart
 test/photo_admin_dto_test.dart
 test/photo_preuve_deposee_test.dart
@@ -563,6 +590,7 @@ test/plateforme_dto_test.dart
 test/point_test.dart
 test/pool_de_zone_test.dart
 test/position_suivi_test.dart
+test/positions_caisse_test.dart
 test/presence_enregistree_test.dart
 test/prestataire_admin_detail_test.dart
 test/prestataire_admin_test.dart
@@ -580,9 +608,11 @@ test/rattacher_compte_dto_test.dart
 test/recu_arret_test.dart
 test/recu_commande_test.dart
 test/refus_offre_test.dart
+test/registre_transactions_test.dart
 test/regle_retenue_test.dart
 test/regle_test.dart
 test/regle_upsert_test.dart
+test/regler_creance_dto_test.dart
 test/releve_de_presence_test.dart
 test/remise_bloquee_test.dart
 test/remise_preprovisionnee_test.dart

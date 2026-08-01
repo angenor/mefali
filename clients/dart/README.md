@@ -153,6 +153,11 @@ Class | Method | HTTP request | Description
 [*PaiementsApi*](doc/PaiementsApi.md) | [**ouvrirPaiement**](doc/PaiementsApi.md#ouvrirpaiement) | **POST** /commandes/{id}/paiement | Ouvre — ou renvoie — la session de prépaiement d&#39;une commande.
 [*PaiementsApi*](doc/PaiementsApi.md) | [**recevoirNotification**](doc/PaiementsApi.md#recevoirnotification) | **POST** /paiements/notifications/{fournisseur} | Notification signée d&#39;un fournisseur de paiement.
 [*PaiementsApi*](doc/PaiementsApi.md) | [**recuCommande**](doc/PaiementsApi.md#recucommande) | **GET** /commandes/{id}/recu | Reçu d&#39;une commande — ce qui a été commandé, ce qui en est sorti, et ce qui reste dû.
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**cloreDossier**](doc/PaiementsAdminApi.md#cloredossier) | **POST** /admin/paiements/dossiers/{id}/clore | Clôt un dossier, avec motif (FR-082).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**fileCreances**](doc/PaiementsAdminApi.md#filecreances) | **GET** /admin/creances | File des créances de coursiers (FR-083).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**fileDossiers**](doc/PaiementsAdminApi.md#filedossiers) | **GET** /admin/paiements/dossiers | File des anomalies d&#39;argent (FR-082).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**registreTransactions**](doc/PaiementsAdminApi.md#registretransactions) | **GET** /admin/paiements/transactions | Registre filtrable des transactions de paiement (FR-080, FR-081).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**reglerCreance**](doc/PaiementsAdminApi.md#reglercreance) | **POST** /admin/creances/{id}/regler | Marque une créance réglée et écrit son mouvement de caisse (FR-067).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
@@ -208,6 +213,7 @@ Class | Method | HTTP request | Description
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
  - [ClientCourse](doc/ClientCourse.md)
+ - [CloreDossierDto](doc/CloreDossierDto.md)
  - [Commande](doc/Commande.md)
  - [CommandeEnAttente](doc/CommandeEnAttente.md)
  - [CommandeProposee](doc/CommandeProposee.md)
@@ -224,6 +230,7 @@ Class | Method | HTTP request | Description
  - [CourseBloquee](doc/CourseBloquee.md)
  - [CoursierDuPool](doc/CoursierDuPool.md)
  - [CoursierSuivi](doc/CoursierSuivi.md)
+ - [Creance](doc/Creance.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionDepot](doc/DecisionDepot.md)
@@ -256,6 +263,7 @@ Class | Method | HTTP request | Description
  - [DiscriminantSession](doc/DiscriminantSession.md)
  - [DossierCoursier](doc/DossierCoursier.md)
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
+ - [DossierPaiement](doc/DossierPaiement.md)
  - [DrapeauxZone](doc/DrapeauxZone.md)
  - [ErreurApi](doc/ErreurApi.md)
  - [EscaladeDispatch](doc/EscaladeDispatch.md)
@@ -269,6 +277,8 @@ Class | Method | HTTP request | Description
  - [ExpositionCash](doc/ExpositionCash.md)
  - [FichePublique](doc/FichePublique.md)
  - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
+ - [FileCreances](doc/FileCreances.md)
+ - [FileDossiers](doc/FileDossiers.md)
  - [FileIndemnisations](doc/FileIndemnisations.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [GainOffre](doc/GainOffre.md)
@@ -294,6 +304,7 @@ Class | Method | HTTP request | Description
  - [LigneHistoriqueCaisse](doc/LigneHistoriqueCaisse.md)
  - [LignePanier](doc/LignePanier.md)
  - [LigneRecu](doc/LigneRecu.md)
+ - [LigneRegistre](doc/LigneRegistre.md)
  - [LitigeVu](doc/LitigeVu.md)
  - [LivraisonCommande](doc/LivraisonCommande.md)
  - [LotDePresence](doc/LotDePresence.md)
@@ -317,6 +328,7 @@ Class | Method | HTTP request | Description
  - [Point](doc/Point.md)
  - [PoolDeZone](doc/PoolDeZone.md)
  - [PositionSuivi](doc/PositionSuivi.md)
+ - [PositionsCaisse](doc/PositionsCaisse.md)
  - [PresenceEnregistree](doc/PresenceEnregistree.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
@@ -332,9 +344,11 @@ Class | Method | HTTP request | Description
  - [RecuArret](doc/RecuArret.md)
  - [RecuCommande](doc/RecuCommande.md)
  - [RefusOffre](doc/RefusOffre.md)
+ - [RegistreTransactions](doc/RegistreTransactions.md)
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
+ - [ReglerCreanceDto](doc/ReglerCreanceDto.md)
  - [ReleveDePresence](doc/ReleveDePresence.md)
  - [RemiseBloquee](doc/RemiseBloquee.md)
  - [RemisePreprovisionnee](doc/RemisePreprovisionnee.md)

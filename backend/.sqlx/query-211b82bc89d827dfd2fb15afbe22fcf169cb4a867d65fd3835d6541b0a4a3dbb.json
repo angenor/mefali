@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.coursier_id, c.commande_id, c.livraison_id,\n                      c.nature::text AS \"nature!\", c.montant_unites, c.devise,\n                      c.etat::text AS \"etat!\"\n                 FROM coursier.creance c\n                WHERE c.id = $1\n                FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "livraison_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "nature!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "montant_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "montant_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "211b82bc89d827dfd2fb15afbe22fcf169cb4a867d65fd3835d6541b0a4a3dbb"
+}

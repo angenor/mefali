@@ -16,6 +16,8 @@ use chrono::{DateTime, Utc};
 use commandes::{EtatLivraison, ModePaiement, PreferenceSubstitution, StatutArret, StatutLigne};
 use uuid::Uuid;
 
+use crate::creance::Creance;
+
 // ── Course active pré-provisionnée ─────────────────────────────────────────
 
 /// Une ligne d'article à acheter chez un vendeur (K3, FR-012).
@@ -500,10 +502,42 @@ pub struct VueCaisse {
     pub indemnisations: Vec<IndemnisationVue>,
     /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
     pub litiges: Vec<LitigeVu>,
+    /// **Les trois positions** (cycle PAY 011, FR-060/FR-061, research R13).
+    ///
+    /// Toutes CALCULÉES, aucune stockée : une table de soldes serait une
+    /// seconde vérité à réconcilier, et le cycle 010 l'a déjà refusée.
+    pub positions: PositionsCaisse,
+    /// Créances du coursier, les plus récentes d'abord (FR-094).
+    pub creances: Vec<Creance>,
     /// Devise ISO 4217 de la zone.
     pub devise: String,
     /// Vrai si les avances en cours dépassent le plafond du jour (FR-078).
     pub ecart_plafond: bool,
+}
+
+/// Les trois positions de la caisse — « où est cet argent ? », en trois
+/// chiffres (FR-060, FR-094).
+///
+/// Elles ne se recouvrent pas, et c'est ce qui les rend lisibles :
+///
+/// | Position | Ce que ça veut dire |
+/// |---|---|
+/// | avancé non récupéré | Yao a sorti l'argent, personne ne le lui a rendu |
+/// | dû par Mefali | Mefali le lui doit, formellement, et ça se règle |
+/// | détenu pour Mefali | il a de l'argent qui n'est PAS à lui |
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PositionsCaisse {
+    /// Σ avances non compensées par un remboursement (position existante).
+    pub avance_non_recuperee_unites: i64,
+    /// Σ créances à l'état `due`.
+    pub du_par_mefali_unites: i64,
+    /// `Σ min(frais_encaisses, devis_marge) − Σ reversements`.
+    ///
+    /// **Vaut 0 au MVP** : la marge est nulle jusqu'à M4, donc le minimum vaut
+    /// toujours zéro. La position s'affiche quand même — une position absente
+    /// se lirait comme une position oubliée, et le jour où la marge devient
+    /// non nulle il ne faudra rien ajouter à l'écran.
+    pub detenu_pour_mefali_unites: i64,
 }
 
 /// Le bandeau de gains de K1 (FR-091 → FR-095).
@@ -741,6 +775,13 @@ impl IssueRejeu {
 /// (`message_cle`) et un statut HTTP (mappé dans `coursier_http`).
 #[derive(Debug, thiserror::Error)]
 pub enum ErreurCoursier {
+    /// Créance inconnue (404 — file d'exploitation).
+    #[error("créance inconnue : {0}")]
+    CreanceInconnue(Uuid),
+    /// Créance déjà réglée (409 — FR-064). Le marquage n'est PAS une bascule :
+    /// une erreur se corrige par une écriture inverse au livre.
+    #[error("créance déjà réglée")]
+    CreanceDejaReglee,
     /// Aucune course active pour ce coursier.
     #[error("aucune course active")]
     AucuneCourseActive,
@@ -820,6 +861,8 @@ impl ErreurCoursier {
             ErreurCoursier::MotifRequis => "motif_requis",
             ErreurCoursier::EcritureImmuable => "caisse_ecriture_immuable",
             ErreurCoursier::CodeNonBloque => "code_non_bloque",
+            ErreurCoursier::CreanceInconnue(_) => "creance_inconnue",
+            ErreurCoursier::CreanceDejaReglee => "creance_deja_reglee",
             ErreurCoursier::DemandeInvalide(_) => "demande_invalide",
             // Une valeur d'entrée hors énumération est un refus de DEMANDE, pas
             // une panne : `?etat=peut-etre` rendait `500`, et l'appelant lisait

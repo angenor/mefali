@@ -34,7 +34,7 @@ use zones::ConfigurationZones;
 
 use crate::depot::PgCoursier;
 use crate::modele::{
-    ErreurCoursier, LigneHistorique, MouvementCaisse, TypeEcriture, VueCaisse,
+    ErreurCoursier, LigneHistorique, MouvementCaisse, PositionsCaisse, TypeEcriture, VueCaisse,
 };
 
 /// Ce qu'une écriture demande au livre.
@@ -203,18 +203,67 @@ impl PgCoursier {
             return Ok(());
         };
         if contexte.mode_paiement != "cash" {
-            // Commande prépayée : aucun cash n'a changé de main. L'avance reste
-            // OUVERTE et la caisse l'affiche comme telle — la masquer la ferait
-            // disparaître de l'écran dont c'est la seule raison d'être (R10).
+            // ── Commande PRÉPAYÉE (cycle PAY 011, T065 — FR-063, SC-008) ───
+            //
+            // Aucun cash n'a changé de main : le livre ne bouge pas, et
+            // l'avance reste ouverte — la masquer la ferait disparaître de
+            // l'écran dont c'est la seule raison d'être (R10).
+            //
+            // Ce que le cycle 010 laissait en suspens — « en attente de
+            // règlement », sans que rien n'organise ce règlement — devient
+            // DEUX créances : l'avance que Yao a engagée chez les vendeurs, et
+            // sa part de course, qu'aucun frais n'a couverte.
+            let avance = self.avances_de_livraison(livraison).await?;
+            let mut tx = self.pool.begin().await?;
+            self.ouvrir_creance(
+                &mut tx,
+                crate::creance::NouvelleCreance {
+                    coursier_id: coursier,
+                    commande_id: contexte.commande_id,
+                    livraison_id: livraison,
+                    nature: crate::creance::NatureCreance::AvancePrepayee,
+                    montant_unites: avance,
+                    devise: contexte.devise.clone(),
+                    evenement_id: e.id,
+                },
+            )
+            .await?;
+            // Discriminant DISTINCT : `creance.evenement_id` est UNIQUE, et
+            // deux créances naissent du même événement. L'UUIDv5 reste
+            // déterministe, donc le rejeu du worker retrouve la même clé et
+            // l'idempotence tient (FR-068).
+            self.ouvrir_creance(
+                &mut tx,
+                crate::creance::NouvelleCreance {
+                    coursier_id: coursier,
+                    commande_id: contexte.commande_id,
+                    livraison_id: livraison,
+                    nature: crate::creance::NatureCreance::PartCourse,
+                    // Prépayée : `frais_encaisses` vaut 0, donc la part due
+                    // est la part entière du devis figé (table R13, ligne 4).
+                    montant_unites: crate::creance::part_course(
+                        contexte.devis_part_coursier,
+                        0,
+                        contexte.devis_marge,
+                    ),
+                    devise: contexte.devise.clone(),
+                    evenement_id: evenement_derive(e.id, DERIVE_PART_COURSE),
+                },
+            )
+            .await?;
+            tx.commit().await?;
+
             tracing::info!(
                 livraison = %livraison, mode = %contexte.mode_paiement,
-                "remise prépayée — avance laissée ouverte, en attente de règlement",
+                avance = avance,
+                "remise prépayée — avance et part de course portées en créances",
             );
             return Ok(());
         }
 
         let avance = self.avances_de_livraison(livraison).await?;
         let frais = frais_encaisses(contexte.total_unites, avance);
+        let devise_creance = contexte.devise.clone();
 
         let mut tx = self.pool.begin().await?;
         if avance != 0 {
@@ -268,6 +317,36 @@ impl PgCoursier {
             )
             .await?;
         }
+
+        // ── Cycle PAY 011 (T065, FR-060) : la part NON couverte ───────────
+        //
+        // Cas 3 de la table R13 — promotion de lancement : le prix client vaut
+        // 0 et aucune retenue vendeur ne joue, donc Yao n'a rien encaissé pour
+        // sa peine. Sa part reste due, et le seul endroit où elle peut être
+        // vue est une créance : le livre, lui, dit vrai en n'affichant rien —
+        // il n'y a pas eu de mouvement.
+        //
+        // Sur une course ordinaire, la formule rend 0 et aucune créance ne
+        // naît. C'est le cas courant, et c'est ce qu'on veut : une créance de
+        // zéro serait du bruit dans la file d'exploitation.
+        self.ouvrir_creance(
+            &mut tx,
+            crate::creance::NouvelleCreance {
+                coursier_id: coursier,
+                commande_id: contexte.commande_id,
+                livraison_id: livraison,
+                nature: crate::creance::NatureCreance::PartCourse,
+                montant_unites: crate::creance::part_course(
+                    contexte.devis_part_coursier,
+                    frais,
+                    contexte.devis_marge,
+                ),
+                devise: devise_creance,
+                evenement_id: evenement_derive(e.id, DERIVE_PART_COURSE),
+            },
+        )
+        .await?;
+
         tx.commit().await?;
         Ok(())
     }
@@ -299,6 +378,19 @@ impl PgCoursier {
         let plafond = self.plafond_declare_du_jour(coursier).await?;
         let ecart_plafond = plafond.is_some_and(|p| ouvertes.total > p);
 
+        // ── Les TROIS positions (cycle PAY 011, T067) ─────────────────────
+        //
+        // Aucune n'est stockée : la première est déjà une somme sur le livre,
+        // la deuxième une somme sur les créances dues, la troisième une somme
+        // bornée sur les livraisons cash livrées. Une table de soldes aurait
+        // été une seconde vérité à réconcilier (data-model 010 §1.3).
+        let creances = self.creances_du_coursier(coursier).await?;
+        let positions = PositionsCaisse {
+            avance_non_recuperee_unites: ouvertes.total,
+            du_par_mefali_unites: self.du_par_mefali(coursier).await?,
+            detenu_pour_mefali_unites: self.detenu_pour_mefali(coursier).await?,
+        };
+
         Ok(VueCaisse {
             avance_en_cours_unites: ouvertes.total,
             courses_concernees: ouvertes.courses,
@@ -307,9 +399,48 @@ impl PgCoursier {
             mouvements,
             indemnisations,
             litiges,
+            positions,
+            creances,
             devise,
             ecart_plafond,
         })
+    }
+
+    /// Position « **détenu pour Mefali** » (FR-060, research R13).
+    ///
+    /// ```text
+    /// Σ min(frais_encaisses, devis_marge) − Σ reversements
+    /// ```
+    ///
+    /// Le `min` est le cœur : sur une course où Yao n'a presque rien encaissé,
+    /// il ne détient pas la marge pour autant — il ne détient que ce qui est
+    /// réellement entré. Prendre `devis_marge` sec ferait apparaître une dette
+    /// du coursier envers Mefali sur de l'argent qu'il n'a jamais touché.
+    ///
+    /// **Vaut 0 au MVP** : `devis_marge` est nul jusqu'à M4, donc le minimum
+    /// l'est aussi. La lecture est écrite complète malgré tout — le jour où la
+    /// marge devient non nulle, il n'y aura rien à écrire dans l'urgence.
+    pub(crate) async fn detenu_pour_mefali(
+        &self,
+        coursier: Uuid,
+    ) -> Result<i64, ErreurCoursier> {
+        Ok(sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(
+                          CASE WHEN e.type = 'frais_encaisses'
+                               THEN LEAST(e.montant_unites, COALESCE(l.devis_marge, 0))
+                               -- Un reversement est NÉGATIF au livre : le
+                               -- sommer tel quel retranche déjà ce que Yao a
+                               -- rendu.
+                               ELSE e.montant_unites
+                          END), 0)::bigint AS "total!"
+                 FROM coursier.ecriture_caisse e
+                 LEFT JOIN commandes.livraison l ON l.id = e.livraison_id
+                WHERE e.coursier_id = $1
+                  AND e.type IN ('frais_encaisses', 'reversement')"#,
+            coursier,
+        )
+        .fetch_one(&self.pool)
+        .await?)
     }
 
     /// Les **mouvements du livre** du jour civil de la zone (cycle PAY 011).
@@ -683,10 +814,8 @@ struct ContexteLivraison {
     /// « cash ordinaire » du tableau R13 particulièrement facile à mal lire.
     ///
     /// Lue ici parce qu'elle vient de la même requête que le reste ; elle sert
-    /// à la créance `part_course` et à la position « détenu pour Mefali »
-    /// (US6). La charger dès maintenant évite une seconde lecture sur le même
-    /// chemin d'écriture.
-    #[allow(dead_code)] // consommée par T065/T067 (US6)
+    /// à la créance `part_course` (T065) et à la position « détenu pour
+    /// Mefali » (T067).
     devis_marge: i64,
 }
 
@@ -728,6 +857,13 @@ pub fn frais_encaisses(total_du_unites: i64, avances_unites: i64) -> i64 {
 
 /// Discriminant de l'écriture `frais_encaisses` dérivée d'un `livraison.livree`.
 const DERIVE_FRAIS_ENCAISSES: &str = "frais_encaisses";
+
+/// Discriminant de la créance `part_course` dérivée du MÊME `livraison.livree`.
+///
+/// Distinct de celui de l'avance (qui emploie l'identifiant de l'événement tel
+/// quel) : `creance.evenement_id` est UNIQUE, et deux créances naissent du même
+/// événement sur une commande prépayée (research R13, note 3 du cycle).
+const DERIVE_PART_COURSE: &str = "part_course";
 
 /// Identifiant d'événement **dérivé**, stable et distinct de l'original.
 ///

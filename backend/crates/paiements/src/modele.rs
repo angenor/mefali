@@ -179,6 +179,16 @@ pub enum EtatDossier {
     Clos,
 }
 
+impl EtatDossier {
+    /// Libellé SQL — aligné sur l'énumération `paiements.etat_dossier`.
+    pub fn comme_str(&self) -> &'static str {
+        match self {
+            EtatDossier::Ouvert => "ouvert",
+            EtatDossier::Clos => "clos",
+        }
+    }
+}
+
 // ── 2. Vues du domaine ────────────────────────────────────────────────────
 
 /// Une transaction telle que le domaine la manipule.
@@ -225,8 +235,35 @@ impl Transaction {
     }
 }
 
-/// Un dossier d'anomalie, tel que l'exploitation le lit.
-#[derive(Debug, Clone)]
+/// Une ligne du registre des transactions (FR-080, FR-081).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LigneRegistre {
+    /// Transaction.
+    pub id: Uuid,
+    /// Commande rapprochée.
+    pub commande_id: Uuid,
+    /// Montant figé.
+    pub montant_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// État de la transaction.
+    pub etat: String,
+    /// Moyen employé (`inconnu` tant que le fournisseur ne l'a pas dit).
+    pub moyen: String,
+    /// Fournisseur — le SEUL endroit où son vocabulaire apparaît (FR-003).
+    pub fournisseur: String,
+    /// Référence côté fournisseur — le rapprochement dans l'autre sens.
+    pub reference_fournisseur: Option<String>,
+    /// Ouverture.
+    pub ouverte_le: DateTime<Utc>,
+    /// Issue définitive.
+    pub issue_le: Option<DateTime<Utc>>,
+    /// De l'argent encaissé qu'aucune commande vivante n'attend (FR-082).
+    pub orpheline: bool,
+}
+
+/// Une anomalie d'argent qui doit être vue par un humain (FR-082).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dossier {
     pub id: Uuid,
     pub type_dossier: TypeDossier,

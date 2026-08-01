@@ -1,0 +1,139 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, coursier_id, commande_id, livraison_id,\n                      nature::text AS \"nature!\", montant_unites, devise,\n                      etat::text AS \"etat!\", ecriture_id, regle_le, cree_le\n                 FROM coursier.creance\n                WHERE ($1::uuid IS NULL OR coursier_id = $1)\n                  AND ($2::text IS NULL OR etat::text = $2)\n                ORDER BY cree_le DESC, id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "coursier_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "coursier_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "livraison_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "livraison_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "nature!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "montant_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "montant_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "ecriture_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "ecriture_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "regle_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "regle_le"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "cree_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      null,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "e9e01495e495af62d56786d5673404bc839ce395d7d9620733ee6e5fb069584f"
+}

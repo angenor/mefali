@@ -66,6 +66,7 @@ pub use fournisseur::{
     Remboursement, ScenarioSimule,
 };
 pub use modele::{
+    LigneRegistre,
     transition_existe, verifier_transition, Dossier, ErreurPaiements, EtatDossier, EtatTransaction,
     MoyenPaiement, Transaction, TypeDossier,
 };

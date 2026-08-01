@@ -10,6 +10,7 @@ pub mod admin_commandes_http;
 pub mod admin_coursier_http;
 /// Surface HTTP admin du cycle DSP (alertes, pool, reprise manuelle).
 pub mod admin_dispatch_http;
+pub mod admin_paiements_http;
 pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
@@ -125,6 +126,11 @@ pub fn api_openapi() -> OpenApi {
         .service(coursier_http::etat_preuves)
         .service(coursier_http::ma_caisse)
         .service(coursier_http::ma_journee)
+        .service(admin_paiements_http::registre_transactions)
+        .service(admin_paiements_http::file_dossiers)
+        .service(admin_paiements_http::clore_dossier)
+        .service(admin_paiements_http::file_creances)
+        .service(admin_paiements_http::regler_creance)
         .service(admin_coursier_http::remises_bloquees)
         .service(admin_coursier_http::debloquer_code)
         .service(admin_coursier_http::autoriser_depot)
@@ -1041,7 +1047,12 @@ pub async fn run() -> std::io::Result<()> {
             .service(coursier_http::etat_preuves)
             .service(coursier_http::ma_caisse)
             .service(coursier_http::ma_journee)
-            .service(admin_coursier_http::remises_bloquees)
+            .service(admin_paiements_http::registre_transactions)
+        .service(admin_paiements_http::file_dossiers)
+        .service(admin_paiements_http::clore_dossier)
+        .service(admin_paiements_http::file_creances)
+        .service(admin_paiements_http::regler_creance)
+        .service(admin_coursier_http::remises_bloquees)
             .service(admin_coursier_http::debloquer_code)
             .service(admin_coursier_http::autoriser_depot)
             .service(admin_coursier_http::preuves_de_livraison)
