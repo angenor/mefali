@@ -6967,7 +6967,7 @@
           }
         ],
         "requestBody": {
-          "description": "Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature.",
+          "description": "Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. Plafonnée à 64 Kio.",
           "content": {
             "application/json": {
               "schema": {
@@ -6989,13 +6989,16 @@
             }
           },
           "401": {
-            "description": "Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre (FR-020)."
+            "description": "Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre, et jamais le corps reçu (FR-020)."
           },
           "404": {
             "description": "Segment `{fournisseur}` inconnu."
           },
           "413": {
-            "description": "Corps au-delà de la limite admise."
+            "description": "Corps au-delà de 64 Kio — coupé pendant la réception."
+          },
+          "429": {
+            "description": "Débit dépassé pour cette adresse."
           }
         }
       }
@@ -13625,7 +13628,7 @@
               "string",
               "null"
             ],
-            "description": "Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`,\n`etat_incompatible`. Absent quand `traite` vaut `true`."
+            "description": "Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`,\n`etat_incompatible`, `divergence`. Absent quand `traite` vaut `true`."
           },
           "traite": {
             "type": "boolean",

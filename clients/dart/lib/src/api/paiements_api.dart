@@ -188,7 +188,7 @@ class PaiementsApi {
   ///
   /// Parameters:
   /// * [fournisseur] - Identifiant stable de l'implémentation destinataire. Point d'accroche du routage par moyen (phase 2+) — sans règle aujourd'hui.
-  /// * [body] - Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature.
+  /// * [body] - Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. Plafonnée à 64 Kio.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request

@@ -267,6 +267,19 @@ async fn job_purge_reperes(depot: PgComptes) {
 /// d'argent ne dépend pas de la vie d'un processus.
 const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// Intervalle de balayage des sessions de paiement ÉCHUES (cycle PAY 011, R7).
+///
+/// 10 s, comme [`BALAYAGE_SUBSTITUTIONS`] et pour la même raison : SC-005 exige
+/// qu'une commande abandonnée soit annulée **moins d'une minute** après son
+/// échéance. Un pas plus long laisserait le vendeur préparer une commande qui
+/// n'existe plus, et le dispatch la proposer.
+///
+/// ⚠ Ce job n'est PAS la source de vérité de l'expiration : `expire_le` est
+/// PERSISTÉE et toute lecture la respecte déjà — `POST /commandes/{id}/paiement`
+/// refuse une session échue avant même que le balayage ne l'ait matérialisée.
+/// Le job ne fait qu'écrire ce que la lecture savait déjà.
+const BALAYAGE_SESSIONS_PAIEMENT: std::time::Duration = std::time::Duration::from_secs(10);
+
 /// **PREMIER consommateur outbox réel du produit.**
 ///
 /// `WorkerOutbox::new(pool, Vec::new())` tournait jusqu'ici avec zéro
@@ -384,6 +397,39 @@ async fn job_tic_dispatch(depot: dispatch::PgDispatch, pool: sqlx::PgPool) {
 /// À l'expiration on APPELLE, puis l'article est retiré et non facturé. Une
 /// erreur est journalisée et le passage suivant retente : un incident de
 /// balayage ne doit jamais faire tomber l'API.
+/// Balayage périodique des sessions de paiement échues (FR-027, FR-031).
+///
+/// Le passage RÉCONCILIE avant d'annuler : un webhook perdu ne doit coûter ni
+/// la commande ni l'argent du client. Un fournisseur injoignable ne fait rien
+/// annuler du tout — les sessions sont reportées au passage suivant.
+///
+/// Une erreur est journalisée et retentée : un incident de balayage ne doit
+/// **jamais** faire tomber l'API.
+async fn job_expirer_sessions(
+    depot: paiements::PgPaiements,
+    commandes: commandes::PgCommandes,
+    fournisseur: Arc<dyn paiements::PaymentProvider>,
+) {
+    let mut horloge = tokio::time::interval(BALAYAGE_SESSIONS_PAIEMENT);
+    loop {
+        horloge.tick().await;
+        match paiements::balayer(&depot, &commandes, fournisseur.as_ref()).await {
+            // Le cas nominal est le silence : la plupart des passages ne
+            // trouvent rien, et une ligne de journal toutes les 10 s noierait
+            // celles qui comptent.
+            Ok(bilan) if bilan.examinees == 0 => {}
+            Ok(bilan) => tracing::info!(
+                examinees = bilan.examinees,
+                expirees = bilan.expirees,
+                rattrapees = bilan.rattrapees,
+                reportees = bilan.reportees,
+                "balayage des sessions de paiement",
+            ),
+            Err(e) => tracing::error!(erreur = %e, "balayage des sessions de paiement échoué"),
+        }
+    }
+}
+
 async fn job_expirer_substitutions(depot: commandes::PgCommandes) {
     let mut horloge = tokio::time::interval(BALAYAGE_SUBSTITUTIONS);
     loop {
@@ -811,6 +857,16 @@ pub async fn run() -> std::io::Result<()> {
                      remboursements PAY-04 non construits (`refund` définie, jamais appelée)",
                     fournisseur.nom(),
                 );
+                tokio::spawn(job_expirer_sessions(
+                    depot_paiements.clone(),
+                    depot_commandes.clone(),
+                    fournisseur.clone(),
+                ));
+                eprintln!(
+                    "balayage des sessions de paiement toutes les {} s (réconciliation \
+                     AVANT annulation)",
+                    BALAYAGE_SESSIONS_PAIEMENT.as_secs(),
+                );
                 fournisseur_opt = Some(fournisseur);
                 paiements_opt = Some(depot_paiements);
 
@@ -981,7 +1037,11 @@ pub async fn run() -> std::io::Result<()> {
             // Rôle hors énumération dans le chemin → 404 (ressource inexistante).
             .app_data(comptes_http::config_path())
             // Corps multipart démesuré → 422 avant bufferisation (CPT-04/05).
-            .app_data(comptes_http::config_multipart());
+            .app_data(comptes_http::config_multipart())
+            // Corps BRUT plafonné à 64 Kio → 413 pendant la réception. Ne
+            // concerne que le webhook de paiement : c'est la seule route à
+            // extraire un corps brut (T040, constitution VIII).
+            .app_data(paiements_webhook_http::config_payload());
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
         }

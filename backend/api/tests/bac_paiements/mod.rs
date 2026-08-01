@@ -56,13 +56,18 @@ pub const CREANCE_ALERTE_UNITES: i64 = 50_000;
 pub const AU_DESSUS_DU_PLAFOND: i64 = PLAFOND_CASH + 1;
 
 /// Corps d'une réponse, `null` si elle est vide (`204`, ou refus sans corps).
+///
+/// Un corps NON JSON est rendu comme chaîne plutôt que de faire paniquer le
+/// test : actix rend certains refus d'infrastructure — un `413` produit par le
+/// plafond de charge, par exemple — en texte brut, et le test doit pouvoir
+/// asserter le **statut** sans buter sur la forme du corps.
 async fn corps_json(resp: actix_web::dev::ServiceResponse) -> Value {
     let octets = actix_web::test::read_body(resp).await;
     if octets.is_empty() {
-        Value::Null
-    } else {
-        serde_json::from_slice(&octets).expect("corps JSON")
+        return Value::Null;
     }
+    serde_json::from_slice(&octets)
+        .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&octets).into_owned()))
 }
 
 pub struct Bac {
@@ -121,7 +126,11 @@ impl Bac {
         move |cfg: &mut web::ServiceConfig| {
             base(cfg);
             cfg.app_data(web::Data::new(paiements))
-                .app_data(web::Data::new(fournisseur));
+                .app_data(web::Data::new(fournisseur))
+                // Le plafond de corps brut du webhook (64 Kio) — enregistré
+                // ici comme il l'est dans `api::run`, sinon le bac testerait
+                // une route plus permissive que la production.
+                .app_data(api::paiements_webhook_http::config_payload());
             // Les routes de paiement s'enregistrent ici à mesure qu'elles
             // arrivent. Le bac est posé AVANT elles pour que chacune n'ait
             // qu'une ligne à ajouter, et pour qu'aucune ne soit tentée d'être

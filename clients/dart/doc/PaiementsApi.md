@@ -107,7 +107,7 @@ import 'package:mefali_api_client/api.dart';
 
 final api = MefaliApiClient().getPaiementsApi();
 final String fournisseur = fournisseur_example; // String | Identifiant stable de l'implémentation destinataire. Point d'accroche du routage par moyen (phase 2+) — sans règle aujourd'hui.
-final String body = body_example; // String | Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature.
+final String body = body_example; // String | Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. Plafonnée à 64 Kio.
 
 try {
     final response = api.recevoirNotification(fournisseur, body);
@@ -122,7 +122,7 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **fournisseur** | **String**| Identifiant stable de l'implémentation destinataire. Point d'accroche du routage par moyen (phase 2+) — sans règle aujourd'hui. | 
- **body** | **String**| Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. | 
+ **body** | **String**| Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. Plafonnée à 64 Kio. | 
 
 ### Return type
 

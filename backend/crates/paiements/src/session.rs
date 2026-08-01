@@ -116,15 +116,36 @@ pub async fn ouvrir_session(
     let commande = commandes.a_payer(commande_id).await?;
     garder_ouverture(&commande, appelant)?;
 
+    let maintenant = depot.maintenant();
+
     // Une session vivante est rendue TELLE QUELLE. Aucun appel sortant, aucune
     // écriture : c'est ce qui rend le rappel gratuit, et donc sûr à retenter
     // depuis une app dont la connexion vacille.
     if let Some(vivante) = depot.transaction_vivante(commande_id).await? {
+        // …sauf si l'échéance est franchie. C'est la LECTURE qui fait foi, pas
+        // le balayage (R7) : la ligne porte peut-être encore `ouverte` parce
+        // que le job n'a pas encore tourné, mais plus rien ne peut être payé
+        // dessus. Servir son accès inviterait Awa à payer une commande qui sera
+        // annulée dans les secondes qui suivent (FR-035).
+        if vivante.echue(maintenant) {
+            return Err(ErreurPaiements::SessionExpiree);
+        }
         return Ok(vivante);
     }
 
+    // Aucune session vivante, mais une session **passée** qui a expiré : la
+    // commande n'est simplement pas encore annulée. Rouvrir ici contournerait
+    // l'expiration et ferait payer une commande promise à l'annulation.
+    if let Some(derniere) = depot.derniere_transaction(commande_id).await? {
+        if matches!(
+            derniere.etat,
+            EtatTransaction::Expiree | EtatTransaction::PayeeHorsDelai
+        ) {
+            return Err(ErreurPaiements::SessionExpiree);
+        }
+    }
+
     let config = depot.config(commande.zone_id).await?;
-    let maintenant = depot.maintenant();
 
     // Le trou de R16, comblé à l'endroit où il compte : une commande basculée
     // par le dispatch reste à `'du'` jusqu'ici, indiscernable d'une commande

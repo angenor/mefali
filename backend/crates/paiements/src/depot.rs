@@ -216,13 +216,19 @@ impl PgPaiements {
         Ok(())
     }
 
-    /// Fait passer une transaction dans un état **terminal ou intermédiaire**,
-    /// et **efface l'accès de paiement** au passage.
+    /// Fait passer une transaction dans un nouvel état, et **efface l'accès de
+    /// paiement** dès que cet état n'accepte plus de paiement.
     ///
     /// L'effacement n'est pas un détail d'hygiène : une URL d'encaissement
     /// encore vivante dans une base est une surface d'attaque sans usage
-    /// (data-model §6, FR-006). Le faire ici, dans le seul point de sortie de
-    /// `ouverte`, garantit qu'aucun chemin ne l'oublie.
+    /// (data-model §6, FR-006).
+    ///
+    /// ⚠ **Mais il ne s'applique pas à `echouee`.** Un refus d'opérateur ne clôt
+    /// pas la session : le client réessaie sur le **même** accès tant que
+    /// l'échéance n'est pas franchie (FR-026). L'effacer aurait rendu la
+    /// reprise impossible — un « Payer maintenant » qui n'ouvre plus rien.
+    /// C'est [`EtatTransaction::accepte_paiement`] qui tranche, et non une liste
+    /// d'états recopiée ici, pour que les deux ne puissent pas diverger.
     ///
     /// La **garde de transition** n'est pas ici mais chez l'appelant, qui a lu
     /// la ligne sous `FOR UPDATE` : ce module n'arbitre pas, il écrit.
@@ -235,19 +241,21 @@ impl PgPaiements {
         reference_fournisseur: Option<&str>,
         quand: DateTime<Utc>,
     ) -> Result<(), ErreurPaiements> {
+        let garder_acces = vers.accepte_paiement();
         sqlx::query!(
             "UPDATE paiements.transaction
                 SET etat = $2,
                     moyen = COALESCE($3, moyen),
                     reference_fournisseur = COALESCE($4, reference_fournisseur),
                     issue_le = $5,
-                    acces_paiement = NULL
+                    acces_paiement = CASE WHEN $6 THEN acces_paiement ELSE NULL END
               WHERE id = $1",
             transaction_id,
             vers as EtatTransaction,
             moyen as Option<MoyenPaiement>,
             reference_fournisseur,
             quand,
+            garder_acces,
         )
         .execute(&mut **tx)
         .await?;

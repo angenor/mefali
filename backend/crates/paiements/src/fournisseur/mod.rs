@@ -49,8 +49,10 @@ use uuid::Uuid;
 
 use crate::modele::MoyenPaiement;
 
+pub mod signature;
 pub mod simule;
 
+pub use signature::{empreinte, SignatureHmac, TOLERANCE_HORODATAGE};
 pub use simule::{FournisseurSimule, ScenarioSimule};
 
 // ── 1. Le trait ───────────────────────────────────────────────────────────

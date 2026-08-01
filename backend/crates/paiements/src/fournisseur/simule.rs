@@ -26,12 +26,10 @@
 
 use std::sync::{Arc, Mutex};
 
-use chrono::{DateTime, Duration, Utc};
-use hmac::{Hmac, KeyInit, Mac};
-use sha2::{Digest, Sha256};
-use subtle::ConstantTimeEq;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use super::signature::SignatureHmac;
 use super::{
     Checkout, DemandeCheckout, DemandeRemboursement, ErreurFournisseur, IssuePaiement,
     Notification, NotificationEntrante, PaymentProvider, Remboursement,
@@ -41,12 +39,7 @@ use crate::modele::MoyenPaiement;
 /// Nom du champ d'en-tête où le double attend sa signature.
 pub const ENTETE_SIGNATURE: &str = "x-mefali-signature";
 
-/// Tolérance d'horodatage de la signature (R6).
-///
-/// Ferme la fenêtre de rejeu d'une capture réseau : une notification signée
-/// il y a trois heures et rejouée maintenant est refusée, même si sa signature
-/// est authentique.
-pub const TOLERANCE_HORODATAGE: Duration = Duration::minutes(5);
+pub use super::signature::{empreinte, TOLERANCE_HORODATAGE};
 
 /// Ce que le double doit faire au prochain appel.
 ///
@@ -82,7 +75,10 @@ pub enum ScenarioSimule {
 /// scénario pendant que l'application en tient une autre.
 #[derive(Clone)]
 pub struct FournisseurSimule {
-    secret: Arc<Vec<u8>>,
+    /// **La même** primitive que celle du client HTTP de production
+    /// (`signature.rs`) : un second vérificateur aurait fait tester la sécurité
+    /// du double plutôt que celle du chemin réel.
+    signature: SignatureHmac,
     etat: Arc<Mutex<Etat>>,
 }
 
@@ -113,7 +109,7 @@ impl FournisseurSimule {
     /// **autre** secret est refusée.
     pub fn avec_secret(secret: Vec<u8>) -> Self {
         Self {
-            secret: Arc::new(secret),
+            signature: SignatureHmac::nouveau(secret, ENTETE_SIGNATURE),
             etat: Arc::new(Mutex::new(Etat::default())),
         }
     }
@@ -149,14 +145,7 @@ impl FournisseurSimule {
     /// L'horodatage entre dans le message signé — sinon il serait modifiable
     /// sans invalider la signature, et la tolérance ne servirait à rien.
     pub fn signer(&self, corps: &[u8], quand: DateTime<Utc>) -> String {
-        let t = quand.timestamp();
-        let mut mac = Hmac::<Sha256>::new_from_slice(&self.secret)
-            .expect("HMAC-SHA256 accepte une clé de toute longueur");
-        mac.update(t.to_string().as_bytes());
-        mac.update(b".");
-        mac.update(corps);
-        let signature = mac.finalize().into_bytes();
-        format!("t={t},v1={}", hex(&signature))
+        self.signature.signer(corps, quand)
     }
 
     /// Forge le corps d'une notification, tel que le double le comprend.
@@ -181,43 +170,6 @@ impl FournisseurSimule {
         .expect("charge de test sérialisable")
     }
 
-    /// Vérifie une signature en **temps constant** (R6).
-    fn verifier_signature(
-        &self,
-        corps: &[u8],
-        signature: &str,
-        recue_le: DateTime<Utc>,
-    ) -> Result<(), ErreurFournisseur> {
-        let (t, v1) = decouper(signature).ok_or(ErreurFournisseur::SignatureInvalide)?;
-        let horodatage = t
-            .parse::<i64>()
-            .ok()
-            .and_then(|s| DateTime::from_timestamp(s, 0))
-            .ok_or(ErreurFournisseur::SignatureInvalide)?;
-
-        // Fenêtre bilatérale : une signature du futur est aussi suspecte
-        // qu'une signature périmée — elle trahit une horloge faussée ou une
-        // forgerie qui essaie de rester valide longtemps.
-        if (recue_le - horodatage).abs() > TOLERANCE_HORODATAGE {
-            return Err(ErreurFournisseur::SignatureInvalide);
-        }
-
-        let mut mac = Hmac::<Sha256>::new_from_slice(&self.secret)
-            .expect("HMAC-SHA256 accepte une clé de toute longueur");
-        mac.update(t.as_bytes());
-        mac.update(b".");
-        mac.update(corps);
-        let attendue = hex(&mac.finalize().into_bytes());
-
-        // `ConstantTimeEq` et non `==` : l'égalité de Rust s'arrête au premier
-        // octet différent, et le temps de réponse fuite alors la position de
-        // l'erreur. Un attaquant reconstruit la signature octet par octet.
-        if attendue.as_bytes().ct_eq(v1.as_bytes()).into() {
-            Ok(())
-        } else {
-            Err(ErreurFournisseur::SignatureInvalide)
-        }
-    }
 }
 
 impl Default for FournisseurSimule {
@@ -269,11 +221,11 @@ impl PaymentProvider for FournisseurSimule {
         &self,
         entrante: &NotificationEntrante<'_>,
     ) -> Result<Notification, ErreurFournisseur> {
-        let signature = entrante
-            .entetes
-            .get(ENTETE_SIGNATURE)
-            .ok_or(ErreurFournisseur::SignatureInvalide)?;
-        self.verifier_signature(entrante.corps_brut, signature, entrante.recue_le)?;
+        self.signature.verifier_entetes(
+            entrante.entetes,
+            entrante.corps_brut,
+            entrante.recue_le,
+        )?;
 
         // ── La signature seulement MAINTENANT vérifiée, on désérialise ────
         let charge: serde_json::Value = serde_json::from_slice(entrante.corps_brut)
@@ -395,36 +347,10 @@ fn traduire_moyen(brut: &str) -> Option<MoyenPaiement> {
     })
 }
 
-/// Empreinte SHA-256 hexadécimale du corps brut — clé d'idempotence (R5).
-pub fn empreinte(corps: &[u8]) -> String {
-    hex(&Sha256::digest(corps))
-}
-
-fn hex(octets: &[u8]) -> String {
-    use std::fmt::Write;
-    octets.iter().fold(String::new(), |mut s, o| {
-        let _ = write!(s, "{o:02x}");
-        s
-    })
-}
-
-/// Découpe `t=…,v1=…` en ses deux parties.
-fn decouper(signature: &str) -> Option<(&str, &str)> {
-    let mut t = None;
-    let mut v1 = None;
-    for partie in signature.split(',') {
-        match partie.split_once('=') {
-            Some(("t", v)) => t = Some(v),
-            Some(("v1", v)) => v1 = Some(v),
-            _ => {}
-        }
-    }
-    Some((t?, v1?))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Duration;
 
     fn demande() -> DemandeCheckout {
         DemandeCheckout {

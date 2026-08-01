@@ -5124,7 +5124,7 @@ export interface components {
         ReponseNotification: {
             /**
              * @description Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`,
-             *     `etat_incompatible`. Absent quand `traite` vaut `true`.
+             *     `etat_incompatible`, `divergence`. Absent quand `traite` vaut `true`.
              */
             motif?: string | null;
             /** @description Vrai si la notification a produit un effet. */
@@ -10725,7 +10725,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. */
+        /** @description Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. Plafonnée à 64 Kio. */
         requestBody: {
             content: {
                 "application/json": string;
@@ -10741,7 +10741,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReponseNotification"];
                 };
             };
-            /** @description Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre (FR-020). */
+            /** @description Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre, et jamais le corps reçu (FR-020). */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10755,8 +10755,15 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Corps au-delà de la limite admise. */
+            /** @description Corps au-delà de 64 Kio — coupé pendant la réception. */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Débit dépassé pour cette adresse. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -88,3 +88,7 @@ chrono.workspace = true
 chrono-tz.workspace = true
 # Consomme une URL présignée Garage pour prouver l'aller-retour d'octets (SC-007).
 reqwest.workspace = true
+# Capture les journaux dans un tampon pour prouver qu'AUCUN secret de paiement
+# n'y entre (cycle PAY 011, T043, FR-006/FR-103). Une revue de code ne le
+# prouverait pas : un `tracing::warn!` ajouté demain la contournerait.
+tracing-subscriber.workspace = true

@@ -339,7 +339,12 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
   /// attend un. Une commande cash n'a pas de session : la lire rendrait `404`
   /// et n'apprendrait rien.
   void _lirePaiementSiUtile(EtatSuivi suivi) {
-    if (_paiementDemande || suivi.etat != 'en_attente_paiement') return;
+    // `annulee` en fait partie : c'est la seule façon d'apprendre qu'une
+    // commande a été annulée parce que le délai de paiement a été franchi — le
+    // suivi ne porte pas le motif d'annulation. Sur une commande cash annulée,
+    // la lecture rend `404` et le bandeau reste simplement muet.
+    const concernes = {'en_attente_paiement', 'annulee'};
+    if (_paiementDemande || !concernes.contains(suivi.etat)) return;
     _paiementDemande = true;
     ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
   }
@@ -467,11 +472,34 @@ class BandeauPaiementSuivi extends ConsumerWidget {
               switch (session.etat) {
                 'reglee' => app.paiementEtatReglee,
                 'echouee' => app.paiementEtatEchouee,
-                'expiree' || 'payee_hors_delai' => app.paiementEtatExpiree,
+                // Le motif en CLAIR, et sans jargon : ni « transaction », ni
+                // « session », ni « fournisseur ». Awa n'a pas à connaître
+                // notre plomberie pour comprendre qu'elle n'a rien payé.
+                'expiree' || 'payee_hors_delai' => app.paiementSessionExpiree,
                 _ => app.paiementEtatOuverte,
               },
               style: theme.textTheme.titleSmall,
             ),
+            // FR-082 — un paiement arrivé APRÈS l'annulation. La commande n'est
+            // pas ressuscitée (R8) et le remboursement n'est pas automatique :
+            // PAY-04 n'est pas construit. On le DIT plutôt que de laisser Awa
+            // découvrir un prélèvement sans explication.
+            if (session.etat == 'payee_hors_delai') ...[
+              const SizedBox(height: MefaliTokens.space2),
+              Text(
+                app.paiementRemboursementAVenir,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            // La sortie : repartir du panier. Une annulation sans issue
+            // proposée est une impasse, et l'impasse coûte une commande.
+            if (session.expiree) ...[
+              const SizedBox(height: MefaliTokens.space2),
+              FilledButton.tonal(
+                onPressed: () => ouvrirPanier(context),
+                child: Text(app.paiementRecommander),
+              ),
+            ],
             // Le temps restant ne s'affiche que tant que la session vit : un
             // « 00:00 » sous un paiement confirmé serait une inquiétude
             // gratuite (FR-017).

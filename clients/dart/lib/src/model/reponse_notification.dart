@@ -11,11 +11,11 @@ part 'reponse_notification.g.dart';
 /// Ce que le webhook répond — **toujours `200`, sauf signature invalide**.
 ///
 /// Properties:
-/// * [motif] - Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`, `etat_incompatible`. Absent quand `traite` vaut `true`.
+/// * [motif] - Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`, `etat_incompatible`, `divergence`. Absent quand `traite` vaut `true`.
 /// * [traite] - Vrai si la notification a produit un effet.
 @BuiltValue()
 abstract class ReponseNotification implements Built<ReponseNotification, ReponseNotificationBuilder> {
-  /// Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`, `etat_incompatible`. Absent quand `traite` vaut `true`.
+  /// Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`, `etat_incompatible`, `divergence`. Absent quand `traite` vaut `true`.
   @BuiltValueField(wireName: r'motif')
   String? get motif;
 
