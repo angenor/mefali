@@ -61,6 +61,7 @@ pub mod webhook;
 pub use config::{cles as cles_config, ConfigPaiements};
 pub use depot::PgPaiements;
 pub use fournisseur::{
+    AgregateurHttp,
     Checkout, DemandeCheckout, DemandeRemboursement, EntetesNotification, ErreurFournisseur,
     FournisseurSimule, IssuePaiement, Notification, NotificationEntrante, PaymentProvider,
     Remboursement, ScenarioSimule,

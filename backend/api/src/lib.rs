@@ -290,6 +290,15 @@ const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_se
 /// Le job ne fait qu'écrire ce que la lecture savait déjà.
 const BALAYAGE_SESSIONS_PAIEMENT: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// En-tête où l'agrégateur place sa signature de notification (cycle PAY 011).
+///
+/// Ici plutôt qu'en configuration parce qu'aucun agrégateur n'est encore
+/// retenu : le jour où il l'est, cette constante devient une variable
+/// d'environnement — c'est le seul changement que la bascule demandera de ce
+/// côté (`crates/paiements/README.md`). Le nom générique évite qu'un nom
+/// propriétaire entre dans le binaire (FR-003).
+const ENTETE_SIGNATURE_AGREGATEUR: &str = "x-signature";
+
 /// **PREMIER consommateur outbox réel du produit.**
 ///
 /// `WorkerOutbox::new(pool, Vec::new())` tournait jusqu'ici avec zéro
@@ -900,18 +909,26 @@ pub async fn run() -> std::io::Result<()> {
                             Arc::new(paiements::FournisseurSimule::nouveau())
                         }
                         socle::PaiementFournisseur::Agregateur => {
-                            // L'implémentation HTTP arrive en US7 (T076). D'ici
-                            // là, refuser explicitement plutôt que de retomber
-                            // en silence sur le double : une production qui
-                            // croit encaisser et qui simule serait le pire des
-                            // deux mondes.
-                            return Err(std::io::Error::other(
-                                "PAIEMENT_FOURNISSEUR=agregateur : le client HTTP \
-                                 n'est pas encore livré (T076). Employer `simule` \
-                                 ou attendre US7 — retomber sur le double en \
-                                 production ferait croire à des encaissements \
-                                 qui n'existent pas.",
-                            ));
+                            // `Config::valider` a déjà garanti que les trois
+                            // valeurs sont là et que le secret fait ≥ 32 octets
+                            // (FR-045) : arriver ici sans elles est impossible,
+                            // l'API aurait refusé de démarrer.
+                            let client = paiements::AgregateurHttp::nouveau(
+                                config.paiement_base_url.clone().unwrap_or_default(),
+                                config.paiement_cle_api.clone().unwrap_or_default(),
+                                config
+                                    .paiement_webhook_secret
+                                    .clone()
+                                    .unwrap_or_default()
+                                    .into_bytes(),
+                                ENTETE_SIGNATURE_AGREGATEUR,
+                            )
+                            .map_err(|e| {
+                                std::io::Error::other(format!(
+                                    "client d'agrégateur inconstructible : {e}"
+                                ))
+                            })?;
+                            Arc::new(client)
                         }
                     };
                 eprintln!(

@@ -224,11 +224,11 @@ tâche qui les enfreint est incomplète, même si son code marche :
 
 **Independent Test**: faire passer à un second double, au vocabulaire et aux signatures différents, la totalité de la suite de tests de paiement — sans modifier une règle métier.
 
-- [ ] T076 [US7] `AgregateurHttp` dans `backend/crates/paiements/src/fournisseur/agregateur.rs` : client `reqwest` paramétré (base, clé, secret, en-tête de signature), délais d'attente et politique de reprise, traduction des codes d'état vers `ErreurFournisseur`, **montants transmis en entiers** ; tests unitaires avec serveur HTTP bouchon
-- [ ] T077 [US7] `refund` **définie, jamais appelée** dans `backend/crates/paiements/src/fournisseur/agregateur.rs` et `simule.rs` : implémentée pour honorer PAY-05, sans aucun appelant dans le produit — un test vérifie qu'**aucun chemin de code ne l'invoque** (FR-041, FR-111)
-- [ ] T078 [US7] `FournisseurAlternatif` dans `backend/crates/paiements/tests/fournisseur_alternatif.rs` : vocabulaire, algorithme de signature et codes d'état **différents**, puis rejeu de la totalité de la suite de paiement à travers lui (SC-010)
+- [X] T076 [US7] `AgregateurHttp` dans `backend/crates/paiements/src/fournisseur/agregateur.rs` : client `reqwest` paramétré (base, clé, secret, en-tête de signature), délais d'attente et politique de reprise, traduction des codes d'état vers `ErreurFournisseur`, **montants transmis en entiers** ; tests unitaires avec serveur HTTP bouchon
+- [X] T077 [US7] `refund` **définie, jamais appelée** dans `backend/crates/paiements/src/fournisseur/agregateur.rs` et `simule.rs` : implémentée pour honorer PAY-05, sans aucun appelant dans le produit — un test vérifie qu'**aucun chemin de code ne l'invoque** (FR-041, FR-111)
+- [X] T078 [US7] `FournisseurAlternatif` dans `backend/crates/paiements/tests/fournisseur_alternatif.rs` : vocabulaire, algorithme de signature et codes d'état **différents**, puis rejeu de la totalité de la suite de paiement à travers lui (SC-010)
 - [X] T079 [US7] Contrôle mécanique de la frontière dans `scripts/verifier-frontiere-paiement.sh`, appelé par `.github/workflows/backend.yml` : échoue si un nom d'agrégateur (CinetPay, PayDunya, Bizao, HUB2) ou un moyen propriétaire apparaît hors de `backend/crates/paiements/src/fournisseur/` (SC-010, FR-003)
-- [ ] T080 [US7] Documenter la procédure de bascule dans `backend/crates/paiements/README.md` : ce qu'il faut changer pour brancher l'agrégateur retenu, ce qu'il ne faut **jamais** toucher, et le point d'accroche du routage par moyen de phase 2+ (segment `{fournisseur}` du webhook, **sans règle aujourd'hui** — FR-043, FR-113)
+- [X] T080 [US7] Documenter la procédure de bascule dans `backend/crates/paiements/README.md` : ce qu'il faut changer pour brancher l'agrégateur retenu, ce qu'il ne faut **jamais** toucher, et le point d'accroche du routage par moyen de phase 2+ (segment `{fournisseur}` du webhook, **sans règle aujourd'hui** — FR-043, FR-113)
 
 **Checkpoint**: le choix de l'agrégateur peut se faire — et se défaire — sans rouvrir la chaîne d'argent.
 

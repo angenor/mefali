@@ -49,9 +49,11 @@ use uuid::Uuid;
 
 use crate::modele::MoyenPaiement;
 
+pub mod agregateur;
 pub mod signature;
 pub mod simule;
 
+pub use agregateur::AgregateurHttp;
 pub use signature::{empreinte, SignatureHmac, TOLERANCE_HORODATAGE};
 pub use simule::{FournisseurSimule, ScenarioSimule};
 
