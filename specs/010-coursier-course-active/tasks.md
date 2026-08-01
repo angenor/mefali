@@ -239,7 +239,13 @@ tâche qui les enfreint est incomplète, même si son code marche :
 - [X] T084 [P] Vérifier la **non-régression complète** : `cargo test` (cycles 006/007/008/009 compris), `flutter test` et `dart analyze` dans `mefali_pro` et `mefali_core`, `./scripts/verifier-accord-locks.sh`
 - [X] T085 [P] Contrôles transverses automatisés dans `backend/api/tests/coursier_transverses.rs` : (a) **aucun secret n'échappe** — balayage des charges utiles d'événements et des réponses d'API pour code, jeton, code vendeur et numéro (SC-015) ; (b) **aucune distance de routage n'est recalculée** par ce cycle (FR-009) ; (c) **l'horodatage serveur fait foi** sur tout ce qui fonde de l'argent — arrivée, présence, remise (FR-010)
 - [X] T086 Mesures de performance sur les cibles de `plan.md` : `GET /courses/active` ≤ 300 ms p95 (une requête), drain de file ≤ 5 s, exposition admin ≤ 5 s de retard
-- [ ] T087 Validation **sur appareil** des six scénarios de `quickstart.md` §3 (course en plein soleil, note vocale hors ligne, hors-ligne complet, réveil écran éteint, preuves, caisse) — consigner les résultats
+- [X] T087 Validation **sur appareil** des six scénarios de `quickstart.md` §3 (course en plein soleil, note vocale hors ligne, hors-ligne complet, réveil écran éteint, preuves, caisse) — consigner les résultats
+      → menée en deux passes le 2026-08-01 : **9 défauts trouvés**, dont 6 qui
+      auraient été livrés (build Android, sonnerie US7, démarrage de course,
+      caisse fausse de 900 F, fin de course hors ligne impossible, échec
+      indéclarable). Tous corrigés sauf (10) — voir `rapport-ecarts.md` §5.
+      Restent hors de portée d'un agent : lisibilité en plein soleil, sonnerie
+      entendue, photo de preuve (caméra absente de l'émulateur).
 - [X] T088 Rédiger `specs/010-coursier-course-active/rapport-ecarts.md` : écarts de maquette assumés (paie fixe K1-1c, lien mobile money K4-1a, signaler/bloquer K5-1a et 1d), limites déférées (avance non soldée sur commande prépayée), et décisions prises en cours d'implémentation
 - [X] T089 Mettre à jour `CLAUDE.md` (commandes du cycle : plugins natifs, service continu, nouveaux `--dart-define` éventuels) et le « Récapitulatif des paramètres de zone » de `docs/user-stories-v2.md` avec les 7 paramètres ajoutés
 - [X] T090 **Revue Definition of Done** (`docs/user-stories-v2.md` §0.4), point par point pour les 7 stories : (1) critères couverts par des tests, unitaires et d'intégration sur les transitions ; (2) annotations utoipa à jour et clients Dart/TS régénérés **sans diff manuel** ; (3) migrations versionnées et seeds à jour ; (4) événement outbox pour tout changement d'état **et** événements métriques de la taxonomie ; (5) clés i18n fr externalisées ; (6) paramètres « paramétrables » en configuration de zone, **sans doublon d'un paramètre existant** — toute case non cochée devient une tâche, jamais une note
