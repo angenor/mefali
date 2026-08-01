@@ -256,6 +256,8 @@ class ArretCourse {
     required this.siteLon,
     required this.montantAvance,
     required this.devise,
+    this.montantArticlesUnites = 0,
+    this.retenueAppliqueeUnites = 0,
     required this.photoExigee,
     required this.distanceMaxM,
     required this.collecte,
@@ -286,8 +288,15 @@ class ArretCourse {
   /// Position attendue du site.
   final double siteLon;
 
-  /// Montant avancé (unités mineures).
+  /// Montant avancé (unités mineures) — **net de retenue vendeur**.
   final int montantAvance;
+
+  /// Articles bruts, AVANT retenue VND-08 (FR-092). `0` sur une course mise en
+  /// cache avant le cycle PAY : l'app retombe alors sur le net, qui reste juste.
+  final int montantArticlesUnites;
+
+  /// Part prise en charge par le vendeur (VND-08), `0` sinon.
+  final int retenueAppliqueeUnites;
 
   /// Devise ISO 4217.
   final String devise;
@@ -318,9 +327,30 @@ class ArretCourse {
   ///
   /// Les lignes font autorité, pas [montantAvance] : celui-ci vient du dernier
   /// chargement serveur et devient faux dès qu'une ligne est retirée hors ligne.
-  int get montantAPayerUnites => lignes.isEmpty
-      ? montantAvance
+  int get montantAPayerUnites {
+    final net = montantArticlesAPayerUnites - retenueAppliqueeUnites;
+    // Écrêté à zéro (FR-052) : une avance négative ferait financer la course
+    // par le coursier, ce que la constitution interdit.
+    return net < 0 ? 0 : net;
+  }
+
+  /// Articles BRUTS de cet arrêt, tels que le vendeur les facture — avant
+  /// déduction de la livraison offerte (FR-092).
+  ///
+  /// Les lignes font autorité dès qu'il y en a : elles sont plus fraîches que
+  /// le montant serveur, et c'est ce qui fait baisser l'affichage tout de suite
+  /// quand un article est retiré hors ligne.
+  int get montantArticlesAPayerUnites => lignes.isEmpty
+      ? (montantArticlesUnites > 0 ? montantArticlesUnites : montantAvance)
       : lignes.fold(0, (somme, l) => somme + l.montantUnites);
+
+  /// La livraison offerte s'applique-t-elle à cet arrêt ? Décide de l'affichage
+  /// de l'explication sur K3 — un net inexpliqué fait rappeler l'agence.
+  bool get aUneRetenue => retenueAppliqueeUnites > 0;
+
+  /// La retenue dépassait les articles : rien à avancer (FR-052).
+  bool get retenueEcretee =>
+      retenueAppliqueeUnites > montantArticlesAPayerUnites;
 
   /// Articles effectivement pris (cochés et non retirés) — le « (2 articles
   /// pris) » de K3-1a.
@@ -336,6 +366,8 @@ class ArretCourse {
         siteLat: siteLat,
         siteLon: siteLon,
         montantAvance: montantAvance,
+        montantArticlesUnites: montantArticlesUnites,
+        retenueAppliqueeUnites: retenueAppliqueeUnites,
         devise: devise,
         photoExigee: photoExigee,
         distanceMaxM: distanceMaxM,
@@ -637,6 +669,8 @@ class EtatCourseActive extends _$EtatCourseActive {
           siteLat: a.siteLat,
           siteLon: a.siteLon,
           montantAvance: a.montantAvance,
+          montantArticlesUnites: Value(a.montantArticlesUnites),
+          retenueAppliqueeUnites: Value(a.retenueAppliqueeUnites),
           devise: c.devise,
           photoExigee: a.photoExigee,
           distanceMaxM: Value(a.distanceMaxM),
@@ -879,6 +913,8 @@ class EtatCourseActive extends _$EtatCourseActive {
             siteLat: l.siteLat,
             siteLon: l.siteLon,
             montantAvance: l.montantAvance,
+            montantArticlesUnites: l.montantArticlesUnites,
+            retenueAppliqueeUnites: l.retenueAppliqueeUnites,
             devise: l.devise,
             photoExigee: l.photoExigee,
             distanceMaxM: l.distanceMaxM,

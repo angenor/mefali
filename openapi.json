@@ -8664,6 +8664,8 @@
           "empreinte_jeton",
           "empreinte_code",
           "montant_avance",
+          "montant_articles_unites",
+          "retenue_appliquee_unites",
           "photo_exigee",
           "distance_max_m",
           "statut",
@@ -8727,10 +8729,15 @@
             },
             "description": "Articles à acheter chez ce vendeur."
           },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à\n`montant_avance` quand aucune livraison n'est offerte."
+          },
           "montant_avance": {
             "type": "integer",
             "format": "int64",
-            "description": "Montant à avancer à CE vendeur, lignes retirées exclues (FR-013)."
+            "description": "Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et\n**retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3\naffiche en gros : ce que Yao sort de sa poche au comptoir."
           },
           "nom": {
             "type": "string",
@@ -8749,6 +8756,11 @@
             "type": "string",
             "format": "uuid",
             "description": "Prestataire visé."
+          },
+          "retenue_appliquee_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle,\nl'app affiche l'explication de l'écart plutôt qu'un net inexpliqué."
           },
           "site_lat": {
             "type": "number",

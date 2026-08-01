@@ -117,8 +117,20 @@ class ArretsPreprovisionnes extends Table {
   /// Position attendue du site.
   RealColumn get siteLon => real()();
 
-  /// Montant avancé (unités mineures).
+  /// Montant avancé (unités mineures) — **net de retenue vendeur**.
   IntColumn get montantAvance => integer()();
+
+  /// Articles bruts, AVANT retenue VND-08 (cycle PAY 011, FR-092).
+  ///
+  /// Défaut `0` : une course déjà en cache au moment de la mise à jour n'a pas
+  /// cette valeur, et l'app retombe alors sur [montantAvance] — le net, qui
+  /// reste juste. Mieux vaut une explication absente qu'un montant faux.
+  IntColumn get montantArticlesUnites =>
+      integer().withDefault(const Constant(0))();
+
+  /// Part prise en charge par le vendeur (VND-08), `0` sinon.
+  IntColumn get retenueAppliqueeUnites =>
+      integer().withDefault(const Constant(0))();
 
   /// Devise ISO 4217.
   TextColumn get devise => text()();
@@ -477,7 +489,7 @@ class BaseOffline extends _$BaseOffline {
   BaseOffline.memoire() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -547,6 +559,16 @@ class BaseOffline extends _$BaseOffline {
           if (from < 9) {
             await m.addColumn(
                 courseCacheTable, courseCacheTable.remiseValideeLocalementLe);
+          }
+          // v10 (cycle PAY 011, T061) : la retenue VND-08 par arrêt. Deux
+          // colonnes AJOUTÉES, défaut 0 — une course déjà en cache continue
+          // d'afficher son net sans explication, ce qui est exactement ce
+          // qu'elle affichait avant. Aucune valeur ne devient fausse.
+          if (from < 10) {
+            await m.addColumn(arretsPreprovisionnes,
+                arretsPreprovisionnes.montantArticlesUnites);
+            await m.addColumn(arretsPreprovisionnes,
+                arretsPreprovisionnes.retenueAppliqueeUnites);
           }
         },
       );

@@ -31,6 +31,7 @@ Map<String, Object?> _course({
   bool premierCollecte = false,
   bool toutCollecte = false,
   String statutLigne = 'presente',
+  int retenueUnites = 0,
 }) =>
     {
       'livraison_id': _livraison,
@@ -46,6 +47,7 @@ Map<String, Object?> _course({
           ligneId: '019fa000-0000-7000-8000-0000000000f1',
           libelle: 'Tomates',
           prix: 400,
+          retenueUnites: retenueUnites,
           statutLigne: statutLigne,
         ),
         _arret(
@@ -99,6 +101,7 @@ Map<String, Object?> _arret({
   required String libelle,
   required int prix,
   String statutLigne = 'presente',
+  int retenueUnites = 0,
 }) =>
     {
       'arret_id': id,
@@ -110,7 +113,11 @@ Map<String, Object?> _arret({
       'distance_precedent_m': null,
       'empreinte_jeton': 'jeton-$ordre',
       'empreinte_code': 'code-$ordre',
-      'montant_avance': prix * 2,
+      // Cycle PAY 011 : `montant_avance` est le NET. Sans livraison offerte
+      // (le cas par défaut), il coïncide avec le brut.
+      'montant_avance': prix * 2 - retenueUnites,
+      'montant_articles_unites': prix * 2,
+      'retenue_appliquee_unites': retenueUnites,
       'photo_exigee': false,
       'distance_max_m': 100,
       'statut': statut,
@@ -228,6 +235,39 @@ void main() {
     );
     // Et le montant de l'arrêt tombe à zéro : plus rien à avancer ici.
     expect(find.text(formaterMontant(0, 'XOF')), findsOneWidget);
+  });
+
+  testWidgets(
+      'FR-092 : la livraison offerte est expliquée, pas seulement déduite',
+      (tester) async {
+    await _ecranHaut(tester);
+    // Articles 800, le vendeur prend 500 de livraison à sa charge → 300 à payer.
+    final container = _conteneur(course: _course(retenueUnites: 500));
+    addTearDown(container.dispose);
+    await _poser(tester, container);
+
+    // Le CALCUL est affiché, pas seulement son résultat : un coursier qui voit
+    // un montant plus bas que ce que le vendeur réclame doit pouvoir montrer
+    // pourquoi, au comptoir, sans appeler l'agence.
+    expect(find.text('Livraison offerte par le vendeur'), findsOneWidget);
+    expect(find.text('Articles'), findsOneWidget);
+    expect(find.text(formaterMontant(800, 'XOF')), findsWidgets,
+        reason: 'le brut reste lisible — c\'est ce que le vendeur facture');
+    expect(find.text('− ${formaterMontant(500, 'XOF')}'), findsOneWidget);
+    expect(find.text('à payer'), findsOneWidget);
+    expect(find.text(formaterMontant(300, 'XOF')), findsWidgets,
+        reason: 'le net est ce que Yao sort de sa poche');
+  });
+
+  testWidgets(
+      'sans livraison offerte, aucune explication ne vient encombrer la carte',
+      (tester) async {
+    await _ecranHaut(tester);
+    final container = _conteneur(course: _course());
+    addTearDown(container.dispose);
+    await _poser(tester, container);
+
+    expect(find.text('Livraison offerte par le vendeur'), findsNothing);
   });
 
   testWidgets('K3-1b : hors ligne, le scan reste actif et le grisage s\'explique',

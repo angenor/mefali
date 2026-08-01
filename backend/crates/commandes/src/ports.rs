@@ -370,8 +370,25 @@ pub struct ArretDeCourse {
     /// tant que le tronçon n'est pas figé à la création, l'app masque la ligne
     /// plutôt que d'afficher un chiffre faux.
     pub distance_precedent_m: Option<i64>,
-    /// Montant à avancer à CE vendeur (unités mineures).
+    /// Montant à avancer à CE vendeur (unités mineures) — **net de retenue**.
+    ///
+    /// C'est le chiffre que K3 affiche en gros : ce que Yao sort de sa poche au
+    /// comptoir. Avant le scan c'est une prévision (`articles − retenue
+    /// prévue`), après c'est le montant réellement versé. Les deux coïncident,
+    /// sauf si des lignes bougent entre-temps — auquel cas la prévision suit.
     pub montant_avance: i64,
+    /// Articles bruts de cet arrêt, AVANT retenue (cycle PAY 011, FR-092).
+    ///
+    /// Sans lui, l'app afficherait un net inexpliqué : « pourquoi 2 500 alors
+    /// que le vendeur en demande 3 000 ? ». Un coursier qui ne comprend pas un
+    /// écart d'argent appelle le support — ou paie le brut de sa poche.
+    pub montant_articles_unites: i64,
+    /// Part prise en charge par le vendeur (VND-08), `0` sinon.
+    ///
+    /// Avant la collecte c'est la retenue **prévue**, calculée par la règle du
+    /// scan (research R9) ; après, c'est celle qui a été appliquée — l'histoire
+    /// ne se réécrit pas.
+    pub retenue_appliquee_unites: i64,
     /// Où en est cet arrêt.
     pub statut: StatutArret,
     /// Départ vers l'arrêt déclaré (horodatage serveur).
@@ -1387,6 +1404,10 @@ mod tests {
                 site_lon: -4.823,
                 distance_precedent_m: None,
                 montant_avance: 1_500,
+                // Aucune livraison offerte dans le cas type : le net et le brut
+                // coïncident, et c'est bien la situation ordinaire.
+                montant_articles_unites: 1_500,
+                retenue_appliquee_unites: 0,
                 statut: StatutArret::ACollecter,
                 en_route_le: None,
                 arrive_le: None,

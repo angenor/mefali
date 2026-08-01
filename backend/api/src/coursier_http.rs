@@ -169,8 +169,16 @@ pub struct ArretCourseDto {
     pub empreinte_jeton: String,
     /// base16(sha256(prestataire ‖ code)) — mode dégradé hors-ligne.
     pub empreinte_code: String,
-    /// Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+    /// Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et
+    /// **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3
+    /// affiche en gros : ce que Yao sort de sa poche au comptoir.
     pub montant_avance: i64,
+    /// Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à
+    /// `montant_avance` quand aucune livraison n'est offerte.
+    pub montant_articles_unites: i64,
+    /// Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle,
+    /// l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
+    pub retenue_appliquee_unites: i64,
     /// Photo de récupération exigée (politique résolue).
     pub photo_exigee: bool,
     /// Rayon max de scan (m).
@@ -299,6 +307,8 @@ impl From<coursier::CourseComplete> for CourseActiveDto {
                     empreinte_jeton: a.empreinte_jeton,
                     empreinte_code: a.empreinte_code,
                     montant_avance: a.montant_avance,
+                    montant_articles_unites: a.montant_articles_unites,
+                    retenue_appliquee_unites: a.retenue_appliquee_unites,
                     photo_exigee: a.photo_exigee,
                     distance_max_m: a.distance_max_m,
                     statut: a.statut.comme_str().to_owned(),

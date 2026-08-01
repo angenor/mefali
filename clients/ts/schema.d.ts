@@ -2296,7 +2296,15 @@ export interface components {
             lignes: components["schemas"]["LigneArret"][];
             /**
              * Format: int64
-             * @description Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+             * @description Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à
+             *     `montant_avance` quand aucune livraison n'est offerte.
+             */
+            montant_articles_unites: number;
+            /**
+             * Format: int64
+             * @description Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et
+             *     **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3
+             *     affiche en gros : ce que Yao sort de sa poche au comptoir.
              */
             montant_avance: number;
             /** @description Nom du vendeur. */
@@ -2313,6 +2321,12 @@ export interface components {
              * @description Prestataire visé.
              */
             prestataire_id: string;
+            /**
+             * Format: int64
+             * @description Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle,
+             *     l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
+             */
+            retenue_appliquee_unites: number;
             /**
              * Format: double
              * @description Position attendue du site.

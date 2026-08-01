@@ -55,6 +55,8 @@ Map<String, Object?> _course({
           'empreinte_jeton': 'jeton-0',
           'empreinte_code': 'code-0',
           'montant_avance': 800,
+          'montant_articles_unites': 800,
+          'retenue_appliquee_unites': 0,
           'photo_exigee': false,
           'distance_max_m': 100,
           'statut': 'collecte',

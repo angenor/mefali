@@ -482,7 +482,25 @@ impl crate::ports::CourseCoursier for PgCommandes {
         let lignes = sqlx::query!(
             r#"SELECT a.id AS arret_id, a.ordre AS "arret_ordre!",
                       a.prestataire_id AS "prestataire_id!",
-                      a.site_lat, a.site_lon, a.montant_avance,
+                      a.site_lat, a.site_lon,
+                      a.montant_articles_unites,
+                      -- Retenue VND-08 (cycle PAY 011, FR-092). Deux cas, et
+                      -- l'ordre compte : un arrêt DÉJÀ collecté sert la retenue
+                      -- qu'il a réellement subie — la recalculer réécrirait
+                      -- l'histoire le jour où le devis ou les lignes bougent.
+                      -- Un arrêt à venir sert la retenue PRÉVUE, par la même
+                      -- règle que le scan appliquera (research R9), pour que
+                      -- Yao sache quoi sortir avant d'arriver au comptoir.
+                      CASE WHEN a.statut = 'collecte' THEN a.retenue_appliquee_unites
+                           WHEN (SELECT COUNT(*) FROM commandes.arret a2
+                                   JOIN commandes.segment s2 ON s2.id = a2.segment_id
+                                  WHERE s2.livraison_id = l.id
+                                    AND a2.type_arret = 'collecte') = 1
+                           THEN LEAST(
+                                  COALESCE((l.devis_composantes->>'retenue_vendeur')::bigint, 0),
+                                  a.montant_articles_unites)
+                           ELSE 0
+                      END AS "retenue!",
                       a.statut::text AS "statut!",
                       a.en_route_le, a.arrive_le, a.collecte_le,
                       lc.id AS "ligne_id?", art.nom AS "libelle?",
@@ -493,6 +511,7 @@ impl crate::ports::CourseCoursier for PgCommandes {
                       lc.cree_le AS "ligne_cree_le?"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
+               JOIN commandes.livraison l ON l.id = s.livraison_id
                LEFT JOIN commandes.ligne_commande lc ON lc.arret_id = a.id
                LEFT JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
                LEFT JOIN prestataires.article art
@@ -516,7 +535,12 @@ impl crate::ports::CourseCoursier for PgCommandes {
                     // Le tronçon n'est pas figé au cycle 007, et ce cycle ne
                     // recalcule aucun itinéraire (FR-009).
                     distance_precedent_m: None,
-                    montant_avance: l.montant_avance,
+                    // Le NET, prévu ou constaté — jamais le brut. Un coursier
+                    // qui lit le brut sort trop d'argent au comptoir, et le
+                    // vendeur encaisse une livraison qu'il avait offerte.
+                    montant_avance: (l.montant_articles_unites - l.retenue).max(0),
+                    montant_articles_unites: l.montant_articles_unites,
+                    retenue_appliquee_unites: l.retenue,
                     statut: l.statut.parse()?,
                     en_route_le: l.en_route_le,
                     arrive_le: l.arrive_le,

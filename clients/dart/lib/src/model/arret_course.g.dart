@@ -26,6 +26,8 @@ class _$ArretCourse extends ArretCourse {
   @override
   final BuiltList<LigneArret> lignes;
   @override
+  final int montantArticlesUnites;
+  @override
   final int montantAvance;
   @override
   final String nom;
@@ -35,6 +37,8 @@ class _$ArretCourse extends ArretCourse {
   final bool photoExigee;
   @override
   final String prestataireId;
+  @override
+  final int retenueAppliqueeUnites;
   @override
   final double siteLat;
   @override
@@ -57,11 +61,13 @@ class _$ArretCourse extends ArretCourse {
       required this.empreinteJeton,
       this.enRouteLe,
       required this.lignes,
+      required this.montantArticlesUnites,
       required this.montantAvance,
       required this.nom,
       required this.ordre,
       required this.photoExigee,
       required this.prestataireId,
+      required this.retenueAppliqueeUnites,
       required this.siteLat,
       required this.siteLon,
       required this.statut,
@@ -87,11 +93,13 @@ class _$ArretCourse extends ArretCourse {
         empreinteJeton == other.empreinteJeton &&
         enRouteLe == other.enRouteLe &&
         lignes == other.lignes &&
+        montantArticlesUnites == other.montantArticlesUnites &&
         montantAvance == other.montantAvance &&
         nom == other.nom &&
         ordre == other.ordre &&
         photoExigee == other.photoExigee &&
         prestataireId == other.prestataireId &&
+        retenueAppliqueeUnites == other.retenueAppliqueeUnites &&
         siteLat == other.siteLat &&
         siteLon == other.siteLon &&
         statut == other.statut &&
@@ -110,11 +118,13 @@ class _$ArretCourse extends ArretCourse {
     _$hash = $jc(_$hash, empreinteJeton.hashCode);
     _$hash = $jc(_$hash, enRouteLe.hashCode);
     _$hash = $jc(_$hash, lignes.hashCode);
+    _$hash = $jc(_$hash, montantArticlesUnites.hashCode);
     _$hash = $jc(_$hash, montantAvance.hashCode);
     _$hash = $jc(_$hash, nom.hashCode);
     _$hash = $jc(_$hash, ordre.hashCode);
     _$hash = $jc(_$hash, photoExigee.hashCode);
     _$hash = $jc(_$hash, prestataireId.hashCode);
+    _$hash = $jc(_$hash, retenueAppliqueeUnites.hashCode);
     _$hash = $jc(_$hash, siteLat.hashCode);
     _$hash = $jc(_$hash, siteLon.hashCode);
     _$hash = $jc(_$hash, statut.hashCode);
@@ -135,11 +145,13 @@ class _$ArretCourse extends ArretCourse {
           ..add('empreinteJeton', empreinteJeton)
           ..add('enRouteLe', enRouteLe)
           ..add('lignes', lignes)
+          ..add('montantArticlesUnites', montantArticlesUnites)
           ..add('montantAvance', montantAvance)
           ..add('nom', nom)
           ..add('ordre', ordre)
           ..add('photoExigee', photoExigee)
           ..add('prestataireId', prestataireId)
+          ..add('retenueAppliqueeUnites', retenueAppliqueeUnites)
           ..add('siteLat', siteLat)
           ..add('siteLon', siteLon)
           ..add('statut', statut)
@@ -191,6 +203,11 @@ class ArretCourseBuilder implements Builder<ArretCourse, ArretCourseBuilder> {
       _$this._lignes ??= ListBuilder<LigneArret>();
   set lignes(ListBuilder<LigneArret>? lignes) => _$this._lignes = lignes;
 
+  int? _montantArticlesUnites;
+  int? get montantArticlesUnites => _$this._montantArticlesUnites;
+  set montantArticlesUnites(int? montantArticlesUnites) =>
+      _$this._montantArticlesUnites = montantArticlesUnites;
+
   int? _montantAvance;
   int? get montantAvance => _$this._montantAvance;
   set montantAvance(int? montantAvance) =>
@@ -212,6 +229,11 @@ class ArretCourseBuilder implements Builder<ArretCourse, ArretCourseBuilder> {
   String? get prestataireId => _$this._prestataireId;
   set prestataireId(String? prestataireId) =>
       _$this._prestataireId = prestataireId;
+
+  int? _retenueAppliqueeUnites;
+  int? get retenueAppliqueeUnites => _$this._retenueAppliqueeUnites;
+  set retenueAppliqueeUnites(int? retenueAppliqueeUnites) =>
+      _$this._retenueAppliqueeUnites = retenueAppliqueeUnites;
 
   double? _siteLat;
   double? get siteLat => _$this._siteLat;
@@ -246,11 +268,13 @@ class ArretCourseBuilder implements Builder<ArretCourse, ArretCourseBuilder> {
       _empreinteJeton = $v.empreinteJeton;
       _enRouteLe = $v.enRouteLe;
       _lignes = $v.lignes.toBuilder();
+      _montantArticlesUnites = $v.montantArticlesUnites;
       _montantAvance = $v.montantAvance;
       _nom = $v.nom;
       _ordre = $v.ordre;
       _photoExigee = $v.photoExigee;
       _prestataireId = $v.prestataireId;
+      _retenueAppliqueeUnites = $v.retenueAppliqueeUnites;
       _siteLat = $v.siteLat;
       _siteLon = $v.siteLon;
       _statut = $v.statut;
@@ -291,6 +315,8 @@ class ArretCourseBuilder implements Builder<ArretCourse, ArretCourseBuilder> {
                 empreinteJeton, r'ArretCourse', 'empreinteJeton'),
             enRouteLe: enRouteLe,
             lignes: lignes.build(),
+            montantArticlesUnites: BuiltValueNullFieldError.checkNotNull(
+                montantArticlesUnites, r'ArretCourse', 'montantArticlesUnites'),
             montantAvance: BuiltValueNullFieldError.checkNotNull(
                 montantAvance, r'ArretCourse', 'montantAvance'),
             nom: BuiltValueNullFieldError.checkNotNull(
@@ -301,6 +327,10 @@ class ArretCourseBuilder implements Builder<ArretCourse, ArretCourseBuilder> {
                 photoExigee, r'ArretCourse', 'photoExigee'),
             prestataireId: BuiltValueNullFieldError.checkNotNull(
                 prestataireId, r'ArretCourse', 'prestataireId'),
+            retenueAppliqueeUnites: BuiltValueNullFieldError.checkNotNull(
+                retenueAppliqueeUnites,
+                r'ArretCourse',
+                'retenueAppliqueeUnites'),
             siteLat: BuiltValueNullFieldError.checkNotNull(
                 siteLat, r'ArretCourse', 'siteLat'),
             siteLon: BuiltValueNullFieldError.checkNotNull(

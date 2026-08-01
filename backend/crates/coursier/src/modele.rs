@@ -76,8 +76,17 @@ pub struct ArretComplet {
     pub empreinte_jeton: String,
     /// base16(sha256(prestataire_id ‖ code)) — confirmation dégradée hors-ligne.
     pub empreinte_code: String,
-    /// Montant à avancer à CE vendeur (unités mineures), lignes retirées exclues.
+    /// Montant à avancer à CE vendeur (unités mineures), lignes retirées
+    /// exclues et **retenue vendeur déduite** (VND-08, cycle PAY 011).
     pub montant_avance: i64,
+    /// Articles bruts, AVANT retenue — ce que le vendeur facture.
+    ///
+    /// Égal à `montant_avance` quand aucune livraison n'est offerte. Sans lui,
+    /// K3 afficherait un net inexpliqué et le coursier n'aurait aucun moyen de
+    /// justifier l'écart au comptoir (FR-092).
+    pub montant_articles_unites: i64,
+    /// Part prise en charge par le vendeur (VND-08), `0` sinon.
+    pub retenue_appliquee_unites: i64,
     /// Photo de récupération exigée (politique résolue du cycle 006).
     pub photo_exigee: bool,
     /// Rayon max de scan (m) — validation de proximité hors-ligne.
@@ -897,6 +906,8 @@ mod tests {
             empreinte_jeton: "a1b2".to_owned(),
             empreinte_code: "c3d4".to_owned(),
             montant_avance: 2_000,
+            montant_articles_unites: 2_000,
+            retenue_appliquee_unites: 0,
             photo_exigee: false,
             distance_max_m: 100,
             statut: StatutArret::ACollecter,
