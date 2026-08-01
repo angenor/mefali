@@ -1,0 +1,85 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.zone_id, c.client_id, c.total_unites, c.devise,\n                      c.mode_paiement::text  AS \"mode_paiement!\",\n                      c.etat::text           AS \"etat!\",\n                      c.etat_paiement::text  AS \"etat_paiement!\"\n               FROM commandes.commande c\n               WHERE c.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "zone_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "zone_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "mode_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "etat!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "etat_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "3eaba72c44355a53c63e11a3b961e42fcc5f74913fbb78a9801c724bb6bc9915"
+}

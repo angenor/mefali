@@ -48,6 +48,12 @@ dispatch.workspace = true
 # `/moi/journee` à partir de `coursier` ET `dispatch`, précisément pour qu'aucun
 # des deux crates n'apprenne l'existence de l'autre (contracts/ports-coursier §2).
 coursier.workspace = true
+# Domaine paiement (PgPaiements, PaymentProvider) — cycle PAY 011. La couche
+# `api` est la SEULE à choisir quelle implémentation de fournisseur câbler, à
+# partir de la configuration : le domaine ne connaît que son trait, et aucun nom
+# d'agrégateur n'apparaît ici (FR-003, vérifié en CI par
+# `scripts/verifier-frontiere-paiement.sh`).
+paiements.workspace = true
 sqlx.workspace = true
 # Impls RÉELLES des ports du crate `comptes` : la composition racine connaît
 # l'infra, le domaine ne connaît que ses traits (constitution II). Consommées par

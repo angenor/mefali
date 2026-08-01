@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO paiements.transaction\n                 (id, commande_id, montant_unites, devise, fournisseur,\n                  reference_fournisseur, acces_paiement, ouverte_le, expire_le)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "906ffa069742bc688d6e45192575b1795521a640d47173cc9d2c58f9ca1f1c6f"
+}

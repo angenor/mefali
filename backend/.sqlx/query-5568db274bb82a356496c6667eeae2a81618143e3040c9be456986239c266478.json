@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO paiements.dossier\n                 (id, type_dossier, commande_id, transaction_id, arret_id,\n                  montant_constate, montant_attendu, devise, motif_cle,\n                  evenement_id, ouvert_le)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n             ON CONFLICT (evenement_id) DO NOTHING\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "paiements.type_dossier",
+            "kind": {
+              "Enum": [
+                "montant_divergent",
+                "devise_divergente",
+                "paiement_hors_delai",
+                "transaction_orpheline",
+                "retenue_ecretee",
+                "remboursement_client_du"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5568db274bb82a356496c6667eeae2a81618143e3040c9be456986239c266478"
+}

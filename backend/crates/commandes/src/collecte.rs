@@ -591,9 +591,15 @@ impl PgCommandes {
             Acteur::Coursier,
         )?;
 
+        // Les trois montants tombent à zéro ensemble (cycle PAY 011) : rien n'a
+        // été acheté chez ce vendeur, donc ni articles, ni retenue, ni avance.
+        // La contrainte `arret_avance_coherente` l'exige, et elle a raison de
+        // l'exiger — un arrêt indisponible qui garderait un montant d'articles
+        // ferait apparaître au reçu vendeur une collecte qui n'a pas eu lieu.
         sqlx::query!(
             "UPDATE commandes.arret
                 SET statut = 'indisponible', montant_avance = 0,
+                    montant_articles_unites = 0, retenue_appliquee_unites = 0,
                     transition_uuid_client = $2
               WHERE id = $1",
             arret_id,

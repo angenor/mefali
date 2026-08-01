@@ -24,13 +24,15 @@ use uuid::Uuid;
 use zones::PgZones;
 
 use crate::etats::{verifier_transition, Acteur, Niveau};
+use crate::annulation::AuteurAnnulation;
 use crate::modele::{
-    ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, ModeCollecte,
-    ProgressionCollecte, StatutArret,
+    ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement, ModeCollecte,
+    ModePaiement, ProgressionCollecte, StatutArret,
 };
 use crate::ports::{
-    ArretsDeCollecte, Capacite, CommandeADispatcher, CommandesADispatcher, EtatProgression,
-    MotifPrepaiementDispatch, PositionCoursier, PreuvesEchec, RestrictionsCompte,
+    ArretsDeCollecte, Capacite, CommandeADispatcher, CommandeAPayer, CommandesADispatcher,
+    CommandesAPayer, EtatProgression, MotifPrepaiementDispatch, PositionCoursier, PreuvesEchec,
+    RestrictionsCompte, MOTIF_ANNULATION_EXPIRATION,
 };
 
 /// Clés de configuration de zone lues par la file d'attente (constitution I —
@@ -586,7 +588,15 @@ impl PgCommandes {
                    photo_cle = $4,
                    distance_scan_m = $5,
                    collecte_uuid_client = $6,
-                   montant_avance = $7
+                   montant_avance = $7,
+                   -- Cycle PAY 011 : les articles AVANT retenue. Ici les deux
+                   -- sont égaux et la retenue est nulle — c'est T055 (US5) qui
+                   -- lira `devis_composantes->>'retenue_vendeur'` et posera le
+                   -- net. Poser explicitement les deux colonnes dès maintenant
+                   -- satisfait `arret_avance_coherente` et laisse à T055 un
+                   -- seul endroit à modifier.
+                   montant_articles_unites = $7,
+                   retenue_appliquee_unites = 0
                WHERE id = $1"#,
             arret_id,
             horodatage_serveur,
@@ -842,6 +852,127 @@ impl PgCommandes {
             nb_arrets: comptes.total as i16,
             en_livraison,
         })
+    }
+}
+
+/// Contrat OFFERT à **PAY** (cycle 011, contracts §2).
+///
+/// Deux des quatre méthodes **branchent un chemin existant** plutôt que d'en
+/// écrire un second (FR-032). C'est le point le plus important de cette
+/// implémentation : `confirmer_prepaiement` et l'annulation vivent depuis le
+/// cycle 008, avec leurs transitions gardées, leurs événements outbox et leur
+/// calcul de remboursement dû. Les réécrire ici aurait donné deux règles pour
+/// un même geste — et elles auraient divergé au premier correctif, l'une
+/// continuant de rembourser pendant que l'autre cesserait.
+#[async_trait]
+impl CommandesAPayer for PgCommandes {
+    async fn a_payer(&self, commande: Uuid) -> Result<CommandeAPayer, ErreurCommandes> {
+        let l = sqlx::query!(
+            r#"SELECT c.zone_id, c.client_id, c.total_unites, c.devise,
+                      c.mode_paiement::text  AS "mode_paiement!",
+                      c.etat::text           AS "etat!",
+                      c.etat_paiement::text  AS "etat_paiement!"
+               FROM commandes.commande c
+               WHERE c.id = $1"#,
+            commande,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande))?;
+
+        Ok(CommandeAPayer {
+            commande_id: commande,
+            zone_id: l.zone_id,
+            client_id: l.client_id,
+            total_unites: l.total_unites,
+            devise: l.devise,
+            mode_paiement: l.mode_paiement.parse::<ModePaiement>()?,
+            etat: l.etat.parse::<EtatCommande>()?,
+            etat_paiement: l.etat_paiement.parse::<EtatPaiement>()?,
+        })
+    }
+
+    /// Pose enfin `etat_paiement = 'en_attente'` (research R16, FR-014).
+    ///
+    /// La valeur existe dans l'énumération depuis la migration 0008 et **aucune
+    /// ligne de code ne l'écrivait** : une commande mobile money restait à
+    /// `'du'`, strictement indiscernable d'une commande cash. Toute lecture qui
+    /// voulait savoir « ce paiement est-il en cours ? » devait le deviner.
+    ///
+    /// Aucun événement outbox : ce n'est pas une transition du tronc, c'est la
+    /// matérialisation d'un fait que `paiement.session_ouverte` journalise déjà
+    /// dans la MÊME transaction, du côté de `paiements`. En émettre un second
+    /// compterait deux fois la même ouverture.
+    async fn marquer_paiement_en_attente(
+        &self,
+        commande: Uuid,
+        _quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        // La garde est dans le `WHERE` plutôt que dans un `if` précédé d'un
+        // `SELECT` : deux ouvertures concurrentes ne peuvent pas toutes deux
+        // faire passer une commande déjà réglée à `en_attente`.
+        let touchees = sqlx::query!(
+            "UPDATE commandes.commande
+                SET etat_paiement = 'en_attente'
+              WHERE id = $1 AND etat_paiement = 'du'",
+            commande,
+        )
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        if touchees == 0 {
+            // Ni une erreur, ni un silence : la commande était déjà en attente
+            // (rappel idempotent de l'ouverture) ou déjà réglée. Dans les deux
+            // cas il n'y a rien à faire, et le refuser casserait l'idempotence
+            // que FR-015 exige.
+            tracing::debug!(
+                commande = %commande,
+                "etat_paiement déjà posé — ouverture rejouée, aucun effet",
+            );
+        }
+        Ok(())
+    }
+
+    async fn confirmer_prepaiement(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        // Chemin du cycle 008, appelé tel quel : transition gardée
+        // `en_attente_paiement → nouvelle`, `etat_paiement = 'regle'`, et
+        // `commande.paiement_confirme` — déjà consommé par le pipeline de
+        // dispatch depuis le cycle 009. Rien à câbler ici.
+        PgCommandes::confirmer_prepaiement(self, commande, quand).await?;
+        Ok(())
+    }
+
+    async fn annuler_pour_expiration(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        // Chemin d'annulation EXISTANT (FR-031, FR-032), avec l'auteur
+        // `systeme` — la valeur que la taxonomie déclarait depuis le cycle 008
+        // sans que rien ne l'écrive, faute d'annulation automatique.
+        //
+        // `acteur_id` = l'identifiant de la commande : l'appel n'a pas d'acteur
+        // humain, et ce paramètre n'est lu que pour la garde de propriété du
+        // client, que `Systeme` ne franchit pas.
+        //
+        // Le calcul de « sans frais » et de la part coursier due reste celui du
+        // cycle 008 : une session expirée n'a par construction aucun arrêt
+        // collecté, donc `sans_frais = true` et `part_coursier_due = 0` en
+        // tombent tout seuls, sans règle spéciale à maintenir.
+        self.annuler_commande(
+            commande,
+            AuteurAnnulation::Systeme,
+            commande,
+            Some(MOTIF_ANNULATION_EXPIRATION),
+            quand,
+        )
+        .await?;
+        Ok(())
     }
 }
 

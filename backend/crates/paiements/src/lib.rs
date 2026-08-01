@@ -50,10 +50,12 @@
 //!   tardif ouvre un dossier (R8).
 
 pub mod config;
+pub mod depot;
 pub mod fournisseur;
 pub mod modele;
 
 pub use config::{cles as cles_config, ConfigPaiements};
+pub use depot::PgPaiements;
 pub use fournisseur::{
     Checkout, DemandeCheckout, DemandeRemboursement, EntetesNotification, ErreurFournisseur,
     FournisseurSimule, IssuePaiement, Notification, NotificationEntrante, PaymentProvider,

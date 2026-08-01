@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO paiements.notification_recue\n                 (id, fournisseur, reference_fournisseur, empreinte_charge,\n                  transaction_id, signature_valide, issue, montant_annonce,\n                  devise_annoncee, recue_le)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n             ON CONFLICT (fournisseur, reference_fournisseur, empreinte_charge)\n             DO NOTHING\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.notification_recue",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Bool",
+        "Text",
+        "Int8",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f95df53635a3889ef97c337beda03d26b82bfad3f9b1f62c97d127d6590e2b30"
+}

@@ -299,9 +299,13 @@ impl Bac {
         for (i, (prestataire, montant)) in arrets.iter().enumerate() {
             let arret = Uuid::now_v7();
             sqlx::query(
+                // Cycle PAY 011 : les trois colonnes de retenue tiennent
+                // l'invariant `arret_avance_coherente` — articles = avance,
+                // retenue nulle tant que rien n'est collecté.
                 "INSERT INTO commandes.arret
-                    (id, segment_id, prestataire_id, ordre, site_lat, site_lon, montant_avance, devise)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'XOF')",
+                    (id, segment_id, prestataire_id, ordre, site_lat, site_lon, montant_avance, devise,
+                     montant_articles_unites, retenue_appliquee_unites)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'XOF', $7, 0)",
             )
             .bind(arret)
             .bind(segment)

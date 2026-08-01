@@ -1,0 +1,208 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id,\n                      type_dossier AS \"type_dossier!: TypeDossier\",\n                      etat         AS \"etat!: EtatDossier\",\n                      commande_id, transaction_id, arret_id,\n                      montant_constate, montant_attendu, devise, motif_cle,\n                      ouvert_le, clos_par, clos_le, clos_motif_cle\n               FROM paiements.dossier WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "type_dossier!: TypeDossier",
+        "type_info": {
+          "Custom": {
+            "name": "paiements.type_dossier",
+            "kind": {
+              "Enum": [
+                "montant_divergent",
+                "devise_divergente",
+                "paiement_hors_delai",
+                "transaction_orpheline",
+                "retenue_ecretee",
+                "remboursement_client_du"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "type_dossier"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "etat!: EtatDossier",
+        "type_info": {
+          "Custom": {
+            "name": "paiements.etat_dossier",
+            "kind": {
+              "Enum": [
+                "ouvert",
+                "clos"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "etat"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "commande_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "commande_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "transaction_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "transaction_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "arret_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "arret_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "montant_constate",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "montant_constate"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "montant_attendu",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "montant_attendu"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "motif_cle",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "motif_cle"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "ouvert_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "ouvert_le"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "clos_par",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "clos_par"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "clos_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "clos_le"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "clos_motif_cle",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "paiements.dossier",
+            "name": "clos_motif_cle"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "51a4a1b668c0dbf988bf0491ad00931276b1505496566f2ef25d69d42ac9e1f8"
+}

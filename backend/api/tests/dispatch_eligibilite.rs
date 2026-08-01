@@ -121,7 +121,9 @@ async fn motif_capacite_avance_le_plus_bas_decide(pool: sqlx::PgPool) {
 
     // Le montant à avancer dépasse le palier d'entrée.
     sqlx::query(
-        "UPDATE commandes.arret SET montant_avance = 9000
+        // `montant_articles_unites` suit : l'invariant du cycle PAY 011 lie
+        // les deux, et un test qui ne poserait que l'avance serait refusé.
+        "UPDATE commandes.arret SET montant_avance = 9000, montant_articles_unites = 9000
          WHERE segment_id IN (
              SELECT s.id FROM commandes.segment s
              JOIN commandes.livraison l ON l.id = s.livraison_id
@@ -235,7 +237,9 @@ async fn bascule_prepaiement_quand_l_argent_est_le_seul_obstacle(pool: sqlx::PgP
     bac.dans_le_pool(0, 15_000).await;
     let commande = bac.commande_prete().await;
     sqlx::query(
-        "UPDATE commandes.arret SET montant_avance = 9000
+        // `montant_articles_unites` suit : l'invariant du cycle PAY 011 lie
+        // les deux, et un test qui ne poserait que l'avance serait refusé.
+        "UPDATE commandes.arret SET montant_avance = 9000, montant_articles_unites = 9000
          WHERE segment_id IN (
              SELECT s.id FROM commandes.segment s
              JOIN commandes.livraison l ON l.id = s.livraison_id

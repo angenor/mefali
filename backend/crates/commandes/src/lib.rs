@@ -64,10 +64,11 @@ pub use panier::{
 };
 pub use ports::{
     AffectationSimulee, ArretDeCourse, ArretsDeCollecte, ArretsFixes, Capacite, ClientDeCourse,
-    CommandeADispatcher, CommandesADispatcher, CourseCoursier, CourseDuCoursier, CourseFixe,
-    EtatProgression, LigneDeCourse, LivraisonLivree, Montant, MotifPrepaiementDispatch,
-    PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
-    RemiseDeCourse, RestrictionsCompte, RestrictionsSimulees, TarifFixe,
+    CommandeADispatcher, CommandeAPayer, CommandesADispatcher, CommandesAPayer,
+    CommandesAPayerEnMemoire, CourseCoursier, CourseDuCoursier, CourseFixe, EtatProgression,
+    LigneDeCourse, LivraisonLivree, Montant, MotifPrepaiementDispatch, PaiementSimule,
+    PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes, RemiseDeCourse,
+    RestrictionsCompte, RestrictionsSimulees, TarifFixe, MOTIF_ANNULATION_EXPIRATION,
 };
 pub use substitution::{
     DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,

@@ -688,11 +688,23 @@ impl PgCommandes {
             let arret_id = Uuid::now_v7();
             let avance = groupe.sous_total_unites();
             montant_a_avancer += avance;
+            // `montant_articles_unites = avance` et retenue nulle À LA
+            // CRÉATION (cycle PAY 011, migration 0021) : aucune retenue n'est
+            // connue à cet instant — elle est LUE au scan depuis le devis figé,
+            // et seulement si la livraison n'a qu'un arrêt de collecte (R9).
+            //
+            // Ces deux colonnes ne sont pas décoratives : la contrainte
+            // `arret_avance_coherente` tient l'invariant « net = articles −
+            // retenue, écrêté à zéro » dans la BASE. Les laisser à leur défaut
+            // ferait échouer l'insertion — et c'est exactement ce qu'on veut
+            // d'un invariant d'argent : qu'il refuse une ligne incohérente
+            // plutôt que de la laisser passer pour être découverte au reçu.
             sqlx::query!(
                 "INSERT INTO commandes.arret
                      (id, segment_id, prestataire_id, ordre, type_arret,
-                      site_lat, site_lon, montant_avance, devise)
-                 VALUES ($1, $2, $3, $4, 'collecte', $5, $6, $7, $8)",
+                      site_lat, site_lon, montant_avance, devise,
+                      montant_articles_unites, retenue_appliquee_unites)
+                 VALUES ($1, $2, $3, $4, 'collecte', $5, $6, $7, $8, $7, 0)",
                 arret_id,
                 segment_id,
                 groupe.prestataire_id,

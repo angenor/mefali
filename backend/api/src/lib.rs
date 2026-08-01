@@ -524,6 +524,13 @@ pub async fn run() -> std::io::Result<()> {
     let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
     let mut dispatch_opt: Option<dispatch::PgDispatch> = None;
     let mut coursier_opt: Option<coursier::PgCoursier> = None;
+    // PAY 011 — le dépôt de paiement et le fournisseur ACTIF, derrière son
+    // trait. Deux options distinctes parce qu'elles ont deux durées de vie :
+    // le dépôt suit la base, le fournisseur suit la CONFIGURATION (il existe
+    // même quand la base est indisponible — ce qui n'aide personne, mais évite
+    // qu'un `expect` masque la vraie cause au démarrage).
+    let mut paiements_opt: Option<paiements::PgPaiements> = None;
+    let mut fournisseur_opt: Option<Arc<dyn paiements::PaymentProvider>> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -761,6 +768,46 @@ pub async fn run() -> std::io::Result<()> {
                 );
                 dispatch_opt = Some(depot_dispatch);
 
+                // PAY 011 — le fournisseur de paiement, derrière son trait.
+                //
+                // La sélection est la SEULE chose que la configuration décide :
+                // aucune règle métier ne lit `nom()`, et le contrôle
+                // `scripts/verifier-frontiere-paiement.sh` le vérifie en CI
+                // (FR-003). Changer d'agrégateur, c'est changer trois variables
+                // d'environnement — pas rouvrir la chaîne d'argent.
+                //
+                // Le mode `agregateur` a déjà été validé par
+                // `socle::Config::valider` : arriver ici sans secret est
+                // impossible, l'API aurait refusé de démarrer (FR-045).
+                let fournisseur: Arc<dyn paiements::PaymentProvider> =
+                    match config.paiement_fournisseur {
+                        socle::PaiementFournisseur::Simule => {
+                            Arc::new(paiements::FournisseurSimule::nouveau())
+                        }
+                        socle::PaiementFournisseur::Agregateur => {
+                            // L'implémentation HTTP arrive en US7 (T076). D'ici
+                            // là, refuser explicitement plutôt que de retomber
+                            // en silence sur le double : une production qui
+                            // croit encaisser et qui simule serait le pire des
+                            // deux mondes.
+                            return Err(std::io::Error::other(
+                                "PAIEMENT_FOURNISSEUR=agregateur : le client HTTP \
+                                 n'est pas encore livré (T076). Employer `simule` \
+                                 ou attendre US7 — retomber sur le double en \
+                                 production ferait croire à des encaissements \
+                                 qui n'existent pas.",
+                            ));
+                        }
+                    };
+                let depot_paiements = paiements::PgPaiements::new(pool.clone());
+                eprintln!(
+                    "domaine PAY câblé (PgPaiements ; fournisseur actif « {} ») ; \
+                     remboursements PAY-04 non construits (`refund` définie, jamais appelée)",
+                    fournisseur.nom(),
+                );
+                fournisseur_opt = Some(fournisseur);
+                paiements_opt = Some(depot_paiements);
+
                 commandes_domaine_opt = Some(depot_commandes);
                 tarification_opt = Some(tarification);
                 prestataires_opt = Some(presta);
@@ -949,6 +996,12 @@ pub async fn run() -> std::io::Result<()> {
         }
         if let Some(depot) = coursier_opt.clone() {
             app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = paiements_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(fournisseur) = fournisseur_opt.clone() {
+            app = app.app_data(web::Data::new(fournisseur));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
             // Rate-limit par IP (politeness) sur toute la surface publique.

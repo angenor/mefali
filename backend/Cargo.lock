@@ -345,6 +345,7 @@ dependencies = [
  "coursier",
  "deadpool-redis",
  "dispatch",
+ "paiements",
  "prestataires",
  "qr",
  "redis",

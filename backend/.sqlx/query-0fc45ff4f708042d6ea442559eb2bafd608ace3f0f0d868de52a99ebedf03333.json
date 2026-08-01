@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret\n               SET statut = 'collecte',\n                   collecte_le = $2,\n                   mode_collecte = $3::commandes.mode_collecte,\n                   photo_cle = $4,\n                   distance_scan_m = $5,\n                   collecte_uuid_client = $6,\n                   montant_avance = $7,\n                   -- Cycle PAY 011 : les articles AVANT retenue. Ici les deux\n                   -- sont égaux et la retenue est nulle — c'est T055 (US5) qui\n                   -- lira `devis_composantes->>'retenue_vendeur'` et posera le\n                   -- net. Poser explicitement les deux colonnes dès maintenant\n                   -- satisfait `arret_avance_coherente` et laisse à T055 un\n                   -- seul endroit à modifier.\n                   montant_articles_unites = $7,\n                   retenue_appliquee_unites = 0\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "commandes.mode_collecte",
+            "kind": {
+              "Enum": [
+                "scan_qr",
+                "code_secours"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Int4",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0fc45ff4f708042d6ea442559eb2bafd608ace3f0f0d868de52a99ebedf03333"
+}

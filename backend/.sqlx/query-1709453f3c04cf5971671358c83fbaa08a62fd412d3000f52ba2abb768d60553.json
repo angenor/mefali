@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE paiements.dossier\n                SET etat = 'clos', clos_par = $2, clos_le = $3, clos_motif_cle = $4\n              WHERE id = $1 AND etat = 'ouvert'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1709453f3c04cf5971671358c83fbaa08a62fd412d3000f52ba2abb768d60553"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE paiements.transaction\n                SET reference_fournisseur = $2, acces_paiement = $3\n              WHERE id = $1 AND etat = 'ouverte'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1ee6d10872d1a11b96b7654f493081ac007a6750f1de888daf433d1c7e017108"
+}
