@@ -367,7 +367,7 @@ propriétaire s'y branche sans modifier CMD : `commande.prete_a_dispatcher`
 | `commande.mise_en_attente_coursier` | `commande` | `commande.id` | `zone`, `motif` (`aucun_coursier_eligible`), `age_s` |
 | `commande.attente_coursier_escaladee` | `commande` | `commande.id` | `zone`, `age_s`, `seuil_s` (paramètre de zone franchi), `chemin` (`file` \| `pipeline`) — **amendé par le cycle DSP 009**, voir ci-dessous |
 | `commande.assignee` | `commande` | `commande.id` | `livraison`, `coursier`, `depuis_attente` (booléen — reprise FIFO) |
-| `commande.terminee` | `commande` | `commande.id` | `mode_remise` (`qr` \| `code` \| `depot`), `duree_totale_s`, `total_encaisse`, `devise` |
+| `commande.terminee` | `commande` | `commande.id` | `mode_remise` (`qr` \| `code` \| `depot`), `duree_totale_s`, **`total_du`**, `total_encaisse` (**`0` si prépayé** — cycle PAY 011, R11), **`mode_paiement`**, `devise` |
 | `remise.code_epuise` | `commande` | `commande.id` | `livraison`, `essais` (= le plafond de zone atteint), `acteur` (coursier) — **aucun code, jamais** : le publier dans un événement le sortirait du seul canal qui doit le porter (client ↔ coursier, R6) |
 | `commande.annulee` | `commande` | `commande.id` | `par` (`client` \| `admin` \| `systeme`), `motif_cle`, `sans_frais` (booléen), `part_coursier_due` (unités mineures), `remboursement_du` (booléen), `devise` |
 | `commande.echec_declare` | `commande` | `commande.id` | `type_issue`, `preuves_ok` (booléen — toujours `true` : sans preuves, l'écriture est refusée) |

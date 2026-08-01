@@ -740,7 +740,8 @@ impl PgCommandes {
 
         let commande = sqlx::query!(
             r#"SELECT cree_le, total_unites, devise,
-                      etat_paiement::text AS "etat_paiement!"
+                      etat_paiement::text  AS "etat_paiement!",
+                      mode_paiement::text  AS "mode_paiement!"
                FROM commandes.commande WHERE id = $1"#,
             commande_id,
         )
@@ -770,7 +771,25 @@ impl PgCommandes {
                 payload: json!({
                     "mode_remise": mode_remise,
                     "duree_totale_s": (horodatage - commande.cree_le).num_seconds().max(0),
-                    "total_encaisse": commande.total_unites,
+                    // ── Cycle PAY 011 (R11) : DEUX chiffres, pas un ──
+                    //
+                    // `total_du` est ce que la commande vaut, ajusté par les
+                    // retraits ; `total_encaisse` est ce qui a changé de mains
+                    // À LA REMISE — donc **0** sur une commande prépayée, dont
+                    // l'argent est arrivé bien avant, par le fournisseur.
+                    //
+                    // Les confondre faisait compter chaque prépaiement deux
+                    // fois : une fois à la confirmation, une fois à la
+                    // livraison. `total_encaisse` reste présent et garde son
+                    // nom : les consommateurs existants continuent de lire ce
+                    // qu'ils lisaient, avec la valeur qu'ils croyaient lire.
+                    "total_du": commande.total_unites,
+                    "total_encaisse": if commande.mode_paiement == "cash" {
+                        commande.total_unites
+                    } else {
+                        0
+                    },
+                    "mode_paiement": commande.mode_paiement,
                     "devise": commande.devise,
                 }),
                 survenu_le: horodatage,

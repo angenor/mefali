@@ -125,6 +125,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ModifierAdresse.serializer)
       ..add(ModifierArticleDto.serializer)
       ..add(ModifierPrestataireDto.serializer)
+      ..add(MouvementCaisse.serializer)
       ..add(OffreCourante.serializer)
       ..add(OffreLivraisonVendeur.serializer)
       ..add(PaiementCommande.serializer)
@@ -294,6 +295,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LitigeVu)]),
           () => ListBuilder<LitigeVu>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(MouvementCaisse)]),
+          () => ListBuilder<MouvementCaisse>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LignePanier)]),
           () => ListBuilder<LignePanier>())

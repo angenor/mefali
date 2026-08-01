@@ -16,6 +16,7 @@ Name | Type | Description | Notes
 **historiqueDuJour** | [**BuiltList&lt;LigneHistoriqueCaisse&gt;**](LigneHistoriqueCaisse.md) | Historique du jour civil **de la zone**. | 
 **indemnisations** | [**BuiltList&lt;IndemnisationVue&gt;**](IndemnisationVue.md) | Indemnisations rattachées. | 
 **litigesEnCours** | [**BuiltList&lt;LitigeVu&gt;**](LitigeVu.md) | Litiges en cours — vide tant qu'AVI-04 n'existe pas. | 
+**mouvements** | [**BuiltList&lt;MouvementCaisse&gt;**](MouvementCaisse.md) | Mouvements du livre du jour, du plus récent au plus ancien. | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

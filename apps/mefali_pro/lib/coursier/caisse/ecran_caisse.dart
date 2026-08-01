@@ -173,6 +173,26 @@ class _Corps extends StatelessWidget {
               ),
             ),
           ],
+          // Cycle PAY 011 — le LIVRE, mouvement par mouvement. L'historique
+          // ci-dessus agrège par course ; un règlement d'agence et un
+          // reversement n'appartiennent à aucune course et n'y apparaîtraient
+          // jamais. Un versement invisible est exactement ce que la caisse
+          // existe pour empêcher.
+          if (etat.mouvements.isNotEmpty) ...[
+            const SizedBox(height: MefaliTokens.space4),
+            _TitreSection(l10n.payMouvementsTitre),
+            const SizedBox(height: MefaliTokens.space2),
+            _Carte(
+              enfant: Column(
+                children: [
+                  for (final (i, m) in etat.mouvements.indexed) ...[
+                    if (i > 0) const Divider(height: 1),
+                    _LigneMouvement(mouvement: m, devise: etat.devise),
+                  ],
+                ],
+              ),
+            ),
+          ],
           if (etat.indemnisations.isNotEmpty) ...[
             const SizedBox(height: MefaliTokens.space4),
             _TitreSection(l10n.crsCaisseIndemnisationsTitre),
@@ -346,6 +366,64 @@ class _LigneHistorique extends StatelessWidget {
 }
 
 /// Une indemnisation et son chip d'état (K5-1a, K5-1c).
+/// Un mouvement du livre — **sa nature, son sens, son montant** (T050).
+///
+/// Le sens (entrée / sortie) vient du SIGNE calculé par le serveur, jamais
+/// d'une table de types tenue par l'app : une table locale divergerait le jour
+/// où une nature changerait de sens, et Yao lirait « entrée » sur une sortie.
+class _LigneMouvement extends StatelessWidget {
+  const _LigneMouvement({required this.mouvement, required this.devise});
+
+  final MouvementCaisseVue mouvement;
+  final String devise;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    final couleur = mouvement.entree ? MefaliTokens.success : MefaliTokens.danger;
+
+    return ListTile(
+      leading: Icon(
+        mouvement.entree
+            ? Symbols.arrow_downward_rounded
+            : Symbols.arrow_upward_rounded,
+        color: couleur,
+      ),
+      title: Text(_libelleNature(l10n, mouvement.typeEcriture)),
+      subtitle: Text(
+        // La référence de course quand il y en a une ; le SENS quand il n'y en
+        // a pas — un règlement d'agence n'a pas de course, et une ligne sans
+        // sous-titre se lirait comme une ligne incomplète.
+        mouvement.reference ??
+            (mouvement.entree ? l10n.payEcritureEntree : l10n.payEcritureSortie),
+        style: textTheme.bodySmall?.copyWith(color: MefaliTokens.textMuted),
+      ),
+      trailing: Text(
+        formaterMontant(mouvement.montantUnites, devise),
+        style: textTheme.titleMedium?.copyWith(
+          color: couleur,
+          fontWeight: MefaliTokens.weightBold,
+        ),
+      ),
+    );
+  }
+
+  /// Libellé de la nature. Une nature INCONNUE — serveur plus récent que
+  /// l'app — rend son sens plutôt qu'un identifiant technique : Yao doit
+  /// toujours pouvoir lire si l'argent est entré ou sorti.
+  String _libelleNature(AppLocalizations l10n, String nature) => switch (nature) {
+        'avance' => l10n.payEcritureAvance,
+        'remboursement' => l10n.payEcritureRemboursement,
+        'indemnisation' => l10n.payEcritureIndemnisation,
+        'correction' => l10n.payEcritureCorrection,
+        'frais_encaisses' => l10n.payEcritureFraisEncaisses,
+        'reglement' => l10n.payEcritureReglement,
+        'reversement' => l10n.payEcritureReversement,
+        _ => mouvement.entree ? l10n.payEcritureEntree : l10n.payEcritureSortie,
+      };
+}
+
 class _LigneIndemnisation extends StatelessWidget {
   const _LigneIndemnisation({required this.indemnisation});
 

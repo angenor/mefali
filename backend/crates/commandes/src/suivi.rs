@@ -16,8 +16,31 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::depot::PgCommandes;
-use crate::modele::{ErreurCommandes, EtatCommande, EtatLivraison};
+use crate::modele::{ErreurCommandes, EtatCommande, EtatLivraison, ModePaiement};
 use crate::ports::PositionDatee;
+
+/// Ce que le coursier doit réellement encaisser à la remise (FR-057, R11).
+///
+/// **`0` dès que le mode n'est pas `cash`.** Une commande prépayée est déjà
+/// réglée : lui associer un montant à encaisser ferait réclamer deux fois. Le
+/// cycle PAY 011 comble ici un trou du code livré — la valeur valait
+/// `total_unites` quel que soit le mode, et rien à l'écran ne le corrigeait.
+///
+/// Une seule fonction pour les deux lectures (`course_active` et
+/// `montant_a_encaisser`) : c'est la seule façon d'être sûr qu'elles ne
+/// divergeront pas, et une divergence entre les deux se traduirait par un
+/// bandeau qui contredit l'écran de confirmation.
+///
+/// Un mode INCONNU rend `0` : le refuser ferait échouer la course entière pour
+/// une valeur d'énumération que le serveur ne sait pas lire, et réclamer par
+/// défaut serait le pire des deux — mieux vaut ne rien demander qu'exiger à
+/// tort. Le mode est de toute façon revalidé par `parse()` juste après.
+fn montant_a_encaisser(mode_paiement: &str, total_unites: i64) -> i64 {
+    match mode_paiement.parse::<ModePaiement>() {
+        Ok(ModePaiement::Cash) => total_unites,
+        _ => 0,
+    }
+}
 
 /// Clé i18n de l'état affiché — le stepper de la maquette C4-4a.
 ///
@@ -552,7 +575,15 @@ impl crate::ports::CourseCoursier for PgCommandes {
                 empreinte_jeton: e.jeton_reception_hash,
                 essais_consommes: e.essais_code,
                 code_bloque: e.code_bloque,
-                montant_a_encaisser_unites: e.total_unites,
+                // ⚠ **0 quand le mode n'est pas `cash`** (FR-057, FR-093,
+                // research R11). Avant le cycle PAY, cette valeur était
+                // `total_unites` QUEL QUE SOIT le mode : l'app coursier
+                // réclamait à Awa un montant qu'elle avait déjà réglé, et rien
+                // dans l'écran ne disait le contraire.
+                montant_a_encaisser_unites: montant_a_encaisser(
+                    &e.mode_paiement,
+                    e.total_unites,
+                ),
                 mode_paiement: e.mode_paiement.parse()?,
                 arret_remise_id: e.arret_remise_id,
                 arret_remise_statut: e
@@ -570,7 +601,8 @@ impl crate::ports::CourseCoursier for PgCommandes {
         livraison: Uuid,
     ) -> Result<crate::ports::Montant, ErreurCommandes> {
         let m = sqlx::query!(
-            r#"SELECT c.total_unites, c.devise
+            r#"SELECT c.total_unites, c.devise,
+                      c.mode_paiement::text AS "mode_paiement!"
                FROM commandes.livraison l
                JOIN commandes.commande c ON c.id = l.commande_id
                WHERE l.id = $1"#,
@@ -580,7 +612,7 @@ impl crate::ports::CourseCoursier for PgCommandes {
         .await?
         .ok_or(ErreurCommandes::LivraisonInconnue(livraison))?;
         Ok(crate::ports::Montant {
-            unites: m.total_unites,
+            unites: montant_a_encaisser(&m.mode_paiement, m.total_unites),
             devise: m.devise,
         })
     }

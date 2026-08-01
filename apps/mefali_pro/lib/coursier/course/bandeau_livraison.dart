@@ -4,6 +4,7 @@ import 'package:mefali_core/mefali_core.dart';
 
 import '../../l10n/app_localizations.dart';
 import 'etat_course.dart';
+import 'montant_a_encaisser.dart';
 
 /// L'écran « en route vers le client » (K3-1c) : bandeau vert, récapitulatif
 /// des arrêts avec leurs heures, repère du client, montant total à encaisser.
@@ -82,9 +83,10 @@ class BandeauLivraison extends StatelessWidget {
                 onAppeler: onAppelerClient,
               ),
               const SizedBox(height: MefaliTokens.space3),
-              _MontantAEncaisser(
+              BlocMontantAEncaisser(
                 montantUnites: etat.montantAEncaisserUnites,
                 devise: etat.devise,
+                modePaiement: etat.modePaiement,
               ),
             ],
           ),
@@ -222,45 +224,6 @@ class _CarteClient extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MontantAEncaisser extends StatelessWidget {
-  const _MontantAEncaisser({required this.montantUnites, required this.devise});
-
-  final int montantUnites;
-  final String devise;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(MefaliTokens.space3),
-      decoration: BoxDecoration(
-        color: MefaliTokens.surface,
-        border: Border.all(color: MefaliTokens.success),
-        borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.crsEncaissezArrivee,
-            style: textTheme.bodyMedium?.copyWith(color: MefaliTokens.textMuted),
-          ),
-          const SizedBox(height: MefaliTokens.space1),
-          Text(
-            formaterMontant(montantUnites, devise),
-            style: textTheme.displayMedium?.copyWith(
-              color: MefaliTokens.success,
-              fontWeight: MefaliTokens.weightBold,
-            ),
-          ),
-        ],
       ),
     );
   }

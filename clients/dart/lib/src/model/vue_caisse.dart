@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:mefali_api_client/src/model/mouvement_caisse.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:mefali_api_client/src/model/indemnisation_vue.dart';
 import 'package:mefali_api_client/src/model/ligne_historique_caisse.dart';
@@ -23,6 +24,7 @@ part 'vue_caisse.g.dart';
 /// * [historiqueDuJour] - Historique du jour civil **de la zone**.
 /// * [indemnisations] - Indemnisations rattachées.
 /// * [litigesEnCours] - Litiges en cours — vide tant qu'AVI-04 n'existe pas.
+/// * [mouvements] - Mouvements du livre du jour, du plus récent au plus ancien.
 @BuiltValue()
 abstract class VueCaisse implements Built<VueCaisse, VueCaisseBuilder> {
   /// Argent avancé et non encore récupéré (FR-067) — toujours positif.
@@ -56,6 +58,10 @@ abstract class VueCaisse implements Built<VueCaisse, VueCaisseBuilder> {
   /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
   @BuiltValueField(wireName: r'litiges_en_cours')
   BuiltList<LitigeVu> get litigesEnCours;
+
+  /// Mouvements du livre du jour, du plus récent au plus ancien.
+  @BuiltValueField(wireName: r'mouvements')
+  BuiltList<MouvementCaisse> get mouvements;
 
   VueCaisse._();
 
@@ -119,6 +125,11 @@ class _$VueCaisseSerializer implements PrimitiveSerializer<VueCaisse> {
     yield serializers.serialize(
       object.litigesEnCours,
       specifiedType: const FullType(BuiltList, [FullType(LitigeVu)]),
+    );
+    yield r'mouvements';
+    yield serializers.serialize(
+      object.mouvements,
+      specifiedType: const FullType(BuiltList, [FullType(MouvementCaisse)]),
     );
   }
 
@@ -198,6 +209,13 @@ class _$VueCaisseSerializer implements PrimitiveSerializer<VueCaisse> {
             specifiedType: const FullType(BuiltList, [FullType(LitigeVu)]),
           ) as BuiltList<LitigeVu>;
           result.litigesEnCours.replace(valueDes);
+          break;
+        case r'mouvements':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(MouvementCaisse)]),
+          ) as BuiltList<MouvementCaisse>;
+          result.mouvements.replace(valueDes);
           break;
         default:
           unhandled.add(key);

@@ -526,10 +526,20 @@ async fn l_historique_ne_remonte_pas_la_journee_d_hier(pool: PgPool) {
         1,
         "toujours UNE ligne : la journée d'hier ne remonte pas ({caisse})",
     );
+    // ⚠ Élargi par le cycle PAY 011 : la remise cash écrit désormais
+    // `frais_encaisses` À CÔTÉ du remboursement (FR-056). Le livre en porte
+    // donc une de plus — 3 avances + 1 remboursement + 1 frais + les 2 d'hier.
+    // La sémantique du test ne change pas : le livre garde TOUT, et la journée
+    // d'hier ne remonte pas dans l'historique du jour.
+    let ecritures = bac.ecritures_caisse(bac.coursier).await;
     assert_eq!(
-        bac.ecritures_caisse(bac.coursier).await.len(),
-        6,
-        "le livre, lui, garde tout : 3 avances + 1 remboursement + les 2 d'hier",
+        ecritures.len(),
+        7,
+        "le livre garde tout, frais encaissés compris : {ecritures:?}",
+    );
+    assert_eq!(
+        ecritures.iter().filter(|(t, _)| t == "frais_encaisses").count(),
+        1,
     );
 }
 

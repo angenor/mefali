@@ -132,6 +132,7 @@ import 'package:mefali_api_client/src/model/mode_collecte.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/mouvement_caisse.dart';
 import 'package:mefali_api_client/src/model/offre_courante.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
 import 'package:mefali_api_client/src/model/paiement_commande.dart';
@@ -316,6 +317,7 @@ part 'serializers.g.dart';
   ModifierAdresse,
   ModifierArticleDto,
   ModifierPrestataireDto,
+  MouvementCaisse,
   OffreCourante,
   OffreLivraisonVendeur,
   PaiementCommande,

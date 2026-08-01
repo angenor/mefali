@@ -824,6 +824,49 @@ pub struct LigneHistoriqueDto {
     pub heure: DateTime<Utc>,
 }
 
+/// Un **mouvement du livre de caisse** (cycle PAY 011, T050).
+///
+/// Additif : l'historique agrégé par course reste servi tel quel, et l'app
+/// livrée continue de fonctionner pendant la transition.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = MouvementCaisse)]
+pub struct MouvementCaisseDto {
+    /// Écriture.
+    pub id: Uuid,
+    /// Nature : `avance` | `remboursement` | `indemnisation` | `correction` |
+    /// `frais_encaisses` | `reglement` | `reversement`.
+    pub type_ecriture: String,
+    /// Montant **signé** : négatif quand l'argent sort de la poche.
+    ///
+    /// L'app dérive « entrée » ou « sortie » de ce SIGNE, jamais d'une table
+    /// de types recopiée — une table qui divergerait le jour où une nature
+    /// changerait de sens.
+    pub montant_unites: i64,
+    /// Vrai si l'argent entre dans la poche du coursier.
+    pub entree: bool,
+    /// Commande concernée — `null` pour un règlement ou un reversement, qui
+    /// portent sur un solde et non sur une course.
+    pub commande_id: Option<Uuid>,
+    /// Référence lisible de la commande, quand il y en a une.
+    pub reference: Option<String>,
+    /// Horodatage serveur de l'écriture.
+    pub heure: DateTime<Utc>,
+}
+
+impl From<coursier::MouvementCaisse> for MouvementCaisseDto {
+    fn from(m: coursier::MouvementCaisse) -> Self {
+        Self {
+            id: m.id,
+            type_ecriture: m.type_ecriture.comme_str().to_owned(),
+            montant_unites: m.montant_unites,
+            entree: m.est_entree(),
+            commande_id: m.commande_id,
+            reference: m.reference,
+            heure: m.heure,
+        }
+    }
+}
+
 /// Une indemnisation, telle que la caisse l'affiche.
 #[derive(Debug, Serialize, ToSchema)]
 #[schema(as = IndemnisationVue)]
@@ -900,6 +943,8 @@ pub struct VueCaisseDto {
     pub avances_en_attente_reglement_unites: i64,
     /// Historique du jour civil **de la zone**.
     pub historique_du_jour: Vec<LigneHistoriqueDto>,
+    /// Mouvements du livre du jour, du plus récent au plus ancien.
+    pub mouvements: Vec<MouvementCaisseDto>,
     /// Indemnisations rattachées.
     pub indemnisations: Vec<IndemnisationDto>,
     /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
@@ -931,6 +976,7 @@ impl From<coursier::VueCaisse> for VueCaisseDto {
                     heure: l.heure,
                 })
                 .collect(),
+            mouvements: v.mouvements.into_iter().map(Into::into).collect(),
             indemnisations: v.indemnisations.into_iter().map(Into::into).collect(),
             litiges_en_cours: v
                 .litiges

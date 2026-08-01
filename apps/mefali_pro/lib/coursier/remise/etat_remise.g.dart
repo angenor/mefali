@@ -78,7 +78,7 @@ final class EtatRemiseNotifierProvider
 }
 
 String _$etatRemiseNotifierHash() =>
-    r'942ff246d944f9a7cccf8a57ad177c06b9105657';
+    r'2ffd62cefc74bfaff6386ddde0febe99616849c4';
 
 /// Processus de confirmation de remise (CRS-04, K4).
 ///

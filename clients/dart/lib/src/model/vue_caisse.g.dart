@@ -23,6 +23,8 @@ class _$VueCaisse extends VueCaisse {
   final BuiltList<IndemnisationVue> indemnisations;
   @override
   final BuiltList<LitigeVu> litigesEnCours;
+  @override
+  final BuiltList<MouvementCaisse> mouvements;
 
   factory _$VueCaisse([void Function(VueCaisseBuilder)? updates]) =>
       (VueCaisseBuilder()..update(updates))._build();
@@ -35,7 +37,8 @@ class _$VueCaisse extends VueCaisse {
       required this.ecartPlafond,
       required this.historiqueDuJour,
       required this.indemnisations,
-      required this.litigesEnCours})
+      required this.litigesEnCours,
+      required this.mouvements})
       : super._();
   @override
   VueCaisse rebuild(void Function(VueCaisseBuilder) updates) =>
@@ -56,7 +59,8 @@ class _$VueCaisse extends VueCaisse {
         ecartPlafond == other.ecartPlafond &&
         historiqueDuJour == other.historiqueDuJour &&
         indemnisations == other.indemnisations &&
-        litigesEnCours == other.litigesEnCours;
+        litigesEnCours == other.litigesEnCours &&
+        mouvements == other.mouvements;
   }
 
   @override
@@ -70,6 +74,7 @@ class _$VueCaisse extends VueCaisse {
     _$hash = $jc(_$hash, historiqueDuJour.hashCode);
     _$hash = $jc(_$hash, indemnisations.hashCode);
     _$hash = $jc(_$hash, litigesEnCours.hashCode);
+    _$hash = $jc(_$hash, mouvements.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -85,7 +90,8 @@ class _$VueCaisse extends VueCaisse {
           ..add('ecartPlafond', ecartPlafond)
           ..add('historiqueDuJour', historiqueDuJour)
           ..add('indemnisations', indemnisations)
-          ..add('litigesEnCours', litigesEnCours))
+          ..add('litigesEnCours', litigesEnCours)
+          ..add('mouvements', mouvements))
         .toString();
   }
 }
@@ -135,6 +141,12 @@ class VueCaisseBuilder implements Builder<VueCaisse, VueCaisseBuilder> {
   set litigesEnCours(ListBuilder<LitigeVu>? litigesEnCours) =>
       _$this._litigesEnCours = litigesEnCours;
 
+  ListBuilder<MouvementCaisse>? _mouvements;
+  ListBuilder<MouvementCaisse> get mouvements =>
+      _$this._mouvements ??= ListBuilder<MouvementCaisse>();
+  set mouvements(ListBuilder<MouvementCaisse>? mouvements) =>
+      _$this._mouvements = mouvements;
+
   VueCaisseBuilder() {
     VueCaisse._defaults(this);
   }
@@ -150,6 +162,7 @@ class VueCaisseBuilder implements Builder<VueCaisse, VueCaisseBuilder> {
       _historiqueDuJour = $v.historiqueDuJour.toBuilder();
       _indemnisations = $v.indemnisations.toBuilder();
       _litigesEnCours = $v.litigesEnCours.toBuilder();
+      _mouvements = $v.mouvements.toBuilder();
       _$v = null;
     }
     return this;
@@ -189,6 +202,7 @@ class VueCaisseBuilder implements Builder<VueCaisse, VueCaisseBuilder> {
             historiqueDuJour: historiqueDuJour.build(),
             indemnisations: indemnisations.build(),
             litigesEnCours: litigesEnCours.build(),
+            mouvements: mouvements.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -199,6 +213,8 @@ class VueCaisseBuilder implements Builder<VueCaisse, VueCaisseBuilder> {
         indemnisations.build();
         _$failedField = 'litigesEnCours';
         litigesEnCours.build();
+        _$failedField = 'mouvements';
+        mouvements.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'VueCaisse', _$failedField, e.toString());

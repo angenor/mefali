@@ -456,6 +456,13 @@ class EtatCourse {
   /// localement : il inclut les frais de livraison, que l'app ne connaît pas.
   int get montantAEncaisserUnites => remise.montantAEncaisserUnites;
 
+  /// Mode de paiement de la commande — `cash` | `mobile_money`.
+  ///
+  /// C'est LUI qui décide s'il y a quelque chose à encaisser, et non le
+  /// montant : un montant nul peut avoir plusieurs causes (bug, chargement en
+  /// cours, commande vide), un mode n'en a qu'une (FR-093).
+  String get modePaiement => remise.modePaiement;
+
   /// Copie avec substitution.
   EtatCourse copieAvec({
     List<ArretCourse>? arrets,

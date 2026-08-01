@@ -12273,6 +12273,57 @@
           }
         }
       },
+      "MouvementCaisse": {
+        "type": "object",
+        "description": "Un **mouvement du livre de caisse** (cycle PAY 011, T050).\n\nAdditif : l'historique agrégé par course reste servi tel quel, et l'app\nlivrée continue de fonctionner pendant la transition.",
+        "required": [
+          "id",
+          "type_ecriture",
+          "montant_unites",
+          "entree",
+          "heure"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Commande concernée — `null` pour un règlement ou un reversement, qui\nportent sur un solde et non sur une course."
+          },
+          "entree": {
+            "type": "boolean",
+            "description": "Vrai si l'argent entre dans la poche du coursier."
+          },
+          "heure": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Horodatage serveur de l'écriture."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Écriture."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant **signé** : négatif quand l'argent sort de la poche.\n\nL'app dérive « entrée » ou « sortie » de ce SIGNE, jamais d'une table\nde types recopiée — une table qui divergerait le jour où une nature\nchangerait de sens."
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Référence lisible de la commande, quand il y en a une."
+          },
+          "type_ecriture": {
+            "type": "string",
+            "description": "Nature : `avance` | `remboursement` | `indemnisation` | `correction` |\n`frais_encaisses` | `reglement` | `reversement`."
+          }
+        }
+      },
       "NouvelleAdresse": {
         "type": "object",
         "description": "Adresse à enregistrer après une livraison réussie (FR-019).",
@@ -14521,6 +14572,7 @@
           "courses_concernees",
           "avances_en_attente_reglement_unites",
           "historique_du_jour",
+          "mouvements",
           "indemnisations",
           "litiges_en_cours",
           "devise",
@@ -14570,6 +14622,13 @@
               "$ref": "#/components/schemas/LitigeVu"
             },
             "description": "Litiges en cours — vide tant qu'AVI-04 n'existe pas."
+          },
+          "mouvements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MouvementCaisse"
+            },
+            "description": "Mouvements du livre du jour, du plus récent au plus ancien."
           }
         }
       }

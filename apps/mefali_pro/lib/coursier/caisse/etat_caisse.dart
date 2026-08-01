@@ -89,6 +89,74 @@ class LigneCaisseVue {
       };
 }
 
+/// Un **mouvement du livre de caisse** (cycle PAY 011, T050).
+///
+/// L'historique agrégé par course ne peut pas les porter tous : un règlement
+/// d'agence et un reversement ne sont rattachés à aucune commande — ils
+/// portent sur un solde. Les y agréger les aurait fait disparaître de l'écran,
+/// et un versement invisible est exactement ce que la caisse existe pour
+/// empêcher.
+class MouvementCaisseVue {
+  /// Crée le mouvement.
+  const MouvementCaisseVue({
+    required this.id,
+    required this.typeEcriture,
+    required this.montantUnites,
+    required this.entree,
+    required this.heure,
+    this.commandeId,
+    this.reference,
+  });
+
+  /// Reconstruit un mouvement depuis son JSON.
+  factory MouvementCaisseVue.depuisJson(Map<String, dynamic> j) =>
+      MouvementCaisseVue(
+        id: j['id'] as String? ?? '',
+        typeEcriture: j['type_ecriture'] as String? ?? '',
+        montantUnites: j['montant_unites'] as int? ?? 0,
+        // Le SENS vient du serveur, dérivé du signe du montant. L'app ne tient
+        // pas sa propre table de types : elle divergerait le jour où une nature
+        // changerait de sens, et le coursier lirait « entrée » sur une sortie.
+        entree: j['entree'] as bool? ?? false,
+        commandeId: j['commande_id'] as String?,
+        reference: j['reference'] as String?,
+        heure: DateTime.parse(j['heure'] as String).toLocal(),
+      );
+
+  /// Écriture.
+  final String id;
+
+  /// Nature : `avance`, `remboursement`, `indemnisation`, `correction`,
+  /// `frais_encaisses`, `reglement`, `reversement`.
+  final String typeEcriture;
+
+  /// Montant **signé** — négatif quand l'argent sort de la poche.
+  final int montantUnites;
+
+  /// Vrai si l'argent entre dans la poche du coursier.
+  final bool entree;
+
+  /// Commande concernée — `null` sur un règlement ou un reversement.
+  final String? commandeId;
+
+  /// Référence lisible de la commande, quand il y en a une.
+  final String? reference;
+
+  /// Horodatage **serveur**.
+  final DateTime heure;
+
+  /// Sérialise pour le cache local.
+  Map<String, dynamic> versJson() => {
+        'id': id,
+        'type_ecriture': typeEcriture,
+        'montant_unites': montantUnites,
+        'entree': entree,
+        'commande_id': commandeId,
+        'reference': reference,
+        'heure': heure.toUtc().toIso8601String(),
+      };
+}
+
 /// Une indemnisation et son état (K5-1a, K5-1c).
 class IndemnisationCaisseVue {
   /// Crée l'indemnisation.
@@ -188,6 +256,7 @@ class EtatCaisseVue {
     this.coursesConcernees = 0,
     this.avancesEnAttenteReglementUnites = 0,
     this.historique = const [],
+    this.mouvements = const [],
     this.indemnisations = const [],
     this.litiges = const [],
     this.devise = '',
@@ -205,6 +274,10 @@ class EtatCaisseVue {
         historique: [
           for (final l in (j['historique_du_jour'] as List? ?? const []))
             LigneCaisseVue.depuisJson(l as Map<String, dynamic>),
+        ],
+        mouvements: [
+          for (final m in (j['mouvements'] as List? ?? const []))
+            MouvementCaisseVue.depuisJson(m as Map<String, dynamic>),
         ],
         indemnisations: [
           for (final i in (j['indemnisations'] as List? ?? const []))
@@ -230,6 +303,9 @@ class EtatCaisseVue {
   /// Historique du jour civil **de la zone**.
   final List<LigneCaisseVue> historique;
 
+  /// Mouvements du livre du jour, du plus récent au plus ancien.
+  final List<MouvementCaisseVue> mouvements;
+
   /// Indemnisations rattachées.
   final List<IndemnisationCaisseVue> indemnisations;
 
@@ -253,8 +329,15 @@ class EtatCaisseVue {
   ///
   /// Le solde reste affiché **à 0**, il ne disparaît pas : « jamais de carte
   /// manquante » (note de maquette 1b).
+  /// `mouvements` en fait partie depuis le cycle PAY 011 : un règlement
+  /// d'agence ou un reversement n'apparaît dans AUCUNE course, et une journée
+  /// sans course mais avec un versement n'est pas une journée vide — la
+  /// déclarer vide ferait disparaître de l'argent réel de l'écran.
   bool get vide =>
-      historique.isEmpty && indemnisations.isEmpty && avanceEnCoursUnites == 0;
+      historique.isEmpty &&
+      mouvements.isEmpty &&
+      indemnisations.isEmpty &&
+      avanceEnCoursUnites == 0;
 
   /// Copie avec substitution.
   EtatCaisseVue copieAvec({bool? horsLigne, DateTime? luLe}) => EtatCaisseVue(
@@ -262,6 +345,7 @@ class EtatCaisseVue {
         coursesConcernees: coursesConcernees,
         avancesEnAttenteReglementUnites: avancesEnAttenteReglementUnites,
         historique: historique,
+        mouvements: mouvements,
         indemnisations: indemnisations,
         litiges: litiges,
         devise: devise,
@@ -277,6 +361,7 @@ class EtatCaisseVue {
         'courses_concernees': coursesConcernees,
         'avances_en_attente_reglement_unites': avancesEnAttenteReglementUnites,
         'historique_du_jour': [for (final l in historique) l.versJson()],
+        'mouvements': [for (final m in mouvements) m.versJson()],
         'indemnisations': [for (final i in indemnisations) i.versJson()],
         'litiges_en_cours': [for (final l in litiges) l.versJson()],
         'devise': devise,
@@ -349,6 +434,18 @@ EtatCaisseVue _depuisContrat(VueCaisse? v) {
           terminee: l.terminee,
           enAttenteReglement: l.enAttenteReglement,
           heure: l.heure.toLocal(),
+        ),
+    ],
+    mouvements: [
+      for (final m in v.mouvements)
+        MouvementCaisseVue(
+          id: m.id,
+          typeEcriture: m.typeEcriture,
+          montantUnites: m.montantUnites,
+          entree: m.entree,
+          commandeId: m.commandeId,
+          reference: m.reference,
+          heure: m.heure.toLocal(),
         ),
     ],
     indemnisations: [

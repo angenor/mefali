@@ -50,7 +50,7 @@ pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
 pub use modele::{
     ActionRejouee, AppelJournalise, ArretComplet, CibleAppel, ClientCourse, CourseComplete,
     ErreurCoursier, EtatIndemnisation, EtatPreuves, ExpositionCash, IndemnisationVue, IssueAppel,
-    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, LitigeVu, MotifAppel, PreuveAppels,
+    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, MouvementCaisse, LitigeVu, MotifAppel, PreuveAppels,
     PreuvePhotos, PreuvePresence, RemisePreprovisionnee, SeuilsPreuves, TypeEcriture, VueCaisse,
     VueJournee,
 };

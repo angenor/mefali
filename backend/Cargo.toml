@@ -57,7 +57,11 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web"] }
 # --- Sérialisation / types ---
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
-uuid = { version = "1.23.5", features = ["v7", "serde"] }
+# `v5` (cycle PAY 011) : identifiants d'événement DÉRIVÉS et déterministes —
+# un `livraison.livree` produit plusieurs écritures de caisse, et
+# `ecriture_caisse.evenement_id` est UNIQUE. Un dérivé aléatoire casserait
+# l'idempotence du rejeu ; un dérivé v5 la conserve (research R13, FR-068).
+uuid = { version = "1.23.5", features = ["v5", "v7", "serde"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 
 # --- Observabilité (TRX-03) ---

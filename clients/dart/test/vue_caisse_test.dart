@@ -55,5 +55,11 @@ void main() {
       // TODO
     });
 
+    // Mouvements du livre du jour, du plus récent au plus ancien.
+    // BuiltList<MouvementCaisse> mouvements
+    test('to test the property `mouvements`', () async {
+      // TODO
+    });
+
   });
 }

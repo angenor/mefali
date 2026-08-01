@@ -1,27 +1,27 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT l.coursier_id, l.commande_id, c.devise,\n                      c.mode_paiement::text AS \"mode_paiement!\"\n                 FROM commandes.livraison l\n                 JOIN commandes.commande c ON c.id = l.commande_id\n                WHERE l.id = $1",
+  "query": "SELECT cree_le, total_unites, devise,\n                      etat_paiement::text  AS \"etat_paiement!\",\n                      mode_paiement::text  AS \"mode_paiement!\"\n               FROM commandes.commande WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "coursier_id",
-        "type_info": "Uuid",
+        "name": "cree_le",
+        "type_info": "Timestamptz",
         "origin": {
           "Table": {
-            "table": "commandes.livraison",
-            "name": "coursier_id"
+            "table": "commandes.commande",
+            "name": "cree_le"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "commande_id",
-        "type_info": "Uuid",
+        "name": "total_unites",
+        "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "commandes.livraison",
-            "name": "commande_id"
+            "table": "commandes.commande",
+            "name": "total_unites"
           }
         }
       },
@@ -38,6 +38,12 @@
       },
       {
         "ordinal": 3,
+        "name": "etat_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
         "name": "mode_paiement!",
         "type_info": "Text",
         "origin": "Expression"
@@ -49,11 +55,12 @@
       ]
     },
     "nullable": [
-      true,
       false,
       false,
+      false,
+      null,
       null
     ]
   },
-  "hash": "ea4b025ac926fb5b6109e9484e411f13b4898235a1fe689f71a4f0aad87454a3"
+  "hash": "03296ebec734cbfbd2eb63018457f184fb69b91125d89889250cb35eed614314"
 }

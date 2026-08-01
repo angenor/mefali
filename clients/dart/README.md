@@ -297,6 +297,7 @@ Class | Method | HTTP request | Description
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
+ - [MouvementCaisse](doc/MouvementCaisse.md)
  - [OffreCourante](doc/OffreCourante.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
  - [PaiementCommande](doc/PaiementCommande.md)

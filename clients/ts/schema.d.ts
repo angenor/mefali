@@ -4365,6 +4365,48 @@ export interface components {
             /** @description Nouveau nom. */
             nom?: string | null;
         };
+        /**
+         * @description Un **mouvement du livre de caisse** (cycle PAY 011, T050).
+         *
+         *     Additif : l'historique agrégé par course reste servi tel quel, et l'app
+         *     livrée continue de fonctionner pendant la transition.
+         */
+        MouvementCaisse: {
+            /**
+             * Format: uuid
+             * @description Commande concernée — `null` pour un règlement ou un reversement, qui
+             *     portent sur un solde et non sur une course.
+             */
+            commande_id?: string | null;
+            /** @description Vrai si l'argent entre dans la poche du coursier. */
+            entree: boolean;
+            /**
+             * Format: date-time
+             * @description Horodatage serveur de l'écriture.
+             */
+            heure: string;
+            /**
+             * Format: uuid
+             * @description Écriture.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Montant **signé** : négatif quand l'argent sort de la poche.
+             *
+             *     L'app dérive « entrée » ou « sortie » de ce SIGNE, jamais d'une table
+             *     de types recopiée — une table qui divergerait le jour où une nature
+             *     changerait de sens.
+             */
+            montant_unites: number;
+            /** @description Référence lisible de la commande, quand il y en a une. */
+            reference?: string | null;
+            /**
+             * @description Nature : `avance` | `remboursement` | `indemnisation` | `correction` |
+             *     `frais_encaisses` | `reglement` | `reversement`.
+             */
+            type_ecriture: string;
+        };
         /** @description Adresse à enregistrer après une livraison réussie (FR-019). */
         NouvelleAdresse: {
             /**
@@ -5648,6 +5690,8 @@ export interface components {
             indemnisations: components["schemas"]["IndemnisationVue"][];
             /** @description Litiges en cours — vide tant qu'AVI-04 n'existe pas. */
             litiges_en_cours: components["schemas"]["LitigeVu"][];
+            /** @description Mouvements du livre du jour, du plus récent au plus ancien. */
+            mouvements: components["schemas"]["MouvementCaisse"][];
         };
     };
     responses: never;

@@ -291,6 +291,16 @@ pub enum TypeEcriture {
     Indemnisation,
     /// Écriture INVERSE d'une écriture erronée — jamais un UPDATE (FR-073).
     Correction,
+    // ── Cycle PAY 011 (migration 0020, research R13) ──────────────────────
+    /// Frais de course **effectivement encaissés** chez le client, à la remise
+    /// d'une commande cash. Vaut `total dû − Σ avances` : ce que Yao a en poche
+    /// en plus, et **non** `devis_prix_client` — les deux diffèrent dès que la
+    /// retenue de la livraison offerte joue (FR-056).
+    FraisEncaisses,
+    /// Versement effectué par Mefali pour solder une créance (FR-064).
+    Reglement,
+    /// Versement du coursier vers Mefali, pour ce qu'il détenait (FR-066).
+    Reversement,
 }
 
 impl TypeEcriture {
@@ -301,6 +311,9 @@ impl TypeEcriture {
             TypeEcriture::Remboursement => "remboursement",
             TypeEcriture::Indemnisation => "indemnisation",
             TypeEcriture::Correction => "correction",
+            TypeEcriture::FraisEncaisses => "frais_encaisses",
+            TypeEcriture::Reglement => "reglement",
+            TypeEcriture::Reversement => "reversement",
         }
     }
 }
@@ -313,6 +326,9 @@ impl FromStr for TypeEcriture {
             "remboursement" => Ok(TypeEcriture::Remboursement),
             "indemnisation" => Ok(TypeEcriture::Indemnisation),
             "correction" => Ok(TypeEcriture::Correction),
+            "frais_encaisses" => Ok(TypeEcriture::FraisEncaisses),
+            "reglement" => Ok(TypeEcriture::Reglement),
+            "reversement" => Ok(TypeEcriture::Reversement),
             autre => Err(ErreurCoursier::ValeurInconnue(autre.to_owned())),
         }
     }
@@ -375,6 +391,42 @@ pub struct LigneHistorique {
     pub heure: DateTime<Utc>,
 }
 
+/// Un **mouvement du livre**, tel que l'écran de caisse le liste (K5).
+///
+/// Cycle PAY 011 : l'historique agrégé par course (trois chiffres) ne suffit
+/// plus. Trois natures d'écriture s'ajoutent — `frais_encaisses`, `reglement`,
+/// `reversement` —, et deux d'entre elles ne sont **rattachées à aucune
+/// course** : un règlement d'agence solde des créances, un reversement rend à
+/// Mefali ce qui lui revient. Les agréger par commande les aurait fait
+/// disparaître de l'écran.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MouvementCaisse {
+    /// Écriture.
+    pub id: Uuid,
+    /// Nature du mouvement — les six valeurs de `coursier.type_ecriture`.
+    pub type_ecriture: TypeEcriture,
+    /// Montant **signé** : négatif quand l'argent sort de la poche du coursier.
+    ///
+    /// Le signe porte tout le sens, et l'app en dérive « entrée » ou
+    /// « sortie » plutôt que de le recopier depuis une table de types — une
+    /// table qui divergerait le jour où une nature changerait de sens.
+    pub montant_unites: i64,
+    /// Commande concernée — `None` pour un règlement ou un reversement, qui
+    /// portent sur un solde et non sur une course.
+    pub commande_id: Option<Uuid>,
+    /// Référence lisible de la commande, quand il y en a une.
+    pub reference: Option<String>,
+    /// Horodatage **serveur** de l'écriture.
+    pub heure: DateTime<Utc>,
+}
+
+impl MouvementCaisse {
+    /// Vrai si l'argent ENTRE dans la poche du coursier.
+    pub fn est_entree(&self) -> bool {
+        self.montant_unites > 0
+    }
+}
+
 /// Une indemnisation, telle que la caisse l'affiche.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndemnisationVue {
@@ -430,6 +482,11 @@ pub struct VueCaisse {
     pub avances_en_attente_reglement_unites: i64,
     /// Historique du jour civil de la zone.
     pub historique: Vec<LigneHistorique>,
+    /// **Mouvements du livre**, du plus récent au plus ancien (cycle PAY 011).
+    ///
+    /// Additif : l'historique agrégé reste servi tel quel, l'app livrée
+    /// continue de fonctionner pendant la transition.
+    pub mouvements: Vec<MouvementCaisse>,
     /// Indemnisations rattachées.
     pub indemnisations: Vec<IndemnisationVue>,
     /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
