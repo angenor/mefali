@@ -743,8 +743,16 @@ impl PgCommandes {
 
     /// Arrêt d'une course active du coursier par son id, QUEL QUE SOIT son
     /// statut (pour la vérification puis la garde d'état de `marquer_arret_collecte`).
-    /// `None` si l'arrêt n'appartient pas à une course `en_collecte` du coursier
+    /// `None` si l'arrêt n'appartient pas à une course du coursier
     /// (précondition FR-012 → `arret_hors_course`).
+    ///
+    /// La course est acceptée `assignee` **autant que** `en_collecte` : une
+    /// course sort du dispatch en `assignee`, et c'est la première action sur
+    /// un arrêt qui l'ouvre (`ouvrir_collecte_si_besoin`). N'accepter que
+    /// `en_collecte` rendait ce premier scan impossible — la course ne pouvait
+    /// jamais démarrer. Les tests ne le voyaient pas : le bac appelle
+    /// `marquer_arret_collecte` sur le domaine, sans passer par la route HTTP
+    /// que l'app emprunte.
     pub async fn arret_de_coursier(
         &self,
         coursier: Uuid,
@@ -757,7 +765,8 @@ impl PgCommandes {
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
                JOIN commandes.livraison l ON l.id = s.livraison_id
-               WHERE a.id = $1 AND l.coursier_id = $2 AND l.etat = 'en_collecte'
+               WHERE a.id = $1 AND l.coursier_id = $2
+                 AND l.etat IN ('assignee', 'en_collecte')
                  AND a.type_arret = 'collecte'"#,
             arret_id,
             coursier,
