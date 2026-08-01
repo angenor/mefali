@@ -148,6 +148,9 @@ Class | Method | HTTP request | Description
 [*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
 [*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
+[*PaiementsApi*](doc/PaiementsApi.md) | [**etatPaiement**](doc/PaiementsApi.md#etatpaiement) | **GET** /commandes/{id}/paiement | État de la session de prépaiement d&#39;une commande.
+[*PaiementsApi*](doc/PaiementsApi.md) | [**ouvrirPaiement**](doc/PaiementsApi.md#ouvrirpaiement) | **POST** /commandes/{id}/paiement | Ouvre — ou renvoie — la session de prépaiement d&#39;une commande.
+[*PaiementsApi*](doc/PaiementsApi.md) | [**recevoirNotification**](doc/PaiementsApi.md#recevoirnotification) | **POST** /paiements/notifications/{fournisseur} | Notification signée d&#39;un fournisseur de paiement.
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
@@ -327,6 +330,7 @@ Class | Method | HTTP request | Description
  - [RemiseBloquee](doc/RemiseBloquee.md)
  - [RemisePreprovisionnee](doc/RemisePreprovisionnee.md)
  - [RemisesBloquees](doc/RemisesBloquees.md)
+ - [ReponseNotification](doc/ReponseNotification.md)
  - [RepriseFaite](doc/RepriseFaite.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatAnnulation](doc/ResultatAnnulation.md)
@@ -339,6 +343,7 @@ Class | Method | HTTP request | Description
  - [SecretsRemise](doc/SecretsRemise.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SessionPaiement](doc/SessionPaiement.md)
  - [SeuilsPreuves](doc/SeuilsPreuves.md)
  - [SignalementRecuDto](doc/SignalementRecuDto.md)
  - [SignalerRuptureDto](doc/SignalerRuptureDto.md)

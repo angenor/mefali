@@ -53,6 +53,8 @@ pub mod config;
 pub mod depot;
 pub mod fournisseur;
 pub mod modele;
+pub mod session;
+pub mod webhook;
 
 pub use config::{cles as cles_config, ConfigPaiements};
 pub use depot::PgPaiements;
@@ -65,3 +67,5 @@ pub use modele::{
     transition_existe, verifier_transition, Dossier, ErreurPaiements, EtatDossier, EtatTransaction,
     MoyenPaiement, Transaction, TypeDossier,
 };
+pub use session::{lire_session, ouvrir_session};
+pub use webhook::{traiter_notification, ResultatWebhook};

@@ -165,6 +165,7 @@ import 'package:mefali_api_client/src/model/releve_de_presence.dart';
 import 'package:mefali_api_client/src/model/remise_bloquee.dart';
 import 'package:mefali_api_client/src/model/remise_preprovisionnee.dart';
 import 'package:mefali_api_client/src/model/remises_bloquees.dart';
+import 'package:mefali_api_client/src/model/reponse_notification.dart';
 import 'package:mefali_api_client/src/model/reprise_faite.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_annulation.dart';
@@ -177,6 +178,7 @@ import 'package:mefali_api_client/src/model/scission_proposee.dart';
 import 'package:mefali_api_client/src/model/secrets_remise.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/session_paiement.dart';
 import 'package:mefali_api_client/src/model/seuils_preuves.dart';
 import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
 import 'package:mefali_api_client/src/model/signaler_rupture_dto.dart';
@@ -347,6 +349,7 @@ part 'serializers.g.dart';
   RemiseBloquee,
   RemisePreprovisionnee,
   RemisesBloquees,
+  ReponseNotification,
   RepriseFaite,
   ResolutionPlaque,
   ResultatAnnulation,
@@ -359,6 +362,7 @@ part 'serializers.g.dart';
   SecretsRemise,
   SessionAppareil,
   SessionOuverte,
+  SessionPaiement,
   SeuilsPreuves,
   SignalementRecuDto,
   SignalerRuptureDto,

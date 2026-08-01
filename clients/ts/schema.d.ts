@@ -1028,6 +1028,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/commandes/{id}/paiement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État de la session de prépaiement d'une commande. */
+        get: operations["etat_paiement"];
+        put?: never;
+        /** Ouvre — ou renvoie — la session de prépaiement d'une commande. */
+        post: operations["ouvrir_paiement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/commandes/{id}/substitutions/{sub}/decision": {
         parameters: {
             query?: never;
@@ -1725,6 +1743,23 @@ export interface paths {
         post?: never;
         /** Déconnexion à distance d'un appareil (SC-004). */
         delete: operations["revoquer_session"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/paiements/notifications/{fournisseur}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Notification signée d'un fournisseur de paiement. */
+        post: operations["recevoir_notification"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5085,6 +5120,16 @@ export interface components {
              */
             note_vocale: string;
         };
+        /** @description Ce que le webhook répond — **toujours `200`, sauf signature invalide**. */
+        ReponseNotification: {
+            /**
+             * @description Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`,
+             *     `etat_incompatible`. Absent quand `traite` vaut `true`.
+             */
+            motif?: string | null;
+            /** @description Vrai si la notification a produit un effet. */
+            traite: boolean;
+        };
         /** @description Résultat d'une reprise manuelle. */
         RepriseFaite: {
             /**
@@ -5289,6 +5334,50 @@ export interface components {
             jetons: components["schemas"]["JetonsDto"];
             /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
             resultat: components["schemas"]["DiscriminantSession"];
+        };
+        /** @description État d'une session de prépaiement, tel que l'app cliente le lit. */
+        SessionPaiement: {
+            /**
+             * @description Page de paiement à ouvrir dans le **navigateur système**.
+             *
+             *     `null` dès que l'état quitte `ouverte` : la colonne est effacée à
+             *     l'issue, et un accès d'encaissement survivant à son paiement est une
+             *     surface d'attaque sans usage (FR-006).
+             */
+            acces_paiement?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État : `ouverte` | `reglee` | `echouee` | `expiree` | `payee_hors_delai`. */
+            etat: string;
+            /**
+             * Format: date-time
+             * @description Échéance **persistée**, calculée depuis `paiement.session_duree_s`.
+             */
+            expire_le: string;
+            /**
+             * Format: int64
+             * @description Montant **figé** à l'ouverture (unités mineures).
+             */
+            montant_unites: number;
+            /**
+             * @description Moyen effectivement employé, tel que le fournisseur l'a dit.
+             *     `inconnu` tant qu'il ne l'a pas dit — jamais deviné (FR-012).
+             */
+            moyen: string;
+            /**
+             * Format: int64
+             * @description Secondes restantes, **calculées côté serveur** (FR-017).
+             *
+             *     L'horloge de l'app ne décide de rien : elle affiche un compte à rebours
+             *     qu'elle recale sur cette valeur à chaque lecture. Vaut `0` sur une
+             *     session échue, jamais un nombre négatif.
+             */
+            restant_s: number;
+            /**
+             * Format: uuid
+             * @description Transaction de paiement.
+             */
+            transaction_id: string;
         };
         /** @description Les seuils de preuve d'échec de la zone. */
         SeuilsPreuves: {
@@ -8592,6 +8681,124 @@ export interface operations {
             };
         };
     };
+    etat_paiement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État de la DERNIÈRE session, quel qu'il soit : après une expiration, le client lit « expirée » plutôt qu'un 404 qui lui laisserait croire qu'il n'a jamais rien tenté. `restant_s` est calculé côté SERVEUR (FR-017). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionPaiement"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis, ou commande d'un autre compte. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucune session pour cette commande — le cas d'une commande payée en espèces. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ouvrir_paiement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant, en attente de paiement. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session vivante — créée, ou RETROUVÉE si l'appel est rejoué. Rappeler cette route tant que la session vit ne rouvre rien chez le fournisseur : l'identifiant de commande EST la clé d'idempotence (FR-015). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionPaiement"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis, ou commande d'un autre compte. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description La commande n'attend aucun paiement : espèces, déjà réglée, ou plus en attente. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Fournisseur injoignable ou en erreur. La commande reste INTACTE — rien n'a été écrit, l'appel peut être retenté (FR-018). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     decider_substitution: {
         parameters: {
             query?: never;
@@ -10505,6 +10712,55 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErreurApi"];
                 };
+            };
+        };
+    };
+    recevoir_notification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identifiant stable de l'implémentation destinataire. Point d'accroche du routage par moyen (phase 2+) — sans règle aujourd'hui. */
+                fournisseur: string;
+            };
+            cookie?: never;
+        };
+        /** @description Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. */
+        requestBody: {
+            content: {
+                "application/json": string;
+            };
+        };
+        responses: {
+            /** @description Notification traitée, ou sans effet avec son motif. Un rejeu répond 200 `{traite: false, motif: "rejeu"}` et NON une erreur : un fournisseur qui reçoit une erreur retente en boucle (FR-022). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReponseNotification"];
+                };
+            };
+            /** @description Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre (FR-020). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Segment `{fournisseur}` inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps au-delà de la limite admise. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -55,6 +55,16 @@ pub const CREANCE_ALERTE_UNITES: i64 = 50_000;
 /// plafond bouge, le test doit suivre, pas mentir.
 pub const AU_DESSUS_DU_PLAFOND: i64 = PLAFOND_CASH + 1;
 
+/// Corps d'une réponse, `null` si elle est vide (`204`, ou refus sans corps).
+async fn corps_json(resp: actix_web::dev::ServiceResponse) -> Value {
+    let octets = actix_web::test::read_body(resp).await;
+    if octets.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_slice(&octets).expect("corps JSON")
+    }
+}
+
 pub struct Bac {
     /// Le bac du cycle 008, avec toute sa base.
     pub cmd: bac_commandes::Bac,
@@ -113,10 +123,88 @@ impl Bac {
             cfg.app_data(web::Data::new(paiements))
                 .app_data(web::Data::new(fournisseur));
             // Les routes de paiement s'enregistrent ici à mesure qu'elles
-            // arrivent (T019, T020, T022, T058…). Le bac est posé AVANT elles
-            // pour que chacune n'ait qu'une ligne à ajouter, et pour qu'aucune
-            // ne soit tentée d'être testée hors HTTP faute de bac.
+            // arrivent. Le bac est posé AVANT elles pour que chacune n'ait
+            // qu'une ligne à ajouter, et pour qu'aucune ne soit tentée d'être
+            // testée hors HTTP faute de bac.
+            cfg.service(api::paiements_http::ouvrir_paiement)
+                .service(api::paiements_http::etat_paiement)
+                .service(api::paiements_webhook_http::recevoir_notification);
         }
+    }
+
+    // ── Requêtes HTTP RÉELLES ─────────────────────────────────────────────
+    //
+    // Redéfinies ici plutôt qu'empruntées à `bac_commandes` : les siennes
+    // montent SON `configurer()`, qui ne connaît aucune route de paiement. Un
+    // test qui les emploierait recevrait `404` sur `/commandes/{id}/paiement`
+    // et croirait avoir prouvé quelque chose.
+
+    /// `GET` authentifié sur une route du bac.
+    pub async fn get(&self, uri: &str, jeton: &str) -> (u16, Value) {
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
+        let req = actix_web::test::TestRequest::get()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        (statut, corps_json(resp).await)
+    }
+
+    /// `POST` JSON authentifié sur une route du bac.
+    pub async fn post(&self, uri: &str, jeton: &str, corps: Value) -> (u16, Value) {
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
+        let req = actix_web::test::TestRequest::post()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .set_json(corps)
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        (statut, corps_json(resp).await)
+    }
+
+    /// `POST` **sans corps** — le cas de l'ouverture de session, qui ne prend
+    /// aucun paramètre : l'identifiant de commande porte tout.
+    pub async fn post_vide(&self, uri: &str, jeton: &str) -> (u16, Value) {
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
+        let req = actix_web::test::TestRequest::post()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")))
+            .to_request();
+        let resp = actix_web::test::call_service(&app, req).await;
+        let statut = resp.status().as_u16();
+        (statut, corps_json(resp).await)
+    }
+
+    /// `POST` de corps **brut**, non authentifié, avec ses en-têtes — le
+    /// chemin du webhook.
+    ///
+    /// Volontairement `&[u8]` et non `Value` : la signature se vérifie sur le
+    /// corps **tel qu'il arrive**, et un test qui laisserait `serde_json`
+    /// re-sérialiser la charge ne signerait pas les mêmes octets que ceux
+    /// vérifiés (research R6).
+    pub async fn post_brut(
+        &self,
+        uri: &str,
+        corps: &[u8],
+        entetes: &[(&str, String)],
+    ) -> (u16, Value) {
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
+        let mut req = actix_web::test::TestRequest::post()
+            .uri(uri)
+            .insert_header(("content-type", "application/json"))
+            .set_payload(corps.to_vec());
+        for (nom, valeur) in entetes {
+            req = req.insert_header((*nom, valeur.clone()));
+        }
+        let resp = actix_web::test::call_service(&app, req.to_request()).await;
+        let statut = resp.status().as_u16();
+        (statut, corps_json(resp).await)
     }
 
     // ── Aides propres au cycle ────────────────────────────────────────────
@@ -142,6 +230,39 @@ impl Bac {
     /// ne testerait que sa propre arithmétique.
     pub fn signer(&self, corps: &[u8]) -> String {
         self.fournisseur.signer(corps, Utc::now())
+    }
+
+    /// En-tête de signature d'un corps, prêt à être posé sur la requête.
+    pub fn entete_signature(&self, corps: &[u8]) -> (&'static str, String) {
+        (
+            paiements::fournisseur::simule::ENTETE_SIGNATURE,
+            self.signer(corps),
+        )
+    }
+
+    /// Poste une notification **signée** sur la route réelle du webhook.
+    ///
+    /// Passe par HTTP, comme un fournisseur le ferait : appeler le domaine
+    /// directement ne prouverait rien sur la lecture du corps brut, ni sur le
+    /// segment `{fournisseur}` de l'URL.
+    pub async fn notifier(
+        &self,
+        transaction: Uuid,
+        montant_unites: i64,
+        devise: &str,
+        issue: paiements::IssuePaiement,
+    ) -> (u16, Value) {
+        let corps = Self::corps_notification(transaction, montant_unites, devise, issue);
+        let entete = self.entete_signature(&corps);
+        self.post_brut(
+            &format!(
+                "/paiements/notifications/{}",
+                paiements::PaymentProvider::nom(self.fournisseur.as_ref()),
+            ),
+            &corps,
+            &[(entete.0, entete.1)],
+        )
+        .await
     }
 
     /// Corps d'une notification, tel que le double le comprend.

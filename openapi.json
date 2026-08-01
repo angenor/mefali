@@ -4209,6 +4209,160 @@
         ]
       }
     },
+    "/commandes/{id}/paiement": {
+      "get": {
+        "tags": [
+          "paiements"
+        ],
+        "summary": "État de la session de prépaiement d'une commande.",
+        "operationId": "etat_paiement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "État de la DERNIÈRE session, quel qu'il soit : après une expiration, le client lit « expirée » plutôt qu'un 404 qui lui laisserait croire qu'il n'a jamais rien tenté. `restant_s` est calculé côté SERVEUR (FR-017).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionPaiement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis, ou commande d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Aucune session pour cette commande — le cas d'une commande payée en espèces.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "paiements"
+        ],
+        "summary": "Ouvre — ou renvoie — la session de prépaiement d'une commande.",
+        "operationId": "ouvrir_paiement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant, en attente de paiement.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session vivante — créée, ou RETROUVÉE si l'appel est rejoué. Rappeler cette route tant que la session vit ne rouvre rien chez le fournisseur : l'identifiant de commande EST la clé d'idempotence (FR-015).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionPaiement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis, ou commande d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La commande n'attend aucun paiement : espèces, déjà réglée, ou plus en attente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Fournisseur injoignable ou en erreur. La commande reste INTACTE — rien n'a été écrit, l'appel peut être retenté (FR-018).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/commandes/{id}/substitutions/{sub}/decision": {
       "post": {
         "tags": [
@@ -6792,6 +6946,58 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/paiements/notifications/{fournisseur}": {
+      "post": {
+        "tags": [
+          "paiements"
+        ],
+        "summary": "Notification signée d'un fournisseur de paiement.",
+        "operationId": "recevoir_notification",
+        "parameters": [
+          {
+            "name": "fournisseur",
+            "in": "path",
+            "description": "Identifiant stable de l'implémentation destinataire. Point d'accroche du routage par moyen (phase 2+) — sans règle aujourd'hui.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Notification traitée, ou sans effet avec son motif. Un rejeu répond 200 `{traite: false, motif: \"rejeu\"}` et NON une erreur : un fournisseur qui reçoit une erreur retente en boucle (FR-022).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReponseNotification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre (FR-020)."
+          },
+          "404": {
+            "description": "Segment `{fournisseur}` inconnu."
+          },
+          "413": {
+            "description": "Corps au-delà de la limite admise."
+          }
+        }
       }
     },
     "/paniers/devis": {
@@ -13407,6 +13613,26 @@
           }
         }
       },
+      "ReponseNotification": {
+        "type": "object",
+        "description": "Ce que le webhook répond — **toujours `200`, sauf signature invalide**.",
+        "required": [
+          "traite"
+        ],
+        "properties": {
+          "motif": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`,\n`etat_incompatible`. Absent quand `traite` vaut `true`."
+          },
+          "traite": {
+            "type": "boolean",
+            "description": "Vrai si la notification a produit un effet."
+          }
+        }
+      },
       "RepriseFaite": {
         "type": "object",
         "description": "Résultat d'une reprise manuelle.",
@@ -13771,6 +13997,60 @@
           "resultat": {
             "$ref": "#/components/schemas/DiscriminantSession",
             "description": "Discrimine ce membre du `oneOf` de `/auth/otp/verifier`."
+          }
+        }
+      },
+      "SessionPaiement": {
+        "type": "object",
+        "description": "État d'une session de prépaiement, tel que l'app cliente le lit.",
+        "required": [
+          "transaction_id",
+          "etat",
+          "montant_unites",
+          "devise",
+          "moyen",
+          "expire_le",
+          "restant_s"
+        ],
+        "properties": {
+          "acces_paiement": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Page de paiement à ouvrir dans le **navigateur système**.\n\n`null` dès que l'état quitte `ouverte` : la colonne est effacée à\nl'issue, et un accès d'encaissement survivant à son paiement est une\nsurface d'attaque sans usage (FR-006)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "etat": {
+            "type": "string",
+            "description": "État : `ouverte` | `reglee` | `echouee` | `expiree` | `payee_hors_delai`."
+          },
+          "expire_le": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Échéance **persistée**, calculée depuis `paiement.session_duree_s`."
+          },
+          "montant_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Montant **figé** à l'ouverture (unités mineures)."
+          },
+          "moyen": {
+            "type": "string",
+            "description": "Moyen effectivement employé, tel que le fournisseur l'a dit.\n`inconnu` tant qu'il ne l'a pas dit — jamais deviné (FR-012)."
+          },
+          "restant_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Secondes restantes, **calculées côté serveur** (FR-017).\n\nL'horloge de l'app ne décide de rien : elle affiche un compte à rebours\nqu'elle recale sur cette valeur à chaque lecture. Vaut `0` sur une\nsession échue, jamais un nombre négatif."
+          },
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Transaction de paiement."
           }
         }
       },

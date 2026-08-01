@@ -304,6 +304,28 @@ pub enum ErreurFournisseur {
     NonSupporte,
 }
 
+/// Traduction **unique** des pannes de fournisseur vers le domaine.
+///
+/// Quatre des cinq variantes deviennent `FournisseurIndisponible`, donc `502` :
+/// du point de vue d'Awa, « le fournisseur a refusé notre demande d'ouverture »
+/// et « le fournisseur n'a pas répondu » sont le même événement — sa commande
+/// est intacte et elle peut réessayer (FR-018). Les distinguer dans la réponse
+/// n'aiderait qu'un attaquant à cartographier notre intégration ; le détail
+/// reste dans le message, donc dans les journaux.
+///
+/// `SignatureInvalide` est la seule à garder son identité : elle ne dit rien du
+/// fournisseur, elle dit que **l'appelant** n'est pas celui qu'il prétend être,
+/// et elle rend `401`.
+impl From<ErreurFournisseur> for crate::modele::ErreurPaiements {
+    fn from(erreur: ErreurFournisseur) -> Self {
+        use crate::modele::ErreurPaiements;
+        match erreur {
+            ErreurFournisseur::SignatureInvalide => ErreurPaiements::SignatureInvalide,
+            autre => ErreurPaiements::FournisseurIndisponible(autre.to_string()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

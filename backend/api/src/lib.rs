@@ -27,11 +27,14 @@ pub mod dispatch_http;
 pub mod erreurs_commandes;
 /// Mapping HTTP partagé des refus du domaine dispatch (cycle DSP 009, T021).
 pub mod erreurs_dispatch;
+pub mod erreurs_paiements;
 pub mod health;
 /// Impl RÉELLE du port `ProximiteRoutiere` au-dessus du moteur de routage (T020).
 pub mod infra_dispatch;
 pub mod infra_redis;
 pub mod infra_s3;
+pub mod paiements_http;
+pub mod paiements_webhook_http;
 pub mod prestataires_http;
 pub mod qr_http;
 pub mod signalements_http;
@@ -158,6 +161,9 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_dispatch_http::pool_dispatch)
         .service(admin_dispatch_http::reprendre_course_admin)
         .service(admin_commandes_http::enregistrer_issue)
+        .service(paiements_http::ouvrir_paiement)
+        .service(paiements_http::etat_paiement)
+        .service(paiements_webhook_http::recevoir_notification)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -963,6 +969,9 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_dispatch_http::pool_dispatch)
         .service(admin_dispatch_http::reprendre_course_admin)
             .service(admin_commandes_http::enregistrer_issue)
+            .service(paiements_http::ouvrir_paiement)
+            .service(paiements_http::etat_paiement)
+            .service(paiements_webhook_http::recevoir_notification)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
