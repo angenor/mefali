@@ -12,6 +12,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Exigé par `flutter_local_notifications` (CRS-02, US7) : la sonnerie
+        // d'offre programme des alarmes via les API de date/heure de Java 8,
+        // absentes des API Android sous la minSdk du projet. Sans ce drapeau,
+        // `assembleDebug` ÉCHOUE — aucun `flutter test` ne le voit, ils
+        // tournent sur la VM Dart de l'hôte.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -42,4 +48,10 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Contrepartie de `isCoreLibraryDesugaringEnabled` : la bibliothèque qui
+    // fournit `java.time` aux niveaux d'API qui ne l'ont pas.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
