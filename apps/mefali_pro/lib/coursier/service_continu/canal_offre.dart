@@ -120,7 +120,18 @@ class CanalOffreNotifications implements CanalOffre {
       ),
     );
 
-    final autorise = await android.requestNotificationsPermission() ?? false;
+    // Demander NE DIT PAS si c'est autorisé. `requestNotificationsPermission`
+    // rend `null` dans deux cas parfaitement normaux : Android < 13, où la
+    // méthode est un no-op et où les notifications sont acquises d'office ; et
+    // une permission DÉJÀ accordée, que le système ne redemande pas. Un
+    // `?? false` sur ce `null` transformait ces deux cas en refus : `_pret`
+    // restait faux, `sonner()` sortait aussitôt, et Yao n'était plus jamais
+    // réveillé — le bandeau lui affirmant qu'il avait refusé une permission
+    // qu'il avait accordée.
+    //
+    // La vérité est donc RELUE après la demande, jamais déduite d'elle.
+    await android.requestNotificationsPermission();
+    final autorise = await android.areNotificationsEnabled() ?? false;
     _pret = autorise;
     return autorise;
   }
