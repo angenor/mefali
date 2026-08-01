@@ -38,6 +38,7 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/experimental/scope.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../service_continu/service_continu.dart';
 import 'emetteur_position.dart';
 import 'etat_disponibilite.dart';
 import 'etat_journee.dart';
@@ -57,7 +58,7 @@ const int plafondDefautUnites = 10000;
 /// (`EmetteurPosition`, qui dépend de `sourcePositions`). Sans cette
 /// déclaration, `dart analyze` avertit — et surtout, un point de montage qui
 /// surcharge la source de positions verrait son override ignoré.
-@Dependencies([EmetteurPosition])
+@Dependencies([EmetteurPosition, ServiceContinu])
 class EcranDisponibilite extends ConsumerStatefulWidget {
   /// Construit l'écran. [entete] (optionnel) est rendu en tête du corps, DANS
   /// l'unique `Scaffold` — la bascule de rôle du coursier bi-rôle y passe sans
@@ -104,6 +105,7 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
     // La journée est LUE, jamais bloquante : `.value` sans `when` — un réseau
     // muet efface le bandeau, il n'empêche pas Yao de se mettre en ligne.
     final journee = ref.watch(etatJourneeProvider).value;
+    final service = ref.watch(serviceContinuProvider);
 
     final saisie = _saisie ?? etat.plafondDeclareUnites ?? plafondDefautUnites;
 
@@ -132,6 +134,21 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
           ],
           if (etat.codeErreur != null) ...[
             _Erreur(code: etat.codeErreur!),
+            const SizedBox(height: MefaliTokens.space3),
+          ],
+          // FR-115 — un service qui ne tourne pas se DIT. Le silence ferait
+          // croire à Yao qu'il n'y a pas de courses, alors qu'il n'y a plus
+          // personne pour le réveiller.
+          if (service.aUnProbleme) ...[
+            BandeauHorsLigne(
+              message: switch (service.motif) {
+                MotifServiceArrete.permissionRefusee =>
+                  t.crsServicePermissionRefusee,
+                MotifServiceArrete.arreteParSysteme =>
+                  t.crsServiceArreteParSysteme,
+                MotifServiceArrete.aucun => '',
+              },
+            ),
             const SizedBox(height: MefaliTokens.space3),
           ],
           _CarteBascule(

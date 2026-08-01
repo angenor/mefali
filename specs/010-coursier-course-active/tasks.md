@@ -223,12 +223,12 @@ tâche qui les enfreint est incomplète, même si son code marche :
 
 **Independent Test**: en ligne, téléphone verrouillé 30 minutes → jamais sorti du pool ; une offre émise → sonnerie sur canal dédié, écran d'offre ouvert avec le temps réellement restant.
 
-- [ ] T078 [US7] Service continu dans `apps/mefali_pro/lib/coursier/service_continu/service_continu.dart` : démarrage à la mise en ligne, arrêt à la mise hors ligne, publication de position à la période de zone, notification permanente explicite (FR-111, FR-112, FR-115)
-- [ ] T079 [US7] Canal de notification dédié (haute importance, son prolongé, ouverture directe) dans `apps/mefali_pro/lib/coursier/service_continu/canal_offre.dart` — réf. `docs/design/png/K2-offre-course.png` (« Plein écran + sonnerie ») ; silence quand Yao est hors ligne ou déjà en course (FR-101, FR-102)
-- [ ] T080 [US7] Interrogation d'offre **en arrière-plan** à la période de zone (`coursier.offre_interrogation_arriere_plan_s`), sans jamais doubler celle du premier plan (`research.md` R13) ; ouverture de K2 avec le **temps réellement restant** (FR-100)
-- [ ] T081 [US7] Échantillonnage de la présence géolocalisée **écran éteint** branché sur le service (FR-114, SC-019)
-- [ ] T082 [US7] Porteur `ServiceContinu` (`Notifier`, `keepAlive: true`) + gestion des refus de permission et des arrêts par le système, avec message explicite plutôt que silence (FR-115, cas limites de la spec) ; `build_runner` + `dart analyze`
-- [ ] T083 [US7] Tests widget et unitaires du service dans `apps/mefali_pro/test/coursier/service_continu/` : démarrage/arrêt sur bascule de disponibilité, aucune sonnerie hors ligne ou en course, compte à rebours cohérent
+- [X] T078 [US7] Service continu dans `apps/mefali_pro/lib/coursier/service_continu/service_continu.dart` : démarrage à la mise en ligne, arrêt à la mise hors ligne, publication de position à la période de zone, notification permanente explicite (FR-111, FR-112, FR-115)
+- [X] T079 [US7] Canal de notification dédié (haute importance, son prolongé, ouverture directe) dans `apps/mefali_pro/lib/coursier/service_continu/canal_offre.dart` — réf. `docs/design/png/K2-offre-course.png` (« Plein écran + sonnerie ») ; silence quand Yao est hors ligne ou déjà en course (FR-101, FR-102)
+- [X] T080 [US7] Interrogation d'offre **en arrière-plan** à la période de zone (`coursier.offre_interrogation_arriere_plan_s`), sans jamais doubler celle du premier plan (`research.md` R13) ; ouverture de K2 avec le **temps réellement restant** (FR-100)
+- [X] T081 [US7] Échantillonnage de la présence géolocalisée **écran éteint** branché sur le service (FR-114, SC-019)
+- [X] T082 [US7] Porteur `ServiceContinu` (`Notifier`, `keepAlive: true`) + gestion des refus de permission et des arrêts par le système, avec message explicite plutôt que silence (FR-115, cas limites de la spec) ; `build_runner` + `dart analyze`
+- [X] T083 [US7] Tests widget et unitaires du service dans `apps/mefali_pro/test/coursier/service_continu/` : démarrage/arrêt sur bascule de disponibilité, aucune sonnerie hors ligne ou en course, compte à rebours cohérent
 
 **Checkpoint**: toutes les stories sont fonctionnelles indépendamment.
 
@@ -236,9 +236,9 @@ tâche qui les enfreint est incomplète, même si son code marche :
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
-- [ ] T084 [P] Vérifier la **non-régression complète** : `cargo test` (cycles 006/007/008/009 compris), `flutter test` et `dart analyze` dans `mefali_pro` et `mefali_core`, `./scripts/verifier-accord-locks.sh`
-- [ ] T085 [P] Contrôles transverses automatisés dans `backend/api/tests/coursier_transverses.rs` : (a) **aucun secret n'échappe** — balayage des charges utiles d'événements et des réponses d'API pour code, jeton, code vendeur et numéro (SC-015) ; (b) **aucune distance de routage n'est recalculée** par ce cycle (FR-009) ; (c) **l'horodatage serveur fait foi** sur tout ce qui fonde de l'argent — arrivée, présence, remise (FR-010)
-- [ ] T086 Mesures de performance sur les cibles de `plan.md` : `GET /courses/active` ≤ 300 ms p95 (une requête), drain de file ≤ 5 s, exposition admin ≤ 5 s de retard
+- [X] T084 [P] Vérifier la **non-régression complète** : `cargo test` (cycles 006/007/008/009 compris), `flutter test` et `dart analyze` dans `mefali_pro` et `mefali_core`, `./scripts/verifier-accord-locks.sh`
+- [X] T085 [P] Contrôles transverses automatisés dans `backend/api/tests/coursier_transverses.rs` : (a) **aucun secret n'échappe** — balayage des charges utiles d'événements et des réponses d'API pour code, jeton, code vendeur et numéro (SC-015) ; (b) **aucune distance de routage n'est recalculée** par ce cycle (FR-009) ; (c) **l'horodatage serveur fait foi** sur tout ce qui fonde de l'argent — arrivée, présence, remise (FR-010)
+- [X] T086 Mesures de performance sur les cibles de `plan.md` : `GET /courses/active` ≤ 300 ms p95 (une requête), drain de file ≤ 5 s, exposition admin ≤ 5 s de retard
 - [ ] T087 Validation **sur appareil** des six scénarios de `quickstart.md` §3 (course en plein soleil, note vocale hors ligne, hors-ligne complet, réveil écran éteint, preuves, caisse) — consigner les résultats
 - [ ] T088 Rédiger `specs/010-coursier-course-active/rapport-ecarts.md` : écarts de maquette assumés (paie fixe K1-1c, lien mobile money K4-1a, signaler/bloquer K5-1a et 1d), limites déférées (avance non soldée sur commande prépayée), et décisions prises en cours d'implémentation
 - [ ] T089 Mettre à jour `CLAUDE.md` (commandes du cycle : plugins natifs, service continu, nouveaux `--dart-define` éventuels) et le « Récapitulatif des paramètres de zone » de `docs/user-stories-v2.md` avec les 7 paramètres ajoutés

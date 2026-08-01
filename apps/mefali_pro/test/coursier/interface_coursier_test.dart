@@ -32,6 +32,9 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_pro/coursier/course/etat_course.dart';
 import 'package:mefali_pro/coursier/disponibilite/emetteur_position.dart';
 import 'package:mefali_pro/coursier/interface_coursier.dart';
+import 'package:riverpod_annotation/experimental/scope.dart';
+import 'package:mefali_pro/coursier/service_continu/canal_offre.dart';
+import 'package:mefali_pro/coursier/service_continu/service_continu.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
 import 'package:mefali_pro/roles/etat_roles.dart';
 
@@ -196,6 +199,7 @@ Future<bool> _permissionAccordee() async => true;
 Future<Position?> _aucunReleve() async => null;
 
 
+@Dependencies([ServiceContinu])
 Widget _monter(
   ProviderContainer container, {
   Future<Position?> Function() releve = _aucunReleve,
@@ -213,6 +217,12 @@ Widget _monter(
           // Aucun dialogue système dans un test widget.
           permissionPositionProvider.overrideWithValue(_permissionAccordee),
           relevePonctuelProvider.overrideWithValue(releve),
+          // Cycle CRS 010 — le service continu et son canal de sonnerie sont
+          // INERTES : le vrai plugin natif lève dès sa première initialisation
+          // dans un test widget (aucun canal de plateforme).
+          servicePremierPlanProvider
+              .overrideWithValue(ServicePremierPlanInerte()),
+          canalOffreProvider.overrideWithValue(CanalOffreMuet()),
         ],
         child: InterfaceCoursier(etat: _coursierSeul()),
       ),

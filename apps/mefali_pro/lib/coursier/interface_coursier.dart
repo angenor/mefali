@@ -51,6 +51,7 @@ import 'disponibilite/emetteur_position.dart';
 import 'disponibilite/etat_disponibilite.dart';
 import 'offre/ecran_offre.dart';
 import 'offre/etat_offre.dart';
+import 'service_continu/service_continu.dart';
 
 /// Les trois destinations de la barre basse (K1, K5).
 enum DestinationCoursier {
@@ -66,11 +67,14 @@ enum DestinationCoursier {
 
 /// L'espace coursier.
 ///
-/// `@Dependencies` remonte celle d'[`EcranDisponibilite`] : c'est cet écran qui
-/// observe l'émetteur de position, et sans la déclaration ici un point de
-/// montage qui surcharge la source de positions verrait son override ignoré.
-@Dependencies([EmetteurPosition])
-class InterfaceCoursier extends ConsumerStatefulWidget {
+/// Son unique rôle propre : **poser les textes du service continu dans la
+/// portée**. Le service peut devoir notifier alors qu'aucun `BuildContext`
+/// n'est disponible — app en arrière-plan, arbre non monté — et les clés i18n
+/// doivent donc être résolues **avant**, ici, où le contexte existe encore. Les
+/// chaînes restent dans l'ARB fr (constitution VII) ; seule leur résolution
+/// change de moment.
+@Dependencies([EmetteurPosition, ServiceContinu])
+class InterfaceCoursier extends ConsumerWidget {
   /// Crée l'espace coursier.
   const InterfaceCoursier({super.key, required this.etat});
 
@@ -78,10 +82,46 @@ class InterfaceCoursier extends ConsumerStatefulWidget {
   final EtatRolesData etat;
 
   @override
-  ConsumerState<InterfaceCoursier> createState() => _InterfaceCoursierState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context)!;
+    return ProviderScope(
+      overrides: [
+        textesServiceProvider.overrideWithValue(
+          TextesService(
+            notificationTitre: t.crsServiceNotificationTitre,
+            notificationTexte: t.crsServiceNotificationTexte,
+            canalServiceNom: t.crsServiceNotificationTitre,
+            canalOffreNom: t.crsServiceCanalOffreNom,
+            canalOffreDescription: t.crsServiceCanalOffreDescription,
+            offreTitre: t.crsServiceOffreTitre,
+            offreTexte: t.crsServiceOffreTexte,
+          ),
+        ),
+      ],
+      child: _Aiguillage(etat: etat),
+    );
+  }
 }
 
-class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
+/// L'aiguillage lui-même — il porte tout l'état local de l'espace coursier.
+///
+/// `@Dependencies` remonte celle d'[`EcranDisponibilite`] : c'est cet écran qui
+/// observe l'émetteur de position, et sans la déclaration ici un point de
+/// montage qui surcharge la source de positions verrait son override ignoré.
+/// [`ServiceContinu`] s'y ajoute pour la même raison — un test qui injecte un
+/// service inerte doit être entendu.
+@Dependencies([EmetteurPosition, ServiceContinu])
+class _Aiguillage extends ConsumerStatefulWidget {
+  const _Aiguillage({required this.etat});
+
+  final EtatRolesData etat;
+
+  @override
+  ConsumerState<_Aiguillage> createState() => _InterfaceCoursierState();
+}
+
+class _InterfaceCoursierState extends ConsumerState<_Aiguillage>
+    with WidgetsBindingObserver {
   /// Tic d'interrogation de l'offre — **local**, annulé au démontage.
   Timer? _tic;
 
@@ -109,10 +149,19 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
   @override
   void initState() {
     super.initState();
+    // Le cycle de vie de l'app pilote la bascule des horloges (R13) : c'est le
+    // seul signal fiable — un drapeau posé à la main serait oublié le jour où
+    // un écran de plus s'intercale.
+    WidgetsBinding.instance.addObserver(this);
     _tic = Timer.periodic(periodeInterrogation, (_) {
       if (!mounted || !_uneOffrePeutArriver()) return;
       ref.invalidate(offreEnCoursProvider);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState etat) {
+    ref.read(serviceContinuProvider.notifier).changerCycleDeVie(etat);
   }
 
   /// Une offre peut-elle RÉELLEMENT arriver à cet instant ?
@@ -126,7 +175,11 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
   ///
   /// - **hors ligne** : Yao n'est pas dans le vivier (contrat §1.1) ;
   /// - **en course** : `course_active` l'en exclut (FR-007).
+  /// - **en arrière-plan** : c'est le service continu qui interroge, à la
+  ///   période de zone (R13). Garder cette horloge-ci en plus doublerait le
+  ///   débit exactement là où la batterie compte le plus.
   bool _uneOffrePeutArriver() {
+    if (ref.read(serviceContinuProvider).enArrierePlan) return false;
     if (!ref.read(disponibiliteProvider).enLigne) return false;
     final course = ref.read(etatCourseActiveProvider).value;
     return course == null || course.arrets.isEmpty;
@@ -134,6 +187,7 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tic?.cancel();
     super.dispose();
   }
@@ -165,6 +219,11 @@ class _InterfaceCoursierState extends ConsumerState<InterfaceCoursier> {
     // rouvrait sur l'écran de course : K1 jamais monté, `enLigne` faux, aucune
     // position publiée, et le serveur reprenait la course faute de progression.
     ref.watch(emetteurPositionProvider);
+    // Le service continu est OBSERVÉ ici, et nulle part ailleurs : c'est lui
+    // qui écoute la bascule en ligne / hors ligne (FR-111, FR-112), et sans un
+    // observateur il ne se construirait jamais — Yao se mettrait en ligne sans
+    // que rien ne démarre.
+    ref.watch(serviceContinuProvider);
 
     final valides = widget.etat.rolesValides;
     // Bascule de rôle en entête UNIQUEMENT si deux rôles validés — passée à

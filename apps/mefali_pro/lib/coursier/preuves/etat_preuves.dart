@@ -249,6 +249,10 @@ class EtatPreuvesNotifier extends _$EtatPreuvesNotifier {
   /// Photos de preuve déposées ou enfilées.
   int _photos = 0;
 
+  /// Instant du dernier échantillon de présence RETENU — garde de cadence
+  /// contre le doublon écran-ouvert / écran-éteint (T081).
+  DateTime? _dernierEchantillon;
+
   @override
   EtatPreuvesVue build() {
     ref.onDispose(() => _lien = null);
@@ -265,6 +269,7 @@ class EtatPreuvesNotifier extends _$EtatPreuvesNotifier {
   void reinitialiser() {
     _appels.clear();
     _photos = 0;
+    _dernierEchantillon = null;
     state = const EtatPreuvesVue();
     _lien?.close();
     _lien = null;
@@ -291,10 +296,23 @@ class EtatPreuvesNotifier extends _$EtatPreuvesNotifier {
   /// n'est jamais envoyée (R8). Une position indisponible n'est pas une erreur —
   /// c'est un motif de non-progression que l'écran doit DIRE, plutôt que de
   /// laisser un compteur figé sans explication.
+  ///
+  /// **Cadencé, pas seulement déclenché** (T081). Deux sources l'appellent —
+  /// l'écran des preuves au premier plan, le service continu écran éteint — et
+  /// il existe un instant où les deux tournent : Yao éteint son écran avec
+  /// K4-1e ouvert. Deux relevés à quelques secondes d'intervalle ne mesurent
+  /// rien de plus, mais doublent le GPS et la file. La garde vit ICI plutôt
+  /// qu'au point d'appel : un appelant de plus l'oublierait.
   Future<void> echantillonnerPresence(
     String livraisonId, {
     Future<Position?> Function()? obtenirPosition,
   }) async {
+    final depuis = _dernierEchantillon;
+    if (depuis != null &&
+        DateTime.now().difference(depuis) < _cadenceMinEchantillon) {
+      return;
+    }
+    _dernierEchantillon = DateTime.now();
     final course = ref.read(etatCourseActiveProvider).value;
     final lat = course?.client.lieuLat;
     final lon = course?.client.lieuLon;
@@ -492,3 +510,11 @@ const int _trouMaxS = 120;
 /// La moitié du trou toléré : chaque intervalle compte alors intégralement,
 /// même si un échantillon est perdu.
 const Duration periodeEchantillonPresence = Duration(seconds: 60);
+
+/// Écart minimal entre deux échantillons RETENUS.
+///
+/// La moitié de la période : deux sources peuvent se chevaucher (l'écran des
+/// preuves et le service continu, T081), et un relevé de plus toutes les
+/// secondes ne mesurerait rien de mieux — il allumerait le GPS deux fois plus
+/// souvent sur un téléphone d'entrée de gamme.
+const Duration _cadenceMinEchantillon = Duration(seconds: 30);

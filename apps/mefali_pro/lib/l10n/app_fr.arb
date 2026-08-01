@@ -1009,6 +1009,13 @@
   "@crsServiceArreteParSysteme": { "description": "Arrêt subi : Yao doit l'apprendre, pas le découvrir en ne recevant rien" },
   "crsServiceCanalOffreNom": "Offres de course",
   "@crsServiceCanalOffreNom": { "description": "Nom du canal de notification dédié (haute importance, son prolongé)" },
+  "crsServiceOffreTitre": "Une course pour vous",
+  "@crsServiceOffreTitre": { "description": "Titre de la sonnerie d'offre — aucune adresse, aucun montant (contrat du cycle 009)" },
+  "crsServiceOffreTexte": "Il vous reste {n} s pour répondre.",
+  "@crsServiceOffreTexte": {
+    "description": "Corps de la sonnerie, avec le temps RÉELLEMENT restant (FR-100) — jamais la durée nominale du timer",
+    "placeholders": { "n": { "type": "int" } }
+  },
   "crsServiceCanalOffreDescription": "Sonnerie prolongée quand une course vous est proposée.",
   "@crsServiceCanalOffreDescription": { "description": "Description du canal, visible dans les réglages Android" },
 
