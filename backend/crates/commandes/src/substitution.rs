@@ -654,11 +654,17 @@ impl PgCommandes {
         coursier: Uuid,
     ) -> Result<LigneEnRupture, ErreurCommandes> {
         let ligne = sqlx::query!(
-            r#"SELECT lc.id, lc.commande_id, lc.prestataire_id,
-                      lc.arret_id AS "arret_id?", lc.quantite,
+            // Le LEFT JOIN sur `livraison` empêche sqlx de prouver la
+            // non-nullabilité des colonnes des tables jointes AVANT lui : elles
+            // sont donc réaffirmées à la main. Seul `l.coursier_id`, qui vient
+            // du côté FACULTATIF de la jointure, reste un `Option`.
+            r#"SELECT lc.id AS "id!", lc.commande_id AS "commande_id!",
+                      lc.prestataire_id AS "prestataire_id!",
+                      lc.arret_id AS "arret_id?", lc.quantite AS "quantite!",
                       lc.statut::text AS "statut!",
                       lc.preference::text AS "preference!",
-                      pf.prix_unites, c.zone_id, l.coursier_id
+                      pf.prix_unites AS "prix_unites!", c.zone_id AS "zone_id!",
+                      l.coursier_id
                FROM commandes.ligne_commande lc
                JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
                JOIN commandes.commande c ON c.id = lc.commande_id

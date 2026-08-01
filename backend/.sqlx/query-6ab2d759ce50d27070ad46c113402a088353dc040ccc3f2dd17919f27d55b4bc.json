@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT l.devis_composantes AS \"c!\"\n           FROM commandes.livraison l WHERE l.commande_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "c!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "commandes.livraison",
+            "name": "devis_composantes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6ab2d759ce50d27070ad46c113402a088353dc040ccc3f2dd17919f27d55b4bc"
+}

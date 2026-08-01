@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT lc.id, lc.commande_id, lc.prestataire_id,\n                      lc.arret_id AS \"arret_id?\", lc.quantite,\n                      lc.statut::text AS \"statut!\",\n                      lc.preference::text AS \"preference!\",\n                      pf.prix_unites, c.zone_id, l.coursier_id\n               FROM commandes.ligne_commande lc\n               JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id\n               JOIN commandes.commande c ON c.id = lc.commande_id\n               LEFT JOIN commandes.livraison l ON l.commande_id = c.id\n               WHERE lc.id = $1",
+  "query": "SELECT lc.id AS \"id!\", lc.commande_id AS \"commande_id!\",\n                      lc.prestataire_id AS \"prestataire_id!\",\n                      lc.arret_id AS \"arret_id?\", lc.quantite AS \"quantite!\",\n                      lc.statut::text AS \"statut!\",\n                      lc.preference::text AS \"preference!\",\n                      pf.prix_unites AS \"prix_unites!\", c.zone_id AS \"zone_id!\",\n                      l.coursier_id\n               FROM commandes.ligne_commande lc\n               JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id\n               JOIN commandes.commande c ON c.id = lc.commande_id\n               LEFT JOIN commandes.livraison l ON l.commande_id = c.id\n               WHERE lc.id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "commande_id",
+        "name": "commande_id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "prestataire_id",
+        "name": "prestataire_id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -49,7 +49,7 @@
       },
       {
         "ordinal": 4,
-        "name": "quantite",
+        "name": "quantite!",
         "type_info": "Int2",
         "origin": {
           "Table": {
@@ -72,7 +72,7 @@
       },
       {
         "ordinal": 7,
-        "name": "prix_unites",
+        "name": "prix_unites!",
         "type_info": "Int8",
         "origin": {
           "Table": {
@@ -83,7 +83,7 @@
       },
       {
         "ordinal": 8,
-        "name": "zone_id",
+        "name": "zone_id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -110,17 +110,17 @@
       ]
     },
     "nullable": [
-      false,
-      false,
-      false,
       true,
-      false,
+      true,
+      true,
+      true,
+      true,
       null,
       null,
-      false,
-      false,
+      true,
+      true,
       true
     ]
   },
-  "hash": "f235d0ff526b310498b892bb338f67f7a0e89880afe8669b85d5c27c4563884e"
+  "hash": "0c0cbcba8c63bd92853108ceaf737b7cd29aafc0593ac90119307274836b076c"
 }

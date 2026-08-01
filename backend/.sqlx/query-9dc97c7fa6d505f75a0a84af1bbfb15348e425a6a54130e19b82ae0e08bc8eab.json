@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,\n                      l.commande_id, a.prestataire_id AS \"prestataire_id!\", a.site_lat, a.site_lon,\n                      a.montant_avance, a.devise\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE a.id = $1 AND l.coursier_id = $2 AND l.etat = 'en_collecte'\n                 AND a.type_arret = 'collecte'",
+  "query": "SELECT a.id AS arret_id, l.id AS livraison_id, s.id AS segment_id,\n                      l.commande_id, a.prestataire_id AS \"prestataire_id!\", a.site_lat, a.site_lon,\n                      a.montant_avance, a.devise\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE a.id = $1 AND l.coursier_id = $2\n                 AND l.etat IN ('assignee', 'en_collecte')\n                 AND a.type_arret = 'collecte'",
   "describe": {
     "columns": [
       {
@@ -121,5 +121,5 @@
       false
     ]
   },
-  "hash": "9f52f685080202a30f489c07ef7891b1eb9f67bb7c3f8072f4064d37d343f3bc"
+  "hash": "9dc97c7fa6d505f75a0a84af1bbfb15348e425a6a54130e19b82ae0e08bc8eab"
 }
