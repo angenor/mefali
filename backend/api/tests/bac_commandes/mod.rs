@@ -922,6 +922,58 @@ impl Bac {
         .unwrap()
     }
 
+    /// Fait consommer par `paiements` **tous** les événements du journal, dans
+    /// leur ordre d'écriture (T057).
+    ///
+    /// Le worker outbox n'est pas monté dans ce bac : le brancher ferait
+    /// dépendre chaque test d'un ordonnancement asynchrone.
+    /// `consommer_pour_paiements` est **exactement** ce que l'adaptateur
+    /// `PaiementsOutbox` appelle en production — l'appeler ici, ce n'est pas
+    /// simuler le worker, c'est exécuter le même code sans son horloge.
+    ///
+    /// Rejouable sans effet : `dossier.evenement_id UNIQUE` porte l'idempotence.
+    pub async fn drainer_dossiers(&self) {
+        let depot = paiements::PgPaiements::new(self.pool.clone());
+        let lignes: Vec<(Uuid, String, String, Uuid, Value, chrono::DateTime<chrono::Utc>)> =
+            sqlx::query_as(
+                "SELECT id, type_evenement, entite_type, entite_id, payload, survenu_le
+                   FROM outbox.evenement ORDER BY cree_le, id",
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap();
+        for (id, type_evenement, entite_type, entite_id, payload, survenu_le) in lignes {
+            paiements::consommer_pour_paiements(
+                &depot,
+                &socle::EvenementPublie {
+                    id,
+                    type_evenement,
+                    entite_type,
+                    entite_id,
+                    payload,
+                    survenu_le,
+                },
+            )
+            .await
+            .expect("consommation de dossiers");
+        }
+    }
+
+    /// Dossiers d'anomalie ouverts d'un type donné : `(commande, arret,
+    /// montant_constate, montant_attendu)`.
+    pub async fn dossiers(&self, type_dossier: &str) -> Vec<(Option<Uuid>, Option<Uuid>, Option<i64>, Option<i64>)> {
+        sqlx::query_as(
+            "SELECT commande_id, arret_id, montant_constate, montant_attendu
+               FROM paiements.dossier
+              WHERE type_dossier = $1::paiements.type_dossier
+              ORDER BY ouvert_le, id",
+        )
+        .bind(type_dossier)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap()
+    }
+
     /// Corps de demande de devis de panier.
     pub fn demande_devis(&self, categorie_slug: &str, lignes: Vec<Value>) -> Value {
         json!({

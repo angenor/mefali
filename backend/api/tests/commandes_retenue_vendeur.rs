@@ -183,6 +183,114 @@ async fn retenue_superieure_aux_articles_ecrete_a_zero(pool: PgPool) {
     assert_eq!(dernier["retenue_ecretee"], serde_json::json!(true));
 }
 
+/// T057 — l'écrêtage ouvre son dossier par l'outbox, une seule fois, et un
+/// arrêt sans écrêtage n'en ouvre aucun.
+///
+/// C'est la seule voie par laquelle `paiements` peut apprendre ce que
+/// `commandes` a fait : la flèche inverse n'existe pas (research R14).
+#[sqlx::test(migrations = "../migrations")]
+async fn ecretage_ouvre_son_dossier_une_seule_fois(pool: PgPool) {
+    let bac = Bac::nouveau_livraison_offerte_par_vendeur(pool).await;
+    bac.declarer_offre(bac.vendeurs[0].id, Some(OffreLivraison::Toujours))
+        .await;
+
+    // Arrêt A — écrêté (toutes les lignes retirées).
+    let ecrete = bac
+        .creer_commande_api("marche", vec![bac.vendeurs[0].ligne(6)])
+        .await;
+    let livraison = bac
+        .commandes
+        .assigner_coursier(ecrete, bac.coursier, chrono::Utc::now())
+        .await
+        .unwrap();
+    let (collectes, _) = bac.arrets_de(livraison).await;
+    let lignes = bac.lignes_de(collectes[0]).await;
+    bac.retirer_ligne(lignes[0]).await;
+    bac.collecter(collectes[0]).await;
+
+    // Arrêt B — retenue ordinaire, pas d'écrêtage.
+    let sain = bac
+        .creer_commande_api("marche", vec![bac.vendeurs[0].ligne(10)])
+        .await;
+    let livraison_b = bac
+        .commandes
+        .assigner_coursier(sain, bac.coursier, chrono::Utc::now())
+        .await
+        .unwrap();
+    let (collectes_b, _) = bac.arrets_de(livraison_b).await;
+    bac.collecter(collectes_b[0]).await;
+
+    bac.drainer_dossiers().await;
+
+    let dossiers = bac.dossiers("retenue_ecretee").await;
+    assert_eq!(dossiers.len(), 1, "un seul arrêt a été écrêté");
+    let (commande_id, arret_id, constate, attendu) = dossiers[0];
+    assert_eq!(commande_id, Some(ecrete));
+    assert_eq!(arret_id, Some(collectes[0]));
+    assert_eq!(constate, Some(0), "plus rien à payer au vendeur");
+    assert_eq!(attendu, Some(0), "la retenue a été ramenée à ce qui existait");
+
+    // Le dossier a son événement — sans lui, l'exploitation ne serait prévenue
+    // par rien (contrats §6).
+    assert_eq!(bac.nb_evenements("paiement.dossier_ouvert").await, 1);
+
+    // Rejeu du journal ENTIER : l'idempotence est une contrainte de base, pas
+    // un `if` — et c'est ce second passage qui le prouve.
+    bac.drainer_dossiers().await;
+    assert_eq!(bac.dossiers("retenue_ecretee").await.len(), 1);
+    assert_eq!(bac.nb_evenements("paiement.dossier_ouvert").await, 1);
+}
+
+/// FR-082 — PAY-04 n'est pas construit : le remboursement dû à un client dont
+/// la commande prépayée est annulée doit au moins être **vu**.
+#[sqlx::test(migrations = "../migrations")]
+async fn annulation_d_une_prepayee_ouvre_un_dossier_de_remboursement(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+
+    let commande = bac
+        .creer_commande_mode("marche", vec![bac.vendeurs[0].ligne(2)], "mobile_money")
+        .await;
+    bac.commandes
+        .confirmer_prepaiement(commande, chrono::Utc::now())
+        .await
+        .expect("confirmation du prépaiement");
+
+    let (statut, corps) = bac
+        .post(
+            &format!("/commandes/{commande}/annuler"),
+            &bac.jeton_client,
+            serde_json::json!({}),
+        )
+        .await;
+    assert_eq!(statut, 200, "annulation : {corps}");
+    assert_eq!(corps["remboursement_du"], true);
+
+    bac.drainer_dossiers().await;
+
+    let dossiers = bac.dossiers("remboursement_client_du").await;
+    assert_eq!(dossiers.len(), 1, "le dû est vu, même sans PAY-04");
+    assert_eq!(dossiers[0].0, Some(commande));
+
+    // Une annulation SANS remboursement dû (commande cash) n'ouvre rien.
+    let cash = bac
+        .creer_commande_api("marche", vec![bac.vendeurs[0].ligne(2)])
+        .await;
+    let (statut, _) = bac
+        .post(
+            &format!("/commandes/{cash}/annuler"),
+            &bac.jeton_client,
+            serde_json::json!({}),
+        )
+        .await;
+    assert_eq!(statut, 200);
+    bac.drainer_dossiers().await;
+    assert_eq!(
+        bac.dossiers("remboursement_client_du").await.len(),
+        1,
+        "rien à rembourser sur une commande cash — aucun dossier de plus"
+    );
+}
+
 /// FR-048 — déclarer une offre APRÈS coup ne retarife aucune commande : le
 /// devis est figé à la création, et la retenue au scan le LIT.
 #[sqlx::test(migrations = "../migrations")]

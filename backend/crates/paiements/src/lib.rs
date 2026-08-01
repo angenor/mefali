@@ -69,7 +69,7 @@ pub use modele::{
     transition_existe, verifier_transition, Dossier, ErreurPaiements, EtatDossier, EtatTransaction,
     MoyenPaiement, Transaction, TypeDossier,
 };
-pub use dossier::{ouvrir as ouvrir_dossier, Anomalie};
+pub use dossier::{consommer_pour_paiements, ouvrir as ouvrir_dossier, Anomalie};
 pub use expiration::{balayer, BilanBalayage};
 pub use session::{lire_session, ouvrir_session};
 pub use webhook::{traiter_notification, ResultatWebhook};

@@ -120,6 +120,84 @@ pub async fn ouvrir(
     Ok(Some(id))
 }
 
+// ── Consommateur outbox (T057, contrats §4) ────────────────────────────────
+
+/// Traduit le journal en dossiers — **la seule voie par laquelle `paiements`
+/// apprend ce que `commandes` a fait**.
+///
+/// `paiements ──▶ commandes` : la flèche inverse n'existe pas, et ne doit pas
+/// naître. L'outbox est ce qui permet à ce crate de réagir sans qu'aucune arête
+/// nouvelle apparaisse (research R14, patron `CaisseOutbox` du cycle 010).
+///
+/// Deux événements écoutés, **tout le reste ignoré** : un consommateur reçoit
+/// l'intégralité du journal (contrat `socle`).
+///
+/// | Événement | Condition | Dossier |
+/// |---|---|---|
+/// | `arret.collecte` | `retenue_ecretee = true` | `retenue_ecretee` (FR-052) |
+/// | `commande.annulee` | `remboursement_du = true` | `remboursement_client_du` (FR-082) |
+///
+/// # Ce que cette fonction ne rend JAMAIS en `Err`
+///
+/// Une issue métier — payload sans le champ attendu, dossier déjà ouvert,
+/// événement d'un autre type — est un **succès**. Rendre `Err` bloquerait la
+/// ligne d'outbox indéfiniment, et un événement bloqué arrête tous les
+/// consommateurs derrière lui. Seule une panne d'infrastructure (SQL) remonte,
+/// parce qu'elle, un rejeu peut la résoudre.
+pub async fn consommer_pour_paiements(
+    depot: &PgPaiements,
+    evenement: &socle::EvenementPublie,
+) -> Result<(), ErreurPaiements> {
+    let (type_dossier, anomalie) = match evenement.type_evenement.as_str() {
+        "arret.collecte" => {
+            if !evenement.payload["retenue_ecretee"].as_bool().unwrap_or(false) {
+                return Ok(());
+            }
+            (
+                TypeDossier::RetenueEcretee,
+                Anomalie {
+                    commande_id: uuid_du(&evenement.payload, "commande"),
+                    arret_id: Some(evenement.entite_id),
+                    // `constaté` = ce qui restait à payer au vendeur ;
+                    // `attendu` = ce que la retenue prétendait prélever. L'écart
+                    // se relit ainsi sans jointure, et il EST l'anomalie.
+                    montant_constate: evenement.payload["montant_articles"].as_i64(),
+                    montant_attendu: evenement.payload["retenue_appliquee"].as_i64(),
+                    devise: evenement.payload["devise"].as_str().map(str::to_owned),
+                    evenement_id: Some(evenement.id),
+                    ..Anomalie::default()
+                },
+            )
+        }
+        "commande.annulee" => {
+            if !evenement.payload["remboursement_du"].as_bool().unwrap_or(false) {
+                return Ok(());
+            }
+            (
+                TypeDossier::RemboursementClientDu,
+                Anomalie {
+                    commande_id: Some(evenement.entite_id),
+                    devise: evenement.payload["devise"].as_str().map(str::to_owned),
+                    evenement_id: Some(evenement.id),
+                    ..Anomalie::default()
+                },
+            )
+        }
+        _ => return Ok(()),
+    };
+
+    let mut tx = depot.pool().begin().await?;
+    ouvrir(depot, &mut tx, type_dossier, anomalie, evenement.survenu_le).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Lit un UUID d'un payload, `None` si absent ou mal formé — un événement mal
+/// formé ne fait pas tomber le worker.
+fn uuid_du(payload: &serde_json::Value, cle: &str) -> Option<Uuid> {
+    payload[cle].as_str()?.parse().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

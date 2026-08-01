@@ -516,6 +516,47 @@ impl socle::ConsommateurOutbox for CaisseOutbox {
     }
 }
 
+/// **Troisième consommateur réel** (PAY 011, T057) — les dossiers d'anomalie.
+///
+/// Adaptateur seulement : la traduction événement → dossier vit dans le crate
+/// `paiements`. Il écoute deux faits que `commandes` produit et que `paiements`
+/// ne peut pas voir autrement — la flèche `commandes ──▶ paiements` n'existe
+/// pas et ne doit pas naître (constitution II, research R14).
+struct PaiementsOutbox {
+    depot: paiements::PgPaiements,
+}
+
+#[async_trait::async_trait]
+impl socle::ConsommateurOutbox for PaiementsOutbox {
+    fn nom(&self) -> &'static str {
+        "paiements"
+    }
+
+    async fn consommer(
+        &self,
+        evenement: &socle::EvenementPublie,
+    ) -> Result<(), socle::ConsommationError> {
+        match paiements::consommer_pour_paiements(&self.depot, evenement).await {
+            Ok(()) => Ok(()),
+            // Panne d'infrastructure : l'événement reste non publié et sera
+            // rejoué. `dossier.evenement_id UNIQUE` rend le rejeu inoffensif.
+            Err(paiements::ErreurPaiements::Sql(e)) => {
+                Err(socle::ConsommationError(format!("base de données : {e}")))
+            }
+            // Issue métier : journalisée, JAMAIS rejouée — rejouer ne changerait
+            // rien et bloquerait la ligne d'outbox pour tous les consommateurs
+            // derrière (patron `DispatchOutbox`, `CaisseOutbox`).
+            Err(e) => {
+                tracing::warn!(
+                    evenement = %evenement.id, type_evenement = %evenement.type_evenement,
+                    erreur = %e, "aucun dossier ouvert — l'événement reste consommé",
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Purge périodique des photos de **preuve d'échec** échues (CRS-05, FR-064).
 ///
 /// Même patron que [`job_purge_photos_collecte`], à une différence près : la
@@ -796,6 +837,11 @@ pub async fn run() -> std::io::Result<()> {
                     "pipeline DSP câblé (pool Redis, double verrou Lua, proximité routière ; \
                      note AVI, paires CRS-07 et transport NTF-01 non construits)"
                 );
+                // Construit ICI et pas dans le bloc PAY plus bas : le worker
+                // outbox se monte avec TOUS ses consommateurs d'un coup, et
+                // `PgPaiements` ne demande rien d'autre que le pool.
+                let depot_paiements = paiements::PgPaiements::new(pool.clone());
+
                 // Le worker outbox démarre ICI, et pas plus tôt : il attendait
                 // son premier consommateur réel (research R1).
                 let worker = socle::WorkerOutbox::new(
@@ -811,6 +857,13 @@ pub async fn run() -> std::io::Result<()> {
                         // en dépendre (constitution II, R9).
                         Arc::new(CaisseOutbox {
                             depot: depot_coursier_pour_caisse,
+                        }),
+                        // PAY 011 — le TROISIÈME. Même raison, autre sens :
+                        // `paiements` dépend de `commandes`, jamais l'inverse,
+                        // donc il apprend l'écrêtage d'une retenue et le
+                        // remboursement dû par le journal (contrats §4, R14).
+                        Arc::new(PaiementsOutbox {
+                            depot: depot_paiements.clone(),
                         }),
                     ],
                 );
@@ -853,10 +906,11 @@ pub async fn run() -> std::io::Result<()> {
                             ));
                         }
                     };
-                let depot_paiements = paiements::PgPaiements::new(pool.clone());
                 eprintln!(
                     "domaine PAY câblé (PgPaiements ; fournisseur actif « {} ») ; \
-                     remboursements PAY-04 non construits (`refund` définie, jamais appelée)",
+                     consommateur outbox `paiements` monté (dossiers d'écrêtage et de \
+                     remboursement dû) ; remboursements PAY-04 non construits \
+                     (`refund` définie, jamais appelée)",
                     fournisseur.nom(),
                 );
                 tokio::spawn(job_expirer_sessions(
