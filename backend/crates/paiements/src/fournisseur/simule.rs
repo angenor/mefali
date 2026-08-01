@@ -159,17 +159,35 @@ impl FournisseurSimule {
         devise: &str,
         issue: IssuePaiement,
     ) -> Vec<u8> {
-        serde_json::to_vec(&serde_json::json!({
+        Self::corps_notification_moyen(reference_marchande, montant_unites, devise, issue, None)
+    }
+
+    /// Variante annonçant le **moyen** employé.
+    ///
+    /// Séparée du cas nominal à dessein : un fournisseur ne dit pas toujours le
+    /// moyen, et le produit ne le devine jamais (FR-012). Les deux formes
+    /// doivent donc rester exerçables — celle qui le tait autant que celle qui
+    /// le nomme.
+    pub fn corps_notification_moyen(
+        reference_marchande: Uuid,
+        montant_unites: i64,
+        devise: &str,
+        issue: IssuePaiement,
+        moyen: Option<&str>,
+    ) -> Vec<u8> {
+        let mut charge = serde_json::json!({
             "reference_fournisseur": format!("sim-{reference_marchande}"),
             "reference_marchande": reference_marchande,
             "issue": issue.comme_str(),
             "montant_unites": montant_unites,
             "devise": devise,
             "survenu_le": Utc::now().to_rfc3339(),
-        }))
-        .expect("charge de test sérialisable")
+        });
+        if let Some(moyen) = moyen {
+            charge["moyen"] = serde_json::json!(moyen);
+        }
+        serde_json::to_vec(&charge).expect("charge de test sérialisable")
     }
-
 }
 
 impl Default for FournisseurSimule {

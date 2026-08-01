@@ -77,6 +77,13 @@ void main() {
       // TODO
     });
 
+    // Reçu d'un arrêt collecté chez un prestataire piloté.
+    //
+    //Future<RecuArret> recuArret(String arretId) async
+    test('test recuArret', () async {
+      // TODO
+    });
+
     // Remet un article retiré au catalogue, sans ressaisie (FR-055).
     //
     //Future<ArticleVendeur> remettreArticle(String id, String articleId) async

@@ -576,6 +576,89 @@ pub async fn definir_offre_livraison(
     Ok(HttpResponse::Ok().json(sortie))
 }
 
+// ── Reçu d'un arrêt collecté (T059, contrats §3.2) ─────────────────────────
+
+/// Reçu vendeur d'un arrêt collecté — **les mêmes trois chiffres** que le reçu
+/// client (FR-053, FR-071).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = RecuArret)]
+pub struct RecuArretDto {
+    /// Arrêt collecté.
+    pub arret_id: Uuid,
+    /// Prestataire chez qui la collecte a eu lieu.
+    pub prestataire_id: Uuid,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Instant du scan (horloge SERVEUR).
+    pub collecte_le: Option<chrono::DateTime<chrono::Utc>>,
+    /// Lignes de cet arrêt, retirées comprises.
+    pub lignes: Vec<crate::paiements_http::LigneRecuDto>,
+    /// Articles bruts, AVANT retenue.
+    pub montant_articles_unites: i64,
+    /// Retenue au titre de la livraison offerte.
+    pub retenue_livraison_offerte_unites: i64,
+    /// Ce que le coursier a effectivement versé — `articles − retenue`.
+    pub net_verse_unites: i64,
+    /// Clé i18n du motif de retenue, `null` s'il n'y en a pas.
+    pub motif_retenue_cle: Option<String>,
+}
+
+/// Reçu d'un arrêt collecté chez un prestataire piloté.
+#[utoipa::path(
+    get,
+    path = "/vendeur/arrets/{arret_id}/recu",
+    tag = "vendeur",
+    params(("arret_id" = Uuid, Path, description = "Arrêt COLLECTÉ chez un prestataire piloté.")),
+    responses(
+        (status = 200, description = "Articles, retenue et net versé — les MÊMES montants que le \
+         reçu client, au franc près (FR-053). Aucun recalcul : la retenue a été posée au scan \
+         et n'est que relue.", body = RecuArretDto),
+        (status = 404, description = "Arrêt inconnu, ou pas encore collecté : il n'y a pas de \
+         versement à attester avant le scan.", body = ErreurApiDto),
+        (status = 403, description = "L'arrêt n'appartient à aucun prestataire piloté par \
+         l'appelant.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/vendeur/arrets/{arret_id}/recu")]
+pub async fn recu_arret(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgPrestataires>,
+    commandes: web::Data<commandes::PgCommandes>,
+) -> Result<HttpResponse, ErreurPresta> {
+    if !auth.a_role(Role::Vendeur) {
+        return Err(ErreurPresta::RoleVendeurRequis);
+    }
+    let arret_id = chemin.into_inner();
+
+    let recu = commandes
+        .recu_arret(arret_id)
+        .await
+        .map_err(|_| ErreurPresta::Introuvable)?;
+    // La garde de propriété se pose APRÈS la lecture, sur le prestataire que
+    // l'arrêt désigne : c'est le rattachement qui délimite, jamais le rôle seul
+    // (FR-011).
+    exiger_pilotage(&auth, &depot, recu.prestataire_id).await?;
+
+    Ok(HttpResponse::Ok().json(RecuArretDto {
+        arret_id: recu.arret_id,
+        prestataire_id: recu.prestataire_id,
+        devise: recu.devise,
+        collecte_le: recu.collecte_le,
+        lignes: recu
+            .lignes
+            .into_iter()
+            .map(crate::paiements_http::ligne_dto)
+            .collect(),
+        montant_articles_unites: recu.montant_articles_unites,
+        retenue_livraison_offerte_unites: recu.retenue_livraison_offerte_unites,
+        net_verse_unites: recu.net_verse_unites,
+        motif_retenue_cle: recu.motif_retenue_cle,
+    }))
+}
+
 // ── Disponibilité (VND-04 — bascule En stock / Rupture, écran V2) ──────────
 
 /// Corps de la bascule.

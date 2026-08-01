@@ -111,6 +111,7 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_prestataires_http::basculer_disponibilite_admin)
         .service(vendeur_http::definir_offre_livraison)
         .service(admin_prestataires_http::definir_offre_livraison_admin)
+        .service(vendeur_http::recu_arret)
         .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
@@ -165,6 +166,7 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_commandes_http::enregistrer_issue)
         .service(paiements_http::ouvrir_paiement)
         .service(paiements_http::etat_paiement)
+        .service(paiements_http::recu_commande)
         .service(paiements_webhook_http::recevoir_notification)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
@@ -1025,6 +1027,7 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_prestataires_http::basculer_disponibilite_admin)
         .service(vendeur_http::definir_offre_livraison)
         .service(admin_prestataires_http::definir_offre_livraison_admin)
+        .service(vendeur_http::recu_arret)
         .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
@@ -1085,6 +1088,7 @@ pub async fn run() -> std::io::Result<()> {
             .service(admin_commandes_http::enregistrer_issue)
             .service(paiements_http::ouvrir_paiement)
             .service(paiements_http::etat_paiement)
+            .service(paiements_http::recu_commande)
             .service(paiements_webhook_http::recevoir_notification)
             .split_for_parts();
         let mut app = app

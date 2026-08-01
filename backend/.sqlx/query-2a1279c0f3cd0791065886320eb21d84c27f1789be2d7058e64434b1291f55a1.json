@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.client_id, c.devise, c.total_unites,\n                      c.mode_paiement::text AS \"mode_paiement!\",\n                      c.etat_paiement::text AS \"etat_paiement!\",\n                      COALESCE(l.devis_prix_client, 0) AS \"frais!\",\n                      COALESCE((l.devis_composantes->>'retenue_vendeur')::bigint, 0)\n                          AS \"retenue!\"\n                 FROM commandes.commande c\n                 LEFT JOIN commandes.livraison l ON l.commande_id = c.id\n                WHERE c.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "devise",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "devise"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "total_unites",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "commandes.commande",
+            "name": "total_unites"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "mode_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "etat_paiement!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "frais!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "retenue!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "2a1279c0f3cd0791065886320eb21d84c27f1789be2d7058e64434b1291f55a1"
+}

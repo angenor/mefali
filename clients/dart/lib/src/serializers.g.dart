@@ -117,6 +117,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(LigneExposition.serializer)
       ..add(LigneHistoriqueCaisse.serializer)
       ..add(LignePanier.serializer)
+      ..add(LigneRecu.serializer)
       ..add(LitigeVu.serializer)
       ..add(LivraisonCommande.serializer)
       ..add(LotDePresence.serializer)
@@ -152,6 +153,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PublicationPosition.serializer)
       ..add(RattachementDto.serializer)
       ..add(RattacherCompteDto.serializer)
+      ..add(RecuArret.serializer)
+      ..add(RecuCommande.serializer)
       ..add(RefusOffre.serializer)
       ..add(Regle.serializer)
       ..add(RegleRetenue.serializer)
@@ -305,6 +308,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LignePanier)]),
           () => ListBuilder<LignePanier>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneRecu)]),
+          () => ListBuilder<LigneRecu>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneRecu)]),
+          () => ListBuilder<LigneRecu>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PlageDto)]),
           () => ListBuilder<PlageDto>())

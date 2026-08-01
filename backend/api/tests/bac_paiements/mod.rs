@@ -82,7 +82,20 @@ pub struct Bac {
 
 impl Bac {
     pub async fn nouveau(pool: sqlx::PgPool) -> Self {
-        let cmd = bac_commandes::Bac::nouveau(pool.clone()).await;
+        Self::depuis(bac_commandes::Bac::nouveau(pool.clone()).await, pool).await
+    }
+
+    /// Variante dont le devis figé porte une **retenue vendeur** (VND-08) —
+    /// sert les tests de reçu, où les trois montants doivent différer.
+    pub async fn nouveau_livraison_offerte_par_vendeur(pool: sqlx::PgPool) -> Self {
+        Self::depuis(
+            bac_commandes::Bac::nouveau_livraison_offerte_par_vendeur(pool.clone()).await,
+            pool,
+        )
+        .await
+    }
+
+    async fn depuis(cmd: bac_commandes::Bac, pool: sqlx::PgPool) -> Self {
 
         // Les 4 paramètres du cycle, au PAYS — hérités par Tiassalé, comme en
         // production. Les poser sur la ville rendrait le test vert alors que la
@@ -122,10 +135,15 @@ impl Bac {
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
         let base = self.cmd.configurer();
         let paiements = self.paiements.clone();
+        let prestataires = self.cmd.prestataires.clone();
         let fournisseur: Arc<dyn PaymentProvider> = self.fournisseur.clone();
         move |cfg: &mut web::ServiceConfig| {
             base(cfg);
             cfg.app_data(web::Data::new(paiements))
+                // Le reçu vendeur (T059) vit dans `vendeur_http` : sa garde de
+                // pilotage lit le dépôt prestataires, que le bac du cycle 008
+                // n'enregistre pas.
+                .app_data(web::Data::new(prestataires))
                 .app_data(web::Data::new(fournisseur))
                 // Le plafond de corps brut du webhook (64 Kio) — enregistré
                 // ici comme il l'est dans `api::run`, sinon le bac testerait
@@ -137,6 +155,8 @@ impl Bac {
             // testée hors HTTP faute de bac.
             cfg.service(api::paiements_http::ouvrir_paiement)
                 .service(api::paiements_http::etat_paiement)
+                .service(api::paiements_http::recu_commande)
+                .service(api::vendeur_http::recu_arret)
                 .service(api::paiements_webhook_http::recevoir_notification);
         }
     }
@@ -233,6 +253,24 @@ impl Bac {
             .await
     }
 
+    /// Crée un compte porteur du rôle **vendeur**, rattaché au prestataire
+    /// donné, et rend `(compte, jeton)`.
+    ///
+    /// Le bac du cycle 008 n'en a pas : ses tests n'exercent que le client, le
+    /// coursier et l'admin. Le reçu vendeur (T059) est le premier à en avoir
+    /// besoin ici.
+    pub async fn compte_vendeur(&self, prestataire: Uuid, e164: &str) -> (Uuid, String) {
+        let (compte, jeton) = self.cmd.compte_avec_roles(e164, &["client", "vendeur"]).await;
+        let mut tx = self.cmd.pool.begin().await.unwrap();
+        self.cmd
+            .prestataires
+            .rattacher_compte(&mut tx, prestataire, compte, self.cmd.admin)
+            .await
+            .expect("rattachement du compte vendeur");
+        tx.commit().await.unwrap();
+        (compte, jeton)
+    }
+
     /// Signe un corps de notification comme le fournisseur le ferait.
     ///
     /// Délègue au double : un test qui signerait autrement que le vérificateur
@@ -261,7 +299,28 @@ impl Bac {
         devise: &str,
         issue: paiements::IssuePaiement,
     ) -> (u16, Value) {
-        let corps = Self::corps_notification(transaction, montant_unites, devise, issue);
+        self.notifier_moyen(transaction, montant_unites, devise, issue, None)
+            .await
+    }
+
+    /// Notification annonçant le **moyen** employé (FR-012). Le moyen est
+    /// optionnel dans le protocole : un fournisseur qui le tait laisse le
+    /// produit sur `inconnu`, jamais sur une supposition.
+    pub async fn notifier_moyen(
+        &self,
+        transaction: Uuid,
+        montant_unites: i64,
+        devise: &str,
+        issue: paiements::IssuePaiement,
+        moyen: Option<&str>,
+    ) -> (u16, Value) {
+        let corps = FournisseurSimule::corps_notification_moyen(
+            transaction,
+            montant_unites,
+            devise,
+            issue,
+            moyen,
+        );
         let entete = self.entete_signature(&corps);
         self.post_brut(
             &format!(

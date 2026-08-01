@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**etatPaiement**](PaiementsApi.md#etatpaiement) | **GET** /commandes/{id}/paiement | État de la session de prépaiement d&#39;une commande.
 [**ouvrirPaiement**](PaiementsApi.md#ouvrirpaiement) | **POST** /commandes/{id}/paiement | Ouvre — ou renvoie — la session de prépaiement d&#39;une commande.
 [**recevoirNotification**](PaiementsApi.md#recevoirnotification) | **POST** /paiements/notifications/{fournisseur} | Notification signée d&#39;un fournisseur de paiement.
+[**recuCommande**](PaiementsApi.md#recucommande) | **GET** /commandes/{id}/recu | Reçu d&#39;une commande — ce qui a été commandé, ce qui en est sorti, et ce qui reste dû.
 
 
 # **etatPaiement**
@@ -135,6 +136,47 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **recuCommande**
+> RecuCommande recuCommande(id)
+
+Reçu d'une commande — ce qui a été commandé, ce qui en est sorti, et ce qui reste dû.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getPaiementsApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Commande du compte appelant.
+
+try {
+    final response = api.recuCommande(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PaiementsApi->recuCommande: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Commande du compte appelant. | 
+
+### Return type
+
+[**RecuCommande**](RecuCommande.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

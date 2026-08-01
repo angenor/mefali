@@ -152,6 +152,7 @@ Class | Method | HTTP request | Description
 [*PaiementsApi*](doc/PaiementsApi.md) | [**etatPaiement**](doc/PaiementsApi.md#etatpaiement) | **GET** /commandes/{id}/paiement | État de la session de prépaiement d&#39;une commande.
 [*PaiementsApi*](doc/PaiementsApi.md) | [**ouvrirPaiement**](doc/PaiementsApi.md#ouvrirpaiement) | **POST** /commandes/{id}/paiement | Ouvre — ou renvoie — la session de prépaiement d&#39;une commande.
 [*PaiementsApi*](doc/PaiementsApi.md) | [**recevoirNotification**](doc/PaiementsApi.md#recevoirnotification) | **POST** /paiements/notifications/{fournisseur} | Notification signée d&#39;un fournisseur de paiement.
+[*PaiementsApi*](doc/PaiementsApi.md) | [**recuCommande**](doc/PaiementsApi.md#recucommande) | **GET** /commandes/{id}/recu | Reçu d&#39;une commande — ce qui a été commandé, ce qui en est sorti, et ce qui reste dû.
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
@@ -173,6 +174,7 @@ Class | Method | HTTP request | Description
 [*VendeurApi*](doc/VendeurApi.md) | [**modifierArticle**](doc/VendeurApi.md#modifierarticle) | **PUT** /vendeur/prestataires/{id}/articles/{article_id} | Modifie nom / prix / prix barré / étiquette (fiche article V2).
 [*VendeurApi*](doc/VendeurApi.md) | [**modifierHoraires**](doc/VendeurApi.md#modifierhoraires) | **PUT** /vendeur/prestataires/{id}/horaires | Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
 [*VendeurApi*](doc/VendeurApi.md) | [**photoArticle**](doc/VendeurApi.md#photoarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/photo | Dépose/remplace la photo de l&#39;article (multipart, ≤ 5 Mo).
+[*VendeurApi*](doc/VendeurApi.md) | [**recuArret**](doc/VendeurApi.md#recuarret) | **GET** /vendeur/arrets/{arret_id}/recu | Reçu d&#39;un arrêt collecté chez un prestataire piloté.
 [*VendeurApi*](doc/VendeurApi.md) | [**remettreArticle**](doc/VendeurApi.md#remettrearticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue, sans ressaisie (FR-055).
 [*VendeurApi*](doc/VendeurApi.md) | [**retirerArticle**](doc/VendeurApi.md#retirerarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/retrait | Retire l&#39;article du catalogue — RÉVERSIBLE (FR-055).
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
@@ -291,6 +293,7 @@ Class | Method | HTTP request | Description
  - [LigneExposition](doc/LigneExposition.md)
  - [LigneHistoriqueCaisse](doc/LigneHistoriqueCaisse.md)
  - [LignePanier](doc/LignePanier.md)
+ - [LigneRecu](doc/LigneRecu.md)
  - [LitigeVu](doc/LitigeVu.md)
  - [LivraisonCommande](doc/LivraisonCommande.md)
  - [LotDePresence](doc/LotDePresence.md)
@@ -326,6 +329,8 @@ Class | Method | HTTP request | Description
  - [PublicationPosition](doc/PublicationPosition.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
+ - [RecuArret](doc/RecuArret.md)
+ - [RecuCommande](doc/RecuCommande.md)
  - [RefusOffre](doc/RefusOffre.md)
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)

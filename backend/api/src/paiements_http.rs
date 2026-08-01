@@ -173,6 +173,134 @@ pub async fn etat_paiement(
     Ok(HttpResponse::Ok().json(SessionPaiementDto::depuis(transaction, maintenant)))
 }
 
+// ── Reçu client (T058, contrats §1.3) ──────────────────────────────────────
+
+/// Une ligne du reçu, prix VERROUILLÉ.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = LigneRecu)]
+pub struct LigneRecuDto {
+    /// Libellé de l'article (celui du remplaçant si un remplacement a été
+    /// accepté).
+    pub libelle: String,
+    /// Quantité commandée.
+    pub quantite: i16,
+    /// Prix unitaire figé à la création (unités mineures).
+    pub prix_unitaire: i64,
+    /// `presente` | `remplacee` | `retiree`.
+    pub statut: String,
+    /// Sous-total — **0** sur une ligne retirée.
+    pub sous_total_unites: i64,
+}
+
+/// Reçu d'une commande, composé à la volée (aucune table — research R15).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = RecuCommande)]
+pub struct RecuCommandeDto {
+    /// Commande.
+    pub commande_id: Uuid,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Lignes, **retirées comprises** : le reçu explique pourquoi le total a
+    /// bougé plutôt que de le faire bouger en silence.
+    pub lignes: Vec<LigneRecuDto>,
+    /// Somme des lignes vivantes.
+    pub montant_articles_unites: i64,
+    /// Frais de livraison facturés.
+    pub frais_livraison_unites: i64,
+    /// Part de frais prise en charge par le vendeur (VND-08), `0` sinon.
+    pub retenue_vendeur_unites: i64,
+    /// Total dû, déjà ajusté par les retraits et les arrêts indisponibles.
+    pub total_du_unites: i64,
+    /// `cash` | `mobile_money`.
+    pub mode_paiement: String,
+    /// Moyen employé — `null` tant que le fournisseur ne l'a pas dit (FR-012).
+    pub moyen: Option<String>,
+    /// La commande est-elle déjà réglée ? (FR-073)
+    pub deja_regle: bool,
+    /// Ce qui reste à remettre au coursier — **0** sur une commande prépayée.
+    pub montant_a_remettre_au_coursier_unites: i64,
+}
+
+impl RecuCommandeDto {
+    pub(crate) fn depuis(r: commandes::RecuCommande) -> Self {
+        Self {
+            commande_id: r.commande_id,
+            devise: r.devise,
+            lignes: r.lignes.into_iter().map(ligne_dto).collect(),
+            montant_articles_unites: r.montant_articles_unites,
+            frais_livraison_unites: r.frais_livraison_unites,
+            retenue_vendeur_unites: r.retenue_vendeur_unites,
+            total_du_unites: r.total_du_unites,
+            mode_paiement: r.mode_paiement,
+            moyen: r.moyen,
+            deja_regle: r.deja_regle,
+            montant_a_remettre_au_coursier_unites: r.montant_a_remettre_au_coursier_unites,
+        }
+    }
+}
+
+/// Traduction commune aux deux reçus — les mêmes lignes, des deux côtés.
+pub(crate) fn ligne_dto(l: commandes::LigneRecu) -> LigneRecuDto {
+    LigneRecuDto {
+        libelle: l.libelle,
+        quantite: l.quantite,
+        prix_unitaire: l.prix_unitaire_unites,
+        statut: l.statut,
+        sous_total_unites: l.sous_total_unites,
+    }
+}
+
+/// Reçu d'une commande — ce qui a été commandé, ce qui en est sorti, et ce qui
+/// reste dû.
+#[utoipa::path(
+    get,
+    path = "/commandes/{id}/recu",
+    tag = "paiements",
+    params(("id" = Uuid, Path, description = "Commande du compte appelant.")),
+    responses(
+        (status = 200, description = "Reçu composé depuis les prix VERROUILLÉS, le devis figé et \
+         les arrêts — aucun recalcul, aucune estimation (FR-072). Les lignes retirées y \
+         figurent avec leur statut et ne comptent pas dans les montants.",
+         body = RecuCommandeDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+        (status = 403, description = "Rôle client requis.", body = ErreurApiDto),
+        (status = 404, description = "Commande inconnue — ou appartenant à un autre compte : la \
+         même réponse pour les deux, sinon un tiers apprendrait qu'elle existe.",
+         body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/commandes/{id}/recu")]
+pub async fn recu_commande(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    paiements: web::Data<PgPaiements>,
+    commandes: web::Data<PgCommandes>,
+) -> Result<HttpResponse, ErreurPaiementsHttp> {
+    auth.exiger_role(Role::Client)?;
+    let commande_id = chemin.into_inner();
+
+    let mut recu = commandes
+        .recu_commande(commande_id, auth.compte_id)
+        .await
+        .map_err(ErreurPaiementsHttp::from)?;
+
+    // Le moyen employé vit dans `paiements`, pas dans `commandes` : la
+    // composition se fait ICI, à la frontière, plutôt qu'en faisant dépendre
+    // `commandes` du crate de paiement (constitution II).
+    //
+    // Son absence n'est pas une erreur — une commande cash n'a pas de
+    // transaction, et une transaction sans notification n'a pas encore de
+    // moyen. Un reçu sans moyen reste un reçu juste.
+    if let Ok(Some(transaction)) = paiements.derniere_transaction(commande_id).await {
+        if transaction.moyen != paiements::MoyenPaiement::Inconnu {
+            recu.moyen = Some(transaction.moyen.comme_str().to_owned());
+        }
+    }
+
+    Ok(HttpResponse::Ok().json(RecuCommandeDto::depuis(recu)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

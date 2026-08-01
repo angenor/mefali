@@ -124,6 +124,7 @@ import 'package:mefali_api_client/src/model/ligne_devis.dart';
 import 'package:mefali_api_client/src/model/ligne_exposition.dart';
 import 'package:mefali_api_client/src/model/ligne_historique_caisse.dart';
 import 'package:mefali_api_client/src/model/ligne_panier.dart';
+import 'package:mefali_api_client/src/model/ligne_recu.dart';
 import 'package:mefali_api_client/src/model/litige_vu.dart';
 import 'package:mefali_api_client/src/model/livraison_commande.dart';
 import 'package:mefali_api_client/src/model/lot_de_presence.dart';
@@ -159,6 +160,8 @@ import 'package:mefali_api_client/src/model/progression_suivi.dart';
 import 'package:mefali_api_client/src/model/publication_position.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
 import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
+import 'package:mefali_api_client/src/model/recu_arret.dart';
+import 'package:mefali_api_client/src/model/recu_commande.dart';
 import 'package:mefali_api_client/src/model/refus_offre.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
@@ -310,6 +313,7 @@ part 'serializers.g.dart';
   LigneExposition,
   LigneHistoriqueCaisse,
   LignePanier,
+  LigneRecu,
   LitigeVu,
   LivraisonCommande,
   LotDePresence,
@@ -345,6 +349,8 @@ part 'serializers.g.dart';
   PublicationPosition,
   RattachementDto,
   RattacherCompteDto,
+  RecuArret,
+  RecuCommande,
   RefusOffre,
   Regle,
   RegleRetenue,

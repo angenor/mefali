@@ -28,5 +28,12 @@ void main() {
       // TODO
     });
 
+    // Reçu d'une commande — ce qui a été commandé, ce qui en est sorti, et ce qui reste dû.
+    //
+    //Future<RecuCommande> recuCommande(String id) async
+    test('test recuCommande', () async {
+      // TODO
+    });
+
   });
 }

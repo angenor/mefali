@@ -1066,6 +1066,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/commandes/{id}/recu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reçu d'une commande — ce qui a été commandé, ce qui en est sorti, et ce qui
+         *     reste dû.
+         */
+        get: operations["recu_commande"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/commandes/{id}/substitutions/{sub}/decision": {
         parameters: {
             query?: never;
@@ -1840,6 +1860,23 @@ export interface paths {
          *     canal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).
          */
         get: operations["consulter_prestataire"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/arrets/{arret_id}/recu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reçu d'un arrêt collecté chez un prestataire piloté. */
+        get: operations["recu_arret"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4292,6 +4329,31 @@ export interface components {
              */
             quantite: number;
         };
+        /** @description Une ligne du reçu, prix VERROUILLÉ. */
+        LigneRecu: {
+            /**
+             * @description Libellé de l'article (celui du remplaçant si un remplacement a été
+             *     accepté).
+             */
+            libelle: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire figé à la création (unités mineures).
+             */
+            prix_unitaire: number;
+            /**
+             * Format: int32
+             * @description Quantité commandée.
+             */
+            quantite: number;
+            /**
+             * Format: int64
+             * @description Sous-total — **0** sur une ligne retirée.
+             */
+            sous_total_unites: number;
+            /** @description `presente` | `remplacee` | `retiree`. */
+            statut: string;
+        };
         /** @description Un litige en cours vu par le coursier (K5-1c). */
         LitigeVu: {
             /**
@@ -4923,6 +4985,94 @@ export interface components {
              * @description Compte vérifié à rattacher.
              */
             compte_id: string;
+        };
+        /**
+         * @description Reçu vendeur d'un arrêt collecté — **les mêmes trois chiffres** que le reçu
+         *     client (FR-053, FR-071).
+         */
+        RecuArret: {
+            /**
+             * Format: uuid
+             * @description Arrêt collecté.
+             */
+            arret_id: string;
+            /**
+             * Format: date-time
+             * @description Instant du scan (horloge SERVEUR).
+             */
+            collecte_le?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Lignes de cet arrêt, retirées comprises. */
+            lignes: components["schemas"]["LigneRecu"][];
+            /**
+             * Format: int64
+             * @description Articles bruts, AVANT retenue.
+             */
+            montant_articles_unites: number;
+            /** @description Clé i18n du motif de retenue, `null` s'il n'y en a pas. */
+            motif_retenue_cle?: string | null;
+            /**
+             * Format: int64
+             * @description Ce que le coursier a effectivement versé — `articles − retenue`.
+             */
+            net_verse_unites: number;
+            /**
+             * Format: uuid
+             * @description Prestataire chez qui la collecte a eu lieu.
+             */
+            prestataire_id: string;
+            /**
+             * Format: int64
+             * @description Retenue au titre de la livraison offerte.
+             */
+            retenue_livraison_offerte_unites: number;
+        };
+        /** @description Reçu d'une commande, composé à la volée (aucune table — research R15). */
+        RecuCommande: {
+            /**
+             * Format: uuid
+             * @description Commande.
+             */
+            commande_id: string;
+            /** @description La commande est-elle déjà réglée ? (FR-073) */
+            deja_regle: boolean;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Frais de livraison facturés.
+             */
+            frais_livraison_unites: number;
+            /**
+             * @description Lignes, **retirées comprises** : le reçu explique pourquoi le total a
+             *     bougé plutôt que de le faire bouger en silence.
+             */
+            lignes: components["schemas"]["LigneRecu"][];
+            /** @description `cash` | `mobile_money`. */
+            mode_paiement: string;
+            /**
+             * Format: int64
+             * @description Ce qui reste à remettre au coursier — **0** sur une commande prépayée.
+             */
+            montant_a_remettre_au_coursier_unites: number;
+            /**
+             * Format: int64
+             * @description Somme des lignes vivantes.
+             */
+            montant_articles_unites: number;
+            /** @description Moyen employé — `null` tant que le fournisseur ne l'a pas dit (FR-012). */
+            moyen?: string | null;
+            /**
+             * Format: int64
+             * @description Part de frais prise en charge par le vendeur (VND-08), `0` sinon.
+             */
+            retenue_vendeur_unites: number;
+            /**
+             * Format: int64
+             * @description Total dû, déjà ajusté par les retraits et les arrêts indisponibles.
+             */
+            total_du_unites: number;
         };
         /** @description Résultat d'un refus. */
         RefusOffre: {
@@ -8956,6 +9106,56 @@ export interface operations {
             };
         };
     };
+    recu_commande: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reçu composé depuis les prix VERROUILLÉS, le devis figé et les arrêts — aucun recalcul, aucune estimation (FR-072). Les lignes retirées y figurent avec leur statut et ne comptent pas dans les montants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecuCommande"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue — ou appartenant à un autre compte : la même réponse pour les deux, sinon un tiers apprendrait qu'elle existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     decider_substitution: {
         parameters: {
             query?: never;
@@ -11065,6 +11265,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    recu_arret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Arrêt COLLECTÉ chez un prestataire piloté. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Articles, retenue et net versé — les MÊMES montants que le reçu client, au franc près (FR-053). Aucun recalcul : la retenue a été posée au scan et n'est que relue. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecuArret"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description L'arrêt n'appartient à aucun prestataire piloté par l'appelant. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou pas encore collecté : il n'y a pas de versement à attester avant le scan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };

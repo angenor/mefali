@@ -121,6 +121,7 @@ doc/LigneDevis.md
 doc/LigneExposition.md
 doc/LigneHistoriqueCaisse.md
 doc/LignePanier.md
+doc/LigneRecu.md
 doc/LitigeVu.md
 doc/LivraisonCommande.md
 doc/LotDePresence.md
@@ -160,6 +161,8 @@ doc/PublicationPosition.md
 doc/QrApi.md
 doc/RattachementDto.md
 doc/RattacherCompteDto.md
+doc/RecuArret.md
+doc/RecuCommande.md
 doc/RefusOffre.md
 doc/Regle.md
 doc/RegleRetenue.md
@@ -338,6 +341,7 @@ lib/src/model/ligne_devis.dart
 lib/src/model/ligne_exposition.dart
 lib/src/model/ligne_historique_caisse.dart
 lib/src/model/ligne_panier.dart
+lib/src/model/ligne_recu.dart
 lib/src/model/litige_vu.dart
 lib/src/model/livraison_commande.dart
 lib/src/model/lot_de_presence.dart
@@ -373,6 +377,8 @@ lib/src/model/progression_suivi.dart
 lib/src/model/publication_position.dart
 lib/src/model/rattachement_dto.dart
 lib/src/model/rattacher_compte_dto.dart
+lib/src/model/recu_arret.dart
+lib/src/model/recu_commande.dart
 lib/src/model/refus_offre.dart
 lib/src/model/regle.dart
 lib/src/model/regle_retenue.dart
@@ -531,6 +537,7 @@ test/ligne_devis_test.dart
 test/ligne_exposition_test.dart
 test/ligne_historique_caisse_test.dart
 test/ligne_panier_test.dart
+test/ligne_recu_test.dart
 test/litige_vu_test.dart
 test/livraison_commande_test.dart
 test/lot_de_presence_test.dart
@@ -570,6 +577,8 @@ test/publication_position_test.dart
 test/qr_api_test.dart
 test/rattachement_dto_test.dart
 test/rattacher_compte_dto_test.dart
+test/recu_arret_test.dart
+test/recu_commande_test.dart
 test/refus_offre_test.dart
 test/regle_retenue_test.dart
 test/regle_test.dart

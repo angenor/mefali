@@ -19,6 +19,7 @@ Method | HTTP request | Description
 [**modifierArticle**](VendeurApi.md#modifierarticle) | **PUT** /vendeur/prestataires/{id}/articles/{article_id} | Modifie nom / prix / prix barré / étiquette (fiche article V2).
 [**modifierHoraires**](VendeurApi.md#modifierhoraires) | **PUT** /vendeur/prestataires/{id}/horaires | Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
 [**photoArticle**](VendeurApi.md#photoarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/photo | Dépose/remplace la photo de l&#39;article (multipart, ≤ 5 Mo).
+[**recuArret**](VendeurApi.md#recuarret) | **GET** /vendeur/arrets/{arret_id}/recu | Reçu d&#39;un arrêt collecté chez un prestataire piloté.
 [**remettreArticle**](VendeurApi.md#remettrearticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue, sans ressaisie (FR-055).
 [**retirerArticle**](VendeurApi.md#retirerarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/retrait | Retire l&#39;article du catalogue — RÉVERSIBLE (FR-055).
 
@@ -445,6 +446,47 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: multipart/form-data
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **recuArret**
+> RecuArret recuArret(arretId)
+
+Reçu d'un arrêt collecté chez un prestataire piloté.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getVendeurApi();
+final String arretId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Arrêt COLLECTÉ chez un prestataire piloté.
+
+try {
+    final response = api.recuArret(arretId);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling VendeurApi->recuArret: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **arretId** | **String**| Arrêt COLLECTÉ chez un prestataire piloté. | 
+
+### Return type
+
+[**RecuArret**](RecuArret.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

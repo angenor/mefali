@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(ar.nom, a.nom) AS \"libelle!\",\n                      lc.quantite,\n                      COALESCE(lc.remplace_prix_unites, pf.prix_unites) AS \"prix!\",\n                      lc.statut::text AS \"statut!\"\n                 FROM commandes.ligne_commande lc\n                 JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id\n                 JOIN prestataires.article a ON a.id = lc.article_id\n                 LEFT JOIN prestataires.article ar ON ar.id = lc.remplace_par_article_id\n                WHERE lc.commande_id = $1\n                  AND ($2::uuid IS NULL OR lc.arret_id = $2)\n                ORDER BY lc.cree_le, lc.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "libelle!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "quantite",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "commandes.ligne_commande",
+            "name": "quantite"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "prix!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "statut!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "84de31f75c53e216d04a139b0ee5e0ac36de8c233af78fb158faeafe67a0eee8"
+}

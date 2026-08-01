@@ -4451,6 +4451,74 @@
         ]
       }
     },
+    "/commandes/{id}/recu": {
+      "get": {
+        "tags": [
+          "paiements"
+        ],
+        "summary": "Reçu d'une commande — ce qui a été commandé, ce qui en est sorti, et ce qui\nreste dû.",
+        "operationId": "recu_commande",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Commande du compte appelant.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reçu composé depuis les prix VERROUILLÉS, le devis figé et les arrêts — aucun recalcul, aucune estimation (FR-072). Les lignes retirées y figurent avec leur statut et ne comptent pas dans les montants.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecuCommande"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle client requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Commande inconnue — ou appartenant à un autre compte : la même réponse pour les deux, sinon un tiers apprendrait qu'elle existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/commandes/{id}/substitutions/{sub}/decision": {
       "post": {
         "tags": [
@@ -7269,6 +7337,74 @@
             "description": "Rate-limit par IP."
           }
         }
+      }
+    },
+    "/vendeur/arrets/{arret_id}/recu": {
+      "get": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Reçu d'un arrêt collecté chez un prestataire piloté.",
+        "operationId": "recu_arret",
+        "parameters": [
+          {
+            "name": "arret_id",
+            "in": "path",
+            "description": "Arrêt COLLECTÉ chez un prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Articles, retenue et net versé — les MÊMES montants que le reçu client, au franc près (FR-053). Aucun recalcul : la retenue a été posée au scan et n'est que relue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecuArret"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "L'arrêt n'appartient à aucun prestataire piloté par l'appelant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Arrêt inconnu, ou pas encore collecté : il n'y a pas de versement à attester avant le scan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/vendeur/prestataires": {
@@ -12228,6 +12364,42 @@
           }
         }
       },
+      "LigneRecu": {
+        "type": "object",
+        "description": "Une ligne du reçu, prix VERROUILLÉ.",
+        "required": [
+          "libelle",
+          "quantite",
+          "prix_unitaire",
+          "statut",
+          "sous_total_unites"
+        ],
+        "properties": {
+          "libelle": {
+            "type": "string",
+            "description": "Libellé de l'article (celui du remplaçant si un remplacement a été\naccepté)."
+          },
+          "prix_unitaire": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Prix unitaire figé à la création (unités mineures)."
+          },
+          "quantite": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantité commandée."
+          },
+          "sous_total_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sous-total — **0** sur une ligne retirée."
+          },
+          "statut": {
+            "type": "string",
+            "description": "`presente` | `remplacee` | `retiree`."
+          }
+        }
+      },
       "LitigeVu": {
         "type": "object",
         "description": "Un litige en cours vu par le coursier (K5-1c).",
@@ -13374,6 +13546,146 @@
             "type": "string",
             "format": "uuid",
             "description": "Compte vérifié à rattacher."
+          }
+        }
+      },
+      "RecuArret": {
+        "type": "object",
+        "description": "Reçu vendeur d'un arrêt collecté — **les mêmes trois chiffres** que le reçu\nclient (FR-053, FR-071).",
+        "required": [
+          "arret_id",
+          "prestataire_id",
+          "devise",
+          "lignes",
+          "montant_articles_unites",
+          "retenue_livraison_offerte_unites",
+          "net_verse_unites"
+        ],
+        "properties": {
+          "arret_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Arrêt collecté."
+          },
+          "collecte_le": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Instant du scan (horloge SERVEUR)."
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneRecu"
+            },
+            "description": "Lignes de cet arrêt, retirées comprises."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Articles bruts, AVANT retenue."
+          },
+          "motif_retenue_cle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Clé i18n du motif de retenue, `null` s'il n'y en a pas."
+          },
+          "net_verse_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce que le coursier a effectivement versé — `articles − retenue`."
+          },
+          "prestataire_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Prestataire chez qui la collecte a eu lieu."
+          },
+          "retenue_livraison_offerte_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Retenue au titre de la livraison offerte."
+          }
+        }
+      },
+      "RecuCommande": {
+        "type": "object",
+        "description": "Reçu d'une commande, composé à la volée (aucune table — research R15).",
+        "required": [
+          "commande_id",
+          "devise",
+          "lignes",
+          "montant_articles_unites",
+          "frais_livraison_unites",
+          "retenue_vendeur_unites",
+          "total_du_unites",
+          "mode_paiement",
+          "deja_regle",
+          "montant_a_remettre_au_coursier_unites"
+        ],
+        "properties": {
+          "commande_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Commande."
+          },
+          "deja_regle": {
+            "type": "boolean",
+            "description": "La commande est-elle déjà réglée ? (FR-073)"
+          },
+          "devise": {
+            "type": "string",
+            "description": "Devise ISO 4217."
+          },
+          "frais_livraison_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Frais de livraison facturés."
+          },
+          "lignes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LigneRecu"
+            },
+            "description": "Lignes, **retirées comprises** : le reçu explique pourquoi le total a\nbougé plutôt que de le faire bouger en silence."
+          },
+          "mode_paiement": {
+            "type": "string",
+            "description": "`cash` | `mobile_money`."
+          },
+          "montant_a_remettre_au_coursier_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ce qui reste à remettre au coursier — **0** sur une commande prépayée."
+          },
+          "montant_articles_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Somme des lignes vivantes."
+          },
+          "moyen": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Moyen employé — `null` tant que le fournisseur ne l'a pas dit (FR-012)."
+          },
+          "retenue_vendeur_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Part de frais prise en charge par le vendeur (VND-08), `0` sinon."
+          },
+          "total_du_unites": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total dû, déjà ajusté par les retraits et les arrêts indisponibles."
           }
         }
       },
