@@ -503,7 +503,8 @@ pub(crate) async fn supprimer_objet_orphelin(depot: &PgComptes, cle: &str, quoi:
     }
 }
 
-/// Démarre le serveur Actix (lie `0.0.0.0:8080`) et le worker outbox.
+/// Démarre le serveur Actix (lie `0.0.0.0:8080`, ou `API_PORT`) et le worker
+/// outbox.
 pub async fn run() -> std::io::Result<()> {
     // Gate UNIQUE des surfaces réservées au dev (Swagger UI, `/dev/otp`).
     // Défaut fermé, lu avant `Config::from_env` : voir `AppEnv::depuis_env`.
@@ -777,7 +778,16 @@ pub async fn run() -> std::io::Result<()> {
         }
     };
 
-    let addr = ("0.0.0.0", 8080);
+    // Port d'écoute : 8080 par défaut, surchargeable par `API_PORT` — un poste
+    // de dev fait tourner plusieurs projets, et 8080 n'est pas toujours libre.
+    // Une valeur illisible retombe sur le défaut plutôt que d'empêcher le
+    // démarrage : le port n'est pas un secret, une faute de frappe ne doit pas
+    // coûter le service.
+    let port = std::env::var("API_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(8080);
+    let addr = ("0.0.0.0", port);
     println!(
         "Mefali api — démarrage sur http://{}:{} (production={prod})",
         addr.0, addr.1
