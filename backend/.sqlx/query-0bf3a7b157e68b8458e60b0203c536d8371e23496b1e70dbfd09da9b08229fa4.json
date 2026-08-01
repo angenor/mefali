@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT a.statut::text AS \"statut!\", a.collecte_uuid_client,\n                      a.segment_id, s.livraison_id, l.commande_id,\n                      a.prestataire_id, a.montant_avance, a.devise,\n                      l.etat::text AS \"etat_livraison!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE a.id = $1\n               FOR UPDATE OF a",
+  "query": "SELECT a.statut::text AS \"statut!\", a.collecte_uuid_client,\n                      a.segment_id, s.livraison_id, l.commande_id,\n                      a.prestataire_id, a.devise,\n                      l.etat::text AS \"etat_livraison!\"\n               FROM commandes.arret a\n               JOIN commandes.segment s ON s.id = a.segment_id\n               JOIN commandes.livraison l ON l.id = s.livraison_id\n               WHERE a.id = $1\n               FOR UPDATE OF a",
   "describe": {
     "columns": [
       {
@@ -66,17 +66,6 @@
       },
       {
         "ordinal": 6,
-        "name": "montant_avance",
-        "type_info": "Int8",
-        "origin": {
-          "Table": {
-            "table": "commandes.arret",
-            "name": "montant_avance"
-          }
-        }
-      },
-      {
-        "ordinal": 7,
         "name": "devise",
         "type_info": "Text",
         "origin": {
@@ -87,7 +76,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "etat_livraison!",
         "type_info": "Text",
         "origin": "Expression"
@@ -106,9 +95,8 @@
       false,
       true,
       false,
-      false,
       null
     ]
   },
-  "hash": "95ca04a95df3bc9a603a534d8a4fbccc450054f1f901db5b6bf0f2aedb5a6ba1"
+  "hash": "0bf3a7b157e68b8458e60b0203c536d8371e23496b1e70dbfd09da9b08229fa4"
 }

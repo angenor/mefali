@@ -159,6 +159,81 @@ async fn l_historique_du_jour_porte_les_trois_chiffres(pool: PgPool) {
     );
 }
 
+/// **T087 §3.6** — un article retiré chez un vendeur ne se paie pas, et la
+/// caisse doit le savoir au franc près.
+///
+/// Le défaut que ce test verrouille a été trouvé sur appareil, jamais par la
+/// suite : la collecte publiait `arret.montant_avance`, figé à la création de
+/// la commande, alors que K3 affichait déjà la somme des lignes VIVANTES. Le
+/// coursier payait 1 200 F au comptoir et sa caisse en portait 2 100 — 900 F
+/// que personne n'avait versés, sur deux écrans de la même app.
+///
+/// Le test passe par la route de substitution, comme l'app : c'est le seul
+/// chemin qui retire réellement une ligne.
+#[sqlx::test(migrations = "../migrations")]
+async fn un_article_retire_ne_part_pas_en_avance(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let course = bac.course_prete().await;
+    let premier = course.collectes[0];
+
+    // Une ligne du premier arrêt, et ce qu'elle coûte.
+    let (ligne, montant_ligne): (Uuid, i64) = sqlx::query_as(
+        "SELECT lc.id, lc.quantite * pf.prix_unites
+           FROM commandes.ligne_commande lc
+           JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
+          WHERE lc.arret_id = $1
+          ORDER BY lc.cree_le LIMIT 1",
+    )
+    .bind(premier)
+    .fetch_one(&bac.pool)
+    .await
+    .unwrap();
+    assert!(montant_ligne > 0, "une ligne qui coûte quelque chose");
+
+    let avant = avance_attendue(&bac, &course).await;
+    let (statut, corps) = bac
+        .post_multipart(
+            &format!("/courses/{}/substitutions", course.livraison),
+            &bac.jeton_coursier,
+            json!({
+                "ligne_id": ligne,
+                "uuid_client": Uuid::now_v7(),
+                "resolution": "retirer",
+            }),
+            false,
+        )
+        .await;
+    assert_eq!(statut, 200, "retrait refusé : {corps}");
+
+    // La colonne suit le retrait : c'est ce que l'app affiche en gros rouge.
+    let apres = avance_attendue(&bac, &course).await;
+    assert_eq!(
+        apres,
+        avant - montant_ligne,
+        "l'arrêt ne coûte plus la ligne retirée",
+    );
+
+    bac.collecter_tout(&course).await;
+    bac.drainer_caisse().await;
+
+    let caisse = bac.lire_caisse().await;
+    assert_eq!(
+        caisse["avance_en_cours_unites"],
+        json!(apres),
+        "la caisse porte ce qui a été SORTI de la poche, pas le montant d'origine",
+    );
+
+    // Et l'événement lui-même — c'est lui qui fonde l'écriture, un écran juste
+    // au-dessus d'un journal faux ne réglerait rien.
+    let total: i64 = bac
+        .evenements("arret.collecte")
+        .await
+        .iter()
+        .map(|e| e["montant_avance"].as_i64().unwrap_or(0))
+        .sum();
+    assert_eq!(total, apres, "somme des événements = somme des lignes vivantes");
+}
+
 // ── R10 / FR-117 : la commande prépayée ────────────────────────────────────
 
 /// Une commande **prépayée** livrée ne solde PAS l'avance (R10, FR-117).

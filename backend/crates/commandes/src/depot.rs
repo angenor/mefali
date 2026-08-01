@@ -516,7 +516,7 @@ impl PgCommandes {
         let arret = sqlx::query!(
             r#"SELECT a.statut::text AS "statut!", a.collecte_uuid_client,
                       a.segment_id, s.livraison_id, l.commande_id,
-                      a.prestataire_id, a.montant_avance, a.devise,
+                      a.prestataire_id, a.devise,
                       l.etat::text AS "etat_livraison!"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
@@ -554,6 +554,29 @@ impl PgCommandes {
             StatutArret::ACollecter | StatutArret::Arrive => {}
         }
 
+        // Ce que le coursier sort VRAIMENT de sa poche ici, maintenant : la
+        // somme de ses lignes vivantes (FR-013), pas `arret.montant_avance`
+        // figé à la création. Un article retiré chez ce vendeur ne se paie
+        // pas, et c'est ce montant-là — celui que K3 affiche en gros rouge —
+        // qui doit partir dans l'événement, sinon la caisse compte de l'argent
+        // que personne n'a versé. Trouvé par T087 : 900 F d'écart entre les
+        // deux écrans de la même app (rapport-ecarts §5.2).
+        //
+        // Recalculé ICI plutôt que lu depuis la colonne, parce que le rejeu
+        // hors-ligne peut présenter la collecte AVANT le retrait de ligne : la
+        // colonne serait alors juste en base et fausse dans l'événement.
+        let montant_avance = sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(
+                          lc.quantite * COALESCE(lc.remplace_prix_unites, pf.prix_unites)
+                      ) FILTER (WHERE lc.statut <> 'retiree'), 0)::bigint AS "montant!"
+                 FROM commandes.ligne_commande lc
+                 JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
+                WHERE lc.arret_id = $1"#,
+            arret_id,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+
         // ── Partie A : bascule a_collecter → collecte ──────────────────────
         sqlx::query!(
             r#"UPDATE commandes.arret
@@ -562,7 +585,8 @@ impl PgCommandes {
                    mode_collecte = $3::commandes.mode_collecte,
                    photo_cle = $4,
                    distance_scan_m = $5,
-                   collecte_uuid_client = $6
+                   collecte_uuid_client = $6,
+                   montant_avance = $7
                WHERE id = $1"#,
             arret_id,
             horodatage_serveur,
@@ -570,6 +594,7 @@ impl PgCommandes {
             photo_cle,
             distance_m,
             uuid_client,
+            montant_avance,
         )
         .execute(&mut **tx)
         .await?;
@@ -590,7 +615,7 @@ impl PgCommandes {
                     // ARTCI : jamais de lat/lng brut — présence GPS + distance arrondie.
                     "gps_ok": true,
                     "distance_m": distance_m,
-                    "montant_avance": arret.montant_avance,
+                    "montant_avance": montant_avance,
                     "devise": arret.devise,
                     "acteur": acteur,
                 }),

@@ -85,6 +85,34 @@ impl PgCommandes {
         .execute(&mut **tx)
         .await?;
 
+        // Et les arrêts ENCORE À FAIRE suivent : `arret.montant_avance` est ce
+        // que le coursier devra sortir de sa poche chez ce vendeur. Le laisser
+        // à sa valeur de création en faisait un chiffre périmé dès le premier
+        // retrait — la caisse portait alors 900 F que personne n'avait versés
+        // (T087, rapport-ecarts §5.2).
+        //
+        // Les arrêts DÉJÀ collectés ne sont pas touchés : leur montant a fondé
+        // une écriture de caisse, et réécrire l'histoire après coup ferait
+        // diverger le livre de ce qui s'est réellement passé au comptoir.
+        sqlx::query!(
+            r#"UPDATE commandes.arret a
+                  SET montant_avance = COALESCE((
+                        SELECT SUM(lc.quantite
+                                   * COALESCE(lc.remplace_prix_unites, pf.prix_unites))
+                          FROM commandes.ligne_commande lc
+                          JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
+                         WHERE lc.arret_id = a.id AND lc.statut <> 'retiree'), 0)
+                 FROM commandes.segment s
+                 JOIN commandes.livraison l ON l.id = s.livraison_id
+                WHERE a.segment_id = s.id
+                  AND l.commande_id = $1
+                  AND a.type_arret = 'collecte'
+                  AND a.statut IN ('a_collecter', 'en_route', 'arrive')"#,
+            commande_id,
+        )
+        .execute(&mut **tx)
+        .await?;
+
         Ok(MontantsRevises {
             montant_articles_unites: articles,
             total_unites,
