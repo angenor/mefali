@@ -14,7 +14,7 @@
 //! ces cycles brancher leur implémentation réelle sans toucher au contrat.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -862,17 +862,27 @@ impl PositionCoursier for PositionFixe {
 #[derive(Debug, Clone)]
 pub struct TarifFixe {
     devis: tarification::Devis,
+    /// Demandes REÇUES, dans l'ordre. Le double ne rejoue pas l'arbitrage du
+    /// moteur (ce serait un second moteur, et il mentirait le jour où le vrai
+    /// changerait) : il se contente de garder trace de ce qu'on lui a passé,
+    /// pour qu'un test puisse prouver que CMD transmet bien l'offre du vendeur
+    /// — et seulement en mono-vendeur (cycle 011, T054/T056).
+    demandes: Arc<Mutex<Vec<tarification::DemandeDevis>>>,
 }
 
 impl TarifFixe {
     /// Devis fixe complet.
     pub fn nouveau(devis: tarification::Devis) -> Self {
-        Self { devis }
+        Self {
+            devis,
+            demandes: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     /// Devis simple : prix client, part coursier, marge, en XOF.
     pub fn simple(prix_client: i64, part_coursier: i64, marge: i64) -> Self {
         Self {
+            demandes: Arc::new(Mutex::new(Vec::new())),
             devis: tarification::Devis {
                 prix_client,
                 part_coursier,
@@ -913,6 +923,12 @@ impl TarifFixe {
     pub fn devis(&self) -> &tarification::Devis {
         &self.devis
     }
+
+    /// Demandes d'évaluation reçues, dans l'ordre — ce que CMD a réellement
+    /// transmis au moteur (offre du vendeur, drapeau mono-vendeur, panier).
+    pub fn demandes_recues(&self) -> Vec<tarification::DemandeDevis> {
+        self.demandes.lock().expect("verrou du double").clone()
+    }
 }
 
 #[async_trait]
@@ -926,6 +942,10 @@ impl tarification::EvaluationTarifaire for TarifFixe {
         // L'ordre suit le nombre de retraits demandés : un double qui renverrait
         // un ordre plus court ferait silencieusement disparaître des arrêts.
         devis.ordre = (0..demande.retraits.len()).collect();
+        self.demandes
+            .lock()
+            .expect("verrou du double")
+            .push(demande);
         Ok(devis)
     }
 }

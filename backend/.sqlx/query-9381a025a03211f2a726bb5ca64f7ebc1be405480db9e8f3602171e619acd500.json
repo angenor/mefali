@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE((l.devis_composantes->>'retenue_vendeur')::bigint, 0)\n                          AS \"retenue_devis!\",\n                      -- Les arrêts de COLLECTE seulement : la remise chez le\n                      -- client en est un aussi, et la compter ferait passer\n                      -- toute commande mono-vendeur pour du multi-vendeurs.\n                      (SELECT COUNT(*) FROM commandes.arret a2\n                         JOIN commandes.segment s2 ON s2.id = a2.segment_id\n                        WHERE s2.livraison_id = l.id\n                          AND a2.type_arret = 'collecte') AS \"nb_arrets!\"\n                 FROM commandes.livraison l\n                WHERE l.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "retenue_devis!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "nb_arrets!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "9381a025a03211f2a726bb5ca64f7ebc1be405480db9e8f3602171e619acd500"
+}
