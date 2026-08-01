@@ -2406,6 +2406,94 @@
         ]
       }
     },
+    "/admin/prestataires/{id}/offre-livraison": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Miroir admin de l'offre de livraison — l'exploitation configure pour un\nvendeur qui n'a pas l'app (FR-046).",
+        "operationId": "definir_offre_livraison_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OffreLivraisonDeclaration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Offre déclarée — les commandes existantes ne sont pas retarifées (FR-048). Émet `vendeur.offre_livraison_modifiee` avec l'acteur admin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffreLivraisonVendeur"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle admin requis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prestataire inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/prestataires/{id}/photos": {
       "post": {
         "tags": [
@@ -8032,6 +8120,84 @@
           }
         ]
       }
+    },
+    "/vendeur/prestataires/{id}/offre-livraison": {
+      "put": {
+        "tags": [
+          "vendeur"
+        ],
+        "summary": "Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).",
+        "operationId": "definir_offre_livraison",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Prestataire piloté.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OffreLivraisonDeclaration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Offre déclarée — elle vaut pour les commandes À VENIR. Aucune commande existante n'est retarifée : le devis est figé à la création (FR-048). Émet `vendeur.offre_livraison_modifiee`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffreLivraisonVendeur"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refus de pilotage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -12450,6 +12616,27 @@
             "type": "integer",
             "format": "int64",
             "description": "Durée totale du compte à rebours (secondes)."
+          }
+        }
+      },
+      "OffreLivraisonDeclaration": {
+        "type": "object",
+        "description": "Déclaration d'offre de livraison — `seuil_unites` n'a de sens que pour\n`au_dela`, et y est alors **obligatoire**.",
+        "required": [
+          "offre"
+        ],
+        "properties": {
+          "offre": {
+            "type": "string",
+            "description": "`jamais` | `toujours` | `au_dela`."
+          },
+          "seuil_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Montant de panier à partir duquel l'offre joue (unités mineures)."
           }
         }
       },

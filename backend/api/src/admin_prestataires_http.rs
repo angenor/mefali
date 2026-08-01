@@ -1256,6 +1256,45 @@ pub async fn corriger_prestataire(
     Ok(HttpResponse::Ok().json(detail(&depot, prestataire).await?))
 }
 
+/// Miroir admin de l'offre de livraison — l'exploitation configure pour un
+/// vendeur qui n'a pas l'app (FR-046).
+#[utoipa::path(
+    put,
+    path = "/admin/prestataires/{id}/offre-livraison",
+    tag = "admin",
+    params(("id" = Uuid, Path, description = "Prestataire.")),
+    request_body = crate::vendeur_http::OffreLivraisonDeclarationDto,
+    responses(
+        (status = 200, description = "Offre déclarée — les commandes existantes ne sont pas \
+         retarifées (FR-048). Émet `vendeur.offre_livraison_modifiee` avec l'acteur admin.",
+         body = crate::vendeur_http::OffreLivraisonDto),
+        (status = 400, description = "Offre `au_dela` sans seuil strictement positif, ou \
+         valeur d'offre inconnue.", body = ErreurApiDto),
+        (status = 404, description = "Prestataire inconnu.", body = ErreurApiDto),
+        (status = 403, description = "Rôle admin requis.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[put("/admin/prestataires/{id}/offre-livraison")]
+pub async fn definir_offre_livraison_admin(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<crate::vendeur_http::OffreLivraisonDeclarationDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
+    let prestataire = chemin.into_inner();
+    let sortie = crate::vendeur_http::appliquer_offre_livraison(
+        &depot,
+        prestataire,
+        &corps,
+        auth.compte_id,
+    )
+    .await?;
+    Ok(HttpResponse::Ok().json(sortie))
+}
+
 /// Bascule la disponibilité (source admin — la SEULE à lever une rupture
 /// admin, FR-041).
 #[utoipa::path(

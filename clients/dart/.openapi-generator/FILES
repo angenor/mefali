@@ -132,6 +132,7 @@ doc/ModifierPrestataireDto.md
 doc/MoiApi.md
 doc/MouvementCaisse.md
 doc/OffreCourante.md
+doc/OffreLivraisonDeclaration.md
 doc/OffreLivraisonVendeur.md
 doc/PaiementCommande.md
 doc/PaiementPanier.md
@@ -347,6 +348,7 @@ lib/src/model/modifier_article_dto.dart
 lib/src/model/modifier_prestataire_dto.dart
 lib/src/model/mouvement_caisse.dart
 lib/src/model/offre_courante.dart
+lib/src/model/offre_livraison_declaration.dart
 lib/src/model/offre_livraison_vendeur.dart
 lib/src/model/paiement_commande.dart
 lib/src/model/paiement_panier.dart
@@ -540,6 +542,7 @@ test/modifier_prestataire_dto_test.dart
 test/moi_api_test.dart
 test/mouvement_caisse_test.dart
 test/offre_courante_test.dart
+test/offre_livraison_declaration_test.dart
 test/offre_livraison_vendeur_test.dart
 test/paiement_commande_test.dart
 test/paiement_panier_test.dart

@@ -76,6 +76,7 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**creerArticleAdmin**](doc/AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
 [*AdminApi*](doc/AdminApi.md) | [**creerPrestataire**](doc/AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
+[*AdminApi*](doc/AdminApi.md) | [**definirOffreLivraisonAdmin**](doc/AdminApi.md#definiroffrelivraisonadmin) | **PUT** /admin/prestataires/{id}/offre-livraison | Miroir admin de l&#39;offre de livraison — l&#39;exploitation configure pour un vendeur qui n&#39;a pas l&#39;app (FR-046).
 [*AdminApi*](doc/AdminApi.md) | [**definirSite**](doc/AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
 [*AdminApi*](doc/AdminApi.md) | [**deposerCharte**](doc/AdminApi.md#deposercharte) | **POST** /admin/prestataires/{id}/charte | Dépose la charte signée scannée — condition NÉCESSAIRE de l&#39;agrément.
 [*AdminApi*](doc/AdminApi.md) | [**detacherCompte**](doc/AdminApi.md#detachercompte) | **DELETE** /admin/prestataires/{id}/rattachements/{compte_id} | Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
@@ -165,6 +166,7 @@ Class | Method | HTTP request | Description
 [*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
+[*VendeurApi*](doc/VendeurApi.md) | [**definirOffreLivraison**](doc/VendeurApi.md#definiroffrelivraison) | **PUT** /vendeur/prestataires/{id}/offre-livraison | Déclare l&#39;offre de livraison du vendeur (VND-08 minimal — FR-046).
 [*VendeurApi*](doc/VendeurApi.md) | [**maBoutique**](doc/VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
 [*VendeurApi*](doc/VendeurApi.md) | [**mesArticles**](doc/VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
 [*VendeurApi*](doc/VendeurApi.md) | [**mesPrestataires**](doc/VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
@@ -299,6 +301,7 @@ Class | Method | HTTP request | Description
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
  - [MouvementCaisse](doc/MouvementCaisse.md)
  - [OffreCourante](doc/OffreCourante.md)
+ - [OffreLivraisonDeclaration](doc/OffreLivraisonDeclaration.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
  - [PaiementCommande](doc/PaiementCommande.md)
  - [PaiementPanier](doc/PaiementPanier.md)

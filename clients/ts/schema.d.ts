@@ -566,6 +566,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/prestataires/{id}/offre-livraison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Miroir admin de l'offre de livraison — l'exploitation configure pour un
+         *     vendeur qui n'a pas l'app (FR-046).
+         */
+        put: operations["definir_offre_livraison_admin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/prestataires/{id}/photos": {
         parameters: {
             query?: never;
@@ -1992,6 +2012,23 @@ export interface paths {
         get?: never;
         /** Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT. */
         put: operations["modifier_horaires"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/offre-livraison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046). */
+        put: operations["definir_offre_livraison"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4479,6 +4516,19 @@ export interface components {
              * @description Durée totale du compte à rebours (secondes).
              */
             timer_s: number;
+        };
+        /**
+         * @description Déclaration d'offre de livraison — `seuil_unites` n'a de sens que pour
+         *     `au_dela`, et y est alors **obligatoire**.
+         */
+        OffreLivraisonDeclaration: {
+            /** @description `jamais` | `toujours` | `au_dela`. */
+            offre: string;
+            /**
+             * Format: int64
+             * @description Montant de panier à partir duquel l'offre joue (unités mineures).
+             */
+            seuil_unites?: number | null;
         };
         /**
          * @description Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa
@@ -7388,6 +7438,69 @@ export interface operations {
             };
             /** @description Zone qui n'est pas une ville, catégorie inconnue. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    definir_offre_livraison_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OffreLivraisonDeclaration"];
+            };
+        };
+        responses: {
+            /** @description Offre déclarée — les commandes existantes ne sont pas retarifées (FR-048). Émet `vendeur.offre_livraison_modifiee` avec l'acteur admin. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffreLivraisonVendeur"];
+                };
+            };
+            /** @description Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11527,6 +11640,60 @@ export interface operations {
             };
             /** @description Plages invalides (début ≥ fin, chevauchement, jour hors 0..6). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    definir_offre_livraison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OffreLivraisonDeclaration"];
+            };
+        };
+        responses: {
+            /** @description Offre déclarée — elle vaut pour les commandes À VENIR. Aucune commande existante n'est retarifée : le devis est figé à la création (FR-048). Émet `vendeur.offre_livraison_modifiee`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffreLivraisonVendeur"];
+                };
+            };
+            /** @description Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

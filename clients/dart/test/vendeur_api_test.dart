@@ -28,6 +28,13 @@ void main() {
       // TODO
     });
 
+    // Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
+    //
+    //Future<OffreLivraisonVendeur> definirOffreLivraison(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
+    test('test definirOffreLivraison', () async {
+      // TODO
+    });
+
     // Statut, échéance, horaires du jour et rappel de l'écran V1.
     //
     //Future<BoutiqueVendeur> maBoutique(String id) async

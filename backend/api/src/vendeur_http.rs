@@ -463,6 +463,119 @@ pub async fn modifier_horaires(
     Ok(HttpResponse::Ok().json(BoutiqueVendeurDto::from(boutique)))
 }
 
+// ── Offre de livraison (VND-08 minimal — cycle 011, FR-046) ────────────────
+
+/// Clé i18n rappelée par la réponse : le réglage ne retarife **rien** de ce qui
+/// est déjà commandé (FR-048). Le vendeur doit le lire, pas le deviner.
+pub(crate) const CLE_COMMANDES_EN_COURS: &str = "vendeur.offre_livraison.commandes_en_cours_inchangees";
+
+/// Déclaration d'offre de livraison — `seuil_unites` n'a de sens que pour
+/// `au_dela`, et y est alors **obligatoire**.
+#[derive(Debug, serde::Deserialize, utoipa::ToSchema)]
+#[schema(as = OffreLivraisonDeclaration)]
+pub struct OffreLivraisonDeclarationDto {
+    /// `jamais` | `toujours` | `au_dela`.
+    pub offre: String,
+    /// Montant de panier à partir duquel l'offre joue (unités mineures).
+    pub seuil_unites: Option<i64>,
+}
+
+impl OffreLivraisonDeclarationDto {
+    /// Traduit vers le type de `tarification` — `None` = `jamais`.
+    ///
+    /// Une valeur inconnue est un `400 offre_seuil_manquant` comme un seuil
+    /// absent : dans les deux cas la déclaration est inexploitable, et il n'y a
+    /// pas de raison d'offrir deux codes à distinguer côté app.
+    pub(crate) fn vers_domaine(
+        &self,
+    ) -> Result<Option<tarification::OffreLivraison>, ErreurPresta> {
+        match self.offre.as_str() {
+            "jamais" => Ok(None),
+            "toujours" => Ok(Some(tarification::OffreLivraison::Toujours)),
+            "au_dela" => match self.seuil_unites {
+                Some(seuil) if seuil > 0 => Ok(Some(tarification::OffreLivraison::AuDela(seuil))),
+                _ => Err(ErreurPresta::OffreSeuilManquant),
+            },
+            _ => Err(ErreurPresta::OffreSeuilManquant),
+        }
+    }
+}
+
+/// Offre en vigueur après le geste.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = OffreLivraisonVendeur)]
+pub struct OffreLivraisonDto {
+    /// `jamais` | `toujours` | `au_dela`.
+    pub offre: String,
+    /// Seuil déclaré (`null` hors `au_dela`).
+    pub seuil_unites: Option<i64>,
+    /// Rappel en clair que les commandes en cours ne bougent pas (FR-048).
+    pub message_cle: String,
+}
+
+impl From<Option<tarification::OffreLivraison>> for OffreLivraisonDto {
+    fn from(offre: Option<tarification::OffreLivraison>) -> Self {
+        let (valeur, seuil) = match offre {
+            None => ("jamais", None),
+            Some(tarification::OffreLivraison::Toujours) => ("toujours", None),
+            Some(tarification::OffreLivraison::AuDela(s)) => ("au_dela", Some(s)),
+        };
+        Self {
+            offre: valeur.to_owned(),
+            seuil_unites: seuil,
+            message_cle: CLE_COMMANDES_EN_COURS.to_owned(),
+        }
+    }
+}
+
+/// Applique la déclaration — chemin partagé par la surface vendeur et son
+/// miroir admin (FR-046 : l'exploitation configure pour un vendeur sans app).
+pub(crate) async fn appliquer_offre_livraison(
+    depot: &PgPrestataires,
+    prestataire: Uuid,
+    corps: &OffreLivraisonDeclarationDto,
+    acteur: Uuid,
+) -> Result<OffreLivraisonDto, ErreurPresta> {
+    let offre = corps.vers_domaine()?;
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .definir_offre_livraison(&mut tx, prestataire, offre, acteur)
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(OffreLivraisonDto::from(offre))
+}
+
+/// Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
+#[utoipa::path(
+    put,
+    path = "/vendeur/prestataires/{id}/offre-livraison",
+    tag = "vendeur",
+    params(("id" = Uuid, Path, description = "Prestataire piloté.")),
+    request_body = OffreLivraisonDeclarationDto,
+    responses(
+        (status = 200, description = "Offre déclarée — elle vaut pour les commandes À VENIR. \
+         Aucune commande existante n'est retarifée : le devis est figé à la création \
+         (FR-048). Émet `vendeur.offre_livraison_modifiee`.", body = OffreLivraisonDto),
+        (status = 400, description = "Offre `au_dela` sans seuil strictement positif, ou \
+         valeur d'offre inconnue.", body = ErreurApiDto),
+        (status = 403, description = "Refus de pilotage.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[put("/vendeur/prestataires/{id}/offre-livraison")]
+pub async fn definir_offre_livraison(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<OffreLivraisonDeclarationDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    let prestataire = chemin.into_inner();
+    exiger_pilotage(&auth, &depot, prestataire).await?;
+    let sortie = appliquer_offre_livraison(&depot, prestataire, &corps, auth.compte_id).await?;
+    Ok(HttpResponse::Ok().json(sortie))
+}
+
 // ── Disponibilité (VND-04 — bascule En stock / Rupture, écran V2) ──────────
 
 /// Corps de la bascule.

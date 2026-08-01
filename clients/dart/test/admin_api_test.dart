@@ -77,6 +77,13 @@ void main() {
       // TODO
     });
 
+    // Miroir admin de l'offre de livraison — l'exploitation configure pour un vendeur qui n'a pas l'app (FR-046).
+    //
+    //Future<OffreLivraisonVendeur> definirOffreLivraisonAdmin(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
+    test('test definirOffreLivraisonAdmin', () async {
+      // TODO
+    });
+
     // Crée ou met à jour LE site (position GPS, horaires, statut initial).
     //
     //Future<PrestataireAdminDetail> definirSite(String id, SiteAdminDto siteAdminDto) async

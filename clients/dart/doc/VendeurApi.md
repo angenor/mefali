@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**actionBoutique**](VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [**basculerDisponibilite**](VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [**creerArticle**](VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
+[**definirOffreLivraison**](VendeurApi.md#definiroffrelivraison) | **PUT** /vendeur/prestataires/{id}/offre-livraison | Déclare l&#39;offre de livraison du vendeur (VND-08 minimal — FR-046).
 [**maBoutique**](VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
 [**mesArticles**](VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
 [**mesPrestataires**](VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
@@ -141,6 +142,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **definirOffreLivraison**
+> OffreLivraisonVendeur definirOffreLivraison(id, offreLivraisonDeclaration)
+
+Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getVendeurApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire piloté.
+final OffreLivraisonDeclaration offreLivraisonDeclaration = ; // OffreLivraisonDeclaration | 
+
+try {
+    final response = api.definirOffreLivraison(id, offreLivraisonDeclaration);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling VendeurApi->definirOffreLivraison: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire piloté. | 
+ **offreLivraisonDeclaration** | [**OffreLivraisonDeclaration**](OffreLivraisonDeclaration.md)|  | 
+
+### Return type
+
+[**OffreLivraisonVendeur**](OffreLivraisonVendeur.md)
 
 ### Authorization
 

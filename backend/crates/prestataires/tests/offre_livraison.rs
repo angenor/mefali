@@ -90,6 +90,64 @@ async fn au_dela_sans_seuil_est_refuse_par_la_base(pool: PgPool) {
     assert!(echec.is_err(), "le CHECK doit refuser un seuil manquant");
 }
 
+/// T053 — le geste métier écrit la fiche ET son événement dans la même
+/// transaction, avec l'offre et le seuil déclarés (taxonomie, cycle 011).
+#[sqlx::test(migrations = "../../migrations")]
+async fn le_geste_ecrit_la_fiche_et_son_evenement(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let vendeur = bac.creer_fiche("Chez Affoué", "restauration").await;
+
+    for (offre, attendu, seuil_attendu) in [
+        (
+            Some(OffreLivraison::AuDela(5_000)),
+            "au_dela",
+            serde_json::json!(5_000),
+        ),
+        (Some(OffreLivraison::Toujours), "toujours", serde_json::Value::Null),
+        (None, "jamais", serde_json::Value::Null),
+    ] {
+        let mut tx = bac.pool.begin().await.unwrap();
+        bac.depot
+            .definir_offre_livraison(&mut tx, vendeur, offre, bac.admin)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+
+        assert_eq!(bac.depot.offre_livraison(vendeur).await.unwrap(), offre);
+        let evenements = bac.evenements("vendeur.offre_livraison_modifiee").await;
+        let dernier = evenements.last().expect("un événement par geste");
+        assert_eq!(dernier["offre"], attendu);
+        assert_eq!(dernier["seuil"], seuil_attendu);
+        assert_eq!(dernier["acteur"], serde_json::json!(bac.admin));
+    }
+
+    // Trois gestes, trois traces : un « non-changement » se trace aussi — sans
+    // quoi « qui a confirmé quoi » cesse d'être répondable.
+    assert_eq!(
+        bac.evenements("vendeur.offre_livraison_modifiee").await.len(),
+        3
+    );
+}
+
+/// FR-046 — un seuil non strictement positif est refusé par le domaine, avant
+/// même que le `CHECK` n'ait à se prononcer.
+#[sqlx::test(migrations = "../../migrations")]
+async fn seuil_non_positif_refuse_par_le_domaine(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let vendeur = bac.creer_fiche("Chez Affoué", "restauration").await;
+
+    let mut tx = bac.pool.begin().await.unwrap();
+    let echec = bac
+        .depot
+        .definir_offre_livraison(&mut tx, vendeur, Some(OffreLivraison::AuDela(0)), bac.admin)
+        .await;
+
+    assert!(matches!(
+        echec,
+        Err(prestataires::ErreurPrestataires::MontantInvalide(_))
+    ));
+}
+
 /// Un identifiant inconnu n'est pas « pas d'offre » : c'est une erreur.
 #[sqlx::test(migrations = "../../migrations")]
 async fn prestataire_inconnu_est_une_erreur(pool: PgPool) {
