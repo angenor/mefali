@@ -312,4 +312,60 @@ void main() {
       0,
     );
   });
+
+  /// **T087, FR-061** — les échantillons ne servent à rien s'ils restent dans
+  /// l'appareil : c'est le SERVEUR qui compte la présence (FR-060), et il ne
+  /// peut compter que ce qu'il a reçu.
+  ///
+  /// Le défaut que ce test verrouille a tenu jusqu'à la validation sur
+  /// appareil : la file locale se remplissait, l'écran montait bien à 10
+  /// minutes, et `GET .../preuves` répondait `presence_aucun_releve` — la
+  /// déclaration d'échec était donc refusée pour une preuve réunie.
+  test('les relevés de présence PARTENT au serveur, en lot idempotent',
+      () async {
+    final envoyes = <Map<String, Object?>>[];
+    final transport = TransportFake((requete) {
+      if (requete.path.contains('/courses/active')) return reponseJson(_course());
+      if (requete.path.endsWith('/presence')) {
+        final corps = requete.data as Map<String, Object?>;
+        envoyes.add(corps);
+        return reponseJson({'retenus': 2, 'presence_s': 600, 'requis_s': 600});
+      }
+      return reponseJson(<String, Object?>{}, statut: 201);
+    });
+    final container = conteneurMefali(
+      jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+      transport: transport,
+      supplements: [baseOfflineProvider.overrideWithValue(BaseOffline.memoire())],
+    );
+    addTearDown(container.dispose);
+
+    final file = container.read(fileActionsProvider);
+    await file.enfilerPresence(
+      uuidClient: '019fa000-0000-7000-8000-0000000000c1',
+      livraisonId: _livraison,
+      distanceM: 12,
+      releveLeLocal: DateTime(2026, 7, 28, 15),
+    );
+    await file.enfilerPresence(
+      uuidClient: '019fa000-0000-7000-8000-0000000000c2',
+      livraisonId: _livraison,
+      distanceM: 8,
+      releveLeLocal: DateTime(2026, 7, 28, 15, 0, 30),
+    );
+
+    await container
+        .read(etatPreuvesProvider.notifier)
+        .transmettrePresence(_livraison);
+
+    expect(envoyes, hasLength(1), reason: 'un LOT, pas un appel par relevé');
+    expect((envoyes.single['releves']! as List).length, 2);
+
+    // Transmis = plus jamais renvoyé : le second appel n'a rien à dire.
+    expect(await file.presenceEnAttente(_livraison), isEmpty);
+    await container
+        .read(etatPreuvesProvider.notifier)
+        .transmettrePresence(_livraison);
+    expect(envoyes, hasLength(1));
+  });
 }

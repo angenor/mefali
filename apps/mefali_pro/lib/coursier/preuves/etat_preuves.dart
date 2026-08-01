@@ -353,7 +353,45 @@ class EtatPreuvesNotifier extends _$EtatPreuvesNotifier {
       distanceM: distance,
       releveLeLocal: DateTime.now(),
     );
+    await transmettrePresence(livraisonId);
     await _recalculer(livraisonId);
+  }
+
+  /// Envoie au serveur les relevés qu'il ne connaît pas encore (FR-061).
+  ///
+  /// C'est LUI qui compte la présence — l'app ne fait qu'échantillonner
+  /// (FR-060). Tant que ce lot ne partait pas, `GET .../preuves` restait sur
+  /// `presence_aucun_releve` quoi que Yao attende devant la porte, et l'échec
+  /// était refusé pour une preuve qu'il avait pourtant réunie : le décompte de
+  /// l'écran montait bien à 10 minutes, mais personne ne l'avait dit au serveur
+  /// (T087, SC-019).
+  ///
+  /// Silencieux en cas de coupure : les relevés restent en attente et repartent
+  /// au prochain échantillon ou au moment de déclarer.
+  Future<void> transmettrePresence(String livraisonId) async {
+    final file = ref.read(fileActionsProvider);
+    final lot = await file.presenceEnAttente(livraisonId);
+    if (lot.isEmpty) return;
+    try {
+      final dio = ref.read(clientSessionProvider).dio;
+      await dio.post<dynamic>(
+        '/courses/$livraisonId/presence',
+        data: {
+          'releves': [
+            for (final r in lot)
+              {
+                'uuid_client': r.uuidClient,
+                'distance_m': r.distanceM,
+                'releve_le_local': r.releveLeLocal.toUtc().toIso8601String(),
+              },
+          ],
+        },
+      );
+      await file.marquerPresenceEnvoyee([for (final r in lot) r.uuidClient]);
+    } on DioException {
+      // Réseau absent : rien n'est perdu, le lot repartira tel quel. Le rejeu
+      // est idempotent par `uuid_client` (constitution V).
+    }
   }
 
   /// Dépose une photo de preuve (FR-056).
@@ -384,6 +422,9 @@ class EtatPreuvesNotifier extends _$EtatPreuvesNotifier {
       state = state.copieAvec(erreurCle: 'preuves_incompletes');
       return false;
     }
+    // Dernière chance de porter la présence au serveur : c'est lui qui juge,
+    // et il ne peut juger que ce qu'il a reçu (FR-060).
+    await transmettrePresence(livraisonId);
     final abouti = await _enfilerOuEnvoyer(
       endpoint: '/courses/$livraisonId/echec',
       payload: {'type_issue': typeIssue, 'motif_cle': motifCle},
