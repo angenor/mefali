@@ -187,10 +187,15 @@ class _ChipEtatArret extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (fond, accent, libelle) = switch (arret.statut) {
+      // Sans horodatage connu, « Collecté » tout court : l'heure de collecte
+      // n'est pas conservée localement, et le tiret qui la remplaçait donnait
+      // un « Collecté — » que T087 a relevé sur tous les arrêts repliés.
       'collecte' => (
           MefaliTokens.successTint,
           MefaliTokens.success,
-          l10n.crsArretCollecteA(_heure(arret.collecteLe)),
+          arret.collecteLe == null
+              ? l10n.courseArretCollecte
+              : l10n.crsArretCollecteA(_heure(arret.collecteLe)),
         ),
       'indisponible' => (
           MefaliTokens.dangerTint,

@@ -650,7 +650,7 @@
     "description": "Montant dû à CE vendeur (K3-1b)",
     "placeholders": { "vendeur": { "type": "String" } }
   },
-  "crsPayezAArticles": "Payez à {vendeur} ({pris} articles pris)",
+  "crsPayezAArticles": "Payez à {vendeur} ({pris, plural, =0{aucun article pris} =1{1 article pris} other{{pris} articles pris}})",
   "@crsPayezAArticles": {
     "description": "Montant dû après retrait d'articles (K3-1a)",
     "placeholders": { "vendeur": { "type": "String" }, "pris": { "type": "int" } }
@@ -674,15 +674,24 @@
   "@crsHorsLigneActionsGrisees": { "description": "Explication du grisage — SEULES ces deux actions exigent le réseau" },
   "crsHorsLigneScanEtCoches": "Le scan et les coches fonctionnent hors connexion",
   "@crsHorsLigneScanEtCoches": { "description": "Rassurance de K3-1b : l'essentiel reste actif" },
-  "crsActionsEnAttente": "{n} action en attente",
+  "crsActionsEnAttente": "{n, plural, =1{1 action en attente} other{{n} actions en attente}}",
   "@crsActionsEnAttente": {
     "description": "Compteur de la file locale (FR-083)",
     "placeholders": { "n": { "type": "int" } }
   },
-  "crsActionsEnAttentePhotos": "{n} action en attente · {ko} Ko de photos",
+  "crsActionsEnAttentePhotos": "{n, plural, =1{1 action en attente} other{{n} actions en attente}} · {ko} Ko de photos",
   "@crsActionsEnAttentePhotos": {
     "description": "Compteur de file avec le poids des photos restantes (FR-083)",
     "placeholders": { "n": { "type": "int" }, "ko": { "type": "int" } }
+  },
+  "crsCourseTermineeTitre": "Course terminée",
+  "@crsCourseTermineeTitre": { "description": "Écran de fin après une remise validée hors ligne (FR-041)" },
+  "crsCourseTermineeHorsLigne": "Validée sur place. Elle partira au serveur dès le retour du réseau.",
+  "@crsCourseTermineeHorsLigne": { "description": "Sous-titre de l'écran de fin hors ligne — rien n'est clos côté serveur" },
+  "crsCourseTermineeEncaisse": "Encaissé : {montant}",
+  "@crsCourseTermineeEncaisse": {
+    "description": "Rappel du montant encaissé sur l'écran de fin",
+    "placeholders": { "montant": { "type": "String" } }
   },
   "crsArretIndisponibleTitre": "Cet arrêt est impossible",
   "@crsArretIndisponibleTitre": { "description": "Feuille d'arrêt entièrement indisponible (FR-018)" },
@@ -765,7 +774,7 @@
   "@crsRemiseCodeTitre": { "description": "Titre du pavé de saisie (K4-1b)" },
   "crsRemiseCodeConsigne": "Demandez au client son code à 4 chiffres",
   "@crsRemiseCodeConsigne": { "description": "Consigne du pavé de saisie" },
-  "crsRemiseCodeFauxEssais": "Code faux — il reste {essais} essais",
+  "crsRemiseCodeFauxEssais": "Code faux — {essais, plural, =1{il reste 1 essai} other{il reste {essais} essais}}",
   "@crsRemiseCodeFauxEssais": {
     "description": "Chip warning de K4-1b — le nombre vient du paramètre de zone du cycle 008",
     "placeholders": { "essais": { "type": "int" } }

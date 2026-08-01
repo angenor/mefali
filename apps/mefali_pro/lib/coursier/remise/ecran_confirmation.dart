@@ -97,10 +97,14 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
               style: textTheme.titleMedium,
             ),
             subtitle: Text(
-              l10n.crsRemiseRepereArrivee(
-                client.repereTexte ?? '',
-                _heureArrivee(etat),
-              ),
+              switch (_heureArrivee(etat)) {
+                // L'heure d'arrivée vient du SERVEUR ; hors ligne elle n'existe
+                // pas encore, et le « arrivé — » qu'affichait ce sous-titre ne
+                // disait rien à personne (T087).
+                null => client.repereTexte ?? '',
+                final heure =>
+                  l10n.crsRemiseRepereArrivee(client.repereTexte ?? '', heure),
+              },
             ),
             trailing: Text('${etat.arrets.length} / ${etat.arrets.length}'),
           ),
@@ -204,10 +208,15 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
     );
   }
 
-  /// Heure d'arrivée chez le client — l'horodatage SERVEUR de l'arrêt de remise.
-  String _heureArrivee(EtatCourse etat) {
-    final quand = etat.arrets.isEmpty ? null : etat.arrets.last.collecteLe;
-    if (quand == null) return '—';
+  /// Heure d'arrivée chez le client — l'horodatage SERVEUR de l'arrêt de
+  /// REMISE, et `null` tant qu'il n'est pas connu.
+  ///
+  /// Il se lisait sur le dernier arrêt de COLLECTE, qui n'est pas la même
+  /// chose et n'est de toute façon jamais horodaté localement : le sous-titre
+  /// affichait donc « arrivé — » en toutes circonstances (T087).
+  String? _heureArrivee(EtatCourse etat) {
+    final quand = etat.remise.arriveChezClientLe;
+    if (quand == null) return null;
     final local = quand.toLocal();
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
