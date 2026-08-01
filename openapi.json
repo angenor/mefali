@@ -13286,7 +13286,8 @@
           "id",
           "nom",
           "statut",
-          "boutique"
+          "boutique",
+          "offre_livraison"
         ],
         "properties": {
           "boutique": {
@@ -13301,6 +13302,18 @@
           "nom": {
             "type": "string",
             "description": "Nom public."
+          },
+          "offre_livraison": {
+            "type": "string",
+            "description": "Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.\n\nChamp ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de\nfonctionner. Servi ici plutôt que par une route dédiée parce que le\nréglage vit sur l'écran boutique, et qu'un second aller-retour pour deux\nscalaires n'aurait servi personne."
+          },
+          "offre_livraison_seuil_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Seuil de panier de l'offre `au_dela`, `null` sinon."
           },
           "statut": {
             "$ref": "#/components/schemas/StatutPrestataire",

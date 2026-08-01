@@ -16,6 +16,8 @@ part 'prestataire_pilotable.g.dart';
 /// * [boutique] - État effectif de la boutique.
 /// * [id] - Identifiant.
 /// * [nom] - Nom public.
+/// * [offreLivraison] - Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.  Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de fonctionner. Servi ici plutôt que par une route dédiée parce que le réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux scalaires n'aurait servi personne.
+/// * [offreLivraisonSeuilUnites] - Seuil de panier de l'offre `au_dela`, `null` sinon.
 /// * [statut] - Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact.
 @BuiltValue()
 abstract class PrestatairePilotable implements Built<PrestatairePilotable, PrestatairePilotableBuilder> {
@@ -30,6 +32,14 @@ abstract class PrestatairePilotable implements Built<PrestatairePilotable, Prest
   /// Nom public.
   @BuiltValueField(wireName: r'nom')
   String get nom;
+
+  /// Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.  Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de fonctionner. Servi ici plutôt que par une route dédiée parce que le réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux scalaires n'aurait servi personne.
+  @BuiltValueField(wireName: r'offre_livraison')
+  String get offreLivraison;
+
+  /// Seuil de panier de l'offre `au_dela`, `null` sinon.
+  @BuiltValueField(wireName: r'offre_livraison_seuil_unites')
+  int? get offreLivraisonSeuilUnites;
 
   /// Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact.
   @BuiltValueField(wireName: r'statut')
@@ -74,6 +84,18 @@ class _$PrestatairePilotableSerializer implements PrimitiveSerializer<Prestatair
       object.nom,
       specifiedType: const FullType(String),
     );
+    yield r'offre_livraison';
+    yield serializers.serialize(
+      object.offreLivraison,
+      specifiedType: const FullType(String),
+    );
+    if (object.offreLivraisonSeuilUnites != null) {
+      yield r'offre_livraison_seuil_unites';
+      yield serializers.serialize(
+        object.offreLivraisonSeuilUnites,
+        specifiedType: const FullType.nullable(int),
+      );
+    }
     yield r'statut';
     yield serializers.serialize(
       object.statut,
@@ -122,6 +144,21 @@ class _$PrestatairePilotableSerializer implements PrimitiveSerializer<Prestatair
             specifiedType: const FullType(String),
           ) as String;
           result.nom = valueDes;
+          break;
+        case r'offre_livraison':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.offreLivraison = valueDes;
+          break;
+        case r'offre_livraison_seuil_unites':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.offreLivraisonSeuilUnites = valueDes;
           break;
         case r'statut':
           final valueDes = serializers.deserialize(

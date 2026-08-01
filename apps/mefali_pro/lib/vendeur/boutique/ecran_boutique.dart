@@ -8,6 +8,8 @@ import 'package:mefali_core/mefali_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../roles/composants.dart';
 import '../composants.dart';
+import '../offre_livraison/etat_offre_livraison.dart';
+import '../offre_livraison/feuille_offre_livraison.dart';
 import '../pilotage.dart';
 import 'etat_boutique.dart';
 import 'feuille_horaires.dart';
@@ -203,6 +205,12 @@ class _Contenu extends ConsumerWidget {
         if (enPause) const SizedBox(height: MefaliTokens.space3),
 
         _CarteHoraires(boutique: boutique, notifier: notifier),
+        const SizedBox(height: MefaliTokens.space3),
+
+        // VND-08 minimal (cycle PAY 011) — le vendeur décide s'il prend la
+        // livraison à sa charge. Le réglage vit ici, à côté des horaires : ce
+        // sont les deux décisions commerciales que le vendeur pilote seul.
+        _CarteOffreLivraison(pilote: pilote),
         const SizedBox(height: MefaliTokens.space4),
 
         if (enPause)
@@ -212,6 +220,76 @@ class _Contenu extends ConsumerWidget {
             onPresse: () => notifier.geste(ActionBoutiqueDto.ouvrir),
           ),
       ],
+    );
+  }
+}
+
+/// Le réglage d'offre de livraison (VND-08, FR-046) — état courant en clair,
+/// et la feuille pour le changer.
+///
+/// Réf. `docs/design/png/V1-statut-boutique.png` (carte de réglage voisine des
+/// horaires) ; ⚠ **écart assumé** : aucune planche VND-08 n'existe.
+class _CarteOffreLivraison extends ConsumerWidget {
+  const _CarteOffreLivraison({required this.pilote});
+
+  final PrestatairePilotable pilote;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    final seuil = pilote.offreLivraisonSeuilUnites;
+
+    final resume = switch (pilote.offreLivraison) {
+      'toujours' => l10n.payOffreToujours,
+      'au_dela' when seuil != null =>
+        '${l10n.payOffreAuDela} (${formaterMontant(seuil, 'XOF')})',
+      _ => l10n.payOffreJamais,
+    };
+
+    return CarteMefali(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Symbols.local_shipping, size: 20),
+              const SizedBox(width: MefaliTokens.space2),
+              Expanded(
+                child: Text(
+                  l10n.payOffreLivraisonTitre,
+                  style: textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: MefaliTokens.space2),
+          Text(
+            resume,
+            style: textTheme.bodyLarge
+                ?.copyWith(fontWeight: MefaliTokens.weightSemiBold),
+          ),
+          const SizedBox(height: MefaliTokens.space2),
+          OutlinedButton.icon(
+            onPressed: () => afficherFeuilleOffreLivraison(
+              context,
+              offre: pilote.offreLivraison,
+              seuilUnites: seuil,
+              devise: 'XOF',
+              onEnregistrer: (offre, seuilUnites) => ref
+                  .read(offreLivraisonProvider(pilote.id).notifier)
+                  .declarer(offre, seuilUnites)
+                  .then((code) => code == null
+                      ? null
+                      : (code == 'offre_seuil_manquant'
+                          ? l10n.payOffreSeuilManquant
+                          : l10n.proBoutiqueErreur)),
+            ),
+            icon: const Icon(Symbols.edit),
+            label: Text(l10n.payOffreLivraisonModifier),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -403,7 +481,16 @@ class _CarteHoraires extends StatelessWidget {
             children: [
               const Icon(Symbols.schedule, size: 20),
               const SizedBox(width: MefaliTokens.space2),
-              Text(l10n.proBoutiqueHorairesTitre, style: textTheme.titleMedium),
+              // `Expanded` : sur un écran de 360 dp — la largeur d'un téléphone
+              // d'entrée de gamme, donc la cible — le titre débordait de 57 px.
+              // Trouvé par le test de la carte d'offre de livraison, qui a
+              // ramené la vue à une taille réaliste.
+              Expanded(
+                child: Text(
+                  l10n.proBoutiqueHorairesTitre,
+                  style: textTheme.titleMedium,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: MefaliTokens.space2),

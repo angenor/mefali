@@ -1138,6 +1138,8 @@
   "@payOffreSeuilManquant": { "description": "Refus 400 `offre_seuil_manquant` — une offre « à partir de rien » n'est pas une offre conditionnelle, c'est « toujours » écrit de travers" },
   "payOffreRappelCommandesEnCours": "Les commandes déjà passées ne changent pas de prix.",
   "@payOffreRappelCommandesEnCours": { "description": "Rappel explicite de FR-048 — le devis est figé à la création, et le vendeur doit le savoir AVANT de régler, pas après un appel client" },
+  "payOffreLivraisonModifier": "Modifier",
+  "@payOffreLivraisonModifier": { "description": "Ouvre la feuille de réglage de l'offre de livraison depuis l'écran boutique" },
   "payOffreEnregistree": "Réglage enregistré.",
   "@payOffreEnregistree": { "description": "Confirmation du PUT" },
 

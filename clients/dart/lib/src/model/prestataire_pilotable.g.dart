@@ -14,6 +14,10 @@ class _$PrestatairePilotable extends PrestatairePilotable {
   @override
   final String nom;
   @override
+  final String offreLivraison;
+  @override
+  final int? offreLivraisonSeuilUnites;
+  @override
   final StatutPrestataire statut;
 
   factory _$PrestatairePilotable(
@@ -24,6 +28,8 @@ class _$PrestatairePilotable extends PrestatairePilotable {
       {required this.boutique,
       required this.id,
       required this.nom,
+      required this.offreLivraison,
+      this.offreLivraisonSeuilUnites,
       required this.statut})
       : super._();
   @override
@@ -42,6 +48,8 @@ class _$PrestatairePilotable extends PrestatairePilotable {
         boutique == other.boutique &&
         id == other.id &&
         nom == other.nom &&
+        offreLivraison == other.offreLivraison &&
+        offreLivraisonSeuilUnites == other.offreLivraisonSeuilUnites &&
         statut == other.statut;
   }
 
@@ -51,6 +59,8 @@ class _$PrestatairePilotable extends PrestatairePilotable {
     _$hash = $jc(_$hash, boutique.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, nom.hashCode);
+    _$hash = $jc(_$hash, offreLivraison.hashCode);
+    _$hash = $jc(_$hash, offreLivraisonSeuilUnites.hashCode);
     _$hash = $jc(_$hash, statut.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -62,6 +72,8 @@ class _$PrestatairePilotable extends PrestatairePilotable {
           ..add('boutique', boutique)
           ..add('id', id)
           ..add('nom', nom)
+          ..add('offreLivraison', offreLivraison)
+          ..add('offreLivraisonSeuilUnites', offreLivraisonSeuilUnites)
           ..add('statut', statut))
         .toString();
   }
@@ -85,6 +97,16 @@ class PrestatairePilotableBuilder
   String? get nom => _$this._nom;
   set nom(String? nom) => _$this._nom = nom;
 
+  String? _offreLivraison;
+  String? get offreLivraison => _$this._offreLivraison;
+  set offreLivraison(String? offreLivraison) =>
+      _$this._offreLivraison = offreLivraison;
+
+  int? _offreLivraisonSeuilUnites;
+  int? get offreLivraisonSeuilUnites => _$this._offreLivraisonSeuilUnites;
+  set offreLivraisonSeuilUnites(int? offreLivraisonSeuilUnites) =>
+      _$this._offreLivraisonSeuilUnites = offreLivraisonSeuilUnites;
+
   StatutPrestataire? _statut;
   StatutPrestataire? get statut => _$this._statut;
   set statut(StatutPrestataire? statut) => _$this._statut = statut;
@@ -99,6 +121,8 @@ class PrestatairePilotableBuilder
       _boutique = $v.boutique.toBuilder();
       _id = $v.id;
       _nom = $v.nom;
+      _offreLivraison = $v.offreLivraison;
+      _offreLivraisonSeuilUnites = $v.offreLivraisonSeuilUnites;
       _statut = $v.statut;
       _$v = null;
     }
@@ -128,6 +152,9 @@ class PrestatairePilotableBuilder
                 id, r'PrestatairePilotable', 'id'),
             nom: BuiltValueNullFieldError.checkNotNull(
                 nom, r'PrestatairePilotable', 'nom'),
+            offreLivraison: BuiltValueNullFieldError.checkNotNull(
+                offreLivraison, r'PrestatairePilotable', 'offreLivraison'),
+            offreLivraisonSeuilUnites: offreLivraisonSeuilUnites,
             statut: BuiltValueNullFieldError.checkNotNull(
                 statut, r'PrestatairePilotable', 'statut'),
           );

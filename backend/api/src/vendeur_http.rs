@@ -52,6 +52,15 @@ pub struct PrestatairePilotableDto {
     pub statut: StatutPrestataireDto,
     /// État effectif de la boutique.
     pub boutique: EffectifBoutiqueDto,
+    /// Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.
+    ///
+    /// Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de
+    /// fonctionner. Servi ici plutôt que par une route dédiée parce que le
+    /// réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux
+    /// scalaires n'aurait servi personne.
+    pub offre_livraison: String,
+    /// Seuil de panier de l'offre `au_dela`, `null` sinon.
+    pub offre_livraison_seuil_unites: Option<i64>,
 }
 
 /// Prestataires que ce compte pilote (rattachements du cycle VND).
@@ -88,11 +97,19 @@ pub async fn mes_prestataires(
                 ouvert: false,
                 reouverture_estimee: None,
             });
+        let offre = depot.offre_livraison(id).await?;
+        let (valeur_offre, seuil) = match offre {
+            None => ("jamais", None),
+            Some(tarification::OffreLivraison::Toujours) => ("toujours", None),
+            Some(tarification::OffreLivraison::AuDela(s)) => ("au_dela", Some(s)),
+        };
         sortie.push(PrestatairePilotableDto {
             id: p.id,
             nom: p.nom,
             statut: p.statut.into(),
             boutique: boutique.into(),
+            offre_livraison: valeur_offre.to_owned(),
+            offre_livraison_seuil_unites: seuil,
         });
     }
     Ok(HttpResponse::Ok().json(sortie))

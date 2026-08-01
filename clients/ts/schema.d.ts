@@ -4861,6 +4861,20 @@ export interface components {
             id: string;
             /** @description Nom public. */
             nom: string;
+            /**
+             * @description Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.
+             *
+             *     Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de
+             *     fonctionner. Servi ici plutôt que par une route dédiée parce que le
+             *     réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux
+             *     scalaires n'aurait servi personne.
+             */
+            offre_livraison: string;
+            /**
+             * Format: int64
+             * @description Seuil de panier de l'offre `au_dela`, `null` sinon.
+             */
+            offre_livraison_seuil_unites?: number | null;
             /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
             statut: components["schemas"]["StatutPrestataire"];
         };
