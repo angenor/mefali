@@ -92,6 +92,13 @@ Map<String, Object?> _caisse() => {
       ],
       'indemnisations': const <Object?>[],
       'litiges_en_cours': const <Object?>[],
+      // Cycle PAY 011 — champs du contrat, exigés par le client généré.
+      'positions': const {
+        'avance_non_recuperee_unites': 0,
+        'du_par_mefali_unites': 0,
+        'detenu_pour_mefali_unites': 0,
+      },
+      'creances': const <Object?>[],
       'devise': 'XOF',
       'ecart_plafond': false,
     };
@@ -109,7 +116,7 @@ ProviderContainer _conteneur(Map<String, Object?> caisse) {
 }
 
 Future<void> _poser(WidgetTester tester, ProviderContainer container) async {
-  tester.view.physicalSize = const Size(1080, 5200);
+  tester.view.physicalSize = const Size(1080, 6400);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);

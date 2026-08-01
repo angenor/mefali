@@ -248,6 +248,90 @@ class LitigeCaisseVue {
       };
 }
 
+/// Les **trois positions** de la caisse (cycle PAY 011, FR-060/FR-094).
+///
+/// Elles ne se recouvrent pas, et c'est ce qui les rend lisibles d'un coup
+/// d'œil : « j'ai sorti », « on me doit », « je détiens sans que ce soit à
+/// moi ». Un chiffre unique les mélangerait et ne répondrait à aucune des trois
+/// questions.
+class PositionsCaisseVue {
+  /// Crée les positions.
+  const PositionsCaisseVue({
+    this.avanceNonRecupereeUnites = 0,
+    this.duParMefaliUnites = 0,
+    this.detenuPourMefaliUnites = 0,
+  });
+
+  /// Reconstruit depuis le JSON — serveur ou cache local, même format.
+  factory PositionsCaisseVue.depuisJson(Map<String, dynamic> j) =>
+      PositionsCaisseVue(
+        avanceNonRecupereeUnites: j['avance_non_recuperee_unites'] as int? ?? 0,
+        duParMefaliUnites: j['du_par_mefali_unites'] as int? ?? 0,
+        detenuPourMefaliUnites: j['detenu_pour_mefali_unites'] as int? ?? 0,
+      );
+
+  /// Argent sorti de la poche de Yao, pas encore rendu.
+  final int avanceNonRecupereeUnites;
+
+  /// Ce que Mefali lui doit, formellement — la somme de ses créances dues.
+  final int duParMefaliUnites;
+
+  /// Ce qu'il a sur lui sans que ce soit à lui. Vaut 0 au MVP (marge nulle) et
+  /// s'affiche quand même : une position absente se lirait comme une position
+  /// oubliée.
+  final int detenuPourMefaliUnites;
+
+  /// Sérialise pour le cache local.
+  Map<String, dynamic> versJson() => {
+        'avance_non_recuperee_unites': avanceNonRecupereeUnites,
+        'du_par_mefali_unites': duParMefaliUnites,
+        'detenu_pour_mefali_unites': detenuPourMefaliUnites,
+      };
+}
+
+/// Une créance : ce que Mefali doit à Yao pour une course précise (FR-094).
+class CreanceVue {
+  /// Crée la vue d'une créance.
+  const CreanceVue({
+    required this.id,
+    required this.natureCle,
+    required this.montantUnites,
+    required this.etatCle,
+  });
+
+  /// Reconstruit depuis le JSON.
+  factory CreanceVue.depuisJson(Map<String, dynamic> j) => CreanceVue(
+        id: j['id'] as String? ?? '',
+        natureCle: j['nature'] as String? ?? '',
+        montantUnites: j['montant_unites'] as int? ?? 0,
+        etatCle: j['etat'] as String? ?? 'due',
+      );
+
+  /// Identifiant.
+  final String id;
+
+  /// `avance_prepayee` | `part_course` — traduit à l'affichage, jamais ici.
+  final String natureCle;
+
+  /// Montant dû.
+  final int montantUnites;
+
+  /// `due` | `reglee`.
+  final String etatCle;
+
+  /// Réglée ? Décide de la présentation — une créance versée n'est plus une
+  /// attente.
+  bool get reglee => etatCle == 'reglee';
+
+  /// Sérialise pour le cache local.
+  Map<String, dynamic> versJson() => {
+        'id': id,
+        'nature': natureCle,
+        'montant_unites': montantUnites,
+        'etat': etatCle,
+      };
+}
+
 /// Tout l'écran caisse, en un objet (K5).
 class EtatCaisseVue {
   /// Crée l'état.
@@ -257,6 +341,8 @@ class EtatCaisseVue {
     this.avancesEnAttenteReglementUnites = 0,
     this.historique = const [],
     this.mouvements = const [],
+    this.positions = const PositionsCaisseVue(),
+    this.creances = const [],
     this.indemnisations = const [],
     this.litiges = const [],
     this.devise = '',
@@ -278,6 +364,21 @@ class EtatCaisseVue {
         mouvements: [
           for (final m in (j['mouvements'] as List? ?? const []))
             MouvementCaisseVue.depuisJson(m as Map<String, dynamic>),
+        ],
+        // Cycle PAY 011 — champs ADDITIFS : une caisse mise en cache avant la
+        // mise à jour rend des positions à zéro plutôt qu'une erreur.
+        // `Map<String, Object?>` et non `Map<String, dynamic>` : le corps
+        // désérialisé par dio porte le premier, et un cast sur le second
+        // échoue à l'exécution SANS que l'analyse le voie — l'écran rendait
+        // alors une page blanche, ce que les tests ont attrapé.
+        positions: PositionsCaisseVue.depuisJson(
+          Map<String, dynamic>.from(
+            (j['positions'] as Map?) ?? const <String, dynamic>{},
+          ),
+        ),
+        creances: [
+          for (final c in (j['creances'] as List? ?? const []))
+            CreanceVue.depuisJson(Map<String, dynamic>.from(c as Map)),
         ],
         indemnisations: [
           for (final i in (j['indemnisations'] as List? ?? const []))
@@ -306,6 +407,12 @@ class EtatCaisseVue {
   /// Mouvements du livre du jour, du plus récent au plus ancien.
   final List<MouvementCaisseVue> mouvements;
 
+  /// Les trois positions (cycle PAY 011).
+  final PositionsCaisseVue positions;
+
+  /// Créances, les plus récentes d'abord.
+  final List<CreanceVue> creances;
+
   /// Indemnisations rattachées.
   final List<IndemnisationCaisseVue> indemnisations;
 
@@ -333,9 +440,12 @@ class EtatCaisseVue {
   /// d'agence ou un reversement n'apparaît dans AUCUNE course, et une journée
   /// sans course mais avec un versement n'est pas une journée vide — la
   /// déclarer vide ferait disparaître de l'argent réel de l'écran.
+  /// `creances` en fait partie depuis le cycle PAY 011 : une journée sans
+  /// course mais avec une somme due n'est pas une journée vide.
   bool get vide =>
       historique.isEmpty &&
       mouvements.isEmpty &&
+      creances.isEmpty &&
       indemnisations.isEmpty &&
       avanceEnCoursUnites == 0;
 
@@ -346,6 +456,8 @@ class EtatCaisseVue {
         avancesEnAttenteReglementUnites: avancesEnAttenteReglementUnites,
         historique: historique,
         mouvements: mouvements,
+        positions: positions,
+        creances: creances,
         indemnisations: indemnisations,
         litiges: litiges,
         devise: devise,
@@ -362,6 +474,8 @@ class EtatCaisseVue {
         'avances_en_attente_reglement_unites': avancesEnAttenteReglementUnites,
         'historique_du_jour': [for (final l in historique) l.versJson()],
         'mouvements': [for (final m in mouvements) m.versJson()],
+        'positions': positions.versJson(),
+        'creances': [for (final c in creances) c.versJson()],
         'indemnisations': [for (final i in indemnisations) i.versJson()],
         'litiges_en_cours': [for (final l in litiges) l.versJson()],
         'devise': devise,
@@ -446,6 +560,21 @@ EtatCaisseVue _depuisContrat(VueCaisse? v) {
           commandeId: m.commandeId,
           reference: m.reference,
           heure: m.heure.toLocal(),
+        ),
+    ],
+    // Cycle PAY 011 — les trois positions et les créances.
+    positions: PositionsCaisseVue(
+      avanceNonRecupereeUnites: v.positions.avanceNonRecupereeUnites,
+      duParMefaliUnites: v.positions.duParMefaliUnites,
+      detenuPourMefaliUnites: v.positions.detenuPourMefaliUnites,
+    ),
+    creances: [
+      for (final c in v.creances)
+        CreanceVue(
+          id: c.id,
+          natureCle: c.nature,
+          montantUnites: c.montantUnites,
+          etatCle: c.etat,
         ),
     ],
     indemnisations: [

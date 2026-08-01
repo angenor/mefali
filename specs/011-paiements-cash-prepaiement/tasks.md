@@ -211,8 +211,8 @@ tâche qui les enfreint est incomplète, même si son code marche :
 - [X] T071 [US6] Endpoints d'exploitation `GET /admin/creances` et `POST /admin/creances/{id}/regler` dans `backend/api/src/admin_paiements_http.rs` (nouveau module) : filtres état/coursier, total dû, motif de règlement obligatoire — puis utoipa + régénération des clients + build vert
 - [X] T072 [US6] Endpoints `GET /admin/paiements/transactions`, `GET /admin/paiements/dossiers`, `POST /admin/paiements/dossiers/{id}/clore` dans `backend/api/src/admin_paiements_http.rs` : filtres état/moyen/zone/période, drapeau `orpheline`, clôture motivée — puis utoipa + régénération des clients + build vert
 - [X] T073 [US6] Test d'intégration `backend/api/tests/paiements_registre.rs` : rapprochement exact **dans les deux sens** (SC-011), les quatre familles d'anomalies visibles avec leur motif, `403` pour un rôle non admin
-- [ ] T074 [P] [US6] App coursier — caisse à trois positions dans `apps/mefali_pro/lib/coursier/caisse/ecran_caisse.dart` : les trois chiffres lisibles d'un coup d'œil, chaque créance avec son état de règlement (FR-094) — réf. `docs/design/png/K5-caisse-historique.png`
-- [ ] T075 [P] [US6] Tests widget `apps/mefali_pro/test/coursier/caisse/` : les trois positions s'affichent séparément, une créance réglée se distingue d'une créance due, un solde négatif reste lisible
+- [X] T074 [P] [US6] App coursier — caisse à trois positions dans `apps/mefali_pro/lib/coursier/caisse/ecran_caisse.dart` : les trois chiffres lisibles d'un coup d'œil, chaque créance avec son état de règlement (FR-094) — réf. `docs/design/png/K5-caisse-historique.png`
+- [X] T075 [P] [US6] Tests widget `apps/mefali_pro/test/coursier/caisse/` : les trois positions s'affichent séparément, une créance réglée se distingue d'une créance due, un solde négatif reste lisible
 
 **Checkpoint**: « où est cet argent ? » a une réponse pour n'importe quelle commande, à n'importe quel état.
 

@@ -74,8 +74,16 @@ Map<String, Object?> _caisse() => const {
       'courses_concernees': 0,
       'avances_en_attente_reglement_unites': 0,
       'historique_du_jour': <Object?>[],
+      'mouvements': <Object?>[],
       'indemnisations': <Object?>[],
       'litiges_en_cours': <Object?>[],
+      // Cycle PAY 011 — champs du contrat, exigés par le client généré.
+      'positions': {
+        'avance_non_recuperee_unites': 0,
+        'du_par_mefali_unites': 0,
+        'detenu_pour_mefali_unites': 0,
+      },
+      'creances': <Object?>[],
       'devise': 'XOF',
       'ecart_plafond': false,
     };

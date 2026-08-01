@@ -140,6 +140,12 @@ class _Corps extends StatelessWidget {
 
         _CarteSolde(etat: etat),
 
+        // Cycle PAY 011 — les TROIS positions (FR-060, FR-094). Sous le solde
+        // et non à sa place : le solde dit ce que le livre porte, les positions
+        // disent où l'argent se trouve. Deux questions, deux réponses.
+        const SizedBox(height: MefaliTokens.space3),
+        _CartePositions(etat: etat),
+
         // FR-078 — l'agence est prévenue, et Yao le sait : un incident qu'on
         // signale sans le lui dire le laisserait découvrir le blocage au
         // moment d'accepter une course.
@@ -193,6 +199,24 @@ class _Corps extends StatelessWidget {
               ),
             ),
           ],
+          // Les créances, une par une, avec leur état de règlement. Le total
+          // est déjà dans les positions ; ici Yao voit CE QUI compose le
+          // chiffre, et lesquelles ont été versées.
+          if (etat.creances.isNotEmpty) ...[
+            const SizedBox(height: MefaliTokens.space4),
+            _TitreSection(l10n.payCreancesTitre),
+            const SizedBox(height: MefaliTokens.space2),
+            _Carte(
+              enfant: Column(
+                children: [
+                  for (final (i, c) in etat.creances.indexed) ...[
+                    if (i > 0) const Divider(height: 1),
+                    _LigneCreance(creance: c, devise: etat.devise),
+                  ],
+                ],
+              ),
+            ),
+          ],
           if (etat.indemnisations.isNotEmpty) ...[
             const SizedBox(height: MefaliTokens.space4),
             _TitreSection(l10n.crsCaisseIndemnisationsTitre),
@@ -215,6 +239,142 @@ class _Corps extends StatelessWidget {
 }
 
 /// Le solde avancé — display danger, tout en haut (K5-1a, FR-068).
+/// Les trois positions, l'une sous l'autre (K5, FR-094).
+///
+/// Réf. `docs/design/png/K5-caisse-historique.png` — motifs de carte et de
+/// ligne de montant. ⚠ **Écart assumé** : la planche ne montre qu'un solde ;
+/// aucune planche de paiement n'existe (plan.md, Complexity Tracking).
+///
+/// Les trois sont affichées **même à zéro**. Une position qui disparaîtrait
+/// quand elle vaut 0 se lirait comme une position oubliée, et Yao ne saurait
+/// pas si Mefali ne lui doit rien ou si l'écran a un bug.
+class _CartePositions extends StatelessWidget {
+  const _CartePositions({required this.etat});
+
+  final EtatCaisseVue etat;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final p = etat.positions;
+
+    return _Carte(
+      enfant: Column(
+        children: [
+          _LignePosition(
+            libelle: l10n.payPositionAvanceNonRecuperee,
+            montant: p.avanceNonRecupereeUnites,
+            devise: etat.devise,
+            // Sortie de poche : la même couleur que les avances du livre.
+            ton: MefaliTokens.warning,
+          ),
+          const Divider(height: MefaliTokens.space3),
+          _LignePosition(
+            libelle: l10n.payPositionDuParMefali,
+            montant: p.duParMefaliUnites,
+            devise: etat.devise,
+            ton: MefaliTokens.success,
+          ),
+          const Divider(height: MefaliTokens.space3),
+          _LignePosition(
+            libelle: l10n.payPositionDetenuPourMefali,
+            montant: p.detenuPourMefaliUnites,
+            devise: etat.devise,
+            ton: MefaliTokens.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LignePosition extends StatelessWidget {
+  const _LignePosition({
+    required this.libelle,
+    required this.montant,
+    required this.devise,
+    required this.ton,
+  });
+
+  final String libelle;
+  final int montant;
+  final String devise;
+  final Color ton;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: MefaliTokens.space3,
+        vertical: MefaliTokens.space2,
+      ),
+      child: Row(
+        children: [
+          // Le libellé se tronque, jamais le chiffre.
+          Expanded(
+            child: Text(
+              libelle,
+              style: textTheme.bodyMedium,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: MefaliTokens.space2),
+          Text(
+            formaterMontant(montant, devise.isEmpty ? 'XOF' : devise),
+            style: textTheme.titleMedium?.copyWith(
+              color: ton,
+              fontWeight: MefaliTokens.weightBold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Une créance et son état de règlement.
+class _LigneCreance extends StatelessWidget {
+  const _LigneCreance({required this.creance, required this.devise});
+
+  final CreanceVue creance;
+  final String devise;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+
+    final nature = switch (creance.natureCle) {
+      'avance_prepayee' => l10n.payCreanceNatureAvancePrepayee,
+      _ => l10n.payCreanceNaturePartCourse,
+    };
+    final etat = creance.reglee
+        ? l10n.payCreanceEtatReglee
+        : l10n.payCreanceEtatDue;
+
+    return ListTile(
+      title: Text(nature, style: textTheme.bodyMedium),
+      subtitle: Text(
+        etat,
+        style: textTheme.labelSmall?.copyWith(
+          color: creance.reglee ? MefaliTokens.success : MefaliTokens.textMuted,
+        ),
+      ),
+      trailing: Text(
+        formaterMontant(creance.montantUnites, devise.isEmpty ? 'XOF' : devise),
+        style: textTheme.titleMedium?.copyWith(
+          // Une créance réglée n'est plus une attente : elle reste au tableau
+          // pour la trace, sans tirer l'œil.
+          color: creance.reglee ? MefaliTokens.textMuted : MefaliTokens.success,
+          fontWeight: MefaliTokens.weightBold,
+        ),
+      ),
+    );
+  }
+}
+
 class _CarteSolde extends StatelessWidget {
   const _CarteSolde({required this.etat});
 
