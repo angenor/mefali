@@ -204,9 +204,9 @@ d'appareil l'a rencontré.
 | 2 | Tuer l'app pendant le paiement, la rouvrir | **Validé.** Le suivi montre « En attente de votre paiement », le temps restant, et « Reprendre le paiement » (FR-016). |
 | 3 | Laisser expirer, écran allumé | **Validé après correction §1.1**, avec `paiement.session_duree_s` abaissé à 90 s : « Le délai de paiement est écoulé. Votre commande a été annulée, sans aucun frais. » + « Recommander ». Aucun jargon de paiement. |
 | 4 | Couper le réseau après avoir payé, le rétablir | **Partiel.** Le chemin serveur est vérifié de bout en bout : notification signée acceptée (`traite: true`), rejeu refusé (`motif: rejeu`), commande passée en `en_attente_coursier` / `etat_paiement = regle` / moyen `wave`. La **coupure réseau elle-même** n'a pas été rejouée. |
-| 5 | Côté coursier, course prépayée : « rien à encaisser » | **NON DÉROULÉ.** Le coursier de démo ne peut pas passer en ligne (§1.8), donc aucune course active. Couvert par `coursier_positions.rs` et les tests widget, pas par l'œil. |
-| 6 | Côté coursier, arrêt avec retenue | **NON DÉROULÉ.** Même cause, plus un prérequis : une commande passée **après** l'activation de l'offre vendeur. |
-| 7 | Ouvrir la caisse après une journée mixte | **Partiel.** Les trois positions sont là, séparées et lisibles d'un coup d'œil, en langage courant (« Avancé, non récupéré », « Mefali me doit », « Je détiens pour Mefali »). Toutes à **zéro** : aucune course livrée, faute de §1.8. La lisibilité de valeurs non nulles reste à voir. |
+| 5 | Côté coursier, course prépayée : « rien à encaisser » | **VALIDÉ (T088).** Une PHRASE, jamais un « 0 FCFA » : « Rien à encaisser » + « Le client a déjà réglé cette commande. », icône neutre au lieu du vert d'encaissement. Identique sur le bandeau de course et sur l'écran de remise — le widget partagé tient sa promesse. Le contraste avec le cas cash de la même session (« À encaisser / 2 400 FCFA », vert, display) est net. **Un défaut trouvé et corrigé** : le rappel « jamais de paiement partiel » et son lien mobile money s'affichaient sous « Rien à encaisser » (§3.3). |
+| 6 | Côté coursier, arrêt avec retenue | **VALIDÉ (T088).** Le calcul est AFFICHÉ, pas seulement son résultat : bandeau vert « Livraison offerte par le vendeur », puis `Articles 2 400` / `Livraison offerte − 150` / `à payer 2 250`, et le net en gros caractères (« Payez à Boutique Kofi — 2 250 FCFA »). Côté serveur, la chaîne complète du quickstart §3.4 : `avance −2 250`, `remboursement +2 250`, **`frais_encaisses +150`**, et **aucune** créance `part_course` — la course est payée par le vendeur. |
+| 7 | Ouvrir la caisse après une journée mixte | **VALIDÉ sur une vraie journée mixte (T088)**, avec une réserve de conception. Trois courses le même jour — cash avec retenue (livrée), prépayée (livrée), cash (collectée, en cours) — donnent : **Avancé, non récupéré 4 200 FCFA** · **Mefali me doit 2 550 FCFA** · **Je détiens pour Mefali 0 FCFA**. Chaque créance porte son état (« En attente de règlement »), et le livre du jour montre les cinq écritures avec leur sens. ⚠ La troisième position est nulle **par construction au MVP**, pas faute de scénario : `detenu_pour_mefali = Σ min(frais_encaisses, devis_marge)` et `devis_marge` vaut 0 jusqu'à M4 — le code le documente (`caisse.rs`). Elle ne pourra être vue non nulle qu'à M4. |
 | 8 | Côté vendeur, activer l'offre de livraison | **Validé après corrections §1.6 et §1.7.** Les trois choix, la saisie du seuil, le rappel « Les commandes déjà passées ne changent pas de prix » (FR-048). Enregistrement → feuille fermée → carte à jour, cohérente avec la base. |
 
 ### Ce qui reste non validable ce cycle
@@ -215,7 +215,7 @@ d'appareil l'a rencontré.
 |---|---|---|
 | La page de paiement du fournisseur, et « tous les moyens y sont » | Aucun agrégateur choisi (cadrage §10.7). | à la sélection du prestataire — recette du fournisseur, sur appareil |
 | Le retour depuis le navigateur | Même raison : sans page réelle, il n'y a pas de retour à observer. | idem |
-| Les gestes 5, 6 et la caisse non nulle | §1.8 — aucun coursier ne peut passer en ligne | dès que la déclaration de véhicule est atteignable |
+| La position « Je détiens pour Mefali » non nulle | `devis_marge` vaut 0 au MVP : le minimum l'est donc aussi (`caisse.rs`, research R13) | à M4, quand la marge devient non nulle |
 | iOS | Xcode/CocoaPods non installés | quand l'environnement sera monté |
 
 ---
@@ -274,7 +274,59 @@ close, et à la fermeture de l'écran.
    silencieusement un client faux, qu'aucune suite ne traverse. Un contrôle
    mécanique (script CI comparant les `as = …` du workspace) fermerait la
    famille entière ; il n'est pas écrit.
-8. **Les gestes 5 et 6 restent non vus.** Ce que le cycle CRS 010 a appris —
-   neuf défauts invisibles de 758 tests — vaut ici : la caisse à trois positions
-   et la retenue à l'écran n'ont **jamais** été regardées avec des montants
-   réels. C'est la zone d'ombre la plus large de ce cycle.
+8. ~~**Les gestes 5 et 6 restent non vus.**~~ **SOLDÉ le 2026-08-02 (T088)** —
+   voir §3. Le pronostic était juste : la zone d'ombre la plus large du cycle a
+   rendu trois défauts, dont un bloquant, qu'aucun des 166 tests widget ne
+   voyait.
+
+---
+
+## 3. T088 — les gestes 5, 6 et 7 déroulés (2026-08-02)
+
+Rendus possibles par `27b19fb` (CPT-04, déclaration des véhicules) : la nasse de
+§1.8 étant levée, un coursier validé peut passer en ligne, donc une course peut
+exister. Trois courses ont été faites dans la même journée civile de zone, avec
+le même coursier, par l'UI de `mefali_pro` de bout en bout — offre acceptée à
+l'écran, collecte par code de secours, remise par code à 4 chiffres.
+
+**Ce qui a été fabriqué par l'UI, et ce qui ne l'a pas été.** Les gestes
+eux-mêmes (acceptation, collecte, remise, lecture de la caisse) sont passés par
+l'app. Les trois commandes ont été créées par `POST /commandes` — le chemin exact
+de l'app cliente, mais côté serveur. Le prépaiement a été confirmé par une
+notification signée du fournisseur simulé.
+
+### 3.1 La deuxième course de la journée n'était pas livrable — BLOQUANT
+
+`duplicate key … "livraison_remise_uuid_client_key"` → **HTTP 500** sur la remise
+de la seconde course. `EtatRemiseNotifier` gardait l'`uuid_client` de la
+précédente : `reinitialiser()` existait depuis le cycle 010, avec le commentaire
+« risquer de contaminer la suivante », et **personne ne l'appelait**. Un coursier
+ne pouvait livrer qu'un client par session d'app. Corrigé (`75748a7`).
+
+### 3.2 « Code incorrect » sur une panne serveur — aggravant
+
+Toute clé de refus inconnue, dont `erreur_interne` d'un 500, s'affichait « Code
+incorrect. ». Le coursier redemande le code, échoue, recommence : trois essais et
+la saisie se bloque — sur une commande dont le code était bon. Corrigé
+(`83e0b92`) : seul un refus qui parle du code le dit.
+
+### 3.3 Un bloc de paiement sous « Rien à encaisser » — SC-012
+
+Le rappel « jamais de paiement partiel », avec son lien mobile money, s'affichait
+sur une commande déjà réglée. Corrigé (`9ab96a7`) : conditionné au mode `cash`.
+
+### 3.4 Ce qui a bien fonctionné du premier coup
+
+La chaîne d'argent est juste, dans les trois cas de figure et sans retouche : la
+retenue vendeur (`avance −2 250` / `remboursement +2 250` / **`frais_encaisses
++150`**, aucune créance `part_course`), le prépaiement (**deux** créances
+`avance_prepayee` + `part_course`, **aucun** remboursement — aucun cash n'a
+changé de main), et les trois positions de la caisse. Les formulations de SC-012
+et FR-092 tiennent à l'écran, en plein soleil comme au fond d'un couloir.
+
+### 3.5 Réserve ouverte
+
+`detenu_pour_mefali` ne peut PAS être vue non nulle avant M4 : elle vaut
+`Σ min(frais_encaisses, devis_marge)` et `devis_marge` est nul au MVP. Le geste 7
+est donc validé sur deux positions non nulles sur trois, la troisième étant nulle
+par conception documentée — et non faute d'avoir su fabriquer le scénario.
