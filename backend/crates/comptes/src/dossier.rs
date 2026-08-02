@@ -201,8 +201,14 @@ impl PgComptes {
             )
             .await?;
 
+        // `RETURNING` plutôt que la valeur calculée ici : `timestamptz` stocke
+        // la MICROseconde, `Utc::now()` porte la nanoseconde. Rendre l'instant
+        // d'avant l'écriture ferait diverger la création (nanosecondes) de la
+        // relecture (microsecondes) — le même dossier répondrait deux `soumis_le`
+        // différents selon le chemin, et un rejeu ressemblerait à une nouvelle
+        // soumission. La base fait foi.
         let maintenant = Utc::now();
-        sqlx::query!(
+        let soumis_le = sqlx::query_scalar!(
             r#"INSERT INTO comptes.dossier_coursier
                  (compte_id, piece_cle_objet, piece_mime, referent_nom,
                   referent_telephone_e164, soumis_le)
@@ -212,7 +218,8 @@ impl PgComptes {
                  piece_mime = EXCLUDED.piece_mime,
                  referent_nom = EXCLUDED.referent_nom,
                  referent_telephone_e164 = EXCLUDED.referent_telephone_e164,
-                 soumis_le = EXCLUDED.soumis_le"#,
+                 soumis_le = EXCLUDED.soumis_le
+               RETURNING soumis_le"#,
             compte,
             cle_piece,
             soumission.piece.mime,
@@ -220,7 +227,7 @@ impl PgComptes {
             referent_e164,
             maintenant,
         )
-        .execute(&mut **tx)
+        .fetch_one(&mut **tx)
         .await?;
 
         // La flotte re-soumise REMPLACE la précédente : le coursier refusé qui
@@ -263,7 +270,7 @@ impl PgComptes {
                     "vehicules": slugs,
                     "re_soumission": re_soumission,
                 }),
-                survenu_le: maintenant,
+                survenu_le: soumis_le,
             },
         )
         .await?;
@@ -275,7 +282,7 @@ impl PgComptes {
                 piece_mime: soumission.piece.mime.clone(),
                 referent_nom: referent_nom.to_owned(),
                 referent_telephone_e164: referent_e164,
-                soumis_le: maintenant,
+                soumis_le,
                 vehicules: types,
                 statut: StatutRole::EnAttente,
                 motif: None,

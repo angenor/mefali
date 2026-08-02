@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO comptes.dossier_coursier\n                 (compte_id, piece_cle_objet, piece_mime, referent_nom,\n                  referent_telephone_e164, soumis_le)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               ON CONFLICT (compte_id) DO UPDATE SET\n                 piece_cle_objet = EXCLUDED.piece_cle_objet,\n                 piece_mime = EXCLUDED.piece_mime,\n                 referent_nom = EXCLUDED.referent_nom,\n                 referent_telephone_e164 = EXCLUDED.referent_telephone_e164,\n                 soumis_le = EXCLUDED.soumis_le\n               RETURNING soumis_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "soumis_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "comptes.dossier_coursier",
+            "name": "soumis_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e636c16f20fbbfc7a3965c0d891925c304213588ca0ebe7e8e51cf4a5ba8791b"
+}
