@@ -68,7 +68,7 @@ async fn la_course_active_se_charge_en_une_requete_sous_300_ms(pool: PgPool) {
     // Le contenu est bien COMPLET : mesurer une réponse vide ne prouverait rien.
     let (_, corps) = bac.get("/courses/active", &bac.jeton_coursier).await;
     assert_eq!(corps["arrets"].as_array().unwrap().len(), 3);
-    assert!(corps["arrets"][0]["lignes"].as_array().unwrap().len() >= 1);
+    assert!(!corps["arrets"][0]["lignes"].as_array().unwrap().is_empty());
     assert_eq!(corps["livraison_id"], json!(course.livraison));
 }
 

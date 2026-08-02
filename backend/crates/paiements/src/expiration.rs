@@ -340,7 +340,7 @@ mod tests {
     /// appels sortants dans le même tour.
     #[test]
     fn le_lot_est_borne() {
-        assert!(LOT_MAX > 0 && LOT_MAX <= 100, "lot = {LOT_MAX}");
+        const { assert!(LOT_MAX > 0 && LOT_MAX <= 100) };
     }
 
     /// Un bilan neuf ne prétend rien avoir fait — la trace du job en dépend.
