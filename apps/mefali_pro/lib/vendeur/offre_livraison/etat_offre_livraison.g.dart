@@ -73,7 +73,7 @@ final class OffreLivraisonProvider
   }
 }
 
-String _$offreLivraisonHash() => r'1350f2ca5be7c14d1721e0331bbfe4214d8547c4';
+String _$offreLivraisonHash() => r'3ccbc3c108ad3f5f384d034a952fec02a88ce610';
 
 /// Le réglage d'**offre de livraison** d'un vendeur (VND-08 minimal, FR-046).
 ///
