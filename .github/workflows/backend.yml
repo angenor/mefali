@@ -6,11 +6,13 @@ on:
     paths:
       - 'backend/**'
       - 'openapi.json'
+      - 'scripts/verifier-schemas-openapi.sh'
       - '.github/workflows/backend.yml'
   pull_request:
     paths:
       - 'backend/**'
       - 'openapi.json'
+      - 'scripts/verifier-schemas-openapi.sh'
       - '.github/workflows/backend.yml'
 
 jobs:
@@ -53,5 +55,13 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Cache sqlx à jour
         run: cargo sqlx prepare --workspace --check
+      # AVANT les tests, pour la même raison que la frontière fournisseur : une
+      # collision de nom de schéma est un défaut de CONTRAT, et savoir que les
+      # tests passent au-dessus n'apprend rien — ils ne traversent pas les
+      # clients générés. Le script se replace lui-même à la racine, mais le
+      # `working-directory` du job vaut `backend` : on le neutralise ici.
+      - name: Schémas OpenAPI sans collision
+        working-directory: .
+        run: ./scripts/verifier-schemas-openapi.sh
       - name: Tests
         run: cargo test
