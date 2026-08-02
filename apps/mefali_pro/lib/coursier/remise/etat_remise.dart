@@ -42,6 +42,7 @@ class EtatRemise {
     this.confirmee = false,
     this.validationLocale = false,
     this.erreurCle,
+    this.uuidRemise,
   });
 
   /// Voie actuellement choisie.
@@ -68,6 +69,14 @@ class EtatRemise {
 
   /// Clé i18n du dernier refus, ou `null`.
   final String? erreurCle;
+
+  /// `uuid_client` réservé pour la remise EN COURS.
+  ///
+  /// Stable tant qu'on reste sur la même course — c'est ce qui rend le rejeu
+  /// idempotent (R4) — et remis à neuf dès qu'on en change. Sans cette remise à
+  /// neuf, la seconde remise de la journée repartait avec l'UUID de la première
+  /// et le serveur la rejetait sur `livraison_remise_uuid_client_key` (T088).
+  final String? uuidRemise;
 
   /// Compteur RETENU — le plus élevé des deux, exactement comme le serveur
   /// tranchera au rejeu (FR-045). L'afficher autrement ferait mentir « il reste
@@ -99,6 +108,7 @@ class EtatRemise {
     bool? confirmee,
     bool? validationLocale,
     String? erreurCle,
+    String? uuidRemise,
     bool effacerErreur = false,
   }) =>
       EtatRemise(
@@ -110,6 +120,7 @@ class EtatRemise {
         confirmee: confirmee ?? this.confirmee,
         validationLocale: validationLocale ?? this.validationLocale,
         erreurCle: effacerErreur ? null : (erreurCle ?? this.erreurCle),
+        uuidRemise: uuidRemise ?? this.uuidRemise,
       );
 }
 
@@ -137,6 +148,14 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
   /// Lien qui maintient le provider en vie tant que la remise est en cours.
   KeepAliveLink? _lien;
 
+  /// Livraison à laquelle appartient l'`uuid_client` retenu.
+  ///
+  /// Ce provider est `keepAlive` le temps d'une remise : sans ce repère, l'UUID
+  /// de la course PRÉCÉDENTE survivait jusqu'à la suivante, et le serveur
+  /// rejetait la seconde remise de la journée sur la contrainte d'unicité
+  /// `livraison_remise_uuid_client_key` (500). Voir [charger].
+  String? _livraisonUuid;
+
   @override
   EtatRemise build() {
     // `retry: pasDeRetry` est posé par la PORTÉE (`conteneurMefali`) —
@@ -152,6 +171,17 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
   /// du dernier `GET /courses/active`.
   Future<void> charger(String livraisonId) async {
     _lien ??= ref.keepAlive();
+    // Changement de course : l'`uuid_client` de la précédente ne doit PAS
+    // servir à celle-ci. `reinitialiser()` existait pour ça depuis le cycle
+    // 010, mais personne ne l'appelait — la deuxième remise de la journée
+    // partait avec l'UUID de la première, et le serveur la rejetait sur
+    // `livraison_remise_uuid_client_key` (500, rendu « Code incorrect » à
+    // l'écran). Le coursier ne pouvait plus livrer son deuxième client.
+    if (_livraisonUuid != null && _livraisonUuid != livraisonId) {
+      _uuidRemise = null;
+    }
+    _livraisonUuid = livraisonId;
+    _uuidRemise ??= _uuid.v7();
     final file = ref.read(fileActionsProvider);
     final essaisLocaux = await file.essaisHorsLigne(livraisonId);
     final course = ref.read(etatCourseActiveProvider).value;
@@ -165,6 +195,7 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
       // défaut, la voie principale de la maquette.
       voie: VoieRemise.qr,
       effacerErreur: true,
+      uuidRemise: _uuidRemise,
     );
   }
 
@@ -174,6 +205,7 @@ class EtatRemiseNotifier extends _$EtatRemiseNotifier {
   /// raison d'occuper la mémoire ni de risquer de contaminer la suivante.
   void reinitialiser() {
     _uuidRemise = null;
+    _livraisonUuid = null;
     state = const EtatRemise();
     _lien?.close();
     _lien = null;
