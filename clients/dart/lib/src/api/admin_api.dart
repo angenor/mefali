@@ -26,7 +26,7 @@ import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_declaration.dart';
-import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
+import 'package:mefali_api_client/src/model/offre_livraison_reglee.dart';
 import 'package:mefali_api_client/src/model/photo_admin_dto.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
@@ -1022,9 +1022,9 @@ class AdminApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [OffreLivraisonVendeur] as data
+  /// Returns a [Future] containing a [Response] with a [OffreLivraisonReglee] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OffreLivraisonVendeur>> definirOffreLivraisonAdmin({ 
+  Future<Response<OffreLivraisonReglee>> definirOffreLivraisonAdmin({ 
     required String id,
     required OffreLivraisonDeclaration offreLivraisonDeclaration,
     CancelToken? cancelToken,
@@ -1081,14 +1081,14 @@ class AdminApi {
       onReceiveProgress: onReceiveProgress,
     );
 
-    OffreLivraisonVendeur? _responseData;
+    OffreLivraisonReglee? _responseData;
 
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
-        specifiedType: const FullType(OffreLivraisonVendeur),
-      ) as OffreLivraisonVendeur;
+        specifiedType: const FullType(OffreLivraisonReglee),
+      ) as OffreLivraisonReglee;
 
     } catch (error, stackTrace) {
       throw DioException(
@@ -1100,7 +1100,7 @@ class AdminApi {
       );
     }
 
-    return Response<OffreLivraisonVendeur>(
+    return Response<OffreLivraisonReglee>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

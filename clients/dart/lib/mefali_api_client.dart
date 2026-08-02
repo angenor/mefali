@@ -157,6 +157,7 @@ export 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
 export 'package:mefali_api_client/src/model/mouvement_caisse.dart';
 export 'package:mefali_api_client/src/model/offre_courante.dart';
 export 'package:mefali_api_client/src/model/offre_livraison_declaration.dart';
+export 'package:mefali_api_client/src/model/offre_livraison_reglee.dart';
 export 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
 export 'package:mefali_api_client/src/model/paiement_commande.dart';
 export 'package:mefali_api_client/src/model/paiement_panier.dart';

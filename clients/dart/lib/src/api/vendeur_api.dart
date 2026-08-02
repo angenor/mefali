@@ -19,7 +19,7 @@ import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/horaires_semaine_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_declaration.dart';
-import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
+import 'package:mefali_api_client/src/model/offre_livraison_reglee.dart';
 import 'package:mefali_api_client/src/model/prestataire_pilotable.dart';
 import 'package:mefali_api_client/src/model/recu_arret.dart';
 
@@ -355,9 +355,9 @@ class VendeurApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [OffreLivraisonVendeur] as data
+  /// Returns a [Future] containing a [Response] with a [OffreLivraisonReglee] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OffreLivraisonVendeur>> definirOffreLivraison({ 
+  Future<Response<OffreLivraisonReglee>> definirOffreLivraison({ 
     required String id,
     required OffreLivraisonDeclaration offreLivraisonDeclaration,
     CancelToken? cancelToken,
@@ -414,14 +414,14 @@ class VendeurApi {
       onReceiveProgress: onReceiveProgress,
     );
 
-    OffreLivraisonVendeur? _responseData;
+    OffreLivraisonReglee? _responseData;
 
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
-        specifiedType: const FullType(OffreLivraisonVendeur),
-      ) as OffreLivraisonVendeur;
+        specifiedType: const FullType(OffreLivraisonReglee),
+      ) as OffreLivraisonReglee;
 
     } catch (error, stackTrace) {
       throw DioException(
@@ -433,7 +433,7 @@ class VendeurApi {
       );
     }
 
-    return Response<OffreLivraisonVendeur>(
+    return Response<OffreLivraisonReglee>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

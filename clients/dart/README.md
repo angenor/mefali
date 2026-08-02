@@ -316,6 +316,7 @@ Class | Method | HTTP request | Description
  - [MouvementCaisse](doc/MouvementCaisse.md)
  - [OffreCourante](doc/OffreCourante.md)
  - [OffreLivraisonDeclaration](doc/OffreLivraisonDeclaration.md)
+ - [OffreLivraisonReglee](doc/OffreLivraisonReglee.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
  - [PaiementCommande](doc/PaiementCommande.md)
  - [PaiementPanier](doc/PaiementPanier.md)

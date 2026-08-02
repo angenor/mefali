@@ -519,8 +519,17 @@ impl OffreLivraisonDeclarationDto {
 }
 
 /// Offre en vigueur après le geste.
+///
+/// ⚠ Le nom de schéma est `OffreLivraisonReglee`, PAS `OffreLivraisonVendeur` :
+/// ce dernier est déjà pris par l'**entrée de calcul** de `tarification`
+/// (`admin_tarification_http`), dont la forme est tout autre (`toujours`,
+/// `au_dela`). Deux types qui revendiquent le même nom de schéma n'en laissent
+/// qu'un dans `openapi.json` — et le client généré désérialise alors la réponse
+/// de cette route avec le mauvais modèle. Trouvé sur appareil en T085 : le
+/// vendeur voyait « Impossible de charger la boutique » sur un réglage
+/// **pourtant enregistré**.
 #[derive(Debug, Serialize, ToSchema)]
-#[schema(as = OffreLivraisonVendeur)]
+#[schema(as = OffreLivraisonReglee)]
 pub struct OffreLivraisonDto {
     /// `jamais` | `toujours` | `au_dela`.
     pub offre: String,

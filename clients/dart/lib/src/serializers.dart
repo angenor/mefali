@@ -142,6 +142,7 @@ import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/mouvement_caisse.dart';
 import 'package:mefali_api_client/src/model/offre_courante.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_declaration.dart';
+import 'package:mefali_api_client/src/model/offre_livraison_reglee.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
 import 'package:mefali_api_client/src/model/paiement_commande.dart';
 import 'package:mefali_api_client/src/model/paiement_panier.dart';
@@ -340,6 +341,7 @@ part 'serializers.g.dart';
   MouvementCaisse,
   OffreCourante,
   OffreLivraisonDeclaration,
+  OffreLivraisonReglee,
   OffreLivraisonVendeur,
   PaiementCommande,
   PaiementPanier,

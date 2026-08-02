@@ -30,7 +30,7 @@ void main() {
 
     // Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
     //
-    //Future<OffreLivraisonVendeur> definirOffreLivraison(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
+    //Future<OffreLivraisonReglee> definirOffreLivraison(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
     test('test definirOffreLivraison', () async {
       // TODO
     });

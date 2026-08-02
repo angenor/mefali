@@ -463,7 +463,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **definirOffreLivraisonAdmin**
-> OffreLivraisonVendeur definirOffreLivraisonAdmin(id, offreLivraisonDeclaration)
+> OffreLivraisonReglee definirOffreLivraisonAdmin(id, offreLivraisonDeclaration)
 
 Miroir admin de l'offre de livraison — l'exploitation configure pour un vendeur qui n'a pas l'app (FR-046).
 
@@ -492,7 +492,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OffreLivraisonVendeur**](OffreLivraisonVendeur.md)
+[**OffreLivraisonReglee**](OffreLivraisonReglee.md)
 
 ### Authorization
 

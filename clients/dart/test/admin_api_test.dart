@@ -79,7 +79,7 @@ void main() {
 
     // Miroir admin de l'offre de livraison — l'exploitation configure pour un vendeur qui n'a pas l'app (FR-046).
     //
-    //Future<OffreLivraisonVendeur> definirOffreLivraisonAdmin(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
+    //Future<OffreLivraisonReglee> definirOffreLivraisonAdmin(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
     test('test definirOffreLivraisonAdmin', () async {
       // TODO
     });

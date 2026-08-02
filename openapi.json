@@ -2903,7 +2903,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OffreLivraisonVendeur"
+                  "$ref": "#/components/schemas/OffreLivraisonReglee"
                 }
               }
             }
@@ -8754,7 +8754,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OffreLivraisonVendeur"
+                  "$ref": "#/components/schemas/OffreLivraisonReglee"
                 }
               }
             }
@@ -13558,6 +13558,32 @@
             ],
             "format": "int64",
             "description": "Montant de panier à partir duquel l'offre joue (unités mineures)."
+          }
+        }
+      },
+      "OffreLivraisonReglee": {
+        "type": "object",
+        "description": "Offre en vigueur après le geste.\n\n⚠ Le nom de schéma est `OffreLivraisonReglee`, PAS `OffreLivraisonVendeur` :\nce dernier est déjà pris par l'**entrée de calcul** de `tarification`\n(`admin_tarification_http`), dont la forme est tout autre (`toujours`,\n`au_dela`). Deux types qui revendiquent le même nom de schéma n'en laissent\nqu'un dans `openapi.json` — et le client généré désérialise alors la réponse\nde cette route avec le mauvais modèle. Trouvé sur appareil en T085 : le\nvendeur voyait « Impossible de charger la boutique » sur un réglage\n**pourtant enregistré**.",
+        "required": [
+          "offre",
+          "message_cle"
+        ],
+        "properties": {
+          "message_cle": {
+            "type": "string",
+            "description": "Rappel en clair que les commandes en cours ne bougent pas (FR-048)."
+          },
+          "offre": {
+            "type": "string",
+            "description": "`jamais` | `toujours` | `au_dela`."
+          },
+          "seuil_unites": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Seuil déclaré (`null` hors `au_dela`)."
           }
         }
       },

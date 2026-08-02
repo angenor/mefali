@@ -156,7 +156,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **definirOffreLivraison**
-> OffreLivraisonVendeur definirOffreLivraison(id, offreLivraisonDeclaration)
+> OffreLivraisonReglee definirOffreLivraison(id, offreLivraisonDeclaration)
 
 Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
 
@@ -185,7 +185,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OffreLivraisonVendeur**](OffreLivraisonVendeur.md)
+[**OffreLivraisonReglee**](OffreLivraisonReglee.md)
 
 ### Authorization
 

@@ -4843,6 +4843,29 @@ export interface components {
             seuil_unites?: number | null;
         };
         /**
+         * @description Offre en vigueur après le geste.
+         *
+         *     ⚠ Le nom de schéma est `OffreLivraisonReglee`, PAS `OffreLivraisonVendeur` :
+         *     ce dernier est déjà pris par l'**entrée de calcul** de `tarification`
+         *     (`admin_tarification_http`), dont la forme est tout autre (`toujours`,
+         *     `au_dela`). Deux types qui revendiquent le même nom de schéma n'en laissent
+         *     qu'un dans `openapi.json` — et le client généré désérialise alors la réponse
+         *     de cette route avec le mauvais modèle. Trouvé sur appareil en T085 : le
+         *     vendeur voyait « Impossible de charger la boutique » sur un réglage
+         *     **pourtant enregistré**.
+         */
+        OffreLivraisonReglee: {
+            /** @description Rappel en clair que les commandes en cours ne bougent pas (FR-048). */
+            message_cle: string;
+            /** @description `jamais` | `toujours` | `au_dela`. */
+            offre: string;
+            /**
+             * Format: int64
+             * @description Seuil déclaré (`null` hors `au_dela`).
+             */
+            seuil_unites?: number | null;
+        };
+        /**
          * @description Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa
          *     configuration relève de VND, son financement de PAY (hors périmètre).
          */
@@ -8226,7 +8249,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OffreLivraisonVendeur"];
+                    "application/json": components["schemas"]["OffreLivraisonReglee"];
                 };
             };
             /** @description Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue. */
@@ -12528,7 +12551,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OffreLivraisonVendeur"];
+                    "application/json": components["schemas"]["OffreLivraisonReglee"];
                 };
             };
             /** @description Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue. */
