@@ -368,7 +368,8 @@ class ServiceContinu extends _$ServiceContinu {
     // tombent donc sur des instances vivantes, sans rien maintenir en vie.
     // Silences obligatoires (FR-101, FR-102) : hors ligne ou déjà en course,
     // aucune offre ne peut parvenir — sonner serait un réveil pour rien.
-    // ignore: only_use_keep_alive_inside_keep_alive
+    // (Le lint est abaissé à `info` dans analysis_options.yaml : riverpod_lint
+    // 3.1.4 n'honore aucun `// ignore:`, celui qui était ici ne faisait rien.)
     final course = ref.read(etatCourseActiveProvider).value;
     final enCourse = course != null && course.arrets.isNotEmpty;
     if (!sonnerieAutorisee(
@@ -379,7 +380,6 @@ class ServiceContinu extends _$ServiceContinu {
     }
 
     ref.invalidate(offreEnCoursProvider);
-    // ignore: only_use_keep_alive_inside_keep_alive
     final offre = ref.read(offreEnCoursProvider).value;
     if (offre == null) {
       // L'offre a disparu (échue, prise, refusée) : la notification s'efface.
@@ -417,7 +417,6 @@ class ServiceContinu extends _$ServiceContinu {
   Future<void> _echantillonnerPresence() async {
     if (!state.actif || !state.enArrierePlan) return;
     // Même remarque que dans `_regarderUneOffre` : instance déjà vivante.
-    // ignore: only_use_keep_alive_inside_keep_alive
     final course = ref.read(etatCourseActiveProvider).value;
     // Seulement une fois ARRIVÉ chez le client : avant, la présence ne prouve
     // rien, et l'échantillonner allumerait le GPS toute la course.
@@ -425,7 +424,6 @@ class ServiceContinu extends _$ServiceContinu {
     final livraison = course.livraisonId;
     if (livraison == null || livraison.isEmpty) return;
     await ref
-        // ignore: only_use_keep_alive_inside_keep_alive
         .read(etatPreuvesProvider.notifier)
         .echantillonnerPresence(livraison);
   }

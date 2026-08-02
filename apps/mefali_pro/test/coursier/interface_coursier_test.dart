@@ -228,6 +228,7 @@ Widget _monter(
       ),
     );
 
+@Dependencies([ServiceContinu])
 void main() {
   testWidgets(
     'sans course ni offre, l\'espace coursier ouvre K1 — c\'est là que Yao décide s\'il travaille',

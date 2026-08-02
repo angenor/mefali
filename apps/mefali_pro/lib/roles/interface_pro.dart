@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/experimental/scope.dart';
 
 import '../coursier/disponibilite/emetteur_position.dart';
 import '../coursier/interface_coursier.dart';
+import '../coursier/service_continu/service_continu.dart';
 import '../l10n/app_localizations.dart';
 import '../vendeur/interface_vendeur.dart';
 import 'etat_roles.dart';
@@ -25,7 +26,7 @@ import 'pied_pro.dart';
 /// `@Dependencies` remonte celle de l'espace coursier : la déclaration doit
 /// suivre la chaîne de montage jusqu'ici, sinon un point de montage qui
 /// surcharge la source de positions verrait son override ignoré.
-@Dependencies([EmetteurPosition])
+@Dependencies([EmetteurPosition, ServiceContinu])
 class InterfacePro extends StatelessWidget {
   /// Crée l'interface du rôle actif.
   const InterfacePro({super.key, required this.etat});

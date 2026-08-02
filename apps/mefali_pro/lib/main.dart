@@ -6,6 +6,7 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/experimental/scope.dart';
 
 import 'coursier/disponibilite/emetteur_position.dart';
+import 'coursier/service_continu/service_continu.dart';
 import 'l10n/app_localizations.dart';
 import 'roles/routeur_roles.dart';
 import 'splash_screen.dart';
@@ -19,7 +20,7 @@ const String _urlApi =
 /// ce conteneur racine qui héberge l'émetteur de position, et la déclaration
 /// doit être complète de bout en bout pour qu'un override de portée soit
 /// honoré plutôt que silencieusement ignoré.
-@Dependencies([EmetteurPosition])
+@Dependencies([EmetteurPosition, ServiceContinu])
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // La SEULE forme qui donne un handle sur le conteneur AVANT runApp (R10) :
@@ -46,7 +47,7 @@ Future<void> main() async {
 /// `@Dependencies` clôt la chaîne remontée depuis l'espace coursier : c'est
 /// la racine qui héberge l'émetteur de position, et la déclaration doit être
 /// complète de bout en bout pour qu'un override de portée soit honoré.
-@Dependencies([EmetteurPosition])
+@Dependencies([EmetteurPosition, ServiceContinu])
 class MefaliProApp extends StatelessWidget {
   /// Crée l'application pro.
   const MefaliProApp({super.key});

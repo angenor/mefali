@@ -144,7 +144,7 @@ Widget _monter(ProviderContainer container) => harnaisApp(
       ),
     );
 
-@Dependencies([EmetteurPosition, ServiceContinu])
+@Dependencies([ServiceContinu])
 void main() {
   testWidgets(
     'le plafond retenu est affiché avec sa source — Yao voit lequel s\'applique',

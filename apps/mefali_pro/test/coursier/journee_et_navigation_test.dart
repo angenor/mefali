@@ -30,8 +30,10 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_pro/coursier/course/etat_course.dart';
 import 'package:mefali_pro/coursier/disponibilite/emetteur_position.dart';
 import 'package:mefali_pro/coursier/interface_coursier.dart';
+import 'package:mefali_pro/coursier/service_continu/service_continu.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
 import 'package:mefali_pro/roles/etat_roles.dart';
+import 'package:riverpod_annotation/experimental/scope.dart';
 
 /// `GET /moi/disponibilite` — hors ligne, plafond déjà connu.
 Map<String, Object?> _disponibilite() => {
@@ -164,6 +166,7 @@ EtatRolesData _coursierSeul() => const EtatRolesData(
       actif: RolePro.coursier,
     );
 
+@Dependencies([ServiceContinu])
 Widget _monter(ProviderContainer container) => harnaisApp(
       container: container,
       localizationsDelegates: const [
@@ -181,6 +184,7 @@ Widget _monter(ProviderContainer container) => harnaisApp(
       ),
     );
 
+@Dependencies([ServiceContinu])
 Future<void> _poser(WidgetTester tester, ProviderContainer container) async {
   tester.view.physicalSize = const Size(1080, 4200);
   tester.view.devicePixelRatio = 3;
@@ -191,6 +195,7 @@ Future<void> _poser(WidgetTester tester, ProviderContainer container) async {
   await tester.pump(const Duration(milliseconds: 200));
 }
 
+@Dependencies([ServiceContinu])
 void main() {
   testWidgets('K1-1a — le bandeau de gains montre les courses et leur somme',
       (tester) async {

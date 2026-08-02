@@ -17,3 +17,31 @@ plugins:
       avoid_public_notifier_properties: error
       avoid_build_context_in_providers: error
       protected_notifier_properties: error
+      # ⚠ ABAISSÉ à info, PAS supprimé — et ce n'est pas un détail de forme.
+      #
+      # Les 4 sites sont dans service_continu.dart : un provider keepAlive qui
+      # `ref.read` trois providers autoDispose (course active, offre, preuves).
+      # Le lint a raison DANS LE CAS GÉNÉRAL — un service qui ferait NAÎTRE ces
+      # providers les rechargerait toutes les 5 s en arrière-plan. Ici l'espace
+      # coursier est monté tant que Yao travaille et OBSERVE déjà les trois : les
+      # lectures tombent sur des instances vivantes. L'argument est écrit en
+      # toutes lettres au-dessus de chaque site.
+      #
+      # Corriger le lint « pour de vrai » voudrait dire retoucher la durée de vie
+      # des providers du service qui garde l'app vivante écran éteint (CRS-02,
+      # US7) — validé sur APPAREIL au cycle 010. On ne casse pas ça pour
+      # éteindre un lint ; si ce cycle de vie doit changer, c'est un lot dédié
+      # avec une revalidation sur appareil.
+      #
+      # Pourquoi `info` et pas un `// ignore:` ciblé : AUCUN mécanisme de
+      # suppression ne fonctionne sur les diagnostics de riverpod_lint 3.1.4
+      # (plugin analysis_server_plugin) — vérifié un par un le 2026-08-02 :
+      #   · `// ignore:` ligne à ligne          → le plugin émet quand même
+      #   · `// ignore_for_file:`                → idem, + 8 `duplicate_ignore`
+      #   · `plugins: … diagnostics: … : ignore` → sans effet
+      #   · `analyzer: errors: … : ignore`       → `unrecognized_error_code`
+      # `info` est donc le seul réglage qui porte. Il ne SUPPRIME rien : les 4
+      # lignes restent affichées à chaque `dart analyze`, elles cessent seulement
+      # d'être bloquantes. Le jour où riverpod_lint honorera `// ignore:`, cette
+      # ligne doit disparaître au profit de quatre ignores ciblés.
+      only_use_keep_alive_inside_keep_alive: info

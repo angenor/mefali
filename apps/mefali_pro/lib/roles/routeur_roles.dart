@@ -4,6 +4,7 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/experimental/scope.dart';
 
 import '../coursier/disponibilite/emetteur_position.dart';
+import '../coursier/service_continu/service_continu.dart';
 import 'ecran_etat_demande.dart';
 import 'etat_roles.dart';
 import 'interface_pro.dart';
@@ -23,7 +24,7 @@ import 'interface_pro.dart';
 /// l'app : c'est ici qu'un test — ou un point de montage — peut surcharger la
 /// source de positions sans que Riverpod héberge l'émetteur dans un conteneur
 /// où l'override n'existe pas.
-@Dependencies([EmetteurPosition])
+@Dependencies([EmetteurPosition, ServiceContinu])
 class RouteurRoles extends ConsumerStatefulWidget {
   /// Crée le routeur.
   const RouteurRoles({super.key});

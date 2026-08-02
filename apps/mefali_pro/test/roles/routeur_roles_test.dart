@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_pro/coursier/disponibilite/emetteur_position.dart';
+import 'package:mefali_pro/coursier/service_continu/service_continu.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
 import 'package:mefali_pro/roles/etat_roles.dart';
 import 'package:mefali_pro/roles/routeur_roles.dart';
@@ -61,7 +62,7 @@ Future<void> _fin(WidgetTester tester, ProviderContainer container) async {
   container.dispose();
 }
 
-@Dependencies([EmetteurPosition])
+@Dependencies([EmetteurPosition, ServiceContinu])
 void main() {
   group('RouteurRoles — porte de Mefali Pro (FR-013)', () {
     testWidgets(
