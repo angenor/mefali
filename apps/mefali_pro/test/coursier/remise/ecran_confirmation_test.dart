@@ -22,6 +22,7 @@ import 'package:mefali_core/harnais.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:mefali_pro/coursier/course/ecran_course_active.dart';
 import 'package:mefali_pro/coursier/course/etat_course.dart';
+import 'package:mefali_pro/coursier/remise/ecran_confirmation.dart';
 import 'package:mefali_pro/coursier/remise/etat_remise.dart';
 import 'package:mefali_pro/coursier/remise/pave_code.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
@@ -37,9 +38,13 @@ Map<String, Object?> _course({
   bool depotAutorise = false,
   bool codeBloque = false,
   int essaisConsommes = 0,
+  String modePaiement = 'cash',
+  int montantAEncaisser = 5800,
+  String livraisonId = _livraison,
+  String empreinteCode = 'a1b2',
 }) =>
     {
-      'livraison_id': _livraison,
+      'livraison_id': livraisonId,
       'commande_id': _commande,
       'etat': 'en_livraison',
       'devise': 'XOF',
@@ -78,13 +83,13 @@ Map<String, Object?> _course({
         'depot_autorise': depotAutorise,
       },
       'remise': {
-        'empreinte_code': 'a1b2',
+        'empreinte_code': empreinteCode,
         'empreinte_jeton': 'c3d4',
         'essais_consommes': essaisConsommes,
         'essais_max': 3,
         'code_bloque': codeBloque,
-        'montant_a_encaisser_unites': 5800,
-        'mode_paiement': 'cash',
+        'montant_a_encaisser_unites': montantAEncaisser,
+        'mode_paiement': modePaiement,
         'preuves': {
           'appels_min': 2,
           'espacement_s': 180,
@@ -337,4 +342,89 @@ void main() {
     expect(container.read(etatRemiseProvider).essaisRestants, 1);
     expect(container.read(etatRemiseProvider).codeBloque, isFalse);
   });
+
+  // ── T088 — ce que la DEUXIÈME course de la journée a mis au jour ─────────
+
+  testWidgets(
+    'changer de course remet l\'uuid_client de remise à neuf',
+    (tester) async {
+      // Le défaut, constaté sur émulateur : `_uuidRemise` survivait d'une
+      // course à l'autre (ce provider est keepAlive le temps d'une remise).
+      // La seconde remise repartait avec l'UUID de la première, et le serveur
+      // la rejetait sur `livraison_remise_uuid_client_key` — 500. Le coursier
+      // ne pouvait pas livrer son deuxième client de la journée, et l'écran
+      // lui disait « Code incorrect ».
+      const livraisonB = '019fa000-0000-7000-8000-00000000000c';
+      final container = _conteneur(course: _course());
+      addTearDown(container.dispose);
+      await _poser(tester, container);
+
+      final notifier = container.read(etatRemiseProvider.notifier);
+
+      await notifier.charger(_livraison);
+      final premier = container.read(etatRemiseProvider).uuidRemise;
+      expect(premier, isNotNull,
+          reason: 'l\'UUID est réservé dès le chargement de la remise');
+
+      await notifier.charger(livraisonB);
+      expect(
+        container.read(etatRemiseProvider).uuidRemise,
+        isNot(premier),
+        reason: 'garder l\'UUID de la course précédente fait rejeter la '
+            'seconde remise par la contrainte d\'unicité du serveur',
+      );
+
+      // …et le rechargement de la MÊME course ne le change pas : c'est ce qui
+      // rend le rejeu idempotent (R4).
+      final courant = container.read(etatRemiseProvider).uuidRemise;
+      await notifier.charger(livraisonB);
+      expect(container.read(etatRemiseProvider).uuidRemise, courant);
+    },
+  );
+
+  testWidgets(
+    'une panne serveur n\'accuse pas le code du client',
+    (tester) async {
+      // `erreur_interne` (5xx) tombait sur « Code incorrect. » : le coursier
+      // redemandait le code, échouait, et brûlait ses trois essais.
+      await _poser(tester, _conteneur(course: _course()));
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(EcranCourseActive)),
+      )!;
+
+      expect(messageErreurRemise(l10n, 'remise_incorrecte'),
+          l10n.crsErreurCodeIncorrect);
+      expect(messageErreurRemise(l10n, 'code_epuise'), l10n.crsErreurCodeEpuise);
+      expect(
+        messageErreurRemise(l10n, 'erreur_interne'),
+        isNot(l10n.crsErreurCodeIncorrect),
+        reason: 'une panne serveur n\'est pas un code faux',
+      );
+      expect(messageErreurRemise(l10n, 'erreur_interne'),
+          contains('pas le code du client'));
+    },
+  );
+
+  testWidgets(
+    'commande PRÉPAYÉE : aucun bloc de paiement sous « Rien à encaisser »',
+    (tester) async {
+      // SC-012 : rien ne doit pouvoir se lire comme un encaissement à faire.
+      // Le rappel « jamais de paiement partiel », avec son lien mobile money,
+      // s'affichait pourtant juste sous « Rien à encaisser ».
+      await _ecranHaut(tester);
+      final container = _conteneur(
+        course: _course(modePaiement: 'mobile_money', montantAEncaisser: 0),
+      );
+      addTearDown(container.dispose);
+      await _poser(tester, container);
+
+      expect(find.text('Rien à encaisser'), findsOneWidget);
+      expect(
+        find.textContaining('Jamais de paiement partiel'),
+        findsNothing,
+        reason: 'parler de paiement sous « Rien à encaisser » rouvre '
+            'exactement l\'ambiguïté que SC-012 ferme',
+      );
+    },
+  );
 }

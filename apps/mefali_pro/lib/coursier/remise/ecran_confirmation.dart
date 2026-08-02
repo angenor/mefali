@@ -125,8 +125,15 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
                 devise: etat.devise,
                 modePaiement: etat.modePaiement,
               ),
-              const SizedBox(height: MefaliTokens.space3),
-              _JamaisPartiel(enLigne: widget.enLigne),
+              // Seulement s'il reste quelque chose à encaisser. Sur une
+              // commande PRÉPAYÉE, ce bloc parlait d'un choix « cash ou mobile
+              // money » qui n'existe plus, et proposait même un lien de
+              // paiement juste sous « Rien à encaisser » — l'ambiguïté exacte
+              // que SC-012 existe pour supprimer (T088).
+              if (etat.modePaiement == 'cash') ...[
+                const SizedBox(height: MefaliTokens.space3),
+                _JamaisPartiel(enLigne: widget.enLigne),
+              ],
               if (!widget.enLigne) ...[
                 const SizedBox(height: MefaliTokens.space3),
                 _Rassurance(message: l10n.crsRemiseScanEtCodeSansReseau),
