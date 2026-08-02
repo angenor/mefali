@@ -141,6 +141,7 @@ export 'package:mefali_api_client/src/model/litige_vu.dart';
 export 'package:mefali_api_client/src/model/livraison_commande.dart';
 export 'package:mefali_api_client/src/model/lot_de_presence.dart';
 export 'package:mefali_api_client/src/model/mes_commandes.dart';
+export 'package:mefali_api_client/src/model/mes_vehicules.dart';
 export 'package:mefali_api_client/src/model/mode_collecte.dart';
 export 'package:mefali_api_client/src/model/modifier_adresse.dart';
 export 'package:mefali_api_client/src/model/modifier_article_dto.dart';

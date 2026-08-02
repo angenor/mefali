@@ -35,7 +35,8 @@ pub use adresse::{
 };
 pub use depot::{Comptes, PgComptes};
 pub use dossier::{
-    DossierCoursierAdmin, IssueSoumission, PieceIdentite, SoumissionDossier, PIECE_MIMES,
+    DossierCoursierAdmin, IssueSoumission, IssueVehicules, PieceIdentite, SoumissionDossier,
+    PIECE_MIMES,
     PIECE_TAILLE_MAX, REFERENT_NOM_MAX,
 };
 pub use inscription::{IssueVerification, SessionOuverte};

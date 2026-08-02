@@ -89,6 +89,18 @@ pub enum IssueSoumission {
     DejaEnAttente(DossierCoursier),
 }
 
+/// Issue d'un remplacement de flotte sur un dossier déjà validé.
+#[derive(Debug, Clone)]
+pub enum IssueVehicules {
+    /// La flotte a changé : les lignes sont réécrites et
+    /// `dossier_coursier.vehicules_modifies` est émis.
+    Modifiee(DossierCoursier),
+    /// La flotte demandée est celle déjà déclarée. Rien n'est écrit, aucun
+    /// événement n'est émis — un rejeu réseau ne doit pas laisser la trace d'un
+    /// changement qui n'a eu lieu qu'une fois (patron `adresse.modifiee`).
+    Inchangee(DossierCoursier),
+}
+
 /// Dossier + identité du compte, pour la revue admin (contrat
 /// `DossierCoursierAdmin`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -270,6 +282,123 @@ impl PgComptes {
             },
             piece_orpheline,
         })
+    }
+
+    /// Remplace la flotte déclarée d'un dossier coursier DÉJÀ validé.
+    ///
+    /// Ne touche QUE `comptes.vehicule_declare` : ni la pièce d'identité, ni le
+    /// référent, ni `soumis_le`, ni `attribution_role`. C'est la différence
+    /// entière avec [`Self::soumettre_dossier_coursier`], dont la sémantique
+    /// « soumettre ou re-soumettre après refus » reste intacte.
+    ///
+    /// ## Pourquoi aucune revue admin
+    ///
+    /// Le rôle a été validé sur la pièce d'identité et le référent, pas sur le
+    /// véhicule. Un coursier qui vend sa moto et achète un tricycle perdrait
+    /// son rôle en attendant une revue — c'est le blocage qu'on corrige, pas un
+    /// blocage à déplacer. Le changement reste TRACÉ, parce qu'il déplace
+    /// l'éligibilité au dispatch et le plafond d'avance : l'événement porte les
+    /// deux flottes, la table n'en gardant aucun historique.
+    ///
+    /// ## Ce que la fonction refuse
+    ///
+    /// - rôle coursier absent ou non `valide` → [`ErreurComptes::TransitionInvalide`].
+    ///   La garde de l'appelant ne suffit pas : `Auth` lit les rôles à
+    ///   l'ouverture de la requête, hors du verrou. Une suspension admin
+    ///   concurrente passerait entre les deux si le domaine ne relisait pas ;
+    /// - aucun dossier → [`ErreurComptes::DossierInconnu`]. La contrainte de clé
+    ///   étrangère l'imposerait de toute façon, mais en `500` opaque ;
+    /// - liste vide → [`ErreurComptes::DossierIncomplet`]. Pour cesser de
+    ///   rouler on passe hors ligne ; vider sa flotte reconstruirait l'impasse ;
+    /// - véhicule hors des types ACTIFS de la zone → [`ErreurComptes::VehiculeHorsZone`].
+    ///
+    /// Deux appels simultanés du même compte sont sérialisés par le MÊME verrou
+    /// consultatif que la soumission — une classe différente les laisserait
+    /// s'entrelacer, et le `DELETE` de l'un annulerait l'`INSERT` de l'autre.
+    pub async fn remplacer_vehicules_declares(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        compte: Uuid,
+        slugs: &[String],
+    ) -> Result<IssueVehicules, ErreurComptes> {
+        verrouiller_soumission_compte(tx, compte).await?;
+
+        let zone = self.zone_du_compte(tx, compte).await?;
+
+        // Relecture du statut SOUS le verrou (voir la doc ci-dessus).
+        let statut = statut_role(tx, compte, Role::Coursier).await?;
+        if statut != Some(StatutRole::Valide) {
+            return Err(ErreurComptes::TransitionInvalide {
+                role: Role::Coursier,
+                avant: statut.map_or_else(|| "aucun".to_owned(), |s| s.comme_str().to_owned()),
+                apres: StatutRole::Valide.comme_str().to_owned(),
+            });
+        }
+
+        if slugs.is_empty() {
+            return Err(ErreurComptes::DossierIncomplet);
+        }
+
+        // Rend `DossierInconnu` si le compte n'a pas de dossier, et donne au
+        // passage la flotte AVANT — dont l'événement a besoin, et sans laquelle
+        // on ne saurait pas si quelque chose a changé.
+        let avant = self.dossier_dans_tx(tx, compte, zone).await?;
+        let types = self.resoudre_vehicules(zone, slugs).await?;
+
+        // Comparaison par ENSEMBLE de slugs : `resoudre_vehicules` a déjà
+        // dédoublonné et ordonné par `zones.type_transport.ordre`, et
+        // `dossier_dans_tx` lit dans ce même ordre — deux listes égales
+        // décrivent donc la même flotte.
+        let slugs_avant: Vec<&str> = avant.vehicules.iter().map(|v| v.slug.as_str()).collect();
+        let slugs_apres: Vec<&str> = types.iter().map(|t| t.slug.as_str()).collect();
+        if slugs_avant == slugs_apres {
+            return Ok(IssueVehicules::Inchangee(avant));
+        }
+
+        sqlx::query!(
+            "DELETE FROM comptes.vehicule_declare WHERE compte_id = $1",
+            compte,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        let ids: Vec<Uuid> = types.iter().map(|_| Uuid::now_v7()).collect();
+        let types_ids: Vec<Uuid> = types.iter().map(|t| t.type_transport_id).collect();
+        sqlx::query!(
+            r#"INSERT INTO comptes.vehicule_declare (id, compte_id, type_transport_id)
+               SELECT v.id, $2, v.type_transport
+               FROM unnest($1::uuid[], $3::uuid[]) AS v(id, type_transport)"#,
+            &ids,
+            compte,
+            &types_ids,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "dossier_coursier.vehicules_modifies",
+                entite_type: "dossier_coursier",
+                entite_id: compte,
+                // Minimisation ARTCI : des slugs, rien d'autre. Ni pièce, ni
+                // référent, ni téléphone (taxonomie T004).
+                payload: json!({
+                    "zone": zone,
+                    "compte": compte,
+                    "role": Role::Coursier.comme_str(),
+                    "vehicules": slugs_apres,
+                    "avant": slugs_avant,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+
+        Ok(IssueVehicules::Modifiee(DossierCoursier {
+            vehicules: types,
+            ..avant
+        }))
     }
 
     /// Dossier d'un compte (`GET /moi/dossier-coursier`).

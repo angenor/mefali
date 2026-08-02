@@ -56,6 +56,15 @@ void main() {
       // TODO
     });
 
+    // Change les véhicules d'un dossier coursier DÉJÀ validé (CPT-04).
+    //
+    // `PUT` et non `PATCH` : l'écriture est un remplacement intégral, et le corps porte la flotte entière. Route DISTINCTE de `POST /moi/dossier-coursier`, dont la sémantique « soumettre ou re-soumettre après refus » est juste et testée — la surcharger ferait repasser par une revue admin un coursier qui change simplement de moto.  Aucun identifiant de compte en chemin : `auth.compte_id` est le seul compte touchable. La garde de propriété la plus sûre est celle qu'on ne peut pas oublier d'écrire (le cycle 008 a livré une fuite exactement là).  L'en-tête d'idempotence est exigée par cohérence avec `POST`, mais n'est pas stockée : c'est le remplacement intégral, plus la branche « flotte inchangée » du domaine, qui rendent le rejeu inoffensif.
+    //
+    //Future<DossierCoursier> remplacerMesVehicules(String idempotencyKey, MesVehicules mesVehicules) async
+    test('test remplacerMesVehicules', () async {
+      // TODO
+    });
+
     // Enregistre un nouveau repère vocal — après purge, ou pour le refaire.
     //
     //Future<Adresse> remplacerRepereVocal(String adresseId, int dureeS, MultipartFile noteVocale) async

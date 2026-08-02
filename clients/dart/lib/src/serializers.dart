@@ -128,6 +128,7 @@ import 'package:mefali_api_client/src/model/litige_vu.dart';
 import 'package:mefali_api_client/src/model/livraison_commande.dart';
 import 'package:mefali_api_client/src/model/lot_de_presence.dart';
 import 'package:mefali_api_client/src/model/mes_commandes.dart';
+import 'package:mefali_api_client/src/model/mes_vehicules.dart';
 import 'package:mefali_api_client/src/model/mode_collecte.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
@@ -310,6 +311,7 @@ part 'serializers.g.dart';
   LivraisonCommande,
   LotDePresence,
   MesCommandes,
+  MesVehicules,
   ModeCollecte,
   ModifierAdresse,
   ModifierArticleDto,

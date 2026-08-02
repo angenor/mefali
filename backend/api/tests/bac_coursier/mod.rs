@@ -592,6 +592,7 @@ impl Bac {
         use api::admin_coursier_http as adm010;
         use api::commandes_http as cmd;
         use api::course_http as crs;
+        use api::comptes_http as cpt;
         use api::coursier_http as crs010;
         let pool = self.pool.clone();
         let comptes = self.comptes.clone();
@@ -613,6 +614,9 @@ impl Bac {
                 .service(crs010::deposer_photo_preuve)
                 .service(crs010::etat_preuves)
                 .service(crs010::ma_caisse)
+                // CPT-04 — la seule surface qui sort un coursier validé de
+                // l'impasse « aucun véhicule déclaré ».
+                .service(cpt::remplacer_mes_vehicules)
                 .service(crs010::ma_journee)
                 .service(cmd::creer_commande)
                 .service(cmd::suivre_commande)
@@ -899,6 +903,30 @@ impl Bac {
             .set_json(corps)
             .to_request();
         let resp = actix_web::test::call_service(&app, req).await;
+        Self::lire(resp).await
+    }
+
+    /// `PUT` JSON authentifié — sert le remplacement de flotte (CPT-04).
+    ///
+    /// Les en-têtes sont passés tels quels : c'est ainsi que l'absence
+    /// d'`Idempotency-Key` se teste, et elle doit se tester (le handler la
+    /// refuse avant d'atteindre le domaine).
+    pub async fn put(
+        &self,
+        uri: &str,
+        jeton: &str,
+        corps: Value,
+        entetes: &[(&str, &str)],
+    ) -> (u16, Value) {
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
+        let mut req = actix_web::test::TestRequest::put()
+            .uri(uri)
+            .insert_header(("authorization", format!("Bearer {jeton}")));
+        for (nom, valeur) in entetes {
+            req = req.insert_header((*nom, *valeur));
+        }
+        let resp = actix_web::test::call_service(&app, req.set_json(corps).to_request()).await;
         Self::lire(resp).await
     }
 
