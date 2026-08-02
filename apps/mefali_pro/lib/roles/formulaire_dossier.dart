@@ -9,8 +9,8 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:uuid/uuid.dart';
 
 import '../l10n/app_localizations.dart';
+import 'choix_vehicules.dart';
 import 'composants.dart';
-import 'libelles_roles.dart';
 
 /// Pièce d'identité choisie par le coursier.
 @immutable
@@ -188,7 +188,7 @@ class _FormulaireDossierCoursierState
                       ),
                       const SizedBox(height: MefaliTokens.space4),
                       _Section(titre: l10n.proDossierVehicules),
-                      _ChoixVehicules(
+                      ChoixVehicules(
                         actifs: widget.transportsActifs,
                         selection: _vehicules,
                         onBascule: (slug, choisi) => setState(() {
@@ -333,43 +333,6 @@ class _ChoixPiece extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ChoixVehicules extends StatelessWidget {
-  const _ChoixVehicules({
-    required this.actifs,
-    required this.selection,
-    required this.onBascule,
-  });
-
-  final List<String> actifs;
-  final Set<String> selection;
-  final void Function(String slug, bool choisi) onBascule;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    // Config jamais chargée : le dire. Un formulaire sans aucun choix de
-    // véhicule serait un cul-de-sac silencieux (règle d'or 5).
-    if (actifs.isEmpty) return _Message(texte: l10n.proDossierVehiculesIndisponibles);
-
-    return Wrap(
-      spacing: MefaliTokens.space2,
-      runSpacing: MefaliTokens.space2,
-      children: [
-        for (final slug in actifs)
-          SizedBox(
-            height: MefaliTokens.tapMin,
-            child: FilterChip(
-              label: Text(l10n.transport(slug)),
-              selected: selection.contains(slug),
-              onSelected: (choisi) => onBascule(slug, choisi),
-            ),
-          ),
-      ],
     );
   }
 }

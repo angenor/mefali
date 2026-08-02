@@ -144,6 +144,7 @@ Class | Method | HTTP request | Description
 [*MoiApi*](doc/MoiApi.md) | [**modifierAdresse**](doc/MoiApi.md#modifieradresse) | **PATCH** /moi/adresses/{adresse_id} | Renomme l&#39;adresse ou met à jour son repère écrit (FR-021).
 [*MoiApi*](doc/MoiApi.md) | [**moi**](doc/MoiApi.md#moi) | **GET** /moi | Compte courant et états de TOUS ses rôles.
 [*MoiApi*](doc/MoiApi.md) | [**monDossierCoursier**](doc/MoiApi.md#mondossiercoursier) | **GET** /moi/dossier-coursier | État du dossier coursier du compte courant (FR-013 : l&#39;app Pro l&#39;affiche).
+[*MoiApi*](doc/MoiApi.md) | [**remplacerMesVehicules**](doc/MoiApi.md#remplacermesvehicules) | **PUT** /moi/dossier-coursier/vehicules | Change les véhicules d&#39;un dossier coursier DÉJÀ validé (CPT-04).
 [*MoiApi*](doc/MoiApi.md) | [**remplacerRepereVocal**](doc/MoiApi.md#remplacerreperevocal) | **POST** /moi/adresses/{adresse_id}/repere-vocal | Enregistre un nouveau repère vocal — après purge, ou pour le refaire.
 [*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
@@ -290,6 +291,7 @@ Class | Method | HTTP request | Description
  - [LivraisonCommande](doc/LivraisonCommande.md)
  - [LotDePresence](doc/LotDePresence.md)
  - [MesCommandes](doc/MesCommandes.md)
+ - [MesVehicules](doc/MesVehicules.md)
  - [ModeCollecte](doc/ModeCollecte.md)
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)

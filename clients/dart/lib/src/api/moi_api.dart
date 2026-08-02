@@ -14,6 +14,7 @@ import 'package:mefali_api_client/src/model/adresse.dart';
 import 'package:mefali_api_client/src/model/compte_moi.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
+import 'package:mefali_api_client/src/model/mes_vehicules.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/url_presignee.dart';
@@ -612,6 +613,110 @@ class MoiApi {
 
     final _response = await _dio.request<Object>(
       _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    DossierCoursier? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DossierCoursier),
+      ) as DossierCoursier;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<DossierCoursier>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Change les véhicules d&#39;un dossier coursier DÉJÀ validé (CPT-04).
+  /// &#x60;PUT&#x60; et non &#x60;PATCH&#x60; : l&#39;écriture est un remplacement intégral, et le corps porte la flotte entière. Route DISTINCTE de &#x60;POST /moi/dossier-coursier&#x60;, dont la sémantique « soumettre ou re-soumettre après refus » est juste et testée — la surcharger ferait repasser par une revue admin un coursier qui change simplement de moto.  Aucun identifiant de compte en chemin : &#x60;auth.compte_id&#x60; est le seul compte touchable. La garde de propriété la plus sûre est celle qu&#39;on ne peut pas oublier d&#39;écrire (le cycle 008 a livré une fuite exactement là).  L&#39;en-tête d&#39;idempotence est exigée par cohérence avec &#x60;POST&#x60;, mais n&#39;est pas stockée : c&#39;est le remplacement intégral, plus la branche « flotte inchangée » du domaine, qui rendent le rejeu inoffensif.
+  ///
+  /// Parameters:
+  /// * [idempotencyKey] - UUIDv7 généré par le client — rejeu réseau idempotent (R14).
+  /// * [mesVehicules] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [DossierCoursier] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<DossierCoursier>> remplacerMesVehicules({ 
+    required String idempotencyKey,
+    required MesVehicules mesVehicules,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/moi/dossier-coursier/vehicules';
+    final _options = Options(
+      method: r'PUT',
+      headers: <String, dynamic>{
+        r'Idempotency-Key': idempotencyKey,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(MesVehicules);
+      _bodyData = _serializers.serialize(mesVehicules, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
       options: _options,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,

@@ -125,6 +125,7 @@ doc/LitigeVu.md
 doc/LivraisonCommande.md
 doc/LotDePresence.md
 doc/MesCommandes.md
+doc/MesVehicules.md
 doc/ModeCollecte.md
 doc/ModifierAdresse.md
 doc/ModifierArticleDto.md
@@ -336,6 +337,7 @@ lib/src/model/litige_vu.dart
 lib/src/model/livraison_commande.dart
 lib/src/model/lot_de_presence.dart
 lib/src/model/mes_commandes.dart
+lib/src/model/mes_vehicules.dart
 lib/src/model/mode_collecte.dart
 lib/src/model/modifier_adresse.dart
 lib/src/model/modifier_article_dto.dart
@@ -525,6 +527,7 @@ test/litige_vu_test.dart
 test/livraison_commande_test.dart
 test/lot_de_presence_test.dart
 test/mes_commandes_test.dart
+test/mes_vehicules_test.dart
 test/mode_collecte_test.dart
 test/modifier_adresse_test.dart
 test/modifier_article_dto_test.dart

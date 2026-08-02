@@ -7,12 +7,12 @@
 //! forçage de zone.
 
 use actix_multipart::form::{bytes::Bytes as ChampFichier, text::Text, MultipartForm};
-use actix_web::{get, post, web, HttpResponse};
+use actix_web::{get, post, put, web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use comptes::dossier::{IssueSoumission, PieceIdentite, SoumissionDossier};
+use comptes::dossier::{IssueSoumission, IssueVehicules, PieceIdentite, SoumissionDossier};
 use comptes::{
     ActionRole, DossierCoursier, DossierCoursierAdmin, PgComptes, Role, StatutRole, VehiculeDeclare,
     PIECE_TAILLE_MAX,
@@ -445,6 +445,88 @@ pub async fn mon_dossier_coursier(
     depot: web::Data<PgComptes>,
 ) -> Result<HttpResponse, ErreurApi> {
     let dossier = depot.dossier_coursier(auth.compte_id).await?;
+    Ok(HttpResponse::Ok().json(DossierCoursierDto::from(dossier)))
+}
+
+/// Flotte déclarée — remplacement INTÉGRAL.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = MesVehicules)]
+pub struct MesVehiculesDto {
+    /// Slugs de `zones.type_transport` ACTIFS dans la zone du compte.
+    ///
+    /// La liste remplace la précédente ; elle ne s'y ajoute pas. Une liste vide
+    /// est refusée : pour cesser de rouler on passe hors ligne, on ne se prive
+    /// pas de véhicule — sinon le coursier se recrée l'impasse que cette route
+    /// existe pour ouvrir.
+    pub vehicules: Vec<String>,
+}
+
+/// Change les véhicules d'un dossier coursier DÉJÀ validé (CPT-04).
+///
+/// `PUT` et non `PATCH` : l'écriture est un remplacement intégral, et le corps
+/// porte la flotte entière. Route DISTINCTE de `POST /moi/dossier-coursier`,
+/// dont la sémantique « soumettre ou re-soumettre après refus » est juste et
+/// testée — la surcharger ferait repasser par une revue admin un coursier qui
+/// change simplement de moto.
+///
+/// Aucun identifiant de compte en chemin : `auth.compte_id` est le seul compte
+/// touchable. La garde de propriété la plus sûre est celle qu'on ne peut pas
+/// oublier d'écrire (le cycle 008 a livré une fuite exactement là).
+///
+/// L'en-tête d'idempotence est exigée par cohérence avec `POST`, mais n'est pas
+/// stockée : c'est le remplacement intégral, plus la branche « flotte
+/// inchangée » du domaine, qui rendent le rejeu inoffensif.
+#[utoipa::path(
+    put,
+    path = "/moi/dossier-coursier/vehicules",
+    tag = "moi",
+    params(
+        ("Idempotency-Key" = Uuid, Header,
+         description = "UUIDv7 généré par le client — rejeu réseau idempotent (R14)."),
+    ),
+    request_body = MesVehiculesDto,
+    responses(
+        (status = 200, description = "Flotte à jour. Émet \
+         `dossier_coursier.vehicules_modifies` — SAUF si la flotte demandée est \
+         déjà celle déclarée, auquel cas rien n'est écrit ni émis.",
+         body = DossierCoursierDto),
+        (status = 403, description = "Rôle coursier non validé — un dossier en attente, \
+         refusé ou suspendu ne change pas ses véhicules.", body = ErreurApiDto),
+        (status = 404, description = "Aucun dossier coursier pour ce compte.", body = ErreurApiDto),
+        (status = 409, description = "Le rôle a cessé d'être valide entre la garde et la \
+         transaction (suspension concurrente).", body = ErreurApiDto),
+        (status = 422, description = "Liste vide, véhicule hors des types actifs de la zone, \
+         ou en-tête d'idempotence absente.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[put("/moi/dossier-coursier/vehicules")]
+pub async fn remplacer_mes_vehicules(
+    auth: Auth,
+    requete: actix_web::HttpRequest,
+    corps: web::Json<MesVehiculesDto>,
+    depot: web::Data<PgComptes>,
+) -> Result<HttpResponse, ErreurApi> {
+    // La garde de rôle vient AVANT tout : `POST /moi/dossier-coursier` s'en
+    // passe parce que la machine à états refuse les transitions illégales, mais
+    // ici aucune transition ne rattraperait l'oubli.
+    auth.exiger_role(Role::Coursier)?;
+    idempotency_key(&requete)?;
+
+    let mut tx = depot
+        .pool()
+        .begin()
+        .await
+        .map_err(comptes::ErreurComptes::from)?;
+    let issue = depot
+        .remplacer_vehicules_declares(&mut tx, auth.compte_id, &corps.vehicules)
+        .await?;
+    tx.commit().await.map_err(comptes::ErreurComptes::from)?;
+
+    let dossier = match issue {
+        IssueVehicules::Modifiee(d) | IssueVehicules::Inchangee(d) => d,
+    };
     Ok(HttpResponse::Ok().json(DossierCoursierDto::from(dossier)))
 }
 

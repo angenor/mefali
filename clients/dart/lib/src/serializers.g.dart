@@ -121,6 +121,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(LivraisonCommande.serializer)
       ..add(LotDePresence.serializer)
       ..add(MesCommandes.serializer)
+      ..add(MesVehicules.serializer)
       ..add(ModeCollecte.serializer)
       ..add(ModifierAdresse.serializer)
       ..add(ModifierArticleDto.serializer)
@@ -310,6 +311,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RemiseBloquee)]),
           () => ListBuilder<RemiseBloquee>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())

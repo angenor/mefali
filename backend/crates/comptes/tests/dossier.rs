@@ -573,3 +573,249 @@ async fn liste_admin_filtrable_par_statut(pool: PgPool) {
     assert_eq!(detail.dossier.statut, StatutRole::EnAttente);
     assert_eq!(detail.telephone_e164, "+2250701020304");
 }
+
+// ── Changer de véhicule sans repasser par l'admin (CPT-04) ─────────────────
+//
+// Le défaut que ces tests ferment a été trouvé sur appareil : un coursier au
+// rôle VALIDÉ mais sans véhicule ne peut pas passer en ligne, et la seule
+// surface de déclaration — le formulaire d'inscription — lui est devenue
+// inatteignable. Il ne peut plus travailler, et rien ne l'en sort.
+
+/// Ouvre une tx, remplace, et ne commit que si ça a marché.
+async fn remplacer(
+    bac: &Bac,
+    compte: uuid::Uuid,
+    slugs: &[&str],
+) -> Result<comptes::IssueVehicules, ErreurComptes> {
+    let owned: Vec<String> = slugs.iter().map(|s| (*s).to_owned()).collect();
+    let mut tx = bac.pool.begin().await.unwrap();
+    let r = bac
+        .depot
+        .remplacer_vehicules_declares(&mut tx, compte, &owned)
+        .await;
+    if r.is_ok() {
+        tx.commit().await.unwrap();
+    }
+    r
+}
+
+/// Prépare un coursier au rôle VALIDÉ, avec la flotte donnée.
+async fn coursier_valide(bac: &Bac, telephone: &str, flotte: &[&str]) -> uuid::Uuid {
+    let compte = bac.inscrire(telephone).await;
+    let admin = bac.inscrire("0700000009").await;
+    soumettre(bac, compte, &soumission(flotte)).await.unwrap();
+    decider(bac, compte, ActionRole::Valider, admin, None).await;
+    compte
+}
+
+/// LE test du correctif : la flotte change, le rôle ne bouge pas, la porte
+/// reste ouverte — aucune revue admin n'est déclenchée.
+#[sqlx::test(migrations = "../../migrations")]
+async fn un_coursier_valide_change_ses_vehicules_sans_revue_admin(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let yao = coursier_valide(&bac, SAISIE_LOCALE, &["moto"]).await;
+
+    assert!(
+        bac.depot.coursier_autorise_en_ligne(yao).await.unwrap(),
+        "prérequis : la porte est ouverte avant le geste"
+    );
+
+    let comptes::IssueVehicules::Modifiee(dossier) = remplacer(&bac, yao, &["velo"]).await.unwrap()
+    else {
+        panic!("changer de moto pour un vélo est une modification");
+    };
+
+    assert_eq!(dossier.vehicules.len(), 1);
+    assert_eq!(dossier.vehicules[0].slug, "velo");
+    assert_eq!(
+        dossier.statut,
+        StatutRole::Valide,
+        "le rôle a été validé sur la pièce d'identité, pas sur le véhicule : \
+         il ne retombe PAS en attente"
+    );
+    assert!(
+        bac.depot.coursier_autorise_en_ligne(yao).await.unwrap(),
+        "la porte reste ouverte — sinon le blocage est seulement déplacé"
+    );
+
+    // FR-018 — le dispatch voit la nouvelle flotte, pas l'ancienne.
+    let capacites = bac.depot.capacites_transport(yao).await.unwrap();
+    assert_eq!(capacites.len(), 1);
+    assert_eq!(capacites[0].slug, "velo");
+
+    // Le changement est TRACÉ : il déplace l'éligibilité au dispatch.
+    let traces = bac.evenements("dossier_coursier.vehicules_modifies").await;
+    assert_eq!(traces.len(), 1);
+    assert_eq!(traces[0]["vehicules"], serde_json::json!(["velo"]));
+    assert_eq!(
+        traces[0]["avant"],
+        serde_json::json!(["moto"]),
+        "la table ne garde aucun historique : l'événement est la seule trace \
+         de ce qui a été remplacé"
+    );
+    assert_eq!(traces[0]["compte"], serde_json::json!(yao));
+
+    // Et surtout : AUCUN événement de re-soumission ni de transition de rôle.
+    assert_eq!(
+        bac.evenements("dossier_coursier.soumis").await.len(),
+        1,
+        "un seul dépôt de dossier — celui de l'inscription"
+    );
+    assert!(
+        bac.evenements("role.demande").await.len() == 1,
+        "changer de véhicule ne redemande pas le rôle"
+    );
+}
+
+/// Rejeu réseau : la même flotte deux fois n'écrit rien et n'émet rien.
+#[sqlx::test(migrations = "../../migrations")]
+async fn une_flotte_identique_ne_laisse_aucune_trace(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let yao = coursier_valide(&bac, SAISIE_LOCALE, &["moto"]).await;
+
+    remplacer(&bac, yao, &["velo"]).await.unwrap();
+    let issue = remplacer(&bac, yao, &["velo"]).await.unwrap();
+
+    assert!(
+        matches!(issue, comptes::IssueVehicules::Inchangee(_)),
+        "redéclarer la même flotte n'est pas un changement"
+    );
+    assert_eq!(
+        bac.evenements("dossier_coursier.vehicules_modifies")
+            .await
+            .len(),
+        1,
+        "un rejeu ne doit pas produire une seconde trace d'un changement qui \
+         n'a eu lieu qu'une fois"
+    );
+}
+
+/// L'ordre de saisie ne fait pas un changement — « moto, vélo » vaut
+/// « vélo, moto », et « moto, moto » vaut « moto ».
+#[sqlx::test(migrations = "../../migrations")]
+async fn l_ordre_et_les_doublons_ne_font_pas_un_changement(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let yao = coursier_valide(&bac, SAISIE_LOCALE, &["moto"]).await;
+
+    remplacer(&bac, yao, &["moto", "velo"]).await.unwrap();
+    let issue = remplacer(&bac, yao, &["velo", "moto", "moto"])
+        .await
+        .unwrap();
+
+    assert!(
+        matches!(issue, comptes::IssueVehicules::Inchangee(_)),
+        "même ensemble de véhicules, écrit autrement"
+    );
+    assert_eq!(
+        bac.evenements("dossier_coursier.vehicules_modifies")
+            .await
+            .len(),
+        1
+    );
+}
+
+/// SC-005 — un dossier qui n'est pas `valide` ne touche pas à sa flotte. Sans
+/// cette garde, un coursier refusé se redonnerait des capacités.
+#[sqlx::test(migrations = "../../migrations")]
+async fn un_dossier_non_valide_ne_change_pas_ses_vehicules(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let admin = bac.inscrire("0700000009").await;
+    let yao = bac.inscrire(SAISIE_LOCALE).await;
+
+    // En attente.
+    soumettre(&bac, yao, &soumission(&["moto"])).await.unwrap();
+    assert!(matches!(
+        remplacer(&bac, yao, &["velo"]).await,
+        Err(ErreurComptes::TransitionInvalide { .. })
+    ));
+
+    // Refusé.
+    decider(&bac, yao, ActionRole::Refuser, admin, Some("illisible")).await;
+    assert!(matches!(
+        remplacer(&bac, yao, &["velo"]).await,
+        Err(ErreurComptes::TransitionInvalide { .. })
+    ));
+
+    // Suspendu — le cas qui compte : le rôle a existé, il est retiré.
+    soumettre(&bac, yao, &soumission(&["moto"])).await.unwrap();
+    decider(&bac, yao, ActionRole::Valider, admin, None).await;
+    decider(&bac, yao, ActionRole::Suspendre, admin, Some("plaintes")).await;
+    assert!(matches!(
+        remplacer(&bac, yao, &["velo"]).await,
+        Err(ErreurComptes::TransitionInvalide { .. })
+    ));
+
+    // La flotte n'a pas bougé d'un pouce, et rien n'a été tracé.
+    let dossier = bac.depot.dossier_coursier(yao).await.unwrap();
+    assert_eq!(dossier.vehicules[0].slug, "moto");
+    assert!(bac
+        .evenements("dossier_coursier.vehicules_modifies")
+        .await
+        .is_empty());
+}
+
+/// Un compte sans dossier : 404, et non le `500` opaque que la clé étrangère
+/// produirait si on écrivait d'abord.
+#[sqlx::test(migrations = "../../migrations")]
+async fn sans_dossier_le_remplacement_est_introuvable(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let sans_dossier = coursier_valide(&bac, SAISIE_LOCALE, &["moto"]).await;
+
+    // Rôle coursier VALIDE, dossier absent. L'état s'atteint par les fixtures
+    // qui posent le rôle en SQL direct (`bac_dispatch`), et par une purge de
+    // données personnelles. C'est précisément là que la clé étrangère de
+    // `vehicule_declare` rendrait un `INSERT` sans dossier en `500` opaque.
+    sqlx::query!(
+        "DELETE FROM comptes.dossier_coursier WHERE compte_id = $1",
+        sans_dossier
+    )
+    .execute(&bac.pool)
+    .await
+    .unwrap();
+
+    assert!(matches!(
+        remplacer(&bac, sans_dossier, &["moto"]).await,
+        Err(ErreurComptes::DossierInconnu(_))
+    ));
+}
+
+/// Une flotte vide reconstruirait l'impasse que cette route existe pour ouvrir.
+#[sqlx::test(migrations = "../../migrations")]
+async fn une_flotte_vide_est_refusee(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let yao = coursier_valide(&bac, SAISIE_LOCALE, &["moto"]).await;
+
+    assert!(matches!(
+        remplacer(&bac, yao, &[]).await,
+        Err(ErreurComptes::DossierIncomplet)
+    ));
+    assert_eq!(
+        bac.depot
+            .capacites_transport(yao)
+            .await
+            .unwrap()
+            .len(),
+        1,
+        "le refus ne laisse pas la flotte à moitié effacée"
+    );
+}
+
+/// Le référentiel de zone fait foi ici comme à la soumission (FR-015).
+#[sqlx::test(migrations = "../../migrations")]
+async fn un_vehicule_hors_zone_est_refuse(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    bac.seeder_transports().await;
+    let yao = coursier_valide(&bac, SAISIE_LOCALE, &["moto"]).await;
+
+    assert!(matches!(
+        remplacer(&bac, yao, &["helicoptere"]).await,
+        Err(ErreurComptes::VehiculeHorsZone(_))
+    ));
+    assert_eq!(bac.depot.capacites_transport(yao).await.unwrap()[0].slug, "moto");
+}

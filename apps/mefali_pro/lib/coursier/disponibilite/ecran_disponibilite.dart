@@ -38,6 +38,8 @@ import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/experimental/scope.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../roles/libelles_roles.dart';
+import '../vehicules/ecran_vehicules.dart';
 import '../service_continu/service_continu.dart';
 import 'emetteur_position.dart';
 import 'etat_disponibilite.dart';
@@ -133,7 +135,11 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
             const SizedBox(height: MefaliTokens.space3),
           ],
           if (etat.codeErreur != null) ...[
-            _Erreur(code: etat.codeErreur!),
+            _Erreur(
+              code: etat.codeErreur!,
+              capacitesVides: etat.capacites.isEmpty,
+              onDeclarer: () => ouvrirMesVehicules(context),
+            ),
             const SizedBox(height: MefaliTokens.space3),
           ],
           // FR-115 — un service qui ne tourne pas se DIT. Le silence ferait
@@ -157,6 +163,14 @@ class _EcranDisponibiliteState extends ConsumerState<EcranDisponibilite> {
                 ref.read(disponibiliteProvider.notifier).passerEnLigne(saisie),
             onHorsLigne: () =>
                 ref.read(disponibiliteProvider.notifier).passerHorsLigne(),
+          ),
+          const SizedBox(height: MefaliTokens.space3),
+          // « Avec quoi puis-je livrer ? » vient avant « pour combien ? ». Sans
+          // cette carte, K1 ne découvrait l'absence de véhicule qu'au moment du
+          // refus — et sans jamais offrir de la lever.
+          _CarteVehicules(
+            capacites: etat.capacites,
+            onDeclarer: () => ouvrirMesVehicules(context),
           ),
           const SizedBox(height: MefaliTokens.space3),
           _CartePlafond(
@@ -724,18 +738,108 @@ String _libellePalier(AppLocalizations t, String cle) => switch (cle) {
       _ => t.dispoPalierEntree,
     };
 
-/// Refus métier du serveur, traduit par sa clé (constitution VII).
-class _Erreur extends StatelessWidget {
-  const _Erreur({required this.code});
+/// Ce avec quoi Yao peut livrer, et comment le changer (CPT-04).
+///
+/// `EtatDisponibilite.capacites` existait depuis le cycle DSP sans qu'aucun
+/// widget ne le lise. Lui donner un lecteur, c'est faire dire à K1 ce qu'il
+/// savait déjà — au lieu de le laisser découvrir au moment du refus.
+class _CarteVehicules extends StatelessWidget {
+  const _CarteVehicules({required this.capacites, required this.onDeclarer});
 
-  final String code;
+  /// Slugs de transport déclarés, tels que le serveur les rend.
+  final List<String> capacites;
+
+  /// Ouvre « Mes véhicules ».
+  final VoidCallback onDeclarer;
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final vide = capacites.isEmpty;
+
+    return Container(
+      key: const Key('dispo-vehicules'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(MefaliTokens.space3),
+      decoration: BoxDecoration(
+        color: MefaliTokens.surface,
+        borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
+        border: Border.all(color: MefaliTokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Symbols.two_wheeler, size: 20),
+              const SizedBox(width: MefaliTokens.space2),
+              Expanded(
+                child: Text(
+                  t.proDossierVehicules,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: MefaliTokens.space2),
+          Text(
+            vide ? t.proVehiculesAucun : capacites.map(t.transport).join(' · '),
+            style: TextStyle(
+              fontSize: MefaliTokens.bodySize,
+              color: vide ? MefaliTokens.danger : MefaliTokens.text,
+            ),
+          ),
+          const SizedBox(height: MefaliTokens.space2),
+          // Bouton PLEIN quand il n'y a rien : c'est alors le seul geste qui
+          // débloque la journée. Discret sinon.
+          if (vide)
+            FilledButton(
+              key: const Key('dispo-vehicules-declarer'),
+              onPressed: onDeclarer,
+              child: Text(t.proVehiculesDeclarer),
+            )
+          else
+            TextButton(
+              key: const Key('dispo-vehicules-modifier'),
+              onPressed: onDeclarer,
+              child: Text(t.proVehiculesModifier),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Refus métier du serveur, traduit par sa clé (constitution VII).
+class _Erreur extends StatelessWidget {
+  const _Erreur({
+    required this.code,
+    this.capacitesVides = false,
+    this.onDeclarer,
+  });
+
+  final String code;
+
+  /// Aucun véhicule déclaré — ce que l'app sait déjà, et qui désambiguïse le
+  /// refus du serveur.
+  final bool capacitesVides;
+
+  /// Sortie proposée quand c'est bien le véhicule qui manque.
+  final VoidCallback? onDeclarer;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
+    // `capacite_non_declaree` couvre DEUX causes côté serveur : aucun véhicule,
+    // ou aucun plafond d'avance déclaré. Envoyer un coursier déjà équipé vers
+    // l'écran des véhicules serait une impasse de plus — celle-là même que ce
+    // correctif ferme. L'app connaît ses capacités : elle tranche ici.
+    final manqueVehicule = code == 'capacite_non_declaree' && capacitesVides;
     final message = switch (code) {
       'dossier_coursier_invalide' => t.dispoErreurDossier,
-      'capacite_non_declaree' => t.dispoErreurCapacite,
+      'capacite_non_declaree' =>
+        manqueVehicule ? t.dispoErreurCapacite : t.dispoErreurPlafondRequis,
       'course_active' => t.dispoErreurCourseActive,
       _ => t.dispoAucuneCourse,
     };
@@ -747,12 +851,25 @@ class _Erreur extends StatelessWidget {
         color: MefaliTokens.dangerTint,
         borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
       ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          fontSize: MefaliTokens.bodySize,
-          color: MefaliTokens.danger,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: MefaliTokens.bodySize,
+              color: MefaliTokens.danger,
+            ),
+          ),
+          // Un bandeau qui dit quoi faire sans offrir de le faire est
+          // exactement ce qui a produit ce défaut.
+          if (manqueVehicule && onDeclarer != null)
+            TextButton(
+              key: const Key('dispo-erreur-action'),
+              onPressed: onDeclarer,
+              child: Text(t.proVehiculesDeclarer),
+            ),
+        ],
       ),
     );
   }

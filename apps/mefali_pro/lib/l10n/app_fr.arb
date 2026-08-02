@@ -540,6 +540,39 @@
   "@dispoErreurCapacite": { "description": "Refus 422 dispatch.erreur.capacite_non_declaree" },
   "dispoErreurCourseActive": "Terminez votre course avant de passer hors ligne.",
   "@dispoErreurCourseActive": { "description": "Refus 409 dispatch.erreur.course_active" },
+  "dispoErreurPlafondRequis": "Déclarez votre plafond d'avance avant de passer en ligne.",
+  "@dispoErreurPlafondRequis": {
+    "description": "Même refus capacite_non_declaree, mais le coursier A des véhicules : c'est le plafond qui manque. L'envoyer déclarer un véhicule serait une impasse de plus."
+  },
+
+  "proVehiculesTitre": "Mes véhicules",
+  "@proVehiculesTitre": { "description": "Titre de l'écran de déclaration des véhicules (CPT-04)" },
+  "proVehiculesAide": "Choisissez tout ce avec quoi vous pouvez livrer. Vous pouvez le changer à tout moment.",
+  "@proVehiculesAide": { "description": "Aide de l'écran — dit que le geste est réversible et sans revue" },
+  "proVehiculesModifier": "Modifier mes véhicules",
+  "@proVehiculesModifier": { "description": "Action de la carte K1 quand une flotte est déjà déclarée" },
+  "proVehiculesDeclarer": "Déclarer un véhicule",
+  "@proVehiculesDeclarer": { "description": "Action de la carte K1 et du refus, quand aucun véhicule n'est déclaré" },
+  "proVehiculesAucun": "Aucun véhicule déclaré.",
+  "@proVehiculesAucun": { "description": "État vide de la carte K1" },
+  "proVehiculesEnregistrer": "Enregistrer",
+  "@proVehiculesEnregistrer": { "description": "Validation de l'écran de déclaration" },
+  "proVehiculesEnregistres": "Véhicules enregistrés.",
+  "@proVehiculesEnregistres": { "description": "Confirmation après enregistrement" },
+  "proVehiculesAucunChoix": "Choisissez au moins un véhicule.",
+  "@proVehiculesAucunChoix": {
+    "description": "Refus local : une flotte vide recréerait le blocage que cet écran existe pour lever"
+  },
+  "proVehiculesInactifZone": "Ce véhicule n'est plus accepté ici.",
+  "@proVehiculesInactifZone": {
+    "description": "Chip d'un transport déclaré mais désactivé en zone — montré, jamais cochable"
+  },
+  "proVehiculesRefuse": "Mefali n'a pas accepté ces véhicules. Vérifiez votre choix.",
+  "@proVehiculesRefuse": { "description": "Refus 422 (véhicule hors zone ou liste vide côté serveur)" },
+  "proVehiculesRoleRequis": "Votre dossier coursier doit être validé pour changer vos véhicules.",
+  "@proVehiculesRoleRequis": { "description": "Refus 403/409 — rôle absent, en attente, refusé ou suspendu" },
+  "proVehiculesAucunDossier": "Aucun dossier coursier n'est enregistré pour ce compte.",
+  "@proVehiculesAucunDossier": { "description": "Refus 404 — le rôle existe, le dossier non" },
 
   "offreTitre": "Nouvelle course",
   "@offreTitre": { "description": "Titre du bandeau K2-1a" },

@@ -30,6 +30,8 @@ import 'package:mefali_pro/coursier/service_continu/canal_offre.dart';
 import 'package:mefali_pro/coursier/service_continu/service_continu.dart';
 import 'package:mefali_pro/coursier/disponibilite/etat_disponibilite.dart';
 import 'package:mefali_pro/l10n/app_localizations.dart';
+import 'package:mefali_pro/coursier/vehicules/ecran_vehicules.dart';
+import 'package:mefali_pro/coursier/vehicules/etat_vehicules.dart';
 
 /// Corps de `GET|PUT /moi/disponibilite`, tel que le contrat le rend.
 Map<String, Object?> _etat({
@@ -39,6 +41,9 @@ Map<String, Object?> _etat({
   String source = 'grille_note',
   String palier = 'dispatch.palier.entree',
   bool dansLePool = false,
+  List<Map<String, String>> capacites = const [
+    {'famille': 'transport', 'valeur': 'moto'},
+  ],
 }) =>
     {
       'en_ligne': enLigne,
@@ -49,9 +54,7 @@ Map<String, Object?> _etat({
       'note_centiemes': null,
       'devise': 'XOF',
       'jour': '2026-07-27',
-      'capacites': [
-        {'famille': 'transport', 'valeur': 'moto'},
-      ],
+      'capacites': capacites,
       'dans_le_pool': dansLePool,
       'periode_position_s': 30,
     };
@@ -106,6 +109,16 @@ Position _positionTiassale() => Position(
 /// d'un coursier arrêté.
 Future<Position?> _relevePonctuelFixe() async => _positionTiassale();
 
+/// K1 est un écran LONG, et il s'est allongé d'une carte au correctif CPT-04
+/// (« Mes véhicules »). Un `ListView` ne construit pas ce qui dépasse : sans
+/// cette surface, les tests mesureraient l'absence de widgets qui existent.
+void _surfaceHaute(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1080, 6400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 @Dependencies([ServiceContinu])
 Widget _monter(ProviderContainer container) => harnaisApp(
       container: container,
@@ -138,6 +151,7 @@ void main() {
     (tester) async {
       final (container, _) = _conteneur(_etat());
       addTearDown(container.dispose);
+      _surfaceHaute(tester);
       await tester.pumpWidget(_monter(container));
       await tester.pumpAndSettle();
 
@@ -163,6 +177,7 @@ void main() {
         _etat(plafondDeclare: 3000, plafondRetenu: 3000, source: 'declaration'),
       );
       addTearDown(container.dispose);
+      _surfaceHaute(tester);
       await tester.pumpWidget(_monter(container));
       await tester.pumpAndSettle();
 
@@ -177,6 +192,7 @@ void main() {
     (tester) async {
       final (container, _) = _conteneur(_etat(plafondDeclare: null));
       addTearDown(container.dispose);
+      _surfaceHaute(tester);
       await tester.pumpWidget(_monter(container));
       await tester.pumpAndSettle();
 
@@ -194,6 +210,7 @@ void main() {
   testWidgets('le réseau coupé affiche le bandeau de reconnexion', (tester) async {
     final (container, _) = _conteneur(_etat(), reseauCoupe: true);
     addTearDown(container.dispose);
+    _surfaceHaute(tester);
     await tester.pumpWidget(_monter(container));
     await tester.pumpAndSettle();
 
@@ -211,6 +228,7 @@ void main() {
         _etat(enLigne: true, dansLePool: true, plafondDeclare: 8000, plafondRetenu: 5000),
       );
       addTearDown(container.dispose);
+      _surfaceHaute(tester);
       await tester.pumpWidget(_monter(container));
       await tester.pumpAndSettle();
 
@@ -224,6 +242,7 @@ void main() {
   testWidgets('le stepper change le montant par pas de 1 000', (tester) async {
     final (container, _) = _conteneur(_etat(plafondDeclare: null));
     addTearDown(container.dispose);
+    _surfaceHaute(tester);
     await tester.pumpWidget(_monter(container));
     await tester.pumpAndSettle();
 
@@ -258,6 +277,7 @@ void main() {
         transport: transport,
       );
       addTearDown(container.dispose);
+      _surfaceHaute(tester);
       await tester.pumpWidget(_monter(container));
       await tester.pumpAndSettle();
 
@@ -371,5 +391,132 @@ void main() {
     // Un jour sans déclaration se distingue d'un plafond nul.
     final neuf = EtatDisponibilite.depuisJson(_etat(plafondDeclare: null));
     expect(neuf.plafondADeclarer, isTrue);
+  });
+
+  // ── CPT-04 : sortir de l'impasse « aucun véhicule déclaré » ──────────────
+  //
+  // Trouvé sur appareil : un coursier au rôle VALIDÉ mais sans véhicule ne peut
+  // pas passer en ligne, et la seule surface de déclaration — le formulaire
+  // d'inscription — lui est devenue inatteignable. Le bandeau lui disait quoi
+  // faire sans offrir de le faire.
+
+  testWidgets('le refus « aucun véhicule » MÈNE à l\'écran de déclaration',
+      (tester) async {
+    final transport = TransportFake((requete) {
+      if (requete.method == 'GET') {
+        return reponseJson(_etat(capacites: const []));
+      }
+      return reponseJson(
+        {
+          'code': 'capacite_non_declaree',
+          'message_cle': 'dispatch.erreur.capacite_non_declaree',
+        },
+        statut: 422,
+      );
+    });
+    final container = conteneurMefali(
+      jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+      transport: transport,
+      // Sur le conteneur RACINE, pas dans un scope imbriqué : l'écran des
+      // véhicules est poussé par `Navigator`, donc monté AU-DESSUS de tout
+      // `ProviderScope` local. Sans cet override, il irait chercher les
+      // transports dans `serviceConfigProvider`, qui arme un minuteur horaire
+      // et laisserait un Timer pendant.
+      supplements: [
+        sourceTransportsActifsProvider
+            .overrideWithValue(() async => const ['moto', 'velo']),
+      ],
+    );
+    addTearDown(container.dispose);
+    _surfaceHaute(tester);
+    await tester.pumpWidget(_monter(container));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('dispo-passer-en-ligne')));
+    await tester.pumpAndSettle();
+
+    // Le refus est nommé ET actionnable : c'est tout l'objet du correctif.
+    expect(find.byKey(const Key('dispo-erreur')), findsOneWidget);
+    final action = find.byKey(const Key('dispo-erreur-action'));
+    expect(action, findsOneWidget,
+        reason: 'un bandeau qui dit quoi faire sans offrir de le faire est '
+            'exactement ce qui a produit ce défaut');
+
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+    expect(find.byType(EcranMesVehicules), findsOneWidget);
+  });
+
+  testWidgets(
+    'le même refus, mais AVEC des véhicules, parle du plafond — pas du véhicule',
+    (tester) async {
+      final transport = TransportFake((requete) {
+        if (requete.method == 'GET') return reponseJson(_etat());
+        return reponseJson(
+          {
+            'code': 'capacite_non_declaree',
+            'message_cle': 'dispatch.erreur.capacite_non_declaree',
+          },
+          statut: 422,
+        );
+      });
+      final container = conteneurMefali(
+        jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+        transport: transport,
+      );
+      addTearDown(container.dispose);
+      _surfaceHaute(tester);
+      await tester.pumpWidget(_monter(container));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dispo-passer-en-ligne')));
+      await tester.pumpAndSettle();
+
+      // Le serveur produit le MÊME code pour deux causes. Envoyer un coursier
+      // déjà équipé déclarer un véhicule serait une impasse de plus.
+      expect(find.byKey(const Key('dispo-erreur-action')), findsNothing);
+      expect(find.text('Déclarez votre plafond d\'avance avant de passer en ligne.'),
+          findsOneWidget);
+    },
+  );
+
+  testWidgets('la carte K1 montre les véhicules, et le vide se voit',
+      (tester) async {
+    final container = conteneurMefali(
+      jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+      transport: TransportFake((_) => reponseJson(_etat())),
+    );
+    addTearDown(container.dispose);
+    _surfaceHaute(tester);
+    await tester.pumpWidget(_monter(container));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dispo-vehicules')), findsOneWidget);
+    expect(find.text('Moto'), findsOneWidget);
+    expect(find.byKey(const Key('dispo-vehicules-modifier')), findsOneWidget);
+    expect(find.byKey(const Key('dispo-vehicules-declarer')), findsNothing);
+  });
+
+  testWidgets('sans véhicule, la carte K1 propose de déclarer', (tester) async {
+    final container = conteneurMefali(
+      jetons: const JetonsSession(acces: 'jwt', rafraichissement: 'r'),
+      transport: TransportFake((_) => reponseJson(_etat(capacites: const []))),
+      supplements: [
+        sourceTransportsActifsProvider
+            .overrideWithValue(() async => const ['moto', 'velo']),
+      ],
+    );
+    addTearDown(container.dispose);
+    _surfaceHaute(tester);
+    await tester.pumpWidget(_monter(container));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aucun véhicule déclaré.'), findsOneWidget);
+    final declarer = find.byKey(const Key('dispo-vehicules-declarer'));
+    expect(declarer, findsOneWidget);
+
+    await tester.tap(declarer);
+    await tester.pumpAndSettle();
+    expect(find.byType(EcranMesVehicules), findsOneWidget);
   });
 }

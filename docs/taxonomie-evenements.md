@@ -54,6 +54,7 @@ UUIDv7 (ordre temporel) ; l'idempotence des consommateurs se fait par cet `id`.
 | `role.suspendu` | `attribution_role` | `PgComptes::decider_role` (cycle CPT) | **Produit** — rôle suspendu (motif requis) |
 | `role.retabli` | `attribution_role` | `PgComptes::decider_role` (cycle CPT) | **Produit** — rôle rétabli après suspension |
 | `dossier_coursier.soumis` | `dossier_coursier` | `PgComptes::soumettre_dossier_coursier` (cycle CPT) | **Produit** — dépôt du dossier (première fois ou re-soumission) |
+| `dossier_coursier.vehicules_modifies` | `dossier_coursier` | `PgComptes::remplacer_vehicules_declares` (cycle CPT) | **Produit** — la flotte d'un dossier DÉJÀ validé change, SANS revue admin |
 | `adresse.enregistree` | `adresse` | `PgComptes::enregistrer_adresse` (cycle CPT) | **Produit** — adresse enregistrée après livraison |
 | `adresse.modifiee` | `adresse` | `PgComptes::modifier_adresse` (cycle CPT) | **Produit** — renommage ou nouveau repère |
 | `adresse.supprimee` | `adresse` | `PgComptes::supprimer_adresse` (cycle CPT) | **Produit** — suppression (soft delete) |
@@ -179,6 +180,7 @@ table d'audit parallèle (patron du cycle 002).
 | `role.suspendu` | `attribution_role` | `compte_id` | `zone`, `compte`, `role`, `avant` (`valide`), `apres` (`suspendu`), `decide_par`, `motif` (REQUIS) |
 | `role.retabli` | `attribution_role` | `compte_id` | `zone`, `compte`, `role`, `avant` (`suspendu`), `apres` (`valide`), `decide_par`, `motif` (facultatif) |
 | `dossier_coursier.soumis` | `dossier_coursier` | `compte_id` | `zone`, `compte`, `role` (`coursier`), `vehicules` (slugs déclarés), `re_soumission` (booléen — `true` si le dossier repart d'un `refuse`) |
+| `dossier_coursier.vehicules_modifies` | `dossier_coursier` | `compte_id` | `zone`, `compte`, `role` (`coursier`), `vehicules` (la flotte APRÈS le geste), `avant` (la flotte remplacée — c'est la seule trace du changement, la table ne garde pas d'historique) |
 | `adresse.enregistree` | `adresse` | `adresse.id` | `zone`, `compte`, `a_repere_texte`, `a_repere_vocal`, `livraison_origine` (`null` tant que CMD/CRS ne le posent pas — PROVISION) |
 | `adresse.modifiee` | `adresse` | `adresse.id` | `zone`, `compte`, `champs` (noms des champs modifiés : `libelle`, `repere_texte`, `repere_vocal`) |
 | `adresse.supprimee` | `adresse` | `adresse.id` | `zone`, `compte` |
@@ -190,7 +192,21 @@ table d'audit parallèle (patron du cycle 002).
   l'entonnoir d'inscription relèvera de la taxonomie produit du cycle MET ;
 - la rotation du refresh — ce n'est pas une transition d'état (data-model §4) ;
   seule la révocation qu'une réutilisation déclenche en émet une ;
+- une flotte redéclarée À L'IDENTIQUE : `remplacer_vehicules_declares` compare
+  l'avant et l'après, et n'écrit ni ligne ni événement quand rien ne change.
+  Un rejeu réseau ne doit pas produire une seconde trace d'un changement qui
+  n'a eu lieu qu'une fois (patron `adresse.modifiee`) ;
 - les seeds — chargement initial, pas une transition (patron du cycle 002).
+
+**Pourquoi `dossier_coursier.vehicules_modifies` n'est PAS un
+`dossier_coursier.soumis`.** Une re-soumission repart d'un `refuse`, redépose
+une pièce d'identité et remet le rôle `en_attente` d'une revue admin. Changer
+de véhicule sur un dossier déjà validé ne fait rien de tout cela : le rôle a été
+validé sur la pièce et le référent, pas sur la moto. Réutiliser `soumis`
+annoncerait à tout consommateur qu'une revue est attendue — l'inverse de ce qui
+se passe. Le changement reste tracé parce qu'il déplace l'éligibilité au
+dispatch : `avant` et `vehicules` portent les deux flottes, la table n'en
+gardant aucun historique.
 
 ### Événements du cycle VND (005 — prestataires agréés et catalogue vendeur)
 

@@ -6577,6 +6577,105 @@
         ]
       }
     },
+    "/moi/dossier-coursier/vehicules": {
+      "put": {
+        "tags": [
+          "moi"
+        ],
+        "summary": "Change les véhicules d'un dossier coursier DÉJÀ validé (CPT-04).",
+        "description": "`PUT` et non `PATCH` : l'écriture est un remplacement intégral, et le corps\nporte la flotte entière. Route DISTINCTE de `POST /moi/dossier-coursier`,\ndont la sémantique « soumettre ou re-soumettre après refus » est juste et\ntestée — la surcharger ferait repasser par une revue admin un coursier qui\nchange simplement de moto.\n\nAucun identifiant de compte en chemin : `auth.compte_id` est le seul compte\ntouchable. La garde de propriété la plus sûre est celle qu'on ne peut pas\noublier d'écrire (le cycle 008 a livré une fuite exactement là).\n\nL'en-tête d'idempotence est exigée par cohérence avec `POST`, mais n'est pas\nstockée : c'est le remplacement intégral, plus la branche « flotte\ninchangée » du domaine, qui rendent le rejeu inoffensif.",
+        "operationId": "remplacer_mes_vehicules",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "UUIDv7 généré par le client — rejeu réseau idempotent (R14).",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MesVehicules"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Flotte à jour. Émet `dossier_coursier.vehicules_modifies` — SAUF si la flotte demandée est déjà celle déclarée, auquel cas rien n'est écrit ni émis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierCoursier"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, invalide ou révoquée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle coursier non validé — un dossier en attente, refusé ou suspendu ne change pas ses véhicules.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Aucun dossier coursier pour ce compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Le rôle a cessé d'être valide entre la garde et la transaction (suspension concurrente).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Liste vide, véhicule hors des types actifs de la zone, ou en-tête d'idempotence absente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErreurApi"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/moi/journee": {
       "get": {
         "tags": [
@@ -11954,6 +12053,22 @@
               "$ref": "#/components/schemas/CommandeResumee"
             },
             "description": "Commandes, les plus récentes d'abord."
+          }
+        }
+      },
+      "MesVehicules": {
+        "type": "object",
+        "description": "Flotte déclarée — remplacement INTÉGRAL.",
+        "required": [
+          "vehicules"
+        ],
+        "properties": {
+          "vehicules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Slugs de `zones.type_transport` ACTIFS dans la zone du compte.\n\nLa liste remplace la précédente ; elle ne s'y ajoute pas. Une liste vide\nest refusée : pour cesser de rouler on passe hors ligne, on ne se prive\npas de véhicule — sinon le coursier se recrée l'impasse que cette route\nexiste pour ouvrir."
           }
         }
       },

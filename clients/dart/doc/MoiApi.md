@@ -16,6 +16,7 @@ Method | HTTP request | Description
 [**modifierAdresse**](MoiApi.md#modifieradresse) | **PATCH** /moi/adresses/{adresse_id} | Renomme l&#39;adresse ou met à jour son repère écrit (FR-021).
 [**moi**](MoiApi.md#moi) | **GET** /moi | Compte courant et états de TOUS ses rôles.
 [**monDossierCoursier**](MoiApi.md#mondossiercoursier) | **GET** /moi/dossier-coursier | État du dossier coursier du compte courant (FR-013 : l&#39;app Pro l&#39;affiche).
+[**remplacerMesVehicules**](MoiApi.md#remplacermesvehicules) | **PUT** /moi/dossier-coursier/vehicules | Change les véhicules d&#39;un dossier coursier DÉJÀ validé (CPT-04).
 [**remplacerRepereVocal**](MoiApi.md#remplacerreperevocal) | **POST** /moi/adresses/{adresse_id}/repere-vocal | Enregistre un nouveau repère vocal — après purge, ou pour le refaire.
 [**revoquerSession**](MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [**soumettreDossierCoursier**](MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
@@ -305,6 +306,51 @@ This endpoint does not need any parameter.
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **remplacerMesVehicules**
+> DossierCoursier remplacerMesVehicules(idempotencyKey, mesVehicules)
+
+Change les véhicules d'un dossier coursier DÉJÀ validé (CPT-04).
+
+`PUT` et non `PATCH` : l'écriture est un remplacement intégral, et le corps porte la flotte entière. Route DISTINCTE de `POST /moi/dossier-coursier`, dont la sémantique « soumettre ou re-soumettre après refus » est juste et testée — la surcharger ferait repasser par une revue admin un coursier qui change simplement de moto.  Aucun identifiant de compte en chemin : `auth.compte_id` est le seul compte touchable. La garde de propriété la plus sûre est celle qu'on ne peut pas oublier d'écrire (le cycle 008 a livré une fuite exactement là).  L'en-tête d'idempotence est exigée par cohérence avec `POST`, mais n'est pas stockée : c'est le remplacement intégral, plus la branche « flotte inchangée » du domaine, qui rendent le rejeu inoffensif.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getMoiApi();
+final String idempotencyKey = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | UUIDv7 généré par le client — rejeu réseau idempotent (R14).
+final MesVehicules mesVehicules = ; // MesVehicules | 
+
+try {
+    final response = api.remplacerMesVehicules(idempotencyKey, mesVehicules);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling MoiApi->remplacerMesVehicules: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **idempotencyKey** | **String**| UUIDv7 généré par le client — rejeu réseau idempotent (R14). | 
+ **mesVehicules** | [**MesVehicules**](MesVehicules.md)|  | 
+
+### Return type
+
+[**DossierCoursier**](DossierCoursier.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
