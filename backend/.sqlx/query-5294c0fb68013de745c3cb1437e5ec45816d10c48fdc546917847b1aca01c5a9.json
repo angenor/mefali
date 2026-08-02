@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE prestataires.prestataire\n             SET offre_livraison = $2::prestataires.offre_livraison,\n                 offre_livraison_seuil_unites = $3,\n                 modifie_le = now()\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "prestataires.offre_livraison",
+            "kind": {
+              "Enum": [
+                "jamais",
+                "toujours",
+                "au_dela"
+              ]
+            }
+          }
+        },
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5294c0fb68013de745c3cb1437e5ec45816d10c48fdc546917847b1aca01c5a9"
+}

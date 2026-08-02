@@ -32,6 +32,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CategorieDto.serializer)
       ..add(CharteAdminDto.serializer)
       ..add(ClientCourse.serializer)
+      ..add(CloreDossierDto.serializer)
       ..add(Commande.serializer)
       ..add(CommandeEnAttente.serializer)
       ..add(CommandeProposee.serializer)
@@ -48,6 +49,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CourseBloquee.serializer)
       ..add(CoursierDuPool.serializer)
       ..add(CoursierSuivi.serializer)
+      ..add(Creance.serializer)
       ..add(CreerArticleDto.serializer)
       ..add(CreerPrestataireDto.serializer)
       ..add(DecisionDepot.serializer)
@@ -80,6 +82,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DiscriminantSession.serializer)
       ..add(DossierCoursier.serializer)
       ..add(DossierCoursierAdmin.serializer)
+      ..add(DossierPaiement.serializer)
       ..add(DrapeauxZone.serializer)
       ..add(ErreurApi.serializer)
       ..add(EscaladeDispatch.serializer)
@@ -93,6 +96,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ExpositionCash.serializer)
       ..add(FichePublique.serializer)
       ..add(FileAttenteCoursier.serializer)
+      ..add(FileCreances.serializer)
+      ..add(FileDossiers.serializer)
       ..add(FileIndemnisations.serializer)
       ..add(ForcageDto.serializer)
       ..add(GainOffre.serializer)
@@ -117,6 +122,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(LigneExposition.serializer)
       ..add(LigneHistoriqueCaisse.serializer)
       ..add(LignePanier.serializer)
+      ..add(LigneRecu.serializer)
+      ..add(LigneRegistre.serializer)
       ..add(LitigeVu.serializer)
       ..add(LivraisonCommande.serializer)
       ..add(LotDePresence.serializer)
@@ -126,7 +133,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ModifierAdresse.serializer)
       ..add(ModifierArticleDto.serializer)
       ..add(ModifierPrestataireDto.serializer)
+      ..add(MouvementCaisse.serializer)
       ..add(OffreCourante.serializer)
+      ..add(OffreLivraisonDeclaration.serializer)
+      ..add(OffreLivraisonReglee.serializer)
       ..add(OffreLivraisonVendeur.serializer)
       ..add(PaiementCommande.serializer)
       ..add(PaiementPanier.serializer)
@@ -139,6 +149,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(Point.serializer)
       ..add(PoolDeZone.serializer)
       ..add(PositionSuivi.serializer)
+      ..add(PositionsCaisse.serializer)
       ..add(PresenceEnregistree.serializer)
       ..add(PrestataireAdmin.serializer)
       ..add(PrestataireAdminDetail.serializer)
@@ -151,14 +162,19 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PublicationPosition.serializer)
       ..add(RattachementDto.serializer)
       ..add(RattacherCompteDto.serializer)
+      ..add(RecuArret.serializer)
+      ..add(RecuCommande.serializer)
       ..add(RefusOffre.serializer)
+      ..add(RegistreTransactions.serializer)
       ..add(Regle.serializer)
       ..add(RegleRetenue.serializer)
       ..add(RegleUpsert.serializer)
+      ..add(ReglerCreanceDto.serializer)
       ..add(ReleveDePresence.serializer)
       ..add(RemiseBloquee.serializer)
       ..add(RemisePreprovisionnee.serializer)
       ..add(RemisesBloquees.serializer)
+      ..add(ReponseNotification.serializer)
       ..add(RepriseFaite.serializer)
       ..add(ResolutionPlaque.serializer)
       ..add(ResultatAnnulation.serializer)
@@ -171,6 +187,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(SecretsRemise.serializer)
       ..add(SessionAppareil.serializer)
       ..add(SessionOuverte.serializer)
+      ..add(SessionPaiement.serializer)
       ..add(SeuilsPreuves.serializer)
       ..add(SignalementRecuDto.serializer)
       ..add(SignalerRuptureDto.serializer)
@@ -260,11 +277,33 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(CoursierDuPool)]),
           () => ListBuilder<CoursierDuPool>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Creance)]),
+          () => ListBuilder<Creance>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Creance)]),
+          () => ListBuilder<Creance>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(LigneHistoriqueCaisse)]),
+          () => ListBuilder<LigneHistoriqueCaisse>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(IndemnisationVue)]),
+          () => ListBuilder<IndemnisationVue>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LitigeVu)]),
+          () => ListBuilder<LitigeVu>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(MouvementCaisse)]),
+          () => ListBuilder<MouvementCaisse>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(DateTime)]),
           () => ListBuilder<DateTime>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(DossierPaiement)]),
+          () => ListBuilder<DossierPaiement>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(EtatRoleDto)]),
           () => ListBuilder<EtatRoleDto>())
@@ -284,21 +323,20 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(LigneExposition)]),
           () => ListBuilder<LigneExposition>())
       ..addBuilderFactory(
-          const FullType(
-              BuiltList, const [const FullType(LigneHistoriqueCaisse)]),
-          () => ListBuilder<LigneHistoriqueCaisse>())
-      ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(IndemnisationVue)]),
-          () => ListBuilder<IndemnisationVue>())
-      ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(LitigeVu)]),
-          () => ListBuilder<LitigeVu>())
-      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LignePanier)]),
           () => ListBuilder<LignePanier>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(LignePanier)]),
           () => ListBuilder<LignePanier>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneRecu)]),
+          () => ListBuilder<LigneRecu>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneRecu)]),
+          () => ListBuilder<LigneRecu>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(LigneRegistre)]),
+          () => ListBuilder<LigneRegistre>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PlageDto)]),
           () => ListBuilder<PlageDto>())

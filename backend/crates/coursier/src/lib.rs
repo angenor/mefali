@@ -32,6 +32,7 @@ pub mod appels;
 pub mod caisse;
 pub mod config;
 pub mod course;
+pub mod creance;
 pub mod depot;
 pub mod indemnisation;
 pub mod modele;
@@ -44,13 +45,15 @@ pub use appels::{AppelEnregistre, DemandeAppel};
 pub use presence::{PresenceEnregistree, ReleveDePresence};
 pub use preuves::{PhotoPreuveDeposee, PhotoPreuveVue, PreuvesExploitation};
 pub use caisse::{AvancesOuvertes, DemandeEcriture, JourneeCoursier};
+pub use creance::{part_course, Creance, EtatCreance, NatureCreance, NouvelleCreance};
 pub use indemnisation::DecisionIndemnisation;
 pub use depot::PgCoursier;
 pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
 pub use modele::{
+    PositionsCaisse,
     ActionRejouee, AppelJournalise, ArretComplet, CibleAppel, ClientCourse, CourseComplete,
     ErreurCoursier, EtatIndemnisation, EtatPreuves, ExpositionCash, IndemnisationVue, IssueAppel,
-    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, LitigeVu, MotifAppel, PreuveAppels,
+    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, MouvementCaisse, LitigeVu, MotifAppel, PreuveAppels,
     PreuvePhotos, PreuvePresence, RemisePreprovisionnee, SeuilsPreuves, TypeEcriture, VueCaisse,
     VueJournee,
 };

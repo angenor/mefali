@@ -7,12 +7,14 @@ on:
       - 'backend/**'
       - 'openapi.json'
       - 'scripts/verifier-schemas-openapi.sh'
+      - 'scripts/verifier-frontiere-paiement.sh'
       - '.github/workflows/backend.yml'
   pull_request:
     paths:
       - 'backend/**'
       - 'openapi.json'
       - 'scripts/verifier-schemas-openapi.sh'
+      - 'scripts/verifier-frontiere-paiement.sh'
       - '.github/workflows/backend.yml'
 
 jobs:
@@ -63,5 +65,14 @@ jobs:
       - name: Schémas OpenAPI sans collision
         working-directory: .
         run: ./scripts/verifier-schemas-openapi.sh
+      # PAY-05, SC-010, FR-003 — le choix de l'agrégateur doit rester
+      # DÉFAISABLE. Ce contrôle échoue si un nom d'agrégateur ou un routage par
+      # moyen apparaît hors de `crates/paiements/src/fournisseur/`.
+      # Placé AVANT les tests : une frontière franchie est un défaut de
+      # conception, et il ne sert à rien de savoir que les tests passent
+      # au-dessus d'elle.
+      - name: Frontière fournisseur
+        working-directory: .
+        run: ./scripts/verifier-frontiere-paiement.sh
       - name: Tests
         run: cargo test

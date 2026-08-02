@@ -15,6 +15,10 @@ Map<String, Object?> _pilotable() => {
       'nom': 'Boutique Kofi',
       'statut': 'agree',
       'boutique': {'ouvert': true, 'reouverture_estimee': null},
+      // Cycle PAY 011 : VND-08 au défaut de migration — aucun vendeur existant
+      // ne change de comportement (FR-046).
+      'offre_livraison': 'jamais',
+      'offre_livraison_seuil_unites': null,
     };
 
 Map<String, Object?> _article(

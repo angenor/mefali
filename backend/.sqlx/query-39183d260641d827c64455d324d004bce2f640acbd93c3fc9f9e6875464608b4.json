@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coursier.creance\n                   (id, coursier_id, commande_id, livraison_id, nature,\n                    montant_unites, devise, evenement_id)\n               VALUES ($1, $2, $3, $4, $5::text::coursier.nature_creance, $6, $7, $8)\n               ON CONFLICT DO NOTHING\n               RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int8",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "39183d260641d827c64455d324d004bce2f640acbd93c3fc9f9e6875464608b4"
+}

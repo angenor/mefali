@@ -84,6 +84,10 @@ class CarteArretCourant extends StatelessWidget {
                 ),
               ],
             ),
+            if (arret.aUneRetenue) ...[
+              const SizedBox(height: MefaliTokens.space3),
+              ExplicationRetenue(arret: arret),
+            ],
             const SizedBox(height: MefaliTokens.space3),
             Row(
               children: [
@@ -117,6 +121,129 @@ class CarteArretCourant extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Le calcul de la livraison offerte, **affiché en entier** (VND-08, FR-092).
+///
+/// « Articles 3 000 − Livraison offerte 500 = 2 500 à payer ». Le résultat seul
+/// ne suffirait pas : un coursier qui voit un montant plus bas que ce que le
+/// vendeur réclame au comptoir n'a aucun moyen de trancher, et il paie le brut
+/// de sa poche ou il rappelle l'agence. Les trois termes le mettent en position
+/// de discuter.
+///
+/// Réf. `docs/design/png/K3-course-active.png` état 1a (bloc de montant),
+/// valeurs de `docs/design/tokens.md`. ⚠ **Écart assumé** : aucune planche de
+/// paiement n'existe (plan.md, Complexity Tracking) — le bloc emprunte ses
+/// motifs à la carte d'arrêt voisine, il n'invente pas une identité visuelle.
+class ExplicationRetenue extends StatelessWidget {
+  /// Crée le bloc d'explication.
+  const ExplicationRetenue({super.key, required this.arret});
+
+  /// L'arrêt dont la livraison est offerte par le vendeur.
+  final ArretCourse arret;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    final devise = arret.devise;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(MefaliTokens.space3),
+      decoration: BoxDecoration(
+        color: MefaliTokens.successTint,
+        borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Symbols.redeem_rounded,
+                  color: MefaliTokens.success, size: 20),
+              const SizedBox(width: MefaliTokens.space2),
+              Expanded(
+                child: Text(
+                  l10n.payRetenueExplicationTitre,
+                  style: textTheme.titleSmall
+                      ?.copyWith(color: MefaliTokens.success),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: MefaliTokens.space2),
+          _LigneCalcul(
+            libelle: l10n.payRetenueArticles,
+            montant:
+                formaterMontant(arret.montantArticlesAPayerUnites, devise),
+          ),
+          _LigneCalcul(
+            libelle: l10n.payRetenueMoins,
+            montant:
+                '− ${formaterMontant(arret.retenueAppliqueeUnites, devise)}',
+          ),
+          const Divider(height: MefaliTokens.space3),
+          if (arret.retenueEcretee)
+            Text(
+              l10n.payRetenueEcretee,
+              style: textTheme.bodySmall?.copyWith(color: MefaliTokens.warning),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.payRetenueNetAPayer,
+                    style: textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: MefaliTokens.space2),
+                Text(
+                  formaterMontant(arret.montantAPayerUnites, devise),
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: MefaliTokens.weightBold),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LigneCalcul extends StatelessWidget {
+  const _LigneCalcul({required this.libelle, required this.montant});
+
+  final String libelle;
+  final String montant;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: MefaliTokens.space1),
+      // `Expanded` sur le libellé, pas sur le montant : sur une carte étroite,
+      // c'est le mot qui doit se tronquer, jamais le chiffre. Un montant coupé
+      // à l'ellipse ferait payer autre chose que ce qui est dû.
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              libelle,
+              style: textTheme.bodyMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: MefaliTokens.space2),
+          Text(montant, style: textTheme.bodyMedium),
+        ],
       ),
     );
   }

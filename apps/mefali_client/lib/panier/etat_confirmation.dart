@@ -148,6 +148,15 @@ class CommandeCreeeVue {
   /// Jeton du QR de réception.
   final String jetonReception;
 
+  /// La commande est née **en attente de paiement** : au-dessus du plafond
+  /// cash, ou basculée par le dispatch (cycle PAY 011, FR-010).
+  ///
+  /// C'est ce drapeau qui décide de la suite du parcours : écran de paiement
+  /// plutôt que suivi. Le lire sur la réponse de création évite un aller-retour
+  /// de plus, et surtout évite à l'app de deviner à partir du mode de paiement
+  /// — le plafond cash est une règle de zone, l'app ne la connaît pas.
+  bool get attendPaiement => etat == 'en_attente_paiement';
+
   /// Construit la vue depuis le corps JSON de `POST /commandes`.
   factory CommandeCreeeVue.depuisJson(Map<String, Object?> json) {
     final remise = json['remise']! as Map<String, Object?>;

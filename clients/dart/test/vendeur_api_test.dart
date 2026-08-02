@@ -28,6 +28,13 @@ void main() {
       // TODO
     });
 
+    // Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
+    //
+    //Future<OffreLivraisonReglee> definirOffreLivraison(String id, OffreLivraisonDeclaration offreLivraisonDeclaration) async
+    test('test definirOffreLivraison', () async {
+      // TODO
+    });
+
     // Statut, échéance, horaires du jour et rappel de l'écran V1.
     //
     //Future<BoutiqueVendeur> maBoutique(String id) async
@@ -67,6 +74,13 @@ void main() {
     //
     //Future<ArticleVendeur> photoArticle(String id, String articleId, MultipartFile fichier) async
     test('test photoArticle', () async {
+      // TODO
+    });
+
+    // Reçu d'un arrêt collecté chez un prestataire piloté.
+    //
+    //Future<RecuArret> recuArret(String arretId) async
+    test('test recuArret', () async {
       // TODO
     });
 

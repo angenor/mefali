@@ -40,6 +40,7 @@ pub mod exploitation;
 pub mod modele;
 pub mod panier;
 pub mod ports;
+pub mod recu;
 pub mod substitution;
 pub mod suivi;
 pub mod workflow;
@@ -64,13 +65,15 @@ pub use panier::{
 };
 pub use ports::{
     AffectationSimulee, ArretDeCourse, ArretsDeCollecte, ArretsFixes, Capacite, ClientDeCourse,
-    CommandeADispatcher, CommandesADispatcher, CourseCoursier, CourseDuCoursier, CourseFixe,
-    EtatProgression, LigneDeCourse, LivraisonLivree, Montant, MotifPrepaiementDispatch,
-    PaiementSimule, PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes,
-    RemiseDeCourse, RestrictionsCompte, RestrictionsSimulees, TarifFixe,
+    CommandeADispatcher, CommandeAPayer, CommandesADispatcher, CommandesAPayer,
+    CommandesAPayerEnMemoire, CourseCoursier, CourseDuCoursier, CourseFixe, EtatProgression,
+    LigneDeCourse, LivraisonLivree, Montant, MotifPrepaiementDispatch, PaiementSimule,
+    PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes, RemiseDeCourse,
+    RestrictionsCompte, RestrictionsSimulees, TarifFixe, MOTIF_ANNULATION_EXPIRATION,
 };
 pub use substitution::{
     DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,
 };
+pub use recu::{LigneRecu, RecuArret, RecuCommande, MOTIF_RETENUE_CLE};
 pub use suivi::{CommandeResumee, VueSuivi};
 pub use workflow::{CoursesWorkflow, RestaurationWorkflow, ServiceWorkflow};

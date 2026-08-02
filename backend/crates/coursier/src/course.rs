@@ -173,6 +173,8 @@ pub(crate) fn composer(
                 empreinte_jeton: plaque.map(|p| p.empreinte_jeton.clone()).unwrap_or_default(),
                 empreinte_code: plaque.map(|p| p.empreinte_code.clone()).unwrap_or_default(),
                 montant_avance: a.montant_avance,
+                montant_articles_unites: a.montant_articles_unites,
+                retenue_appliquee_unites: a.retenue_appliquee_unites,
                 photo_exigee: plaque.is_some_and(|p| p.photo_exigee),
                 distance_max_m: plaque.map(|p| p.distance_max_m).unwrap_or(0),
                 statut: a.statut,
@@ -187,7 +189,15 @@ pub(crate) fn composer(
             // FR-013 : ce que Yao doit sortir de sa poche à CET arrêt, après
             // retraits. Un arrêt dont tout a été retiré vaut zéro, et c'est
             // exact — il n'a plus rien à payer, mais l'étape existe encore.
-            arret.montant_avance = arret.montant_lignes_unites();
+            //
+            // FR-092 (cycle PAY 011) : la retenue vendeur se déduit ICI aussi.
+            // Les lignes font autorité sur le BRUT — elles sont plus fraîches
+            // que la colonne — mais le net que Yao sort au comptoir est
+            // « articles − livraison offerte », jamais le brut. Écrêté à zéro :
+            // le coursier ne finance rien.
+            arret.montant_articles_unites = arret.montant_lignes_unites();
+            arret.montant_avance =
+                (arret.montant_articles_unites - arret.retenue_appliquee_unites).max(0);
             arret
         })
         .collect();
@@ -279,6 +289,8 @@ mod tests {
                 site_lon: -4.823,
                 distance_precedent_m: None,
                 montant_avance: 2_000,
+                montant_articles_unites: 2_000,
+                retenue_appliquee_unites: 0,
                 statut: StatutArret::ACollecter,
                 en_route_le: None,
                 arrive_le: None,

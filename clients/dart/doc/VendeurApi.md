@@ -12,12 +12,14 @@ Method | HTTP request | Description
 [**actionBoutique**](VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [**basculerDisponibilite**](VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [**creerArticle**](VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
+[**definirOffreLivraison**](VendeurApi.md#definiroffrelivraison) | **PUT** /vendeur/prestataires/{id}/offre-livraison | Déclare l&#39;offre de livraison du vendeur (VND-08 minimal — FR-046).
 [**maBoutique**](VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
 [**mesArticles**](VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
 [**mesPrestataires**](VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
 [**modifierArticle**](VendeurApi.md#modifierarticle) | **PUT** /vendeur/prestataires/{id}/articles/{article_id} | Modifie nom / prix / prix barré / étiquette (fiche article V2).
 [**modifierHoraires**](VendeurApi.md#modifierhoraires) | **PUT** /vendeur/prestataires/{id}/horaires | Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
 [**photoArticle**](VendeurApi.md#photoarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/photo | Dépose/remplace la photo de l&#39;article (multipart, ≤ 5 Mo).
+[**recuArret**](VendeurApi.md#recuarret) | **GET** /vendeur/arrets/{arret_id}/recu | Reçu d&#39;un arrêt collecté chez un prestataire piloté.
 [**remettreArticle**](VendeurApi.md#remettrearticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue, sans ressaisie (FR-055).
 [**retirerArticle**](VendeurApi.md#retirerarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/retrait | Retire l&#39;article du catalogue — RÉVERSIBLE (FR-055).
 
@@ -141,6 +143,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**ArticleVendeur**](ArticleVendeur.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **definirOffreLivraison**
+> OffreLivraisonReglee definirOffreLivraison(id, offreLivraisonDeclaration)
+
+Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getVendeurApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire piloté.
+final OffreLivraisonDeclaration offreLivraisonDeclaration = ; // OffreLivraisonDeclaration | 
+
+try {
+    final response = api.definirOffreLivraison(id, offreLivraisonDeclaration);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling VendeurApi->definirOffreLivraison: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire piloté. | 
+ **offreLivraisonDeclaration** | [**OffreLivraisonDeclaration**](OffreLivraisonDeclaration.md)|  | 
+
+### Return type
+
+[**OffreLivraisonReglee**](OffreLivraisonReglee.md)
 
 ### Authorization
 
@@ -401,6 +446,47 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: multipart/form-data
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **recuArret**
+> RecuArret recuArret(arretId)
+
+Reçu d'un arrêt collecté chez un prestataire piloté.
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getVendeurApi();
+final String arretId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Arrêt COLLECTÉ chez un prestataire piloté.
+
+try {
+    final response = api.recuArret(arretId);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling VendeurApi->recuArret: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **arretId** | **String**| Arrêt COLLECTÉ chez un prestataire piloté. | 
+
+### Return type
+
+[**RecuArret**](RecuArret.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

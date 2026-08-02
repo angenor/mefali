@@ -23,6 +23,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../commande/etat_suivi.dart';
+import '../paiement/etat_session_paiement.dart';
 import '../panier/etat_confirmation.dart';
 import '../panier/etat_panier.dart';
 
@@ -371,6 +372,44 @@ class ActionsCommande {
       final cache = await _cache.lire(commandeId);
       if (cache == null) rethrow;
       return EtatSuivi.depuisCache(cache);
+    }
+  }
+
+  // ── Prépaiement (cycle PAY 011, US1) ────────────────────────────────────
+
+  /// Ouvre — ou retrouve — la session de paiement (`POST /commandes/{id}/paiement`).
+  ///
+  /// Rend le `code` d'un refus, ou `null`. L'appel est **idempotent côté
+  /// serveur** : le rejouer après un timeout ne crée pas un second
+  /// encaissement, et l'app n'a donc pas de clé à conserver ici — contrairement
+  /// à la création de commande, où elle en porte une (R7).
+  Future<String?> ouvrirPaiement(String commandeId) async {
+    try {
+      final json = await _ref.read(paiementsApiProvider).ouvrir(commandeId);
+      _ref
+          .read(sessionPaiementProvider(commandeId).notifier)
+          .poser(EtatSessionPaiement.depuisJson(json));
+      return null;
+    } catch (erreur) {
+      return codeErreurApi(erreur);
+    }
+  }
+
+  /// Relit l'état de la session (`GET /commandes/{id}/paiement`).
+  ///
+  /// C'est le SEUL chemin par lequel l'app apprend qu'un paiement a été
+  /// confirmé : le retour depuis le navigateur ne crédite rien (FR-025). Le
+  /// `restant_s` rendu ici **recale** le compte à rebours local, qui n'est
+  /// qu'un affichage.
+  Future<String?> relirePaiement(String commandeId) async {
+    try {
+      final json = await _ref.read(paiementsApiProvider).etat(commandeId);
+      _ref
+          .read(sessionPaiementProvider(commandeId).notifier)
+          .poser(EtatSessionPaiement.depuisJson(json));
+      return null;
+    } catch (erreur) {
+      return codeErreurApi(erreur);
     }
   }
 

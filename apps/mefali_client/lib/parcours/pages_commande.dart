@@ -14,18 +14,25 @@
 /// (constitution XII) — ce n'est l'affaire d'aucun provider.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:mefali_core/mefali_core.dart';
 
 import '../commande/ecran_suivi.dart';
 import '../commande/etat_suivi.dart';
 import '../commande/feuille_substitution.dart';
 import '../l10n/app_localizations.dart';
+import '../paiement/ecran_paiement.dart';
+import '../paiement/etat_session_paiement.dart';
 import '../panier/ecran_adresse_paiement.dart';
 import '../panier/ecran_panier.dart';
+import '../panier/etat_confirmation.dart';
 import '../panier/etat_panier.dart';
 import 'actions_commande.dart';
+import 'recu_commande.dart';
 
 /// Ouvre le panier (C3-3a).
 void ouvrirPanier(BuildContext context) {
@@ -43,6 +50,25 @@ void ouvrirPanier(BuildContext context) {
 void ouvrirSuivi(BuildContext context, String commandeId, {bool remplacer = false}) {
   final route = MaterialPageRoute<void>(
     builder: (_) => PageSuivi(commandeId: commandeId),
+  );
+  if (remplacer) {
+    Navigator.of(context).pushAndRemoveUntil(route, (r) => r.isFirst);
+  } else {
+    Navigator.of(context).push(route);
+  }
+}
+
+/// Ouvre l'écran de règlement d'une commande (cycle PAY 011, US1).
+///
+/// `remplacer` depuis la confirmation, pour la même raison que `ouvrirSuivi` :
+/// le retour ne doit pas retomber sur un panier déjà vidé.
+void ouvrirPaiement(
+  BuildContext context,
+  String commandeId, {
+  bool remplacer = false,
+}) {
+  final route = MaterialPageRoute<void>(
+    builder: (_) => PagePaiement(commandeId: commandeId),
   );
   if (remplacer) {
     Navigator.of(context).pushAndRemoveUntil(route, (r) => r.isFirst);
@@ -217,11 +243,78 @@ class _PageAdressePaiementState extends ConsumerState<PageAdressePaiement> {
     return EcranAdressePaiement(
       onPositionActuelle: _positionActuelle,
       onConfirmer: _enCours ? null : _confirmer,
-      onSuivre: (commandeId) =>
-          ouvrirSuivi(context, commandeId, remplacer: true),
+      onSuivre: _apresCreation,
       libelleSuivre: app.parcoursSuivreCommande,
     );
   }
+
+  /// Où mène une commande fraîchement créée.
+  ///
+  /// Une commande née `en_attente_paiement` (au-dessus du plafond cash) va au
+  /// **règlement**, pas au suivi : la suivre alors qu'elle ne partira qu'une
+  /// fois payée montrerait une attente sans expliquer ce qu'on attend. Le
+  /// drapeau vient de la réponse de création, jamais d'une règle recopiée dans
+  /// l'app — le plafond est une valeur de zone.
+  void _apresCreation(String commandeId) {
+    final creees = ref.read(confirmationProvider).commandesCreees;
+    final creee = creees.where((c) => c.id == commandeId).firstOrNull;
+    if (creee != null && creee.attendPaiement) {
+      ouvrirPaiement(context, commandeId, remplacer: true);
+    } else {
+      ouvrirSuivi(context, commandeId, remplacer: true);
+    }
+  }
+}
+
+/// Règlement d'une commande prépayée (cycle PAY 011, US1).
+///
+/// L'ouverture de session part à la PREMIÈRE frame et non depuis l'écran de
+/// confirmation : si le fournisseur est indisponible (`502`), la commande reste
+/// intacte et la cliente voit le message sur un écran qui lui appartient, avec
+/// la possibilité de réessayer — plutôt qu'un refus jeté par-dessus l'écran de
+/// codes qu'elle était en train de lire.
+class PagePaiement extends ConsumerStatefulWidget {
+  /// Crée la page de règlement.
+  const PagePaiement({required this.commandeId, super.key});
+
+  /// Commande à régler.
+  final String commandeId;
+
+  @override
+  ConsumerState<PagePaiement> createState() => _PagePaiementState();
+}
+
+class _PagePaiementState extends ConsumerState<PagePaiement> {
+  @override
+  void initState() {
+    super.initState();
+    // Après la première frame : `ouvrirPaiement` écrit dans un provider, ce
+    // qu'un `initState` ne peut pas faire pendant la construction de l'arbre.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ouvrir());
+  }
+
+  Future<void> _ouvrir() async {
+    final code = await ref
+        .read(actionsCommandeProvider)
+        .ouvrirPaiement(widget.commandeId);
+    if (!mounted || code == null) return;
+    _signaler(context, ref, code);
+  }
+
+  Future<void> _relire() async {
+    final code = await ref
+        .read(actionsCommandeProvider)
+        .relirePaiement(widget.commandeId);
+    if (!mounted || code == null) return;
+    _signaler(context, ref, code);
+  }
+
+  @override
+  Widget build(BuildContext context) => EcranPaiement(
+        commandeId: widget.commandeId,
+        onRelire: _relire,
+        onSuivre: (id) => ouvrirSuivi(context, id, remplacer: true),
+      );
 }
 
 /// Suivi d'une commande (C4-4a/4b/4d) et feuille de substitution (C4-4c).
@@ -240,6 +333,81 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
   /// Proposition déjà présentée. Sans ce garde, chaque rafraîchissement du
   /// suivi rouvrirait la feuille par-dessus elle-même.
   String? _substitutionPresentee;
+
+  /// Sonde du règlement, active tant que la commande attend son paiement.
+  ///
+  /// Un garde « une seule lecture » suffisait à empêcher le compte à rebours de
+  /// se recaler à chaque frame — mais il empêchait aussi l'écran d'apprendre
+  /// quoi que ce soit APRÈS : trouvé sur appareil (T085), le suivi d'une
+  /// commande réglée continuait d'afficher « en attente de votre paiement » et
+  /// son bouton de règlement, ce qui invite à payer deux fois ; et
+  /// l'annulation par expiration n'apparaissait jamais **d'elle-même**
+  /// (FR-017), faute de quoi que ce soit qui relise.
+  ///
+  /// Ce qui manquait n'était pas la lecture, c'était son RYTHME : le tic local
+  /// fait descendre le compte à rebours entre deux recalages, et la sonde ne
+  /// parle au serveur qu'une fois toutes les [_periodeSonde].
+  Timer? _sonde;
+
+  /// Intervalle entre deux lectures du serveur pendant l'attente d'un
+  /// règlement. Assez court pour qu'un paiement confirmé se voie sans que la
+  /// cliente ait à ressortir de l'écran, assez long pour ne pas transformer
+  /// une attente de 15 minutes en 900 requêtes.
+  static const _periodeSonde = Duration(seconds: 10);
+
+  /// Charge l'état de la session quand — et seulement quand — la commande en
+  /// attend un. Une commande cash n'a pas de session : la lire rendrait `404`
+  /// et n'apprendrait rien.
+  void _lirePaiementSiUtile(EtatSuivi suivi) {
+    // `annulee` en fait partie : c'est la seule façon d'apprendre qu'une
+    // commande a été annulée parce que le délai de paiement a été franchi — le
+    // suivi ne porte pas le motif d'annulation. Sur une commande cash annulée,
+    // la lecture rend `404` et le bandeau reste simplement muet.
+    const concernes = {'en_attente_paiement', 'annulee'};
+    if (!concernes.contains(suivi.etat)) {
+      // La commande a quitté l'attente — le paiement est passé. Une DERNIÈRE
+      // lecture apprend au bandeau qu'il est réglé, sinon il resterait figé
+      // sur l'« ouverte » posée à l'ouverture de l'écran.
+      if (_sonde != null) {
+        _arreterSonde();
+        ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
+      }
+      return;
+    }
+    if (_sonde != null) return;
+    ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
+    _sonde = Timer.periodic(_periodeSonde, (_) => _sonder());
+  }
+
+  /// Un tour de sonde : l'état de la session, puis celui de la commande.
+  ///
+  /// Les deux, parce qu'ils changent ensemble mais sont lus séparément : le
+  /// règlement fait passer la commande à `en_attente_coursier`, et sans
+  /// relecture du suivi l'écran continuerait d'annoncer « commande reçue »
+  /// pendant que le coursier est déjà cherché.
+  Future<void> _sonder() async {
+    await ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
+    if (!mounted) return;
+    final session = ref.read(sessionPaiementProvider(widget.commandeId));
+    // Réglée, expirée ou payée hors délai : plus rien ne bougera côté
+    // paiement. On arrête d'interroger — mais on relit le suivi une dernière
+    // fois, puisque c'est justement là que la commande vient d'avancer.
+    if (session != null && !session.accepteEncore) _arreterSonde();
+    ref.invalidate(suiviProvider(widget.commandeId));
+  }
+
+  void _arreterSonde() {
+    _sonde?.cancel();
+    _sonde = null;
+  }
+
+  @override
+  void dispose() {
+    // Sans cela, la sonde survivrait à l'écran et interrogerait le serveur
+    // pour une commande que plus personne ne regarde.
+    _arreterSonde();
+    super.dispose();
+  }
 
   Future<void> _annuler() async {
     final app = AppLocalizations.of(context)!;
@@ -317,7 +485,9 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
     // la cliente doit garder sous les yeux la commande dont on parle.
     ref.listen(suiviProvider(widget.commandeId), (_, next) {
       final suivi = next.value;
-      if (suivi != null) _presenter(suivi);
+      if (suivi == null) return;
+      _presenter(suivi);
+      _lirePaiementSiUtile(suivi);
     });
 
     return EcranSuivi(
@@ -325,7 +495,115 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
       onAppeler: () =>
           ref.read(actionsCommandeProvider).signalerAppel(widget.commandeId),
       onAnnuler: _annuler,
+      entete: BandeauPaiementSuivi(commandeId: widget.commandeId),
+      // Le reçu (FR-070) — accessible à tout moment, y compris pendant la
+      // course : c'est là qu'Awa vérifie pourquoi le total a bougé et ce
+      // qu'elle doit encore au coursier.
+      actions: [
+        IconButton(
+          icon: const Icon(Symbols.receipt_long_rounded),
+          tooltip: AppLocalizations.of(context)!.recuTitre,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PageRecu(commandeId: widget.commandeId),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+}
+
+/// Bandeau de paiement posé au-dessus du suivi (cycle PAY 011, FR-016/FR-017).
+///
+/// Réf. `docs/design/png/C4-suivi-commande.png` — même forme que le bandeau
+/// hors-ligne du cadre 4d, dont il emprunte le motif ; aucune planche de
+/// paiement n'existe (écart assumé, plan.md Complexity Tracking ligne 3).
+///
+/// Il n'affiche **rien** tant qu'aucune session n'a été lue : le suivi d'une
+/// commande cash ne doit pas laisser un espace vide là où il n'y a rien à dire.
+class BandeauPaiementSuivi extends ConsumerWidget {
+  /// Crée le bandeau de paiement du suivi.
+  const BandeauPaiementSuivi({required this.commandeId, super.key});
+
+  /// Commande suivie.
+  final String commandeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final app = AppLocalizations.of(context)!;
+    final session = ref.watch(sessionPaiementProvider(commandeId));
+    if (session == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(MefaliTokens.space3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              switch (session.etat) {
+                'reglee' => app.paiementEtatReglee,
+                'echouee' => app.paiementEtatEchouee,
+                // Le motif en CLAIR, et sans jargon : ni « transaction », ni
+                // « session », ni « fournisseur ». Awa n'a pas à connaître
+                // notre plomberie pour comprendre qu'elle n'a rien payé.
+                'expiree' || 'payee_hors_delai' => app.paiementSessionExpiree,
+                _ => app.paiementEtatOuverte,
+              },
+              style: theme.textTheme.titleSmall,
+            ),
+            // FR-082 — un paiement arrivé APRÈS l'annulation. La commande n'est
+            // pas ressuscitée (R8) et le remboursement n'est pas automatique :
+            // PAY-04 n'est pas construit. On le DIT plutôt que de laisser Awa
+            // découvrir un prélèvement sans explication.
+            if (session.etat == 'payee_hors_delai') ...[
+              const SizedBox(height: MefaliTokens.space2),
+              Text(
+                app.paiementRemboursementAVenir,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            // La sortie : repartir du panier. Une annulation sans issue
+            // proposée est une impasse, et l'impasse coûte une commande.
+            if (session.expiree) ...[
+              const SizedBox(height: MefaliTokens.space2),
+              FilledButton.tonal(
+                onPressed: () => ouvrirPanier(context),
+                child: Text(app.paiementRecommander),
+              ),
+            ],
+            // Le temps restant ne s'affiche que tant que la session vit : un
+            // « 00:00 » sous un paiement confirmé serait une inquiétude
+            // gratuite (FR-017).
+            if (session.accepteEncore) ...[
+              const SizedBox(height: MefaliTokens.space2),
+              Text(
+                app.paiementTempsRestant(_mmss(session.restantS)),
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            // FR-016 — la reprise reste offerte TANT QUE la session vit. Elle
+            // disparaît d'elle-même quand `reprenable` tombe : plus d'accès,
+            // plus de temps, ou plus de session payable.
+            if (session.reprenable) ...[
+              const SizedBox(height: MefaliTokens.space2),
+              FilledButton.tonal(
+                onPressed: () => ouvrirPaiement(context, commandeId),
+                child: Text(app.paiementReprendre),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _mmss(int secondes) {
+    final s = secondes < 0 ? 0 : secondes;
+    return '${(s ~/ 60).toString().padLeft(2, '0')}:'
+        '${(s % 60).toString().padLeft(2, '0')}';
   }
 }
 

@@ -108,9 +108,13 @@ async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uui
     for (i, m) in montants.iter().enumerate() {
         let arret = Uuid::now_v7();
         sqlx::query(
+            // `montant_articles_unites` = `montant_avance`, retenue nulle :
+            // l'invariant `arret_avance_coherente` du cycle PAY 011 l'exige, et
+            // un arrêt non collecté n'a par construction aucune retenue.
             "INSERT INTO commandes.arret
-                (id, segment_id, prestataire_id, ordre, site_lat, site_lon, montant_avance, devise)
-             VALUES ($1, $2, $3, $4, 5.898, -4.823, $5, 'XOF')",
+                (id, segment_id, prestataire_id, ordre, site_lat, site_lon, montant_avance, devise,
+                 montant_articles_unites, retenue_appliquee_unites)
+             VALUES ($1, $2, $3, $4, 5.898, -4.823, $5, 'XOF', $5, 0)",
         ).bind(arret).bind(segment).bind(prestataire).bind(i as i16).bind(m)
             .execute(pool).await.unwrap();
         arrets.push(arret);

@@ -24,13 +24,15 @@ use uuid::Uuid;
 use zones::PgZones;
 
 use crate::etats::{verifier_transition, Acteur, Niveau};
+use crate::annulation::AuteurAnnulation;
 use crate::modele::{
-    ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, ModeCollecte,
-    ProgressionCollecte, StatutArret,
+    ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement, ModeCollecte,
+    ModePaiement, ProgressionCollecte, StatutArret,
 };
 use crate::ports::{
-    ArretsDeCollecte, Capacite, CommandeADispatcher, CommandesADispatcher, EtatProgression,
-    MotifPrepaiementDispatch, PositionCoursier, PreuvesEchec, RestrictionsCompte,
+    ArretsDeCollecte, Capacite, CommandeADispatcher, CommandeAPayer, CommandesADispatcher,
+    CommandesAPayer, EtatProgression, MotifPrepaiementDispatch, PositionCoursier, PreuvesEchec,
+    RestrictionsCompte, MOTIF_ANNULATION_EXPIRATION,
 };
 
 /// Clés de configuration de zone lues par la file d'attente (constitution I —
@@ -565,7 +567,7 @@ impl PgCommandes {
         // Recalculé ICI plutôt que lu depuis la colonne, parce que le rejeu
         // hors-ligne peut présenter la collecte AVANT le retrait de ligne : la
         // colonne serait alors juste en base et fausse dans l'événement.
-        let montant_avance = sqlx::query_scalar!(
+        let montant_articles = sqlx::query_scalar!(
             r#"SELECT COALESCE(SUM(
                           lc.quantite * COALESCE(lc.remplace_prix_unites, pf.prix_unites)
                       ) FILTER (WHERE lc.statut <> 'retiree'), 0)::bigint AS "montant!"
@@ -577,6 +579,50 @@ impl PgCommandes {
         .fetch_one(&mut **tx)
         .await?;
 
+        // ── Retenue VND-08 (cycle PAY 011, T055 — research R9) ─────────────
+        //
+        // La retenue est LUE dans le devis figé, jamais recalculée : le moteur
+        // de tarification a déjà arbitré l'offre du vendeur contre les drapeaux
+        // de zone à la création (`evaluation.rs` §8, APRÈS §7). La recalculer
+        // ici créerait une seconde vérité tarifaire — et « le drapeau de zone
+        // prime » deviendrait une règle tenue à deux endroits.
+        //
+        // Elle ne joue que si la livraison n'a qu'UN arrêt de collecte : sur un
+        // panier multi-vendeurs, l'offre d'un vendeur ne peut pas couvrir la
+        // course des autres (FR-051). Le devis porte déjà `retenue_vendeur = 0`
+        // dans ce cas — la garde ci-dessous est la ceinture qui va avec les
+        // bretelles, et elle protège d'un devis figé AVANT une scission.
+        let contexte_retenue = sqlx::query!(
+            r#"SELECT COALESCE((l.devis_composantes->>'retenue_vendeur')::bigint, 0)
+                          AS "retenue_devis!",
+                      -- Les arrêts de COLLECTE seulement : la remise chez le
+                      -- client en est un aussi, et la compter ferait passer
+                      -- toute commande mono-vendeur pour du multi-vendeurs.
+                      (SELECT COUNT(*) FROM commandes.arret a2
+                         JOIN commandes.segment s2 ON s2.id = a2.segment_id
+                        WHERE s2.livraison_id = l.id
+                          AND a2.type_arret = 'collecte') AS "nb_arrets!"
+                 FROM commandes.livraison l
+                WHERE l.id = $1"#,
+            arret.livraison_id,
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+
+        let retenue_applicable = if contexte_retenue.nb_arrets == 1 {
+            contexte_retenue.retenue_devis
+        } else {
+            0
+        };
+        // Écrêtage à zéro (FR-052) : le coursier n'avance JAMAIS moins que
+        // rien. Une retenue supérieure aux articles — panier réduit par des
+        // retraits après le devis — se solde par une avance nulle et un fait
+        // tracé, pas par une avance négative qui ferait financer le vendeur par
+        // le coursier.
+        let retenue_appliquee = retenue_applicable.min(montant_articles);
+        let retenue_ecretee = retenue_applicable > montant_articles;
+        let montant_avance = montant_articles - retenue_appliquee;
+
         // ── Partie A : bascule a_collecter → collecte ──────────────────────
         sqlx::query!(
             r#"UPDATE commandes.arret
@@ -586,7 +632,15 @@ impl PgCommandes {
                    photo_cle = $4,
                    distance_scan_m = $5,
                    collecte_uuid_client = $6,
-                   montant_avance = $7
+                   -- Cycle PAY 011 (T055) : le NET reste `montant_avance` — la
+                   -- caisse du coursier ne change pas de lecture (R9). Les
+                   -- articles bruts et la retenue vivent à côté, parce que le
+                   -- reçu vendeur doit montrer les trois montants (FR-071) et
+                   -- qu'un net seul ne se décompose pas.
+                   montant_avance = $7,
+                   montant_articles_unites = $8,
+                   retenue_appliquee_unites = $9,
+                   retenue_ecretee = $10
                WHERE id = $1"#,
             arret_id,
             horodatage_serveur,
@@ -595,6 +649,9 @@ impl PgCommandes {
             distance_m,
             uuid_client,
             montant_avance,
+            montant_articles,
+            retenue_appliquee,
+            retenue_ecretee,
         )
         .execute(&mut **tx)
         .await?;
@@ -615,7 +672,14 @@ impl PgCommandes {
                     // ARTCI : jamais de lat/lng brut — présence GPS + distance arrondie.
                     "gps_ok": true,
                     "distance_m": distance_m,
+                    // `montant_avance` reste le NET : le consommateur de caisse
+                    // (cycle 010) continue de lire exactement ce qu'il lisait.
                     "montant_avance": montant_avance,
+                    // Ajouts du cycle PAY 011 — le reçu vendeur et le dossier
+                    // d'écrêtage naissent de ces trois-là (FR-050 → FR-052).
+                    "montant_articles": montant_articles,
+                    "retenue_appliquee": retenue_appliquee,
+                    "retenue_ecretee": retenue_ecretee,
                     "devise": arret.devise,
                     "acteur": acteur,
                 }),
@@ -842,6 +906,127 @@ impl PgCommandes {
             nb_arrets: comptes.total as i16,
             en_livraison,
         })
+    }
+}
+
+/// Contrat OFFERT à **PAY** (cycle 011, contracts §2).
+///
+/// Deux des quatre méthodes **branchent un chemin existant** plutôt que d'en
+/// écrire un second (FR-032). C'est le point le plus important de cette
+/// implémentation : `confirmer_prepaiement` et l'annulation vivent depuis le
+/// cycle 008, avec leurs transitions gardées, leurs événements outbox et leur
+/// calcul de remboursement dû. Les réécrire ici aurait donné deux règles pour
+/// un même geste — et elles auraient divergé au premier correctif, l'une
+/// continuant de rembourser pendant que l'autre cesserait.
+#[async_trait]
+impl CommandesAPayer for PgCommandes {
+    async fn a_payer(&self, commande: Uuid) -> Result<CommandeAPayer, ErreurCommandes> {
+        let l = sqlx::query!(
+            r#"SELECT c.zone_id, c.client_id, c.total_unites, c.devise,
+                      c.mode_paiement::text  AS "mode_paiement!",
+                      c.etat::text           AS "etat!",
+                      c.etat_paiement::text  AS "etat_paiement!"
+               FROM commandes.commande c
+               WHERE c.id = $1"#,
+            commande,
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(ErreurCommandes::CommandeInconnue(commande))?;
+
+        Ok(CommandeAPayer {
+            commande_id: commande,
+            zone_id: l.zone_id,
+            client_id: l.client_id,
+            total_unites: l.total_unites,
+            devise: l.devise,
+            mode_paiement: l.mode_paiement.parse::<ModePaiement>()?,
+            etat: l.etat.parse::<EtatCommande>()?,
+            etat_paiement: l.etat_paiement.parse::<EtatPaiement>()?,
+        })
+    }
+
+    /// Pose enfin `etat_paiement = 'en_attente'` (research R16, FR-014).
+    ///
+    /// La valeur existe dans l'énumération depuis la migration 0008 et **aucune
+    /// ligne de code ne l'écrivait** : une commande mobile money restait à
+    /// `'du'`, strictement indiscernable d'une commande cash. Toute lecture qui
+    /// voulait savoir « ce paiement est-il en cours ? » devait le deviner.
+    ///
+    /// Aucun événement outbox : ce n'est pas une transition du tronc, c'est la
+    /// matérialisation d'un fait que `paiement.session_ouverte` journalise déjà
+    /// dans la MÊME transaction, du côté de `paiements`. En émettre un second
+    /// compterait deux fois la même ouverture.
+    async fn marquer_paiement_en_attente(
+        &self,
+        commande: Uuid,
+        _quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        // La garde est dans le `WHERE` plutôt que dans un `if` précédé d'un
+        // `SELECT` : deux ouvertures concurrentes ne peuvent pas toutes deux
+        // faire passer une commande déjà réglée à `en_attente`.
+        let touchees = sqlx::query!(
+            "UPDATE commandes.commande
+                SET etat_paiement = 'en_attente'
+              WHERE id = $1 AND etat_paiement = 'du'",
+            commande,
+        )
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        if touchees == 0 {
+            // Ni une erreur, ni un silence : la commande était déjà en attente
+            // (rappel idempotent de l'ouverture) ou déjà réglée. Dans les deux
+            // cas il n'y a rien à faire, et le refuser casserait l'idempotence
+            // que FR-015 exige.
+            tracing::debug!(
+                commande = %commande,
+                "etat_paiement déjà posé — ouverture rejouée, aucun effet",
+            );
+        }
+        Ok(())
+    }
+
+    async fn confirmer_prepaiement(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        // Chemin du cycle 008, appelé tel quel : transition gardée
+        // `en_attente_paiement → nouvelle`, `etat_paiement = 'regle'`, et
+        // `commande.paiement_confirme` — déjà consommé par le pipeline de
+        // dispatch depuis le cycle 009. Rien à câbler ici.
+        PgCommandes::confirmer_prepaiement(self, commande, quand).await?;
+        Ok(())
+    }
+
+    async fn annuler_pour_expiration(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        // Chemin d'annulation EXISTANT (FR-031, FR-032), avec l'auteur
+        // `systeme` — la valeur que la taxonomie déclarait depuis le cycle 008
+        // sans que rien ne l'écrive, faute d'annulation automatique.
+        //
+        // `acteur_id` = l'identifiant de la commande : l'appel n'a pas d'acteur
+        // humain, et ce paramètre n'est lu que pour la garde de propriété du
+        // client, que `Systeme` ne franchit pas.
+        //
+        // Le calcul de « sans frais » et de la part coursier due reste celui du
+        // cycle 008 : une session expirée n'a par construction aucun arrêt
+        // collecté, donc `sans_frais = true` et `part_coursier_due = 0` en
+        // tombent tout seuls, sans règle spéciale à maintenir.
+        self.annuler_commande(
+            commande,
+            AuteurAnnulation::Systeme,
+            commande,
+            Some(MOTIF_ANNULATION_EXPIRATION),
+            quand,
+        )
+        .await?;
+        Ok(())
     }
 }
 

@@ -192,6 +192,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/creances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** File des créances de coursiers (FR-083). */
+        get: operations["file_creances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/creances/{id}/regler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marque une créance réglée et écrit son mouvement de caisse (FR-067). */
+        post: operations["regler_creance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/dispatch/alertes": {
         parameters: {
             query?: never;
@@ -342,6 +376,57 @@ export interface paths {
          *     ⚠ Aucun numéro de téléphone n'en sort : le serveur n'en a jamais journalisé.
          */
         get: operations["preuves_de_livraison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/paiements/dossiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** File des anomalies d'argent (FR-082). */
+        get: operations["file_dossiers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/paiements/dossiers/{id}/clore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clôt un dossier, avec motif (FR-082). */
+        post: operations["clore_dossier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/paiements/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Registre filtrable des transactions de paiement (FR-080, FR-081). */
+        get: operations["registre_transactions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -560,6 +645,26 @@ export interface paths {
          *     transaction (FR-056).
          */
         post: operations["corriger_prestataire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/prestataires/{id}/offre-livraison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Miroir admin de l'offre de livraison — l'exploitation configure pour un
+         *     vendeur qui n'a pas l'app (FR-046).
+         */
+        put: operations["definir_offre_livraison_admin"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1022,6 +1127,44 @@ export interface paths {
          *     d'appeler — une métrique de friction (minimisation ARTCI).
          */
         post: operations["intention_appel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/paiement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État de la session de prépaiement d'une commande. */
+        get: operations["etat_paiement"];
+        put?: never;
+        /** Ouvre — ou renvoie — la session de prépaiement d'une commande. */
+        post: operations["ouvrir_paiement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commandes/{id}/recu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reçu d'une commande — ce qui a été commandé, ce qui en est sorti, et ce qui
+         *     reste dû.
+         */
+        get: operations["recu_commande"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1762,6 +1905,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/paiements/notifications/{fournisseur}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Notification signée d'un fournisseur de paiement. */
+        post: operations["recevoir_notification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/paniers/devis": {
         parameters: {
             query?: never;
@@ -1817,6 +1977,23 @@ export interface paths {
          *     canal d'acquisition (FR-027 ; exception VIII documentée au plan, R9).
          */
         get: operations["consulter_prestataire"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/arrets/{arret_id}/recu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reçu d'un arrêt collecté chez un prestataire piloté. */
+        get: operations["recu_arret"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1989,6 +2166,23 @@ export interface paths {
         get?: never;
         /** Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT. */
         put: operations["modifier_horaires"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendeur/prestataires/{id}/offre-livraison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046). */
+        put: operations["definir_offre_livraison"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2219,7 +2413,15 @@ export interface components {
             lignes: components["schemas"]["LigneArret"][];
             /**
              * Format: int64
-             * @description Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+             * @description Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à
+             *     `montant_avance` quand aucune livraison n'est offerte.
+             */
+            montant_articles_unites: number;
+            /**
+             * Format: int64
+             * @description Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et
+             *     **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3
+             *     affiche en gros : ce que Yao sort de sa poche au comptoir.
              */
             montant_avance: number;
             /** @description Nom du vendeur. */
@@ -2236,6 +2438,12 @@ export interface components {
              * @description Prestataire visé.
              */
             prestataire_id: string;
+            /**
+             * Format: int64
+             * @description Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle,
+             *     l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
+             */
+            retenue_appliquee_unites: number;
             /**
              * Format: double
              * @description Position attendue du site.
@@ -2474,6 +2682,14 @@ export interface components {
             repere_vocal_url?: string | null;
             /** @description Contact du client. Jamais journalisé, effacé du cache à la clôture (R6). */
             telephone?: string | null;
+        };
+        /** @description Corps de clôture — le motif est **obligatoire**. */
+        CloreDossierDto: {
+            /**
+             * @description Clé i18n du motif de clôture. Un dossier clos sans motif ne dit pas ce
+             *     qui a été fait de l'argent — c'est-à-dire rien.
+             */
+            motif_cle: string;
         };
         /**
          * @description Schéma OpenAPI du corps multipart de collecte (contrat honnête : le handler
@@ -2895,6 +3111,40 @@ export interface components {
              *     nom (cycle CPT), et rien ne sera inventé pour remplir un champ.
              */
             prenom?: string | null;
+        };
+        /** @description Une créance de coursier (FR-094). */
+        Creance: {
+            /**
+             * Format: uuid
+             * @description Commande d'origine.
+             */
+            commande_id: string;
+            /**
+             * Format: date-time
+             * @description Naissance — automatique, à la livraison (FR-063).
+             */
+            cree_le: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description `due` | `reglee`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Identifiant.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Montant dû (unités mineures).
+             */
+            montant_unites: number;
+            /** @description `avance_prepayee` | `part_course`. */
+            nature: string;
+            /**
+             * Format: date-time
+             * @description Instant du règlement, `null` tant qu'elle est due.
+             */
+            regle_le?: string | null;
         };
         /** @description Création d'un article (disponible par défaut — FR-020). */
         CreerArticleDto: {
@@ -3491,6 +3741,59 @@ export interface components {
             /** @description Véhicules déclarés. */
             vehicules: components["schemas"]["VehiculeDeclare"][];
         };
+        /** @description Un dossier d'anomalie. */
+        DossierPaiement: {
+            /**
+             * Format: uuid
+             * @description Arrêt concerné (retenue écrêtée).
+             */
+            arret_id?: string | null;
+            /**
+             * Format: date-time
+             * @description Clôture.
+             */
+            clos_le?: string | null;
+            /** @description Motif de clôture — clé i18n également. */
+            clos_motif_cle?: string | null;
+            /**
+             * Format: uuid
+             * @description Commande concernée.
+             */
+            commande_id?: string | null;
+            /** @description Devise ISO 4217. */
+            devise?: string | null;
+            /** @description `ouvert` | `clos`. */
+            etat: string;
+            /**
+             * Format: uuid
+             * @description Dossier.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Montant attendu.
+             */
+            montant_attendu?: number | null;
+            /**
+             * Format: int64
+             * @description Montant constaté.
+             */
+            montant_constate?: number | null;
+            /** @description Motif — **clé i18n**, jamais un texte libre. */
+            motif_cle: string;
+            /**
+             * Format: date-time
+             * @description Ouverture.
+             */
+            ouvert_le: string;
+            /**
+             * Format: uuid
+             * @description Transaction concernée.
+             */
+            transaction_id?: string | null;
+            /** @description Famille d'anomalie. */
+            type: string;
+        };
         /** @description Drapeaux de zone appliqués. */
         DrapeauxZone: {
             /** @description Marge forcée à 0. */
@@ -3758,6 +4061,22 @@ export interface components {
         FileAttenteCoursier: {
             /** @description Commandes en attente, **la plus ancienne d'abord** (FIFO par âge). */
             commandes: components["schemas"]["CommandeEnAttente"][];
+        };
+        /** @description La file des créances, avec son total dû. */
+        FileCreances: {
+            /** @description Créances, la plus récente d'abord. */
+            creances: components["schemas"]["Creance"][];
+            /**
+             * Format: int64
+             * @description Somme des créances **dues** de la sélection — l'exposition de Mefali
+             *     envers ses coursiers (FR-065).
+             */
+            total_du_unites: number;
+        };
+        /** @description La file des anomalies d'argent. */
+        FileDossiers: {
+            /** @description Dossiers, le plus récent d'abord. */
+            dossiers: components["schemas"]["DossierPaiement"][];
         };
         /** @description La file des indemnisations. */
         FileIndemnisations: {
@@ -4252,6 +4571,71 @@ export interface components {
              */
             quantite: number;
         };
+        /** @description Une ligne du reçu, prix VERROUILLÉ. */
+        LigneRecu: {
+            /**
+             * @description Libellé de l'article (celui du remplaçant si un remplacement a été
+             *     accepté).
+             */
+            libelle: string;
+            /**
+             * Format: int64
+             * @description Prix unitaire figé à la création (unités mineures).
+             */
+            prix_unitaire: number;
+            /**
+             * Format: int32
+             * @description Quantité commandée.
+             */
+            quantite: number;
+            /**
+             * Format: int64
+             * @description Sous-total — **0** sur une ligne retirée.
+             */
+            sous_total_unites: number;
+            /** @description `presente` | `remplacee` | `retiree`. */
+            statut: string;
+        };
+        /** @description Une ligne du registre. */
+        LigneRegistre: {
+            /**
+             * Format: uuid
+             * @description Commande rapprochée — le rapprochement se lit sans jointure manuelle.
+             */
+            commande_id: string;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État de la transaction. */
+            etat: string;
+            /** @description Fournisseur qui a encaissé. */
+            fournisseur: string;
+            /**
+             * Format: uuid
+             * @description Transaction.
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description Issue définitive.
+             */
+            issue_le?: string | null;
+            /**
+             * Format: int64
+             * @description Montant figé.
+             */
+            montant_unites: number;
+            /** @description Moyen employé — `inconnu` tant que le fournisseur ne l'a pas dit. */
+            moyen: string;
+            /** @description De l'argent encaissé qu'aucune commande vivante n'attend (FR-082). */
+            orpheline: boolean;
+            /**
+             * Format: date-time
+             * @description Ouverture.
+             */
+            ouverte_le: string;
+            /** @description Référence côté fournisseur — le rapprochement dans l'AUTRE sens. */
+            reference_fournisseur?: string | null;
+        };
         /** @description Un litige en cours vu par le coursier (K5-1c). */
         LitigeVu: {
             /**
@@ -4374,6 +4758,48 @@ export interface components {
             /** @description Nouveau nom. */
             nom?: string | null;
         };
+        /**
+         * @description Un **mouvement du livre de caisse** (cycle PAY 011, T050).
+         *
+         *     Additif : l'historique agrégé par course reste servi tel quel, et l'app
+         *     livrée continue de fonctionner pendant la transition.
+         */
+        MouvementCaisse: {
+            /**
+             * Format: uuid
+             * @description Commande concernée — `null` pour un règlement ou un reversement, qui
+             *     portent sur un solde et non sur une course.
+             */
+            commande_id?: string | null;
+            /** @description Vrai si l'argent entre dans la poche du coursier. */
+            entree: boolean;
+            /**
+             * Format: date-time
+             * @description Horodatage serveur de l'écriture.
+             */
+            heure: string;
+            /**
+             * Format: uuid
+             * @description Écriture.
+             */
+            id: string;
+            /**
+             * Format: int64
+             * @description Montant **signé** : négatif quand l'argent sort de la poche.
+             *
+             *     L'app dérive « entrée » ou « sortie » de ce SIGNE, jamais d'une table
+             *     de types recopiée — une table qui divergerait le jour où une nature
+             *     changerait de sens.
+             */
+            montant_unites: number;
+            /** @description Référence lisible de la commande, quand il y en a une. */
+            reference?: string | null;
+            /**
+             * @description Nature : `avance` | `remboursement` | `indemnisation` | `correction` |
+             *     `frais_encaisses` | `reglement` | `reversement`.
+             */
+            type_ecriture: string;
+        };
         /** @description Adresse à enregistrer après une livraison réussie (FR-019). */
         NouvelleAdresse: {
             /**
@@ -4446,6 +4872,42 @@ export interface components {
              * @description Durée totale du compte à rebours (secondes).
              */
             timer_s: number;
+        };
+        /**
+         * @description Déclaration d'offre de livraison — `seuil_unites` n'a de sens que pour
+         *     `au_dela`, et y est alors **obligatoire**.
+         */
+        OffreLivraisonDeclaration: {
+            /** @description `jamais` | `toujours` | `au_dela`. */
+            offre: string;
+            /**
+             * Format: int64
+             * @description Montant de panier à partir duquel l'offre joue (unités mineures).
+             */
+            seuil_unites?: number | null;
+        };
+        /**
+         * @description Offre en vigueur après le geste.
+         *
+         *     ⚠ Le nom de schéma est `OffreLivraisonReglee`, PAS `OffreLivraisonVendeur` :
+         *     ce dernier est déjà pris par l'**entrée de calcul** de `tarification`
+         *     (`admin_tarification_http`), dont la forme est tout autre (`toujours`,
+         *     `au_dela`). Deux types qui revendiquent le même nom de schéma n'en laissent
+         *     qu'un dans `openapi.json` — et le client généré désérialise alors la réponse
+         *     de cette route avec le mauvais modèle. Trouvé sur appareil en T085 : le
+         *     vendeur voyait « Impossible de charger la boutique » sur un réglage
+         *     **pourtant enregistré**.
+         */
+        OffreLivraisonReglee: {
+            /** @description Rappel en clair que les commandes en cours ne bougent pas (FR-048). */
+            message_cle: string;
+            /** @description `jamais` | `toujours` | `au_dela`. */
+            offre: string;
+            /**
+             * Format: int64
+             * @description Seuil déclaré (`null` hors `au_dela`).
+             */
+            seuil_unites?: number | null;
         };
         /**
          * @description Offre de livraison du vendeur (VND-08) — **entrée** simulée du calcul ; sa
@@ -4619,6 +5081,32 @@ export interface components {
              */
             lon: number;
         };
+        /**
+         * @description Les trois positions de la caisse — « où est cet argent ? » (FR-060).
+         *
+         *     Elles ne se recouvrent pas : avancé non récupéré (Yao a sorti l'argent),
+         *     dû par Mefali (une dette formelle, qui se règle), détenu pour Mefali (il a
+         *     de l'argent qui n'est PAS à lui).
+         */
+        PositionsCaisse: {
+            /**
+             * Format: int64
+             * @description Σ avances non compensées par un remboursement.
+             */
+            avance_non_recuperee_unites: number;
+            /**
+             * Format: int64
+             * @description Marge encaissée non reversée — **0 au MVP** (marge nulle jusqu'à M4).
+             *     S'affiche quand même : une position absente se lirait comme une position
+             *     oubliée.
+             */
+            detenu_pour_mefali_unites: number;
+            /**
+             * Format: int64
+             * @description Σ créances dues.
+             */
+            du_par_mefali_unites: number;
+        };
         /** @description Ce que le serveur rend après avoir enregistré un lot de présence. */
         PresenceEnregistree: {
             /**
@@ -4702,6 +5190,20 @@ export interface components {
             id: string;
             /** @description Nom public. */
             nom: string;
+            /**
+             * @description Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.
+             *
+             *     Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de
+             *     fonctionner. Servi ici plutôt que par une route dédiée parce que le
+             *     réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux
+             *     scalaires n'aurait servi personne.
+             */
+            offre_livraison: string;
+            /**
+             * Format: int64
+             * @description Seuil de panier de l'offre `au_dela`, `null` sinon.
+             */
+            offre_livraison_seuil_unites?: number | null;
             /** @description Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact. */
             statut: components["schemas"]["StatutPrestataire"];
         };
@@ -4841,10 +5343,109 @@ export interface components {
              */
             compte_id: string;
         };
+        /**
+         * @description Reçu vendeur d'un arrêt collecté — **les mêmes trois chiffres** que le reçu
+         *     client (FR-053, FR-071).
+         */
+        RecuArret: {
+            /**
+             * Format: uuid
+             * @description Arrêt collecté.
+             */
+            arret_id: string;
+            /**
+             * Format: date-time
+             * @description Instant du scan (horloge SERVEUR).
+             */
+            collecte_le?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description Lignes de cet arrêt, retirées comprises. */
+            lignes: components["schemas"]["LigneRecu"][];
+            /**
+             * Format: int64
+             * @description Articles bruts, AVANT retenue.
+             */
+            montant_articles_unites: number;
+            /** @description Clé i18n du motif de retenue, `null` s'il n'y en a pas. */
+            motif_retenue_cle?: string | null;
+            /**
+             * Format: int64
+             * @description Ce que le coursier a effectivement versé — `articles − retenue`.
+             */
+            net_verse_unites: number;
+            /**
+             * Format: uuid
+             * @description Prestataire chez qui la collecte a eu lieu.
+             */
+            prestataire_id: string;
+            /**
+             * Format: int64
+             * @description Retenue au titre de la livraison offerte.
+             */
+            retenue_livraison_offerte_unites: number;
+        };
+        /** @description Reçu d'une commande, composé à la volée (aucune table — research R15). */
+        RecuCommande: {
+            /**
+             * Format: uuid
+             * @description Commande.
+             */
+            commande_id: string;
+            /** @description La commande est-elle déjà réglée ? (FR-073) */
+            deja_regle: boolean;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /**
+             * Format: int64
+             * @description Frais de livraison facturés.
+             */
+            frais_livraison_unites: number;
+            /**
+             * @description Lignes, **retirées comprises** : le reçu explique pourquoi le total a
+             *     bougé plutôt que de le faire bouger en silence.
+             */
+            lignes: components["schemas"]["LigneRecu"][];
+            /** @description `cash` | `mobile_money`. */
+            mode_paiement: string;
+            /**
+             * Format: int64
+             * @description Ce qui reste à remettre au coursier — **0** sur une commande prépayée.
+             */
+            montant_a_remettre_au_coursier_unites: number;
+            /**
+             * Format: int64
+             * @description Somme des lignes vivantes.
+             */
+            montant_articles_unites: number;
+            /** @description Moyen employé — `null` tant que le fournisseur ne l'a pas dit (FR-012). */
+            moyen?: string | null;
+            /**
+             * Format: int64
+             * @description Part de frais prise en charge par le vendeur (VND-08), `0` sinon.
+             */
+            retenue_vendeur_unites: number;
+            /**
+             * Format: int64
+             * @description Total dû, déjà ajusté par les retraits et les arrêts indisponibles.
+             */
+            total_du_unites: number;
+        };
         /** @description Résultat d'un refus. */
         RefusOffre: {
             /** @description Issue de l'offre après refus. */
             issue: string;
+        };
+        /** @description Le registre, avec son total. */
+        RegistreTransactions: {
+            /**
+             * Format: int64
+             * @description Somme des montants **réglés** de la sélection — ce que le fournisseur
+             *     doit avoir encaissé.
+             */
+            total_regle_unites: number;
+            /** @description Lignes, la plus récente d'abord. */
+            transactions: components["schemas"]["LigneRegistre"][];
         };
         /** @description Règle servie à l'admin. */
         Regle: {
@@ -5004,6 +5605,15 @@ export interface components {
             /** @description Slug du véhicule (référentiel `zones.type_transport`). */
             transport_slug: string;
         };
+        /** @description Corps du règlement — motif **obligatoire**. */
+        ReglerCreanceDto: {
+            /**
+             * @description Clé i18n du motif (`creance.reglement.virement_agence`, …). Sans lui,
+             *     « réglée » ne dit pas COMMENT — et c'est la première question posée
+             *     quand un coursier conteste.
+             */
+            motif_cle: string;
+        };
         /** @description Un échantillon de présence tel que l'app le déclare. */
         ReleveDePresence: {
             /**
@@ -5128,6 +5738,16 @@ export interface components {
              * @description Repère parlé — ≤ 1,5 Mo, m4a/aac.
              */
             note_vocale: string;
+        };
+        /** @description Ce que le webhook répond — **toujours `200`, sauf signature invalide**. */
+        ReponseNotification: {
+            /**
+             * @description Pourquoi elle n'en a produit aucun : `rejeu`, `en_cours`, `orpheline`,
+             *     `etat_incompatible`, `divergence`. Absent quand `traite` vaut `true`.
+             */
+            motif?: string | null;
+            /** @description Vrai si la notification a produit un effet. */
+            traite: boolean;
         };
         /** @description Résultat d'une reprise manuelle. */
         RepriseFaite: {
@@ -5333,6 +5953,50 @@ export interface components {
             jetons: components["schemas"]["JetonsDto"];
             /** @description Discrimine ce membre du `oneOf` de `/auth/otp/verifier`. */
             resultat: components["schemas"]["DiscriminantSession"];
+        };
+        /** @description État d'une session de prépaiement, tel que l'app cliente le lit. */
+        SessionPaiement: {
+            /**
+             * @description Page de paiement à ouvrir dans le **navigateur système**.
+             *
+             *     `null` dès que l'état quitte `ouverte` : la colonne est effacée à
+             *     l'issue, et un accès d'encaissement survivant à son paiement est une
+             *     surface d'attaque sans usage (FR-006).
+             */
+            acces_paiement?: string | null;
+            /** @description Devise ISO 4217. */
+            devise: string;
+            /** @description État : `ouverte` | `reglee` | `echouee` | `expiree` | `payee_hors_delai`. */
+            etat: string;
+            /**
+             * Format: date-time
+             * @description Échéance **persistée**, calculée depuis `paiement.session_duree_s`.
+             */
+            expire_le: string;
+            /**
+             * Format: int64
+             * @description Montant **figé** à l'ouverture (unités mineures).
+             */
+            montant_unites: number;
+            /**
+             * @description Moyen effectivement employé, tel que le fournisseur l'a dit.
+             *     `inconnu` tant qu'il ne l'a pas dit — jamais deviné (FR-012).
+             */
+            moyen: string;
+            /**
+             * Format: int64
+             * @description Secondes restantes, **calculées côté serveur** (FR-017).
+             *
+             *     L'horloge de l'app ne décide de rien : elle affiche un compte à rebours
+             *     qu'elle recale sur cette valeur à chaque lecture. Vaut `0` sur une
+             *     session échue, jamais un nombre négatif.
+             */
+            restant_s: number;
+            /**
+             * Format: uuid
+             * @description Transaction de paiement.
+             */
+            transaction_id: string;
         };
         /** @description Les seuils de preuve d'échec de la zone. */
         SeuilsPreuves: {
@@ -5593,6 +6257,8 @@ export interface components {
              * @description Combien de courses portent cette avance.
              */
             courses_concernees: number;
+            /** @description Créances du coursier, les plus récentes d'abord. Additif également. */
+            creances: components["schemas"]["Creance"][];
             /** @description Devise ISO 4217 de la zone. */
             devise: string;
             /** @description Les avances en cours dépassent le plafond déclaré du jour (FR-078). */
@@ -5603,6 +6269,15 @@ export interface components {
             indemnisations: components["schemas"]["IndemnisationVue"][];
             /** @description Litiges en cours — vide tant qu'AVI-04 n'existe pas. */
             litiges_en_cours: components["schemas"]["LitigeVu"][];
+            /** @description Mouvements du livre du jour, du plus récent au plus ancien. */
+            mouvements: components["schemas"]["MouvementCaisse"][];
+            /**
+             * @description **Les trois positions** (cycle PAY 011, FR-060/FR-094).
+             *
+             *     Champ ADDITIF : l'app livrée l'ignore et continue de fonctionner
+             *     pendant la transition.
+             */
+            positions: components["schemas"]["PositionsCaisse"];
         };
     };
     responses: never;
@@ -6125,6 +6800,130 @@ export interface operations {
             };
         };
     };
+    file_creances: {
+        parameters: {
+            query?: {
+                /** @description `due` | `reglee`. Absent = toutes. */
+                etat?: string | null;
+                /** @description Créances d'un coursier donné. */
+                coursier_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Créances, la plus récente d'abord, avec le total dû. Elles naissent SEULES à la livraison : l'exploitation les règle, elle ne les crée pas (FR-063). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileCreances"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description État de filtre inconnu. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    regler_creance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Créance due. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglerCreanceDto"];
+            };
+        };
+        responses: {
+            /** @description Réglée — la créance et son écriture de caisse `reglement` sont écrites dans la MÊME transaction (research R12). Émet `caisse.creance_reglee`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Creance"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Créance inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Créance déjà réglée. Le marquage n'est pas une bascule : une erreur se corrige par une écriture INVERSE au livre (FR-064). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
     alertes_dispatch: {
         parameters: {
             query?: never;
@@ -6467,6 +7266,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreuvesExploitation"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    file_dossiers: {
+        parameters: {
+            query?: {
+                /** @description `ouvert` | `clos`. Absent = tous. */
+                etat?: string | null;
+                /** @description Type de dossier (`montant_divergent`, `retenue_ecretee`, …). */
+                type?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dossiers, le plus récent d'abord. Quatre familles y apparaissent : divergence de montant ou de devise, paiement hors délai, transaction orpheline, retenue écrêtée, remboursement dû. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDossiers"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    clore_dossier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Dossier ouvert. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloreDossierDto"];
+            };
+        };
+        responses: {
+            /** @description Clos — l'auteur et l'instant sont conservés. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DossierPaiement"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Dossier déjà clos. La clôture n'est pas une bascule : rouvrir effacerait la trace de ce qui a été décidé. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Motif absent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    registre_transactions: {
+        parameters: {
+            query?: {
+                /** @description `ouverte` | `reglee` | `echouee` | `expiree` | `payee_hors_delai`. */
+                etat?: string | null;
+                /** @description Moyen employé (`wave`, `orange_money`, …). */
+                moyen?: string | null;
+                /** @description Rapprochement par commande — l'autre sens de FR-081. */
+                commande_id?: string | null;
+                /** @description Borne basse d'ouverture (incluse). */
+                depuis?: string | null;
+                /** @description Borne haute d'ouverture (incluse). */
+                jusqu_a?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Registre, la plus récente d'abord. Chaque ligne porte la référence fournisseur ET la commande : le rapprochement se lit dans les deux sens sans jointure manuelle (FR-081). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistreTransactions"];
                 };
             };
             /** @description Session absente, invalide ou révoquée. */
@@ -7299,6 +8262,69 @@ export interface operations {
             };
             /** @description Zone qui n'est pas une ville, catégorie inconnue. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    definir_offre_livraison_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OffreLivraisonDeclaration"];
+            };
+        };
+        responses: {
+            /** @description Offre déclarée — les commandes existantes ne sont pas retarifées (FR-048). Émet `vendeur.offre_livraison_modifiee` avec l'acteur admin. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffreLivraisonReglee"];
+                };
+            };
+            /** @description Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle admin requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Prestataire inconnu. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8626,6 +9652,174 @@ export interface operations {
                 };
             };
             /** @description Commande inconnue ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    etat_paiement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État de la DERNIÈRE session, quel qu'il soit : après une expiration, le client lit « expirée » plutôt qu'un 404 qui lui laisserait croire qu'il n'a jamais rien tenté. `restant_s` est calculé côté SERVEUR (FR-017). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionPaiement"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis, ou commande d'un autre compte. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Aucune session pour cette commande — le cas d'une commande payée en espèces. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    ouvrir_paiement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant, en attente de paiement. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session vivante — créée, ou RETROUVÉE si l'appel est rejoué. Rappeler cette route tant que la session vit ne rouvre rien chez le fournisseur : l'identifiant de commande EST la clé d'idempotence (FR-015). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionPaiement"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis, ou commande d'un autre compte. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description La commande n'attend aucun paiement : espèces, déjà réglée, ou plus en attente. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Fournisseur injoignable ou en erreur. La commande reste INTACTE — rien n'a été écrit, l'appel peut être retenté (FR-018). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    recu_commande: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Commande du compte appelant. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reçu composé depuis les prix VERROUILLÉS, le devis figé et les arrêts — aucun recalcul, aucune estimation (FR-072). Les lignes retirées y figurent avec leur statut et ne comptent pas dans les montants. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecuCommande"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Rôle client requis. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Commande inconnue — ou appartenant à un autre compte : la même réponse pour les deux, sinon un tiers apprendrait qu'elle existe. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -10624,6 +11818,62 @@ export interface operations {
             };
         };
     };
+    recevoir_notification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identifiant stable de l'implémentation destinataire. Point d'accroche du routage par moyen (phase 2+) — sans règle aujourd'hui. */
+                fournisseur: string;
+            };
+            cookie?: never;
+        };
+        /** @description Charge BRUTE du fournisseur, signée. Jamais désérialisée avant vérification de la signature. Plafonnée à 64 Kio. */
+        requestBody: {
+            content: {
+                "application/json": string;
+            };
+        };
+        responses: {
+            /** @description Notification traitée, ou sans effet avec son motif. Un rejeu répond 200 `{traite: false, motif: "rejeu"}` et NON une erreur : un fournisseur qui reçoit une erreur retente en boucle (FR-022). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReponseNotification"];
+                };
+            };
+            /** @description Signature absente, invalide ou périmée. Une ligne de notification refusée est écrite ; rien d'autre, et jamais le corps reçu (FR-020). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Segment `{fournisseur}` inconnu. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps au-delà de 64 Kio — coupé pendant la réception. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Débit dépassé pour cette adresse. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     devis_panier: {
         parameters: {
             query?: never;
@@ -10761,6 +12011,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    recu_arret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Arrêt COLLECTÉ chez un prestataire piloté. */
+                arret_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Articles, retenue et net versé — les MÊMES montants que le reçu client, au franc près (FR-053). Aucun recalcul : la retenue a été posée au scan et n'est que relue. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecuArret"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description L'arrêt n'appartient à aucun prestataire piloté par l'appelant. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Arrêt inconnu, ou pas encore collecté : il n'y a pas de versement à attester avant le scan. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
             };
         };
     };
@@ -11336,6 +12636,60 @@ export interface operations {
             };
             /** @description Plages invalides (début ≥ fin, chevauchement, jour hors 0..6). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+        };
+    };
+    definir_offre_livraison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prestataire piloté. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OffreLivraisonDeclaration"];
+            };
+        };
+        responses: {
+            /** @description Offre déclarée — elle vaut pour les commandes À VENIR. Aucune commande existante n'est retarifée : le devis est figé à la création (FR-048). Émet `vendeur.offre_livraison_modifiee`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffreLivraisonReglee"];
+                };
+            };
+            /** @description Offre `au_dela` sans seuil strictement positif, ou valeur d'offre inconnue. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Session absente, invalide ou révoquée. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErreurApi"];
+                };
+            };
+            /** @description Refus de pilotage. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

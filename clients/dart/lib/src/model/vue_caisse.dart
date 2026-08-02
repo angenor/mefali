@@ -3,9 +3,12 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:mefali_api_client/src/model/creance.dart';
+import 'package:mefali_api_client/src/model/mouvement_caisse.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:mefali_api_client/src/model/indemnisation_vue.dart';
 import 'package:mefali_api_client/src/model/ligne_historique_caisse.dart';
+import 'package:mefali_api_client/src/model/positions_caisse.dart';
 import 'package:mefali_api_client/src/model/litige_vu.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -18,11 +21,14 @@ part 'vue_caisse.g.dart';
 /// * [avanceEnCoursUnites] - Argent avancé et non encore récupéré (FR-067) — toujours positif.
 /// * [avancesEnAttenteReglementUnites] - Part que le cash ne soldera jamais (commandes prépayées, R10, FR-117).
 /// * [coursesConcernees] - Combien de courses portent cette avance.
+/// * [creances] - Créances du coursier, les plus récentes d'abord. Additif également.
 /// * [devise] - Devise ISO 4217 de la zone.
 /// * [ecartPlafond] - Les avances en cours dépassent le plafond déclaré du jour (FR-078).
 /// * [historiqueDuJour] - Historique du jour civil **de la zone**.
 /// * [indemnisations] - Indemnisations rattachées.
 /// * [litigesEnCours] - Litiges en cours — vide tant qu'AVI-04 n'existe pas.
+/// * [mouvements] - Mouvements du livre du jour, du plus récent au plus ancien.
+/// * [positions] - **Les trois positions** (cycle PAY 011, FR-060/FR-094).  Champ ADDITIF : l'app livrée l'ignore et continue de fonctionner pendant la transition.
 @BuiltValue()
 abstract class VueCaisse implements Built<VueCaisse, VueCaisseBuilder> {
   /// Argent avancé et non encore récupéré (FR-067) — toujours positif.
@@ -36,6 +42,10 @@ abstract class VueCaisse implements Built<VueCaisse, VueCaisseBuilder> {
   /// Combien de courses portent cette avance.
   @BuiltValueField(wireName: r'courses_concernees')
   int get coursesConcernees;
+
+  /// Créances du coursier, les plus récentes d'abord. Additif également.
+  @BuiltValueField(wireName: r'creances')
+  BuiltList<Creance> get creances;
 
   /// Devise ISO 4217 de la zone.
   @BuiltValueField(wireName: r'devise')
@@ -56,6 +66,14 @@ abstract class VueCaisse implements Built<VueCaisse, VueCaisseBuilder> {
   /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
   @BuiltValueField(wireName: r'litiges_en_cours')
   BuiltList<LitigeVu> get litigesEnCours;
+
+  /// Mouvements du livre du jour, du plus récent au plus ancien.
+  @BuiltValueField(wireName: r'mouvements')
+  BuiltList<MouvementCaisse> get mouvements;
+
+  /// **Les trois positions** (cycle PAY 011, FR-060/FR-094).  Champ ADDITIF : l'app livrée l'ignore et continue de fonctionner pendant la transition.
+  @BuiltValueField(wireName: r'positions')
+  PositionsCaisse get positions;
 
   VueCaisse._();
 
@@ -95,6 +113,11 @@ class _$VueCaisseSerializer implements PrimitiveSerializer<VueCaisse> {
       object.coursesConcernees,
       specifiedType: const FullType(int),
     );
+    yield r'creances';
+    yield serializers.serialize(
+      object.creances,
+      specifiedType: const FullType(BuiltList, [FullType(Creance)]),
+    );
     yield r'devise';
     yield serializers.serialize(
       object.devise,
@@ -119,6 +142,16 @@ class _$VueCaisseSerializer implements PrimitiveSerializer<VueCaisse> {
     yield serializers.serialize(
       object.litigesEnCours,
       specifiedType: const FullType(BuiltList, [FullType(LitigeVu)]),
+    );
+    yield r'mouvements';
+    yield serializers.serialize(
+      object.mouvements,
+      specifiedType: const FullType(BuiltList, [FullType(MouvementCaisse)]),
+    );
+    yield r'positions';
+    yield serializers.serialize(
+      object.positions,
+      specifiedType: const FullType(PositionsCaisse),
     );
   }
 
@@ -164,6 +197,13 @@ class _$VueCaisseSerializer implements PrimitiveSerializer<VueCaisse> {
           ) as int;
           result.coursesConcernees = valueDes;
           break;
+        case r'creances':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(Creance)]),
+          ) as BuiltList<Creance>;
+          result.creances.replace(valueDes);
+          break;
         case r'devise':
           final valueDes = serializers.deserialize(
             value,
@@ -198,6 +238,20 @@ class _$VueCaisseSerializer implements PrimitiveSerializer<VueCaisse> {
             specifiedType: const FullType(BuiltList, [FullType(LitigeVu)]),
           ) as BuiltList<LitigeVu>;
           result.litigesEnCours.replace(valueDes);
+          break;
+        case r'mouvements':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(MouvementCaisse)]),
+          ) as BuiltList<MouvementCaisse>;
+          result.mouvements.replace(valueDes);
+          break;
+        case r'positions':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(PositionsCaisse),
+          ) as PositionsCaisse;
+          result.positions.replace(valueDes);
           break;
         default:
           unhandled.add(key);

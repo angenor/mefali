@@ -107,6 +107,9 @@ pub struct Bac {
     pub comptes: PgComptes,
     pub prestataires: PgPrestataires,
     pub commandes: PgCommandes,
+    /// Double du moteur tarifaire — sert à relire ce que CMD lui a transmis
+    /// (offre du vendeur, mono-vendeur), cycle 011 T056.
+    pub tarif: Arc<TarifFixe>,
     /// Double des preuves d'échec (CRS-05 non construit).
     pub preuves: Arc<PreuvesFixes>,
     /// Double de la position coursier (DSP-01 non construit).
@@ -138,6 +141,21 @@ pub struct Bac {
 
 impl Bac {
     pub async fn nouveau(pool: PgPool) -> Self {
+        Self::construire(pool, DEVIS_PRIX_CLIENT, 0).await
+    }
+
+    /// Bac dont le devis figé porte une **retenue vendeur** (VND-08, cycle
+    /// 011) : le vendeur a pris la livraison en charge, donc `prix_client = 0`
+    /// et `retenue_vendeur = 2 500`.
+    ///
+    /// C'est la forme EXACTE que produit le moteur (`evaluation.rs` §8 :
+    /// `retenue_vendeur = prix_client; prix_client = 0`) — le double ne
+    /// réinvente pas la règle, il en sert le résultat.
+    pub async fn nouveau_livraison_offerte_par_vendeur(pool: PgPool) -> Self {
+        Self::construire(pool, 0, DEVIS_PRIX_CLIENT).await
+    }
+
+    async fn construire(pool: PgPool, prix_client: i64, retenue_vendeur: i64) -> Self {
         let z = PgZones::new(pool.clone());
         let mut tx = pool.begin().await.unwrap();
         let pays = z
@@ -249,7 +267,7 @@ impl Bac {
         // Elles tiennent l'invariant du modèle :
         // 1 500 (base, marge nulle) + 700 (km) + 300 (effort) = 2 500.
         let tarif = Arc::new(
-            TarifFixe::simple(DEVIS_PRIX_CLIENT, DEVIS_PART_COURSIER, 0).avec_composantes(
+            TarifFixe::simple(prix_client, DEVIS_PART_COURSIER, 0).avec_composantes(
                 tarification::Composantes {
                     base: 1_500,
                     km: 700,
@@ -258,7 +276,7 @@ impl Bac {
                     effort_attente: 100,
                     effort_arrets: 150,
                     arrondi: 0,
-                    retenue_vendeur: 0,
+                    retenue_vendeur,
                 },
             ),
         );
@@ -269,7 +287,7 @@ impl Bac {
             pool.clone(),
             prestataires.clone(),
             tarif.clone(),
-            tarif,
+            tarif.clone(),
             restrictions.clone(),
             objets,
             positions.clone(),
@@ -281,6 +299,7 @@ impl Bac {
             comptes,
             prestataires,
             commandes,
+            tarif,
             preuves,
             positions,
             restrictions,
@@ -827,6 +846,132 @@ impl Bac {
     /// n'émet rien » (P4).
     pub async fn total_evenements(&self) -> i64 {
         self.compter("SELECT count(*) FROM outbox.evenement").await
+    }
+
+    /// Déclare l'offre de livraison d'un vendeur (VND-08 — cycle 011).
+    pub async fn declarer_offre(
+        &self,
+        vendeur: Uuid,
+        offre: Option<tarification::OffreLivraison>,
+    ) {
+        let mut tx = self.pool.begin().await.unwrap();
+        self.prestataires
+            .definir_offre_livraison(&mut tx, vendeur, offre, self.admin)
+            .await
+            .expect("déclaration d'offre de livraison");
+        tx.commit().await.unwrap();
+    }
+
+    /// Les trois montants d'un arrêt collecté : `(articles, retenue, avance)`,
+    /// plus le drapeau d'écrêtage.
+    pub async fn montants_arret(&self, arret: Uuid) -> (i64, i64, i64, bool) {
+        sqlx::query_as(
+            "SELECT montant_articles_unites, retenue_appliquee_unites,
+                    montant_avance, retenue_ecretee
+               FROM commandes.arret WHERE id = $1",
+        )
+        .bind(arret)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap()
+    }
+
+    /// Composantes du devis FIGÉ d'une livraison (JSON tel que persisté).
+    pub async fn composantes_devis(&self, livraison: Uuid) -> Value {
+        sqlx::query_scalar("SELECT devis_composantes FROM commandes.livraison WHERE id = $1")
+            .bind(livraison)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
+    }
+
+    /// Livraison d'une commande (une seule au MVP).
+    pub async fn livraison_de(&self, commande: Uuid) -> Uuid {
+        sqlx::query_scalar("SELECT id FROM commandes.livraison WHERE commande_id = $1")
+            .bind(commande)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap()
+    }
+
+    /// Retire une ligne de commande par le chemin métier (`declarer_rupture`) —
+    /// un UPDATE brut violerait `arret_avance_coherente`.
+    pub async fn retirer_ligne(&self, ligne: Uuid) {
+        self.commandes
+            .declarer_rupture(
+                self.coursier,
+                commandes::DemandeRupture {
+                    ligne_id: ligne,
+                    uuid_client: Uuid::now_v7(),
+                    resolution: Some(commandes::ResolutionRupture::Retirer),
+                },
+                chrono::Utc::now(),
+            )
+            .await
+            .expect("retrait de ligne");
+    }
+
+    /// Lignes d'un arrêt, dans l'ordre de création.
+    pub async fn lignes_de(&self, arret: Uuid) -> Vec<Uuid> {
+        sqlx::query_scalar(
+            "SELECT id FROM commandes.ligne_commande WHERE arret_id = $1 ORDER BY id",
+        )
+        .bind(arret)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap()
+    }
+
+    /// Fait consommer par `paiements` **tous** les événements du journal, dans
+    /// leur ordre d'écriture (T057).
+    ///
+    /// Le worker outbox n'est pas monté dans ce bac : le brancher ferait
+    /// dépendre chaque test d'un ordonnancement asynchrone.
+    /// `consommer_pour_paiements` est **exactement** ce que l'adaptateur
+    /// `PaiementsOutbox` appelle en production — l'appeler ici, ce n'est pas
+    /// simuler le worker, c'est exécuter le même code sans son horloge.
+    ///
+    /// Rejouable sans effet : `dossier.evenement_id UNIQUE` porte l'idempotence.
+    pub async fn drainer_dossiers(&self) {
+        let depot = paiements::PgPaiements::new(self.pool.clone());
+        let lignes: Vec<(Uuid, String, String, Uuid, Value, chrono::DateTime<chrono::Utc>)> =
+            sqlx::query_as(
+                "SELECT id, type_evenement, entite_type, entite_id, payload, survenu_le
+                   FROM outbox.evenement ORDER BY cree_le, id",
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap();
+        for (id, type_evenement, entite_type, entite_id, payload, survenu_le) in lignes {
+            paiements::consommer_pour_paiements(
+                &depot,
+                &socle::EvenementPublie {
+                    id,
+                    type_evenement,
+                    entite_type,
+                    entite_id,
+                    payload,
+                    survenu_le,
+                },
+            )
+            .await
+            .expect("consommation de dossiers");
+        }
+    }
+
+    /// Dossiers d'anomalie ouverts d'un type donné : `(commande, arret,
+    /// montant_constate, montant_attendu)`.
+    pub async fn dossiers(&self, type_dossier: &str) -> Vec<(Option<Uuid>, Option<Uuid>, Option<i64>, Option<i64>)> {
+        sqlx::query_as(
+            "SELECT commande_id, arret_id, montant_constate, montant_attendu
+               FROM paiements.dossier
+              WHERE type_dossier = $1::paiements.type_dossier
+              ORDER BY ouvert_le, id",
+        )
+        .bind(type_dossier)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap()
     }
 
     /// Corps de demande de devis de panier.

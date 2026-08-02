@@ -94,9 +94,20 @@ impl PgCommandes {
         // Les arrêts DÉJÀ collectés ne sont pas touchés : leur montant a fondé
         // une écriture de caisse, et réécrire l'histoire après coup ferait
         // diverger le livre de ce qui s'est réellement passé au comptoir.
+        // `montant_articles_unites` suit `montant_avance` (cycle PAY 011) :
+        // ces arrêts ne sont PAS encore collectés (le `WHERE` l'exige), donc
+        // aucune retenue n'a été appliquée — elle est lue AU SCAN. Les deux
+        // colonnes sont donc égales, et la contrainte
+        // `arret_avance_coherente` est satisfaite avec une retenue nulle.
         sqlx::query!(
             r#"UPDATE commandes.arret a
                   SET montant_avance = COALESCE((
+                        SELECT SUM(lc.quantite
+                                   * COALESCE(lc.remplace_prix_unites, pf.prix_unites))
+                          FROM commandes.ligne_commande lc
+                          JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
+                         WHERE lc.arret_id = a.id AND lc.statut <> 'retiree'), 0),
+                      montant_articles_unites = COALESCE((
                         SELECT SUM(lc.quantite
                                    * COALESCE(lc.remplace_prix_unites, pf.prix_unites))
                           FROM commandes.ligne_commande lc

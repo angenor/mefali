@@ -289,6 +289,40 @@ async fn vnd08_mono_vendeur_seulement(pool: PgPool) {
     assert_eq!(devis.prix_client, 0, "au seuil, l'offre joue");
 }
 
+/// FR-047 (cycle PAY 011, T056) — **le drapeau de zone prime sur l'offre du
+/// vendeur**, et il ne lui laisse rien à financer.
+///
+/// L'ordre du §8 (VND-08 APRÈS les drapeaux du §7) fait tout le travail : quand
+/// Mefali offre déjà la livraison, `prix_client` vaut 0 avant que l'offre du
+/// vendeur ne soit consultée, donc `retenue_vendeur` reste nulle. Sans ce test,
+/// « le drapeau prime » resterait une propriété d'ordre des lignes, vraie par
+/// accident — et un jour réordonnée.
+#[sqlx::test(migrations = "../../migrations")]
+async fn drapeau_de_zone_prime_sur_offre_vendeur(pool: PgPool) {
+    let bac = Bac::nouveau(pool).await;
+    let moteur = bac.moteur(
+        Arc::new(RoutageFixe::depuis_positions(&[4_000, 0])),
+        Arc::new(CacheMemoire::nouveau()),
+    );
+
+    bac.poser_drapeau("livraison_offerte_mefali", true).await;
+    let mut demande = bac.demande("moto", 1);
+    demande.mono_vendeur = true;
+    demande.offre_livraison_vendeur = Some(OffreLivraison::Toujours);
+
+    let devis = moteur
+        .evaluer(demande, SourceGrille::EnVigueur)
+        .await
+        .unwrap();
+
+    assert_eq!(devis.prix_client, 0, "Mefali offre déjà la livraison");
+    assert_eq!(
+        devis.composantes.retenue_vendeur, 0,
+        "le vendeur ne finance RIEN quand la zone a déjà tout offert"
+    );
+    assert_eq!(devis.part_coursier, 250, "part coursier intacte");
+}
+
 /// SC-009 — l'ordre retenu est la meilleure permutation, déterministe, et il
 /// est exposé à DSP/CMD par le trait `OptimisationArrets`.
 #[sqlx::test(migrations = "../../migrations")]

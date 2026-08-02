@@ -14,6 +14,10 @@ Map<String, Object?> _pilotable() => {
       'nom': 'Étal Tantie Affoué',
       'statut': 'agree',
       'boutique': {'ouvert': true, 'reouverture_estimee': null},
+      // Cycle PAY 011 : VND-08 au défaut de migration — aucun vendeur existant
+      // ne change de comportement (FR-046).
+      'offre_livraison': 'jamais',
+      'offre_livraison_seuil_unites': null,
     };
 
 List<List<Map<String, String>>> _semaine() => [
@@ -108,6 +112,15 @@ void main() {
         pauseFin: echeance,
       ));
       addTearDown(container.dispose);
+      // Écran assez HAUT pour que tout V1 soit construit : un `ListView` ne
+      // bâtit que ce qui entre dans la fenêtre, et la carte d'offre de
+      // livraison (cycle PAY 011) a repoussé le bouton de réouverture plus
+      // bas. Un `find` sur un widget hors écran échouerait sans que rien ne
+      // soit cassé.
+      tester.view.physicalSize = const Size(1080, 3600);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(_monter(container));
       await tester.pumpAndSettle();
 

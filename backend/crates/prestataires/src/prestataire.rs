@@ -238,6 +238,75 @@ impl PgPrestataires {
         self.prestataire_dans_tx(tx, prestataire).await
     }
 
+    // ── Offre de livraison (VND-08 minimal — cycle 011, research R10) ──────
+
+    /// Déclare l'offre de livraison du vendeur. `None` = `jamais`.
+    ///
+    /// **Aucune commande existante n'est retarifée** (FR-048) : le devis est
+    /// figé à la création de la commande, et cette écriture ne touche que la
+    /// fiche. C'est la raison pour laquelle il n'y a rien à recalculer ici —
+    /// pas un oubli, une propriété du modèle.
+    ///
+    /// Émet `vendeur.offre_livraison_modifiee` dans la même transaction, même
+    /// quand la valeur ne change pas : le geste a été posé, et une trace
+    /// d'exploitation qui saute les « non-changements » ne permet plus de dire
+    /// qui a confirmé quoi.
+    pub async fn definir_offre_livraison(
+        &self,
+        tx: &mut sqlx::PgTransaction<'_>,
+        prestataire: Uuid,
+        offre: Option<tarification::OffreLivraison>,
+        acteur: Uuid,
+    ) -> Result<(), ErreurPrestataires> {
+        self.prestataire_dans_tx(tx, prestataire).await?;
+
+        // Garde de domaine, doublant le CHECK de la migration 0021 : une offre
+        // « à partir de rien » n'est pas une offre conditionnelle.
+        if let Some(tarification::OffreLivraison::AuDela(seuil)) = offre {
+            if seuil <= 0 {
+                return Err(ErreurPrestataires::MontantInvalide(format!(
+                    "seuil d'offre de livraison non strictement positif : {seuil}"
+                )));
+            }
+        }
+
+        let (valeur, seuil) = match offre {
+            None => ("jamais", None),
+            Some(tarification::OffreLivraison::Toujours) => ("toujours", None),
+            Some(tarification::OffreLivraison::AuDela(s)) => ("au_dela", Some(s)),
+        };
+
+        sqlx::query!(
+            "UPDATE prestataires.prestataire
+             SET offre_livraison = $2::prestataires.offre_livraison,
+                 offre_livraison_seuil_unites = $3,
+                 modifie_le = now()
+             WHERE id = $1",
+            prestataire,
+            valeur as _,
+            seuil,
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        ecrire_evenement(
+            tx,
+            NouvelEvenement {
+                type_evenement: "vendeur.offre_livraison_modifiee",
+                entite_type: "prestataire",
+                entite_id: prestataire,
+                payload: json!({
+                    "offre": valeur,
+                    "seuil": seuil,
+                    "acteur": acteur,
+                }),
+                survenu_le: Utc::now(),
+            },
+        )
+        .await?;
+        Ok(())
+    }
+
     // ── Photos de fiche (FR-025, FR-026) ───────────────────────────────────
 
     /// Dépose une photo de fiche sous une clé NEUVE et l'ajoute en dernière

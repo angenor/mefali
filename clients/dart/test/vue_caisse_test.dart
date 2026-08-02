@@ -25,6 +25,12 @@ void main() {
       // TODO
     });
 
+    // Créances du coursier, les plus récentes d'abord. Additif également.
+    // BuiltList<Creance> creances
+    test('to test the property `creances`', () async {
+      // TODO
+    });
+
     // Devise ISO 4217 de la zone.
     // String devise
     test('to test the property `devise`', () async {
@@ -52,6 +58,18 @@ void main() {
     // Litiges en cours — vide tant qu'AVI-04 n'existe pas.
     // BuiltList<LitigeVu> litigesEnCours
     test('to test the property `litigesEnCours`', () async {
+      // TODO
+    });
+
+    // Mouvements du livre du jour, du plus récent au plus ancien.
+    // BuiltList<MouvementCaisse> mouvements
+    test('to test the property `mouvements`', () async {
+      // TODO
+    });
+
+    // **Les trois positions** (cycle PAY 011, FR-060/FR-094).  Champ ADDITIF : l'app livrée l'ignore et continue de fonctionner pendant la transition.
+    // PositionsCaisse positions
+    test('to test the property `positions`', () async {
       // TODO
     });
 

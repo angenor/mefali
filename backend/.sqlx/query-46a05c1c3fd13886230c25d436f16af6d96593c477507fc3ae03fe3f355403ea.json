@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret\n                SET statut = 'indisponible', montant_avance = 0,\n                    montant_articles_unites = 0, retenue_appliquee_unites = 0,\n                    transition_uuid_client = $2\n              WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "46a05c1c3fd13886230c25d436f16af6d96593c477507fc3ae03fe3f355403ea"
+}

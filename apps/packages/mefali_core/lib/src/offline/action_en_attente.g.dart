@@ -820,6 +820,28 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _montantArticlesUnitesMeta =
+      const VerificationMeta('montantArticlesUnites');
+  @override
+  late final GeneratedColumn<int> montantArticlesUnites = GeneratedColumn<int>(
+    'montant_articles_unites',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _retenueAppliqueeUnitesMeta =
+      const VerificationMeta('retenueAppliqueeUnites');
+  @override
+  late final GeneratedColumn<int> retenueAppliqueeUnites = GeneratedColumn<int>(
+    'retenue_appliquee_unites',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _deviseMeta = const VerificationMeta('devise');
   @override
   late final GeneratedColumn<String> devise = GeneratedColumn<String>(
@@ -877,6 +899,8 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
     siteLat,
     siteLon,
     montantAvance,
+    montantArticlesUnites,
+    retenueAppliqueeUnites,
     devise,
     photoExigee,
     distanceMaxM,
@@ -968,6 +992,24 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
     } else if (isInserting) {
       context.missing(_montantAvanceMeta);
     }
+    if (data.containsKey('montant_articles_unites')) {
+      context.handle(
+        _montantArticlesUnitesMeta,
+        montantArticlesUnites.isAcceptableOrUnknown(
+          data['montant_articles_unites']!,
+          _montantArticlesUnitesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('retenue_appliquee_unites')) {
+      context.handle(
+        _retenueAppliqueeUnitesMeta,
+        retenueAppliqueeUnites.isAcceptableOrUnknown(
+          data['retenue_appliquee_unites']!,
+          _retenueAppliqueeUnitesMeta,
+        ),
+      );
+    }
     if (data.containsKey('devise')) {
       context.handle(
         _deviseMeta,
@@ -1046,6 +1088,14 @@ class $ArretsPreprovisionnesTable extends ArretsPreprovisionnes
         DriftSqlType.int,
         data['${effectivePrefix}montant_avance'],
       )!,
+      montantArticlesUnites: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}montant_articles_unites'],
+      )!,
+      retenueAppliqueeUnites: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retenue_appliquee_unites'],
+      )!,
       devise: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}devise'],
@@ -1094,8 +1144,18 @@ class ArretPreprovisionne extends DataClass
   /// Position attendue du site.
   final double siteLon;
 
-  /// Montant avancé (unités mineures).
+  /// Montant avancé (unités mineures) — **net de retenue vendeur**.
   final int montantAvance;
+
+  /// Articles bruts, AVANT retenue VND-08 (cycle PAY 011, FR-092).
+  ///
+  /// Défaut `0` : une course déjà en cache au moment de la mise à jour n'a pas
+  /// cette valeur, et l'app retombe alors sur [montantAvance] — le net, qui
+  /// reste juste. Mieux vaut une explication absente qu'un montant faux.
+  final int montantArticlesUnites;
+
+  /// Part prise en charge par le vendeur (VND-08), `0` sinon.
+  final int retenueAppliqueeUnites;
 
   /// Devise ISO 4217.
   final String devise;
@@ -1118,6 +1178,8 @@ class ArretPreprovisionne extends DataClass
     required this.siteLat,
     required this.siteLon,
     required this.montantAvance,
+    required this.montantArticlesUnites,
+    required this.retenueAppliqueeUnites,
     required this.devise,
     required this.photoExigee,
     required this.distanceMaxM,
@@ -1134,6 +1196,8 @@ class ArretPreprovisionne extends DataClass
     map['site_lat'] = Variable<double>(siteLat);
     map['site_lon'] = Variable<double>(siteLon);
     map['montant_avance'] = Variable<int>(montantAvance);
+    map['montant_articles_unites'] = Variable<int>(montantArticlesUnites);
+    map['retenue_appliquee_unites'] = Variable<int>(retenueAppliqueeUnites);
     map['devise'] = Variable<String>(devise);
     map['photo_exigee'] = Variable<bool>(photoExigee);
     map['distance_max_m'] = Variable<int>(distanceMaxM);
@@ -1151,6 +1215,8 @@ class ArretPreprovisionne extends DataClass
       siteLat: Value(siteLat),
       siteLon: Value(siteLon),
       montantAvance: Value(montantAvance),
+      montantArticlesUnites: Value(montantArticlesUnites),
+      retenueAppliqueeUnites: Value(retenueAppliqueeUnites),
       devise: Value(devise),
       photoExigee: Value(photoExigee),
       distanceMaxM: Value(distanceMaxM),
@@ -1172,6 +1238,12 @@ class ArretPreprovisionne extends DataClass
       siteLat: serializer.fromJson<double>(json['siteLat']),
       siteLon: serializer.fromJson<double>(json['siteLon']),
       montantAvance: serializer.fromJson<int>(json['montantAvance']),
+      montantArticlesUnites: serializer.fromJson<int>(
+        json['montantArticlesUnites'],
+      ),
+      retenueAppliqueeUnites: serializer.fromJson<int>(
+        json['retenueAppliqueeUnites'],
+      ),
       devise: serializer.fromJson<String>(json['devise']),
       photoExigee: serializer.fromJson<bool>(json['photoExigee']),
       distanceMaxM: serializer.fromJson<int>(json['distanceMaxM']),
@@ -1190,6 +1262,8 @@ class ArretPreprovisionne extends DataClass
       'siteLat': serializer.toJson<double>(siteLat),
       'siteLon': serializer.toJson<double>(siteLon),
       'montantAvance': serializer.toJson<int>(montantAvance),
+      'montantArticlesUnites': serializer.toJson<int>(montantArticlesUnites),
+      'retenueAppliqueeUnites': serializer.toJson<int>(retenueAppliqueeUnites),
       'devise': serializer.toJson<String>(devise),
       'photoExigee': serializer.toJson<bool>(photoExigee),
       'distanceMaxM': serializer.toJson<int>(distanceMaxM),
@@ -1206,6 +1280,8 @@ class ArretPreprovisionne extends DataClass
     double? siteLat,
     double? siteLon,
     int? montantAvance,
+    int? montantArticlesUnites,
+    int? retenueAppliqueeUnites,
     String? devise,
     bool? photoExigee,
     int? distanceMaxM,
@@ -1219,6 +1295,9 @@ class ArretPreprovisionne extends DataClass
     siteLat: siteLat ?? this.siteLat,
     siteLon: siteLon ?? this.siteLon,
     montantAvance: montantAvance ?? this.montantAvance,
+    montantArticlesUnites: montantArticlesUnites ?? this.montantArticlesUnites,
+    retenueAppliqueeUnites:
+        retenueAppliqueeUnites ?? this.retenueAppliqueeUnites,
     devise: devise ?? this.devise,
     photoExigee: photoExigee ?? this.photoExigee,
     distanceMaxM: distanceMaxM ?? this.distanceMaxM,
@@ -1242,6 +1321,12 @@ class ArretPreprovisionne extends DataClass
       montantAvance: data.montantAvance.present
           ? data.montantAvance.value
           : this.montantAvance,
+      montantArticlesUnites: data.montantArticlesUnites.present
+          ? data.montantArticlesUnites.value
+          : this.montantArticlesUnites,
+      retenueAppliqueeUnites: data.retenueAppliqueeUnites.present
+          ? data.retenueAppliqueeUnites.value
+          : this.retenueAppliqueeUnites,
       devise: data.devise.present ? data.devise.value : this.devise,
       photoExigee: data.photoExigee.present
           ? data.photoExigee.value
@@ -1266,6 +1351,8 @@ class ArretPreprovisionne extends DataClass
           ..write('siteLat: $siteLat, ')
           ..write('siteLon: $siteLon, ')
           ..write('montantAvance: $montantAvance, ')
+          ..write('montantArticlesUnites: $montantArticlesUnites, ')
+          ..write('retenueAppliqueeUnites: $retenueAppliqueeUnites, ')
           ..write('devise: $devise, ')
           ..write('photoExigee: $photoExigee, ')
           ..write('distanceMaxM: $distanceMaxM, ')
@@ -1284,6 +1371,8 @@ class ArretPreprovisionne extends DataClass
     siteLat,
     siteLon,
     montantAvance,
+    montantArticlesUnites,
+    retenueAppliqueeUnites,
     devise,
     photoExigee,
     distanceMaxM,
@@ -1301,6 +1390,8 @@ class ArretPreprovisionne extends DataClass
           other.siteLat == this.siteLat &&
           other.siteLon == this.siteLon &&
           other.montantAvance == this.montantAvance &&
+          other.montantArticlesUnites == this.montantArticlesUnites &&
+          other.retenueAppliqueeUnites == this.retenueAppliqueeUnites &&
           other.devise == this.devise &&
           other.photoExigee == this.photoExigee &&
           other.distanceMaxM == this.distanceMaxM &&
@@ -1317,6 +1408,8 @@ class ArretsPreprovisionnesCompanion
   final Value<double> siteLat;
   final Value<double> siteLon;
   final Value<int> montantAvance;
+  final Value<int> montantArticlesUnites;
+  final Value<int> retenueAppliqueeUnites;
   final Value<String> devise;
   final Value<bool> photoExigee;
   final Value<int> distanceMaxM;
@@ -1331,6 +1424,8 @@ class ArretsPreprovisionnesCompanion
     this.siteLat = const Value.absent(),
     this.siteLon = const Value.absent(),
     this.montantAvance = const Value.absent(),
+    this.montantArticlesUnites = const Value.absent(),
+    this.retenueAppliqueeUnites = const Value.absent(),
     this.devise = const Value.absent(),
     this.photoExigee = const Value.absent(),
     this.distanceMaxM = const Value.absent(),
@@ -1346,6 +1441,8 @@ class ArretsPreprovisionnesCompanion
     required double siteLat,
     required double siteLon,
     required int montantAvance,
+    this.montantArticlesUnites = const Value.absent(),
+    this.retenueAppliqueeUnites = const Value.absent(),
     required String devise,
     required bool photoExigee,
     this.distanceMaxM = const Value.absent(),
@@ -1369,6 +1466,8 @@ class ArretsPreprovisionnesCompanion
     Expression<double>? siteLat,
     Expression<double>? siteLon,
     Expression<int>? montantAvance,
+    Expression<int>? montantArticlesUnites,
+    Expression<int>? retenueAppliqueeUnites,
     Expression<String>? devise,
     Expression<bool>? photoExigee,
     Expression<int>? distanceMaxM,
@@ -1384,6 +1483,10 @@ class ArretsPreprovisionnesCompanion
       if (siteLat != null) 'site_lat': siteLat,
       if (siteLon != null) 'site_lon': siteLon,
       if (montantAvance != null) 'montant_avance': montantAvance,
+      if (montantArticlesUnites != null)
+        'montant_articles_unites': montantArticlesUnites,
+      if (retenueAppliqueeUnites != null)
+        'retenue_appliquee_unites': retenueAppliqueeUnites,
       if (devise != null) 'devise': devise,
       if (photoExigee != null) 'photo_exigee': photoExigee,
       if (distanceMaxM != null) 'distance_max_m': distanceMaxM,
@@ -1401,6 +1504,8 @@ class ArretsPreprovisionnesCompanion
     Value<double>? siteLat,
     Value<double>? siteLon,
     Value<int>? montantAvance,
+    Value<int>? montantArticlesUnites,
+    Value<int>? retenueAppliqueeUnites,
     Value<String>? devise,
     Value<bool>? photoExigee,
     Value<int>? distanceMaxM,
@@ -1416,6 +1521,10 @@ class ArretsPreprovisionnesCompanion
       siteLat: siteLat ?? this.siteLat,
       siteLon: siteLon ?? this.siteLon,
       montantAvance: montantAvance ?? this.montantAvance,
+      montantArticlesUnites:
+          montantArticlesUnites ?? this.montantArticlesUnites,
+      retenueAppliqueeUnites:
+          retenueAppliqueeUnites ?? this.retenueAppliqueeUnites,
       devise: devise ?? this.devise,
       photoExigee: photoExigee ?? this.photoExigee,
       distanceMaxM: distanceMaxM ?? this.distanceMaxM,
@@ -1451,6 +1560,16 @@ class ArretsPreprovisionnesCompanion
     if (montantAvance.present) {
       map['montant_avance'] = Variable<int>(montantAvance.value);
     }
+    if (montantArticlesUnites.present) {
+      map['montant_articles_unites'] = Variable<int>(
+        montantArticlesUnites.value,
+      );
+    }
+    if (retenueAppliqueeUnites.present) {
+      map['retenue_appliquee_unites'] = Variable<int>(
+        retenueAppliqueeUnites.value,
+      );
+    }
     if (devise.present) {
       map['devise'] = Variable<String>(devise.value);
     }
@@ -1480,6 +1599,8 @@ class ArretsPreprovisionnesCompanion
           ..write('siteLat: $siteLat, ')
           ..write('siteLon: $siteLon, ')
           ..write('montantAvance: $montantAvance, ')
+          ..write('montantArticlesUnites: $montantArticlesUnites, ')
+          ..write('retenueAppliqueeUnites: $retenueAppliqueeUnites, ')
           ..write('devise: $devise, ')
           ..write('photoExigee: $photoExigee, ')
           ..write('distanceMaxM: $distanceMaxM, ')
@@ -6193,6 +6314,8 @@ typedef $$ArretsPreprovisionnesTableCreateCompanionBuilder =
       required double siteLat,
       required double siteLon,
       required int montantAvance,
+      Value<int> montantArticlesUnites,
+      Value<int> retenueAppliqueeUnites,
       required String devise,
       required bool photoExigee,
       Value<int> distanceMaxM,
@@ -6209,6 +6332,8 @@ typedef $$ArretsPreprovisionnesTableUpdateCompanionBuilder =
       Value<double> siteLat,
       Value<double> siteLon,
       Value<int> montantAvance,
+      Value<int> montantArticlesUnites,
+      Value<int> retenueAppliqueeUnites,
       Value<String> devise,
       Value<bool> photoExigee,
       Value<int> distanceMaxM,
@@ -6262,6 +6387,16 @@ class $$ArretsPreprovisionnesTableFilterComposer
 
   ColumnFilters<int> get montantAvance => $composableBuilder(
     column: $table.montantAvance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get montantArticlesUnites => $composableBuilder(
+    column: $table.montantArticlesUnites,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retenueAppliqueeUnites => $composableBuilder(
+    column: $table.retenueAppliqueeUnites,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6335,6 +6470,16 @@ class $$ArretsPreprovisionnesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get montantArticlesUnites => $composableBuilder(
+    column: $table.montantArticlesUnites,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retenueAppliqueeUnites => $composableBuilder(
+    column: $table.retenueAppliqueeUnites,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get devise => $composableBuilder(
     column: $table.devise,
     builder: (column) => ColumnOrderings(column),
@@ -6394,6 +6539,16 @@ class $$ArretsPreprovisionnesTableAnnotationComposer
 
   GeneratedColumn<int> get montantAvance => $composableBuilder(
     column: $table.montantAvance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get montantArticlesUnites => $composableBuilder(
+    column: $table.montantArticlesUnites,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get retenueAppliqueeUnites => $composableBuilder(
+    column: $table.retenueAppliqueeUnites,
     builder: (column) => column,
   );
 
@@ -6470,6 +6625,8 @@ class $$ArretsPreprovisionnesTableTableManager
                 Value<double> siteLat = const Value.absent(),
                 Value<double> siteLon = const Value.absent(),
                 Value<int> montantAvance = const Value.absent(),
+                Value<int> montantArticlesUnites = const Value.absent(),
+                Value<int> retenueAppliqueeUnites = const Value.absent(),
                 Value<String> devise = const Value.absent(),
                 Value<bool> photoExigee = const Value.absent(),
                 Value<int> distanceMaxM = const Value.absent(),
@@ -6484,6 +6641,8 @@ class $$ArretsPreprovisionnesTableTableManager
                 siteLat: siteLat,
                 siteLon: siteLon,
                 montantAvance: montantAvance,
+                montantArticlesUnites: montantArticlesUnites,
+                retenueAppliqueeUnites: retenueAppliqueeUnites,
                 devise: devise,
                 photoExigee: photoExigee,
                 distanceMaxM: distanceMaxM,
@@ -6500,6 +6659,8 @@ class $$ArretsPreprovisionnesTableTableManager
                 required double siteLat,
                 required double siteLon,
                 required int montantAvance,
+                Value<int> montantArticlesUnites = const Value.absent(),
+                Value<int> retenueAppliqueeUnites = const Value.absent(),
                 required String devise,
                 required bool photoExigee,
                 Value<int> distanceMaxM = const Value.absent(),
@@ -6514,6 +6675,8 @@ class $$ArretsPreprovisionnesTableTableManager
                 siteLat: siteLat,
                 siteLon: siteLon,
                 montantAvance: montantAvance,
+                montantArticlesUnites: montantArticlesUnites,
+                retenueAppliqueeUnites: retenueAppliqueeUnites,
                 devise: devise,
                 photoExigee: photoExigee,
                 distanceMaxM: distanceMaxM,

@@ -19,6 +19,7 @@ Method | HTTP request | Description
 [**creerArticleAdmin**](AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
 [**creerPrestataire**](AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [**deciderRole**](AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
+[**definirOffreLivraisonAdmin**](AdminApi.md#definiroffrelivraisonadmin) | **PUT** /admin/prestataires/{id}/offre-livraison | Miroir admin de l&#39;offre de livraison — l&#39;exploitation configure pour un vendeur qui n&#39;a pas l&#39;app (FR-046).
 [**definirSite**](AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
 [**deposerCharte**](AdminApi.md#deposercharte) | **POST** /admin/prestataires/{id}/charte | Dépose la charte signée scannée — condition NÉCESSAIRE de l&#39;agrément.
 [**detacherCompte**](AdminApi.md#detachercompte) | **DELETE** /admin/prestataires/{id}/rattachements/{compte_id} | Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
@@ -449,6 +450,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**EtatRoleDto**](EtatRoleDto.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **definirOffreLivraisonAdmin**
+> OffreLivraisonReglee definirOffreLivraisonAdmin(id, offreLivraisonDeclaration)
+
+Miroir admin de l'offre de livraison — l'exploitation configure pour un vendeur qui n'a pas l'app (FR-046).
+
+### Example
+```dart
+import 'package:mefali_api_client/api.dart';
+
+final api = MefaliApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Prestataire.
+final OffreLivraisonDeclaration offreLivraisonDeclaration = ; // OffreLivraisonDeclaration | 
+
+try {
+    final response = api.definirOffreLivraisonAdmin(id, offreLivraisonDeclaration);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->definirOffreLivraisonAdmin: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| Prestataire. | 
+ **offreLivraisonDeclaration** | [**OffreLivraisonDeclaration**](OffreLivraisonDeclaration.md)|  | 
+
+### Return type
+
+[**OffreLivraisonReglee**](OffreLivraisonReglee.md)
 
 ### Authorization
 

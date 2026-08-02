@@ -400,6 +400,22 @@ impl PgCommandes {
             .optimisation
             .optimiser(panier.zone_id, &retraits, client)
             .await?;
+
+        // VND-08 (cycle 011, T054) : l'offre du SEUL vendeur du panier est lue
+        // ici et transmise telle quelle. Multi-vendeurs → aucune lecture : la
+        // question n'a pas de réponse (à qui la retenue s'appliquerait-elle ?),
+        // et `mono_vendeur: false` la refermerait de toute façon côté
+        // tarification. L'arbitrage avec le drapeau de zone reste entier dans
+        // `tarification` (research R9, R10) — le lire deux fois créerait une
+        // seconde vérité tarifaire.
+        let offre_livraison_vendeur = match panier.groupes.as_slice() {
+            [groupe] => {
+                self.prestataires
+                    .offre_livraison(groupe.prestataire_id)
+                    .await?
+            }
+            _ => None,
+        };
         // Les retraits partent dans l'ORDRE OPTIMISÉ : l'évaluation tarifie le
         // trajet réellement parcouru, pas l'ordre de composition du panier.
         let retraits_ordonnes: Vec<tarification::Point> =
@@ -418,9 +434,10 @@ impl PgCommandes {
                     categorie_slug: Some(panier.categorie_slug.clone()),
                     attentes: Vec::new(),
                     montant_panier: panier.montant_articles_unites(),
-                    // VND-08 : l'offre du vendeur est lue par TRF ; CMD n'en
-                    // décide pas, il fournit la condition nécessaire.
-                    offre_livraison_vendeur: None,
+                    // VND-08 : l'offre du vendeur est ARBITRÉE par TRF ; CMD
+                    // n'en décide pas, il fournit la déclaration du vendeur et
+                    // la condition nécessaire (mono-vendeur).
+                    offre_livraison_vendeur,
                     mono_vendeur: panier.mono_vendeur(),
                 },
                 tarification::SourceGrille::EnVigueur,

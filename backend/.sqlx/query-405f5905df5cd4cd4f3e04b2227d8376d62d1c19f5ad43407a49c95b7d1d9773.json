@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE commandes.arret\n               SET statut = 'collecte',\n                   collecte_le = $2,\n                   mode_collecte = $3::commandes.mode_collecte,\n                   photo_cle = $4,\n                   distance_scan_m = $5,\n                   collecte_uuid_client = $6,\n                   -- Cycle PAY 011 (T055) : le NET reste `montant_avance` — la\n                   -- caisse du coursier ne change pas de lecture (R9). Les\n                   -- articles bruts et la retenue vivent à côté, parce que le\n                   -- reçu vendeur doit montrer les trois montants (FR-071) et\n                   -- qu'un net seul ne se décompose pas.\n                   montant_avance = $7,\n                   montant_articles_unites = $8,\n                   retenue_appliquee_unites = $9,\n                   retenue_ecretee = $10\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "commandes.mode_collecte",
+            "kind": {
+              "Enum": [
+                "scan_qr",
+                "code_secours"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Int4",
+        "Uuid",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "405f5905df5cd4cd4f3e04b2227d8376d62d1c19f5ad43407a49c95b7d1d9773"
+}

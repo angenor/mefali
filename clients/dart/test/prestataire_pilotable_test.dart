@@ -25,6 +25,18 @@ void main() {
       // TODO
     });
 
+    // Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.  Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de fonctionner. Servi ici plutôt que par une route dédiée parce que le réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux scalaires n'aurait servi personne.
+    // String offreLivraison
+    test('to test the property `offreLivraison`', () async {
+      // TODO
+    });
+
+    // Seuil de panier de l'offre `au_dela`, `null` sinon.
+    // int offreLivraisonSeuilUnites
+    test('to test the property `offreLivraisonSeuilUnites`', () async {
+      // TODO
+    });
+
     // Cycle de vie — `suspendu` : l'app affiche le refus, le rôle est intact.
     // StatutPrestataire statut
     test('to test the property `statut`', () async {

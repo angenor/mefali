@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE coursier.creance\n                SET etat = 'reglee', regle_par = $2, regle_le = $3,\n                    ecriture_id = $4\n              WHERE id = $1 AND etat = 'due'\n              RETURNING cree_le",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cree_le",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "coursier.creance",
+            "name": "cree_le"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "13af3ef8886d623a0bd630b291e10d28178a197713c93248fe97216a9f425980"
+}

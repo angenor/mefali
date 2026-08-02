@@ -41,6 +41,8 @@ Map<String, Object?> _caisse({
   List<Object?>? historique,
   List<Object?>? indemnisations,
   List<Object?>? litiges,
+  Map<String, Object?>? positions,
+  List<Object?>? creances,
 }) =>
     {
       'avance_en_cours_unites': avance,
@@ -101,6 +103,16 @@ Map<String, Object?> _caisse({
       'litiges_en_cours': litiges ?? const <Object?>[],
       'devise': 'XOF',
       'ecart_plafond': ecartPlafond,
+      // Cycle PAY 011 — champs du contrat. Le client généré les exige : une
+      // fixture incomplète ferait échouer la désérialisation, et l'écran
+      // rendrait une page blanche sans qu'aucune assertion ne dise pourquoi.
+      'positions': positions ??
+          const {
+            'avance_non_recuperee_unites': 0,
+            'du_par_mefali_unites': 0,
+            'detenu_pour_mefali_unites': 0,
+          },
+      'creances': creances ?? const [],
     };
 
 /// La caisse vide de la maquette 1b — solde à 0, aucune ligne.
@@ -152,7 +164,7 @@ Future<void> _poser(
   ProviderContainer container, {
   VoidCallback? enLigne,
 }) async {
-  tester.view.physicalSize = const Size(1080, 4200);
+  tester.view.physicalSize = const Size(1080, 6400);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);

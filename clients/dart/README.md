@@ -76,6 +76,7 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**creerArticleAdmin**](doc/AdminApi.md#creerarticleadmin) | **POST** /admin/prestataires/{id}/articles | Crée un article pour le compte du prestataire (source admin).
 [*AdminApi*](doc/AdminApi.md) | [**creerPrestataire**](doc/AdminApi.md#creerprestataire) | **POST** /admin/prestataires | Crée un prestataire (prospect) — ville de type &#x60;ville&#x60; uniquement.
 [*AdminApi*](doc/AdminApi.md) | [**deciderRole**](doc/AdminApi.md#deciderrole) | **POST** /admin/comptes/{compte_id}/roles/{role} | Décision admin sur un rôle — machine à états de data-model §4, journalisée.
+[*AdminApi*](doc/AdminApi.md) | [**definirOffreLivraisonAdmin**](doc/AdminApi.md#definiroffrelivraisonadmin) | **PUT** /admin/prestataires/{id}/offre-livraison | Miroir admin de l&#39;offre de livraison — l&#39;exploitation configure pour un vendeur qui n&#39;a pas l&#39;app (FR-046).
 [*AdminApi*](doc/AdminApi.md) | [**definirSite**](doc/AdminApi.md#definirsite) | **PUT** /admin/prestataires/{id}/site | Crée ou met à jour LE site (position GPS, horaires, statut initial).
 [*AdminApi*](doc/AdminApi.md) | [**deposerCharte**](doc/AdminApi.md#deposercharte) | **POST** /admin/prestataires/{id}/charte | Dépose la charte signée scannée — condition NÉCESSAIRE de l&#39;agrément.
 [*AdminApi*](doc/AdminApi.md) | [**detacherCompte**](doc/AdminApi.md#detachercompte) | **DELETE** /admin/prestataires/{id}/rattachements/{compte_id} | Détache un compte — le rôle vendeur du compte ne bouge JAMAIS (FR-008).
@@ -149,6 +150,15 @@ Class | Method | HTTP request | Description
 [*MoiApi*](doc/MoiApi.md) | [**revoquerSession**](doc/MoiApi.md#revoquersession) | **DELETE** /moi/sessions/{session_id} | Déconnexion à distance d&#39;un appareil (SC-004).
 [*MoiApi*](doc/MoiApi.md) | [**soumettreDossierCoursier**](doc/MoiApi.md#soumettredossiercoursier) | **POST** /moi/dossier-coursier | Soumet (ou re-soumet après refus) le dossier coursier — crée la demande de rôle (FR-015).
 [*MoiApi*](doc/MoiApi.md) | [**supprimerAdresse**](doc/MoiApi.md#supprimeradresse) | **DELETE** /moi/adresses/{adresse_id} | Supprime l&#39;adresse — soft (FR-021).
+[*PaiementsApi*](doc/PaiementsApi.md) | [**etatPaiement**](doc/PaiementsApi.md#etatpaiement) | **GET** /commandes/{id}/paiement | État de la session de prépaiement d&#39;une commande.
+[*PaiementsApi*](doc/PaiementsApi.md) | [**ouvrirPaiement**](doc/PaiementsApi.md#ouvrirpaiement) | **POST** /commandes/{id}/paiement | Ouvre — ou renvoie — la session de prépaiement d&#39;une commande.
+[*PaiementsApi*](doc/PaiementsApi.md) | [**recevoirNotification**](doc/PaiementsApi.md#recevoirnotification) | **POST** /paiements/notifications/{fournisseur} | Notification signée d&#39;un fournisseur de paiement.
+[*PaiementsApi*](doc/PaiementsApi.md) | [**recuCommande**](doc/PaiementsApi.md#recucommande) | **GET** /commandes/{id}/recu | Reçu d&#39;une commande — ce qui a été commandé, ce qui en est sorti, et ce qui reste dû.
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**cloreDossier**](doc/PaiementsAdminApi.md#cloredossier) | **POST** /admin/paiements/dossiers/{id}/clore | Clôt un dossier, avec motif (FR-082).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**fileCreances**](doc/PaiementsAdminApi.md#filecreances) | **GET** /admin/creances | File des créances de coursiers (FR-083).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**fileDossiers**](doc/PaiementsAdminApi.md#filedossiers) | **GET** /admin/paiements/dossiers | File des anomalies d&#39;argent (FR-082).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**registreTransactions**](doc/PaiementsAdminApi.md#registretransactions) | **GET** /admin/paiements/transactions | Registre filtrable des transactions de paiement (FR-080, FR-081).
+[*PaiementsAdminApi*](doc/PaiementsAdminApi.md) | [**reglerCreance**](doc/PaiementsAdminApi.md#reglercreance) | **POST** /admin/creances/{id}/regler | Marque une créance réglée et écrit son mouvement de caisse (FR-067).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**consulterPrestataire**](doc/PrestatairesApi.md#consulterprestataire) | **GET** /prestataires/{id} | Fiche + catalogue, lecture seule, SANS authentification — la plaque est un canal d&#39;acquisition (FR-027 ; exception VIII documentée au plan, R9).
 [*PrestatairesApi*](doc/PrestatairesApi.md) | [**resoudrePlaque**](doc/PrestatairesApi.md#resoudreplaque) | **GET** /prestataires/plaque/{jeton} | Résout un jeton de plaque — sous SESSION valide, AUCUN rôle particulier (analyse C1 : seule la consultation de la fiche échappe au principe VIII).
 [*QrApi*](doc/QrApi.md) | [**collecter**](doc/QrApi.md#collecter) | **POST** /courses/arrets/{arret_id}/collecte | QRC-02/03/04 — collecte un arrêt (multipart : &#x60;demande&#x60; JSON + &#x60;photo&#x60;).
@@ -163,12 +173,14 @@ Class | Method | HTTP request | Description
 [*VendeurApi*](doc/VendeurApi.md) | [**actionBoutique**](doc/VendeurApi.md#actionboutique) | **POST** /vendeur/prestataires/{id}/boutique/action | Geste V1 : ouvrir, fermer, pause, prolonger, fermer pour la journée.
 [*VendeurApi*](doc/VendeurApi.md) | [**basculerDisponibilite**](doc/VendeurApi.md#basculerdisponibilite) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/disponibilite | Bascule la disponibilité en UN geste (source vendeur — FR-037).
 [*VendeurApi*](doc/VendeurApi.md) | [**creerArticle**](doc/VendeurApi.md#creerarticle) | **POST** /vendeur/prestataires/{id}/articles | Ajoute un article au catalogue (V2 — « + Ajouter un article »).
+[*VendeurApi*](doc/VendeurApi.md) | [**definirOffreLivraison**](doc/VendeurApi.md#definiroffrelivraison) | **PUT** /vendeur/prestataires/{id}/offre-livraison | Déclare l&#39;offre de livraison du vendeur (VND-08 minimal — FR-046).
 [*VendeurApi*](doc/VendeurApi.md) | [**maBoutique**](doc/VendeurApi.md#maboutique) | **GET** /vendeur/prestataires/{id}/boutique | Statut, échéance, horaires du jour et rappel de l&#39;écran V1.
 [*VendeurApi*](doc/VendeurApi.md) | [**mesArticles**](doc/VendeurApi.md#mesarticles) | **GET** /vendeur/prestataires/{id}/articles | Catalogue COMPLET du prestataire piloté (ruptures, retirés, verrou admin).
 [*VendeurApi*](doc/VendeurApi.md) | [**mesPrestataires**](doc/VendeurApi.md#mesprestataires) | **GET** /vendeur/prestataires | Prestataires que ce compte pilote (rattachements du cycle VND).
 [*VendeurApi*](doc/VendeurApi.md) | [**modifierArticle**](doc/VendeurApi.md#modifierarticle) | **PUT** /vendeur/prestataires/{id}/articles/{article_id} | Modifie nom / prix / prix barré / étiquette (fiche article V2).
 [*VendeurApi*](doc/VendeurApi.md) | [**modifierHoraires**](doc/VendeurApi.md#modifierhoraires) | **PUT** /vendeur/prestataires/{id}/horaires | Remplace les horaires hebdomadaires (FR-034) — effet IMMÉDIAT.
 [*VendeurApi*](doc/VendeurApi.md) | [**photoArticle**](doc/VendeurApi.md#photoarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/photo | Dépose/remplace la photo de l&#39;article (multipart, ≤ 5 Mo).
+[*VendeurApi*](doc/VendeurApi.md) | [**recuArret**](doc/VendeurApi.md#recuarret) | **GET** /vendeur/arrets/{arret_id}/recu | Reçu d&#39;un arrêt collecté chez un prestataire piloté.
 [*VendeurApi*](doc/VendeurApi.md) | [**remettreArticle**](doc/VendeurApi.md#remettrearticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/remise | Remet un article retiré au catalogue, sans ressaisie (FR-055).
 [*VendeurApi*](doc/VendeurApi.md) | [**retirerArticle**](doc/VendeurApi.md#retirerarticle) | **POST** /vendeur/prestataires/{id}/articles/{article_id}/retrait | Retire l&#39;article du catalogue — RÉVERSIBLE (FR-055).
 [*ZonesApi*](doc/ZonesApi.md) | [**config**](doc/ZonesApi.md#config) | **GET** /config | Configuration produit publique d&#39;une zone (ZON-04). PUBLIC en lecture seule (clarification Q1), liste blanche de namespaces (R4), versionnée par ETag (304 sur If-None-Match — polling horaire économe).
@@ -202,6 +214,7 @@ Class | Method | HTTP request | Description
  - [CategorieDto](doc/CategorieDto.md)
  - [CharteAdminDto](doc/CharteAdminDto.md)
  - [ClientCourse](doc/ClientCourse.md)
+ - [CloreDossierDto](doc/CloreDossierDto.md)
  - [Commande](doc/Commande.md)
  - [CommandeEnAttente](doc/CommandeEnAttente.md)
  - [CommandeProposee](doc/CommandeProposee.md)
@@ -218,6 +231,7 @@ Class | Method | HTTP request | Description
  - [CourseBloquee](doc/CourseBloquee.md)
  - [CoursierDuPool](doc/CoursierDuPool.md)
  - [CoursierSuivi](doc/CoursierSuivi.md)
+ - [Creance](doc/Creance.md)
  - [CreerArticleDto](doc/CreerArticleDto.md)
  - [CreerPrestataireDto](doc/CreerPrestataireDto.md)
  - [DecisionDepot](doc/DecisionDepot.md)
@@ -250,6 +264,7 @@ Class | Method | HTTP request | Description
  - [DiscriminantSession](doc/DiscriminantSession.md)
  - [DossierCoursier](doc/DossierCoursier.md)
  - [DossierCoursierAdmin](doc/DossierCoursierAdmin.md)
+ - [DossierPaiement](doc/DossierPaiement.md)
  - [DrapeauxZone](doc/DrapeauxZone.md)
  - [ErreurApi](doc/ErreurApi.md)
  - [EscaladeDispatch](doc/EscaladeDispatch.md)
@@ -263,6 +278,8 @@ Class | Method | HTTP request | Description
  - [ExpositionCash](doc/ExpositionCash.md)
  - [FichePublique](doc/FichePublique.md)
  - [FileAttenteCoursier](doc/FileAttenteCoursier.md)
+ - [FileCreances](doc/FileCreances.md)
+ - [FileDossiers](doc/FileDossiers.md)
  - [FileIndemnisations](doc/FileIndemnisations.md)
  - [ForcageDto](doc/ForcageDto.md)
  - [GainOffre](doc/GainOffre.md)
@@ -287,6 +304,8 @@ Class | Method | HTTP request | Description
  - [LigneExposition](doc/LigneExposition.md)
  - [LigneHistoriqueCaisse](doc/LigneHistoriqueCaisse.md)
  - [LignePanier](doc/LignePanier.md)
+ - [LigneRecu](doc/LigneRecu.md)
+ - [LigneRegistre](doc/LigneRegistre.md)
  - [LitigeVu](doc/LitigeVu.md)
  - [LivraisonCommande](doc/LivraisonCommande.md)
  - [LotDePresence](doc/LotDePresence.md)
@@ -296,7 +315,10 @@ Class | Method | HTTP request | Description
  - [ModifierAdresse](doc/ModifierAdresse.md)
  - [ModifierArticleDto](doc/ModifierArticleDto.md)
  - [ModifierPrestataireDto](doc/ModifierPrestataireDto.md)
+ - [MouvementCaisse](doc/MouvementCaisse.md)
  - [OffreCourante](doc/OffreCourante.md)
+ - [OffreLivraisonDeclaration](doc/OffreLivraisonDeclaration.md)
+ - [OffreLivraisonReglee](doc/OffreLivraisonReglee.md)
  - [OffreLivraisonVendeur](doc/OffreLivraisonVendeur.md)
  - [PaiementCommande](doc/PaiementCommande.md)
  - [PaiementPanier](doc/PaiementPanier.md)
@@ -309,6 +331,7 @@ Class | Method | HTTP request | Description
  - [Point](doc/Point.md)
  - [PoolDeZone](doc/PoolDeZone.md)
  - [PositionSuivi](doc/PositionSuivi.md)
+ - [PositionsCaisse](doc/PositionsCaisse.md)
  - [PresenceEnregistree](doc/PresenceEnregistree.md)
  - [PrestataireAdmin](doc/PrestataireAdmin.md)
  - [PrestataireAdminDetail](doc/PrestataireAdminDetail.md)
@@ -321,14 +344,19 @@ Class | Method | HTTP request | Description
  - [PublicationPosition](doc/PublicationPosition.md)
  - [RattachementDto](doc/RattachementDto.md)
  - [RattacherCompteDto](doc/RattacherCompteDto.md)
+ - [RecuArret](doc/RecuArret.md)
+ - [RecuCommande](doc/RecuCommande.md)
  - [RefusOffre](doc/RefusOffre.md)
+ - [RegistreTransactions](doc/RegistreTransactions.md)
  - [Regle](doc/Regle.md)
  - [RegleRetenue](doc/RegleRetenue.md)
  - [RegleUpsert](doc/RegleUpsert.md)
+ - [ReglerCreanceDto](doc/ReglerCreanceDto.md)
  - [ReleveDePresence](doc/ReleveDePresence.md)
  - [RemiseBloquee](doc/RemiseBloquee.md)
  - [RemisePreprovisionnee](doc/RemisePreprovisionnee.md)
  - [RemisesBloquees](doc/RemisesBloquees.md)
+ - [ReponseNotification](doc/ReponseNotification.md)
  - [RepriseFaite](doc/RepriseFaite.md)
  - [ResolutionPlaque](doc/ResolutionPlaque.md)
  - [ResultatAnnulation](doc/ResultatAnnulation.md)
@@ -341,6 +369,7 @@ Class | Method | HTTP request | Description
  - [SecretsRemise](doc/SecretsRemise.md)
  - [SessionAppareil](doc/SessionAppareil.md)
  - [SessionOuverte](doc/SessionOuverte.md)
+ - [SessionPaiement](doc/SessionPaiement.md)
  - [SeuilsPreuves](doc/SeuilsPreuves.md)
  - [SignalementRecuDto](doc/SignalementRecuDto.md)
  - [SignalerRuptureDto](doc/SignalerRuptureDto.md)

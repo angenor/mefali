@@ -39,6 +39,7 @@ import 'package:mefali_api_client/src/model/capacite_coursier.dart';
 import 'package:mefali_api_client/src/model/categorie_dto.dart';
 import 'package:mefali_api_client/src/model/charte_admin_dto.dart';
 import 'package:mefali_api_client/src/model/client_course.dart';
+import 'package:mefali_api_client/src/model/clore_dossier_dto.dart';
 import 'package:mefali_api_client/src/model/commande.dart';
 import 'package:mefali_api_client/src/model/commande_en_attente.dart';
 import 'package:mefali_api_client/src/model/commande_proposee.dart';
@@ -55,6 +56,7 @@ import 'package:mefali_api_client/src/model/course_active_complete.dart';
 import 'package:mefali_api_client/src/model/course_bloquee.dart';
 import 'package:mefali_api_client/src/model/coursier_du_pool.dart';
 import 'package:mefali_api_client/src/model/coursier_suivi.dart';
+import 'package:mefali_api_client/src/model/creance.dart';
 import 'package:mefali_api_client/src/model/creer_article_dto.dart';
 import 'package:mefali_api_client/src/model/creer_prestataire_dto.dart';
 import 'package:mefali_api_client/src/model/decision_depot.dart';
@@ -87,6 +89,7 @@ import 'package:mefali_api_client/src/model/discriminant_consentement.dart';
 import 'package:mefali_api_client/src/model/discriminant_session.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier.dart';
 import 'package:mefali_api_client/src/model/dossier_coursier_admin.dart';
+import 'package:mefali_api_client/src/model/dossier_paiement.dart';
 import 'package:mefali_api_client/src/model/drapeaux_zone.dart';
 import 'package:mefali_api_client/src/model/erreur_api.dart';
 import 'package:mefali_api_client/src/model/escalade_dispatch.dart';
@@ -100,6 +103,8 @@ import 'package:mefali_api_client/src/model/etat_role_dto.dart';
 import 'package:mefali_api_client/src/model/exposition_cash.dart';
 import 'package:mefali_api_client/src/model/fiche_publique.dart';
 import 'package:mefali_api_client/src/model/file_attente_coursier.dart';
+import 'package:mefali_api_client/src/model/file_creances.dart';
+import 'package:mefali_api_client/src/model/file_dossiers.dart';
 import 'package:mefali_api_client/src/model/file_indemnisations.dart';
 import 'package:mefali_api_client/src/model/forcage_dto.dart';
 import 'package:mefali_api_client/src/model/gain_offre.dart';
@@ -124,6 +129,8 @@ import 'package:mefali_api_client/src/model/ligne_devis.dart';
 import 'package:mefali_api_client/src/model/ligne_exposition.dart';
 import 'package:mefali_api_client/src/model/ligne_historique_caisse.dart';
 import 'package:mefali_api_client/src/model/ligne_panier.dart';
+import 'package:mefali_api_client/src/model/ligne_recu.dart';
+import 'package:mefali_api_client/src/model/ligne_registre.dart';
 import 'package:mefali_api_client/src/model/litige_vu.dart';
 import 'package:mefali_api_client/src/model/livraison_commande.dart';
 import 'package:mefali_api_client/src/model/lot_de_presence.dart';
@@ -133,7 +140,10 @@ import 'package:mefali_api_client/src/model/mode_collecte.dart';
 import 'package:mefali_api_client/src/model/modifier_adresse.dart';
 import 'package:mefali_api_client/src/model/modifier_article_dto.dart';
 import 'package:mefali_api_client/src/model/modifier_prestataire_dto.dart';
+import 'package:mefali_api_client/src/model/mouvement_caisse.dart';
 import 'package:mefali_api_client/src/model/offre_courante.dart';
+import 'package:mefali_api_client/src/model/offre_livraison_declaration.dart';
+import 'package:mefali_api_client/src/model/offre_livraison_reglee.dart';
 import 'package:mefali_api_client/src/model/offre_livraison_vendeur.dart';
 import 'package:mefali_api_client/src/model/paiement_commande.dart';
 import 'package:mefali_api_client/src/model/paiement_panier.dart';
@@ -146,6 +156,7 @@ import 'package:mefali_api_client/src/model/plateforme_dto.dart';
 import 'package:mefali_api_client/src/model/point.dart';
 import 'package:mefali_api_client/src/model/pool_de_zone.dart';
 import 'package:mefali_api_client/src/model/position_suivi.dart';
+import 'package:mefali_api_client/src/model/positions_caisse.dart';
 import 'package:mefali_api_client/src/model/presence_enregistree.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin.dart';
 import 'package:mefali_api_client/src/model/prestataire_admin_detail.dart';
@@ -158,14 +169,19 @@ import 'package:mefali_api_client/src/model/progression_suivi.dart';
 import 'package:mefali_api_client/src/model/publication_position.dart';
 import 'package:mefali_api_client/src/model/rattachement_dto.dart';
 import 'package:mefali_api_client/src/model/rattacher_compte_dto.dart';
+import 'package:mefali_api_client/src/model/recu_arret.dart';
+import 'package:mefali_api_client/src/model/recu_commande.dart';
 import 'package:mefali_api_client/src/model/refus_offre.dart';
+import 'package:mefali_api_client/src/model/registre_transactions.dart';
 import 'package:mefali_api_client/src/model/regle.dart';
 import 'package:mefali_api_client/src/model/regle_retenue.dart';
 import 'package:mefali_api_client/src/model/regle_upsert.dart';
+import 'package:mefali_api_client/src/model/regler_creance_dto.dart';
 import 'package:mefali_api_client/src/model/releve_de_presence.dart';
 import 'package:mefali_api_client/src/model/remise_bloquee.dart';
 import 'package:mefali_api_client/src/model/remise_preprovisionnee.dart';
 import 'package:mefali_api_client/src/model/remises_bloquees.dart';
+import 'package:mefali_api_client/src/model/reponse_notification.dart';
 import 'package:mefali_api_client/src/model/reprise_faite.dart';
 import 'package:mefali_api_client/src/model/resolution_plaque.dart';
 import 'package:mefali_api_client/src/model/resultat_annulation.dart';
@@ -178,6 +194,7 @@ import 'package:mefali_api_client/src/model/scission_proposee.dart';
 import 'package:mefali_api_client/src/model/secrets_remise.dart';
 import 'package:mefali_api_client/src/model/session_appareil.dart';
 import 'package:mefali_api_client/src/model/session_ouverte.dart';
+import 'package:mefali_api_client/src/model/session_paiement.dart';
 import 'package:mefali_api_client/src/model/seuils_preuves.dart';
 import 'package:mefali_api_client/src/model/signalement_recu_dto.dart';
 import 'package:mefali_api_client/src/model/signaler_rupture_dto.dart';
@@ -222,6 +239,7 @@ part 'serializers.g.dart';
   CategorieDto,
   CharteAdminDto,
   ClientCourse,
+  CloreDossierDto,
   Commande,
   CommandeEnAttente,
   CommandeProposee,
@@ -238,6 +256,7 @@ part 'serializers.g.dart';
   CourseBloquee,
   CoursierDuPool,
   CoursierSuivi,
+  Creance,
   CreerArticleDto,
   CreerPrestataireDto,
   DecisionDepot,
@@ -270,6 +289,7 @@ part 'serializers.g.dart';
   DiscriminantSession,
   DossierCoursier,
   DossierCoursierAdmin,
+  DossierPaiement,
   DrapeauxZone,
   ErreurApi,
   EscaladeDispatch,
@@ -283,6 +303,8 @@ part 'serializers.g.dart';
   ExpositionCash,
   FichePublique,
   FileAttenteCoursier,
+  FileCreances,
+  FileDossiers,
   FileIndemnisations,
   ForcageDto,
   GainOffre,
@@ -307,6 +329,8 @@ part 'serializers.g.dart';
   LigneExposition,
   LigneHistoriqueCaisse,
   LignePanier,
+  LigneRecu,
+  LigneRegistre,
   LitigeVu,
   LivraisonCommande,
   LotDePresence,
@@ -316,7 +340,10 @@ part 'serializers.g.dart';
   ModifierAdresse,
   ModifierArticleDto,
   ModifierPrestataireDto,
+  MouvementCaisse,
   OffreCourante,
+  OffreLivraisonDeclaration,
+  OffreLivraisonReglee,
   OffreLivraisonVendeur,
   PaiementCommande,
   PaiementPanier,
@@ -329,6 +356,7 @@ part 'serializers.g.dart';
   Point,
   PoolDeZone,
   PositionSuivi,
+  PositionsCaisse,
   PresenceEnregistree,
   PrestataireAdmin,
   PrestataireAdminDetail,
@@ -341,14 +369,19 @@ part 'serializers.g.dart';
   PublicationPosition,
   RattachementDto,
   RattacherCompteDto,
+  RecuArret,
+  RecuCommande,
   RefusOffre,
+  RegistreTransactions,
   Regle,
   RegleRetenue,
   RegleUpsert,
+  ReglerCreanceDto,
   ReleveDePresence,
   RemiseBloquee,
   RemisePreprovisionnee,
   RemisesBloquees,
+  ReponseNotification,
   RepriseFaite,
   ResolutionPlaque,
   ResultatAnnulation,
@@ -361,6 +394,7 @@ part 'serializers.g.dart';
   SecretsRemise,
   SessionAppareil,
   SessionOuverte,
+  SessionPaiement,
   SeuilsPreuves,
   SignalementRecuDto,
   SignalerRuptureDto,

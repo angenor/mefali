@@ -77,10 +77,14 @@ pub fn statut_coursier(e: &ErreurCoursier) -> StatusCode {
     match e {
         ErreurCoursier::AucuneCourseActive => StatusCode::NO_CONTENT,
         ErreurCoursier::CourseNonProprietaire => StatusCode::FORBIDDEN,
-        ErreurCoursier::IndemnisationInconnue(_) => StatusCode::NOT_FOUND,
+        ErreurCoursier::IndemnisationInconnue(_)
+        | ErreurCoursier::CreanceInconnue(_) => StatusCode::NOT_FOUND,
         ErreurCoursier::PreuvesIncompletes
         | ErreurCoursier::IndemnisationDejaDecidee
-        | ErreurCoursier::CodeNonBloque => StatusCode::CONFLICT,
+        | ErreurCoursier::CodeNonBloque
+        // Le marquage n'est PAS une bascule : une créance réglée à tort se
+        // corrige par une écriture inverse, jamais par un second appel.
+        | ErreurCoursier::CreanceDejaReglee => StatusCode::CONFLICT,
         ErreurCoursier::DepotNonAutorise
         | ErreurCoursier::MotifRequis
         // Une énumération mal orthographiée par l'appelant : sa demande est
@@ -169,8 +173,16 @@ pub struct ArretCourseDto {
     pub empreinte_jeton: String,
     /// base16(sha256(prestataire ‖ code)) — mode dégradé hors-ligne.
     pub empreinte_code: String,
-    /// Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+    /// Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et
+    /// **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3
+    /// affiche en gros : ce que Yao sort de sa poche au comptoir.
     pub montant_avance: i64,
+    /// Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à
+    /// `montant_avance` quand aucune livraison n'est offerte.
+    pub montant_articles_unites: i64,
+    /// Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle,
+    /// l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
+    pub retenue_appliquee_unites: i64,
     /// Photo de récupération exigée (politique résolue).
     pub photo_exigee: bool,
     /// Rayon max de scan (m).
@@ -299,6 +311,8 @@ impl From<coursier::CourseComplete> for CourseActiveDto {
                     empreinte_jeton: a.empreinte_jeton,
                     empreinte_code: a.empreinte_code,
                     montant_avance: a.montant_avance,
+                    montant_articles_unites: a.montant_articles_unites,
+                    retenue_appliquee_unites: a.retenue_appliquee_unites,
                     photo_exigee: a.photo_exigee,
                     distance_max_m: a.distance_max_m,
                     statut: a.statut.comme_str().to_owned(),
@@ -824,6 +838,49 @@ pub struct LigneHistoriqueDto {
     pub heure: DateTime<Utc>,
 }
 
+/// Un **mouvement du livre de caisse** (cycle PAY 011, T050).
+///
+/// Additif : l'historique agrégé par course reste servi tel quel, et l'app
+/// livrée continue de fonctionner pendant la transition.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = MouvementCaisse)]
+pub struct MouvementCaisseDto {
+    /// Écriture.
+    pub id: Uuid,
+    /// Nature : `avance` | `remboursement` | `indemnisation` | `correction` |
+    /// `frais_encaisses` | `reglement` | `reversement`.
+    pub type_ecriture: String,
+    /// Montant **signé** : négatif quand l'argent sort de la poche.
+    ///
+    /// L'app dérive « entrée » ou « sortie » de ce SIGNE, jamais d'une table
+    /// de types recopiée — une table qui divergerait le jour où une nature
+    /// changerait de sens.
+    pub montant_unites: i64,
+    /// Vrai si l'argent entre dans la poche du coursier.
+    pub entree: bool,
+    /// Commande concernée — `null` pour un règlement ou un reversement, qui
+    /// portent sur un solde et non sur une course.
+    pub commande_id: Option<Uuid>,
+    /// Référence lisible de la commande, quand il y en a une.
+    pub reference: Option<String>,
+    /// Horodatage serveur de l'écriture.
+    pub heure: DateTime<Utc>,
+}
+
+impl From<coursier::MouvementCaisse> for MouvementCaisseDto {
+    fn from(m: coursier::MouvementCaisse) -> Self {
+        Self {
+            id: m.id,
+            type_ecriture: m.type_ecriture.comme_str().to_owned(),
+            montant_unites: m.montant_unites,
+            entree: m.est_entree(),
+            commande_id: m.commande_id,
+            reference: m.reference,
+            heure: m.heure,
+        }
+    }
+}
+
 /// Une indemnisation, telle que la caisse l'affiche.
 #[derive(Debug, Serialize, ToSchema)]
 #[schema(as = IndemnisationVue)]
@@ -888,6 +945,61 @@ pub struct LitigeVuDto {
     pub ouvert_le: DateTime<Utc>,
 }
 
+/// Les trois positions de la caisse — « où est cet argent ? » (FR-060).
+///
+/// Elles ne se recouvrent pas : avancé non récupéré (Yao a sorti l'argent),
+/// dû par Mefali (une dette formelle, qui se règle), détenu pour Mefali (il a
+/// de l'argent qui n'est PAS à lui).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = PositionsCaisse)]
+pub struct PositionsCaisseDto {
+    /// Σ avances non compensées par un remboursement.
+    pub avance_non_recuperee_unites: i64,
+    /// Σ créances dues.
+    pub du_par_mefali_unites: i64,
+    /// Marge encaissée non reversée — **0 au MVP** (marge nulle jusqu'à M4).
+    /// S'affiche quand même : une position absente se lirait comme une position
+    /// oubliée.
+    pub detenu_pour_mefali_unites: i64,
+}
+
+/// Une créance de coursier (FR-094).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = Creance)]
+pub struct CreanceDto {
+    /// Identifiant.
+    pub id: Uuid,
+    /// Commande d'origine.
+    pub commande_id: Uuid,
+    /// `avance_prepayee` | `part_course`.
+    pub nature: String,
+    /// Montant dû (unités mineures).
+    pub montant_unites: i64,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// `due` | `reglee`.
+    pub etat: String,
+    /// Naissance — automatique, à la livraison (FR-063).
+    pub cree_le: DateTime<Utc>,
+    /// Instant du règlement, `null` tant qu'elle est due.
+    pub regle_le: Option<DateTime<Utc>>,
+}
+
+impl From<coursier::Creance> for CreanceDto {
+    fn from(c: coursier::Creance) -> Self {
+        Self {
+            id: c.id,
+            commande_id: c.commande_id,
+            nature: c.nature.comme_str().to_owned(),
+            montant_unites: c.montant_unites,
+            devise: c.devise,
+            etat: c.etat.comme_str().to_owned(),
+            cree_le: c.cree_le,
+            regle_le: c.regle_le,
+        }
+    }
+}
+
 /// Tout l'écran caisse (K5-1a), en une lecture.
 #[derive(Debug, Serialize, ToSchema)]
 #[schema(as = VueCaisse)]
@@ -900,10 +1012,19 @@ pub struct VueCaisseDto {
     pub avances_en_attente_reglement_unites: i64,
     /// Historique du jour civil **de la zone**.
     pub historique_du_jour: Vec<LigneHistoriqueDto>,
+    /// Mouvements du livre du jour, du plus récent au plus ancien.
+    pub mouvements: Vec<MouvementCaisseDto>,
     /// Indemnisations rattachées.
     pub indemnisations: Vec<IndemnisationDto>,
     /// Litiges en cours — vide tant qu'AVI-04 n'existe pas.
     pub litiges_en_cours: Vec<LitigeVuDto>,
+    /// **Les trois positions** (cycle PAY 011, FR-060/FR-094).
+    ///
+    /// Champ ADDITIF : l'app livrée l'ignore et continue de fonctionner
+    /// pendant la transition.
+    pub positions: PositionsCaisseDto,
+    /// Créances du coursier, les plus récentes d'abord. Additif également.
+    pub creances: Vec<CreanceDto>,
     /// Devise ISO 4217 de la zone.
     pub devise: String,
     /// Les avances en cours dépassent le plafond déclaré du jour (FR-078).
@@ -913,6 +1034,12 @@ pub struct VueCaisseDto {
 impl From<coursier::VueCaisse> for VueCaisseDto {
     fn from(v: coursier::VueCaisse) -> Self {
         Self {
+            positions: PositionsCaisseDto {
+                avance_non_recuperee_unites: v.positions.avance_non_recuperee_unites,
+                du_par_mefali_unites: v.positions.du_par_mefali_unites,
+                detenu_pour_mefali_unites: v.positions.detenu_pour_mefali_unites,
+            },
+            creances: v.creances.into_iter().map(CreanceDto::from).collect(),
             avance_en_cours_unites: v.avance_en_cours_unites,
             courses_concernees: v.courses_concernees,
             avances_en_attente_reglement_unites: v.avances_en_attente_reglement_unites,
@@ -931,6 +1058,7 @@ impl From<coursier::VueCaisse> for VueCaisseDto {
                     heure: l.heure,
                 })
                 .collect(),
+            mouvements: v.mouvements.into_iter().map(Into::into).collect(),
             indemnisations: v.indemnisations.into_iter().map(Into::into).collect(),
             litiges_en_cours: v
                 .litiges

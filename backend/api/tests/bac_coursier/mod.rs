@@ -182,6 +182,25 @@ pub struct Bac {
 
 impl Bac {
     pub async fn nouveau(pool: PgPool) -> Self {
+        Self::construire(pool, DEVIS_PRIX_CLIENT, 0).await
+    }
+
+    /// Bac dont le devis figé porte une **retenue vendeur** (VND-08) : le
+    /// vendeur a pris la livraison en charge, donc `prix_client = 0` et
+    /// `retenue_vendeur = 2 500`. Forme EXACTE que produit le moteur
+    /// (`evaluation.rs` §8) — le double ne réinvente pas la règle.
+    pub async fn nouveau_livraison_offerte_par_vendeur(pool: PgPool) -> Self {
+        Self::construire(pool, 0, DEVIS_PRIX_CLIENT).await
+    }
+
+    /// Bac dont le devis figé porte un **prix client nul sans retenue** : la
+    /// promotion de lancement de Mefali (drapeau `livraison_offerte_mefali`).
+    /// Yao n'encaisse RIEN, et sa part reste due — c'est le cas 3 de R13.
+    pub async fn nouveau_livraison_offerte_par_mefali(pool: PgPool) -> Self {
+        Self::construire(pool, 0, 0).await
+    }
+
+    async fn construire(pool: PgPool, prix_client: i64, retenue_vendeur: i64) -> Self {
         let z = PgZones::new(pool.clone());
         let mut tx = pool.begin().await.unwrap();
         let pays = z
@@ -328,7 +347,7 @@ impl Bac {
         // Un double qui rendrait des zéros ferait passer tout contrôle du détail
         // du gain, même faux (leçon T071 du cycle 009).
         let tarif = Arc::new(
-            TarifFixe::simple(DEVIS_PRIX_CLIENT, DEVIS_PART_COURSIER, 0).avec_composantes(
+            TarifFixe::simple(prix_client, DEVIS_PART_COURSIER, 0).avec_composantes(
                 tarification::Composantes {
                     base: 1_500,
                     km: 700,
@@ -337,7 +356,7 @@ impl Bac {
                     effort_attente: 100,
                     effort_arrets: 150,
                     arrondi: 0,
-                    retenue_vendeur: 0,
+                    retenue_vendeur,
                 },
             ),
         );
@@ -633,6 +652,11 @@ impl Bac {
                 .service(adm010::preuves_de_livraison)
                 .service(adm010::exposition_cash)
                 .service(adm010::file_indemnisations)
+                // Cycle PAY 011 — file des créances, règlement, annulation
+                // admin (le cas « annulée après achat » de la table §5).
+                .service(api::admin_paiements_http::file_creances)
+                .service(api::admin_paiements_http::regler_creance)
+                .service(api::admin_commandes_http::annuler_commande_admin)
                 .service(adm010::valider_indemnisation)
                 .service(adm010::refuser_indemnisation);
         }
@@ -1165,6 +1189,47 @@ impl Bac {
             .fetch_one(&self.pool)
             .await
             .unwrap()
+    }
+
+    /// Créances d'un coursier : `(nature, montant, état)`, plus récentes
+    /// d'abord (cycle PAY 011).
+    pub async fn creances(&self, coursier: Uuid) -> Vec<(String, i64, String)> {
+        sqlx::query_as(
+            "SELECT nature::text, montant_unites, etat::text
+               FROM coursier.creance WHERE coursier_id = $1
+              ORDER BY cree_le DESC, id DESC",
+        )
+        .bind(coursier)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap()
+    }
+
+    /// Solde du LIVRE d'un coursier — la somme signée de ses écritures.
+    ///
+    /// C'est la trésorerie de poche, celle que la table de vérité de
+    /// data-model §5 annonce en colonne « solde livre ».
+    pub async fn solde_livre(&self, coursier: Uuid) -> i64 {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COALESCE(SUM(montant_unites), 0)::bigint
+               FROM coursier.ecriture_caisse WHERE coursier_id = $1",
+        )
+        .bind(coursier)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap()
+    }
+
+    /// Somme des créances DUES — la colonne « dû par Mefali ».
+    pub async fn du_par_mefali(&self, coursier: Uuid) -> i64 {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COALESCE(SUM(montant_unites), 0)::bigint
+               FROM coursier.creance WHERE coursier_id = $1 AND etat = 'due'",
+        )
+        .bind(coursier)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap()
     }
 
     /// État courant de la livraison.

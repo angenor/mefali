@@ -29,6 +29,8 @@ class EcranSuivi extends ConsumerWidget {
     required this.commandeId,
     this.onAppeler,
     this.onAnnuler,
+    this.entete,
+    this.actions,
     super.key,
   });
 
@@ -41,13 +43,28 @@ class EcranSuivi extends ConsumerWidget {
   /// Annulation sans frais depuis l'attente (C4-4b).
   final VoidCallback? onAnnuler;
 
+  /// Bandeau posé **au-dessus** du suivi, quand le parcours en a un à dire.
+  ///
+  /// Sert au cycle PAY 011 : une commande en attente de paiement, ou annulée
+  /// parce que le délai a été franchi, doit se lire ICI — c'est l'écran que la
+  /// cliente rouvre depuis l'accueil. Le suivi ne connaît pas le paiement ; il
+  /// se contente de faire de la place à ce que le parcours lui donne.
+  final Widget? entete;
+
+  /// Actions de barre — le reçu du cycle PAY 011 s'y accroche (FR-070).
+  ///
+  /// Dans la barre plutôt que dans le corps : le reçu se consulte à tout
+  /// moment, y compris pendant la course, et une carte de plus dans la liste
+  /// repousserait le bloc de remise que SC-009 veut lisible sans défilement.
+  final List<Widget>? actions;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = MefaliCoreLocalizations.of(context)!;
     final suivi = ref.watch(suiviProvider(commandeId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.suiviTitre)),
+      appBar: AppBar(title: Text(l10n.suiviTitre), actions: actions),
       body: suivi.when(
         loading: () => const Center(child: CircularProgressIndicator.adaptive()),
         error: (_, _) => Center(child: Text(l10n.commandeErreurInterne)),
@@ -55,6 +72,7 @@ class EcranSuivi extends ConsumerWidget {
           etat: etat,
           onAppeler: onAppeler,
           onAnnuler: onAnnuler,
+          entete: entete,
         ),
       ),
     );
@@ -62,11 +80,17 @@ class EcranSuivi extends ConsumerWidget {
 }
 
 class _CorpsSuivi extends StatelessWidget {
-  const _CorpsSuivi({required this.etat, this.onAppeler, this.onAnnuler});
+  const _CorpsSuivi({
+    required this.etat,
+    this.onAppeler,
+    this.onAnnuler,
+    this.entete,
+  });
 
   final EtatSuivi etat;
   final VoidCallback? onAppeler;
   final VoidCallback? onAnnuler;
+  final Widget? entete;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +99,13 @@ class _CorpsSuivi extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(MefaliTokens.screenMargin),
       children: [
+        // Ce que le PARCOURS a à dire avant le suivi lui-même (paiement en
+        // attente, annulation par expiration). Vide la plupart du temps.
+        if (entete != null) ...[
+          entete!,
+          const SizedBox(height: MefaliTokens.space3),
+        ],
+
         // C4-4d — hors connexion : l'écran DIT que son contenu peut avoir
         // changé, au lieu de le présenter comme frais.
         if (etat.horsLigne) ...[

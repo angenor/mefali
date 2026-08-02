@@ -16,8 +16,31 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::depot::PgCommandes;
-use crate::modele::{ErreurCommandes, EtatCommande, EtatLivraison};
+use crate::modele::{ErreurCommandes, EtatCommande, EtatLivraison, ModePaiement};
 use crate::ports::PositionDatee;
+
+/// Ce que le coursier doit réellement encaisser à la remise (FR-057, R11).
+///
+/// **`0` dès que le mode n'est pas `cash`.** Une commande prépayée est déjà
+/// réglée : lui associer un montant à encaisser ferait réclamer deux fois. Le
+/// cycle PAY 011 comble ici un trou du code livré — la valeur valait
+/// `total_unites` quel que soit le mode, et rien à l'écran ne le corrigeait.
+///
+/// Une seule fonction pour les deux lectures (`course_active` et
+/// `montant_a_encaisser`) : c'est la seule façon d'être sûr qu'elles ne
+/// divergeront pas, et une divergence entre les deux se traduirait par un
+/// bandeau qui contredit l'écran de confirmation.
+///
+/// Un mode INCONNU rend `0` : le refuser ferait échouer la course entière pour
+/// une valeur d'énumération que le serveur ne sait pas lire, et réclamer par
+/// défaut serait le pire des deux — mieux vaut ne rien demander qu'exiger à
+/// tort. Le mode est de toute façon revalidé par `parse()` juste après.
+fn montant_a_encaisser(mode_paiement: &str, total_unites: i64) -> i64 {
+    match mode_paiement.parse::<ModePaiement>() {
+        Ok(ModePaiement::Cash) => total_unites,
+        _ => 0,
+    }
+}
 
 /// Clé i18n de l'état affiché — le stepper de la maquette C4-4a.
 ///
@@ -459,7 +482,25 @@ impl crate::ports::CourseCoursier for PgCommandes {
         let lignes = sqlx::query!(
             r#"SELECT a.id AS arret_id, a.ordre AS "arret_ordre!",
                       a.prestataire_id AS "prestataire_id!",
-                      a.site_lat, a.site_lon, a.montant_avance,
+                      a.site_lat, a.site_lon,
+                      a.montant_articles_unites,
+                      -- Retenue VND-08 (cycle PAY 011, FR-092). Deux cas, et
+                      -- l'ordre compte : un arrêt DÉJÀ collecté sert la retenue
+                      -- qu'il a réellement subie — la recalculer réécrirait
+                      -- l'histoire le jour où le devis ou les lignes bougent.
+                      -- Un arrêt à venir sert la retenue PRÉVUE, par la même
+                      -- règle que le scan appliquera (research R9), pour que
+                      -- Yao sache quoi sortir avant d'arriver au comptoir.
+                      CASE WHEN a.statut = 'collecte' THEN a.retenue_appliquee_unites
+                           WHEN (SELECT COUNT(*) FROM commandes.arret a2
+                                   JOIN commandes.segment s2 ON s2.id = a2.segment_id
+                                  WHERE s2.livraison_id = l.id
+                                    AND a2.type_arret = 'collecte') = 1
+                           THEN LEAST(
+                                  COALESCE((l.devis_composantes->>'retenue_vendeur')::bigint, 0),
+                                  a.montant_articles_unites)
+                           ELSE 0
+                      END AS "retenue!",
                       a.statut::text AS "statut!",
                       a.en_route_le, a.arrive_le, a.collecte_le,
                       lc.id AS "ligne_id?", art.nom AS "libelle?",
@@ -470,6 +511,7 @@ impl crate::ports::CourseCoursier for PgCommandes {
                       lc.cree_le AS "ligne_cree_le?"
                FROM commandes.arret a
                JOIN commandes.segment s ON s.id = a.segment_id
+               JOIN commandes.livraison l ON l.id = s.livraison_id
                LEFT JOIN commandes.ligne_commande lc ON lc.arret_id = a.id
                LEFT JOIN prestataires.prix_fige pf ON pf.id = lc.prix_fige_id
                LEFT JOIN prestataires.article art
@@ -493,7 +535,12 @@ impl crate::ports::CourseCoursier for PgCommandes {
                     // Le tronçon n'est pas figé au cycle 007, et ce cycle ne
                     // recalcule aucun itinéraire (FR-009).
                     distance_precedent_m: None,
-                    montant_avance: l.montant_avance,
+                    // Le NET, prévu ou constaté — jamais le brut. Un coursier
+                    // qui lit le brut sort trop d'argent au comptoir, et le
+                    // vendeur encaisse une livraison qu'il avait offerte.
+                    montant_avance: (l.montant_articles_unites - l.retenue).max(0),
+                    montant_articles_unites: l.montant_articles_unites,
+                    retenue_appliquee_unites: l.retenue,
                     statut: l.statut.parse()?,
                     en_route_le: l.en_route_le,
                     arrive_le: l.arrive_le,
@@ -552,7 +599,15 @@ impl crate::ports::CourseCoursier for PgCommandes {
                 empreinte_jeton: e.jeton_reception_hash,
                 essais_consommes: e.essais_code,
                 code_bloque: e.code_bloque,
-                montant_a_encaisser_unites: e.total_unites,
+                // ⚠ **0 quand le mode n'est pas `cash`** (FR-057, FR-093,
+                // research R11). Avant le cycle PAY, cette valeur était
+                // `total_unites` QUEL QUE SOIT le mode : l'app coursier
+                // réclamait à Awa un montant qu'elle avait déjà réglé, et rien
+                // dans l'écran ne disait le contraire.
+                montant_a_encaisser_unites: montant_a_encaisser(
+                    &e.mode_paiement,
+                    e.total_unites,
+                ),
                 mode_paiement: e.mode_paiement.parse()?,
                 arret_remise_id: e.arret_remise_id,
                 arret_remise_statut: e
@@ -570,7 +625,8 @@ impl crate::ports::CourseCoursier for PgCommandes {
         livraison: Uuid,
     ) -> Result<crate::ports::Montant, ErreurCommandes> {
         let m = sqlx::query!(
-            r#"SELECT c.total_unites, c.devise
+            r#"SELECT c.total_unites, c.devise,
+                      c.mode_paiement::text AS "mode_paiement!"
                FROM commandes.livraison l
                JOIN commandes.commande c ON c.id = l.commande_id
                WHERE l.id = $1"#,
@@ -580,7 +636,7 @@ impl crate::ports::CourseCoursier for PgCommandes {
         .await?
         .ok_or(ErreurCommandes::LivraisonInconnue(livraison))?;
         Ok(crate::ports::Montant {
-            unites: m.total_unites,
+            unites: montant_a_encaisser(&m.mode_paiement, m.total_unites),
             devise: m.devise,
         })
     }

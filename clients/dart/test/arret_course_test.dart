@@ -61,7 +61,13 @@ void main() {
       // TODO
     });
 
-    // Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+    // Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à `montant_avance` quand aucune livraison n'est offerte.
+    // int montantArticlesUnites
+    test('to test the property `montantArticlesUnites`', () async {
+      // TODO
+    });
+
+    // Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3 affiche en gros : ce que Yao sort de sa poche au comptoir.
     // int montantAvance
     test('to test the property `montantAvance`', () async {
       // TODO
@@ -88,6 +94,12 @@ void main() {
     // Prestataire visé.
     // String prestataireId
     test('to test the property `prestataireId`', () async {
+      // TODO
+    });
+
+    // Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle, l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
+    // int retenueAppliqueeUnites
+    test('to test the property `retenueAppliqueeUnites`', () async {
       // TODO
     });
 

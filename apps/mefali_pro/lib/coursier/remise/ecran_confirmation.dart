@@ -11,6 +11,7 @@ import '../course/etat_course.dart';
 import '../preuves/ecran_preuves.dart';
 import 'etat_remise.dart';
 import 'pave_code.dart';
+import '../course/montant_a_encaisser.dart';
 
 /// **K4-1a / K4-1c** — l'écran de confirmation de livraison (T039, T042).
 ///
@@ -119,9 +120,10 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
         Expanded(
           child: ListView(
             children: [
-              _MontantAEncaisser(
+              BlocMontantAEncaisser(
                 montantUnites: etat.montantAEncaisserUnites,
                 devise: etat.devise,
+                modePaiement: etat.modePaiement,
               ),
               const SizedBox(height: MefaliTokens.space3),
               _JamaisPartiel(enLigne: widget.enLigne),
@@ -314,40 +316,6 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
 
 /// Le montant, en display success (K4-1a) — c'est le chiffre que Yao doit lire
 /// d'un coup d'œil, sac dans une main, téléphone dans l'autre.
-class _MontantAEncaisser extends StatelessWidget {
-  const _MontantAEncaisser({required this.montantUnites, required this.devise});
-
-  final int montantUnites;
-  final String devise;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(MefaliTokens.space3),
-      decoration: BoxDecoration(
-        color: MefaliTokens.successTint,
-        borderRadius: BorderRadius.circular(MefaliTokens.radiusCard),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l10n.crsRemiseEncaissez, style: textTheme.bodyMedium),
-          const SizedBox(height: MefaliTokens.space1),
-          Text(
-            formaterMontant(montantUnites, devise),
-            style: textTheme.displayMedium?.copyWith(
-              color: MefaliTokens.success,
-              fontWeight: MefaliTokens.weightBold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// **FR-049 / FR-050** — l'absence totale de paiement partiel, rappelée à
 /// l'écran, et le renvoi au chemin de secours quand le client n'a pas l'appoint.

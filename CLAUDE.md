@@ -34,6 +34,14 @@ utilisateur en clés i18n fr).
 - Environnement dev : `docker compose -f infra/docker-compose.yml up -d`
 - Backend : `cargo build` / `cargo test` / `cargo sqlx migrate run` /
   `cargo sqlx prepare` (obligatoire après tout changement SQL)
+  ⚠ **Quatre variables `PAIEMENT_*`** depuis le cycle PAY 011
+  (`infra/.env.example`) : `PAIEMENT_FOURNISSEUR` (`simule` par défaut —
+  `agregateur` une fois le prestataire choisi), `PAIEMENT_BASE_URL`,
+  `PAIEMENT_CLE_API`, `PAIEMENT_WEBHOOK_SECRET`. En mode `agregateur`, l'API
+  **REFUSE DE DÉMARRER** si l'une des trois dernières manque ou si le secret
+  fait moins de **32 octets** (`socle::config::valider_paiement`) : sans lui,
+  elle encaisserait sans jamais pouvoir confirmer. Générer le secret par
+  `openssl rand -hex 32`. En mode `simule`, rien n'est exigé.
 - Contrat + clients : script de génération openapi.json → clients Dart/TS
   (défini au cycle TRX ; la CI échoue sur un diff de client non commité)
 - Apps : `flutter test` / `flutter run` dans chaque app. Sur appareil ou
@@ -57,6 +65,12 @@ utilisateur en clés i18n fr).
   rester vert dans les trois paquets. Le **service continu** ne démarre qu'à la
   mise en ligne et s'arrête à la mise hors ligne : sur émulateur, vérifier la
   notification permanente plutôt que de supposer qu'il tourne.
+  ⚠ Depuis le cycle PAY 011, `mefali_client` a lui aussi un **plugin natif** :
+  `url_launcher`, qui ouvre la page de paiement du fournisseur dans le
+  navigateur système. Même conséquence — **Shorebird ne peut PAS patcher
+  l'écran de paiement à chaud** : toute correction qui le touche passe par le
+  store, et `flutter run` doit recompiler la partie native après son ajout. Ne
+  jamais promettre un correctif à chaud sur ce chemin.
 - Web : `pnpm dev` / `pnpm build` dans `web/`
 
 ## Règles impératives (elles changent le comportement — les respecter toutes)

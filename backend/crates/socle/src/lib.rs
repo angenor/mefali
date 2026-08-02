@@ -15,7 +15,7 @@ pub mod objets;
 pub mod outbox;
 pub mod telemetry;
 
-pub use config::{AppEnv, Config, SmsMode};
+pub use config::{AppEnv, Config, PaiementFournisseur, SmsMode};
 pub use db::connect_pg;
 pub use empreintes::{empreinte_code, empreinte_jeton};
 pub use health::HealthResponse;

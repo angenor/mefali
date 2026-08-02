@@ -22,11 +22,13 @@ part 'arret_course.g.dart';
 /// * [empreinteJeton] - base16(sha256(jeton)) — match hors-ligne du QR de plaque.
 /// * [enRouteLe] - Départ déclaré vers l'arrêt.
 /// * [lignes] - Articles à acheter chez ce vendeur.
-/// * [montantAvance] - Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+/// * [montantArticlesUnites] - Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à `montant_avance` quand aucune livraison n'est offerte.
+/// * [montantAvance] - Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3 affiche en gros : ce que Yao sort de sa poche au comptoir.
 /// * [nom] - Nom du vendeur.
 /// * [ordre] - Rang dans l'ordre optimisé.
 /// * [photoExigee] - Photo de récupération exigée (politique résolue).
 /// * [prestataireId] - Prestataire visé.
+/// * [retenueAppliqueeUnites] - Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle, l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
 /// * [siteLat] - Position attendue du site.
 /// * [siteLon] - Position attendue du site.
 /// * [statut] - `a_collecter` | `en_route` | `arrive` | `collecte` | `indisponible`.
@@ -69,7 +71,11 @@ abstract class ArretCourse implements Built<ArretCourse, ArretCourseBuilder> {
   @BuiltValueField(wireName: r'lignes')
   BuiltList<LigneArret> get lignes;
 
-  /// Montant à avancer à CE vendeur, lignes retirées exclues (FR-013).
+  /// Articles bruts, AVANT retenue — ce que le vendeur facture. Égal à `montant_avance` quand aucune livraison n'est offerte.
+  @BuiltValueField(wireName: r'montant_articles_unites')
+  int get montantArticlesUnites;
+
+  /// Montant à avancer à CE vendeur, lignes retirées exclues (FR-013) et **retenue vendeur déduite** (VND-08, FR-092). C'est le chiffre que K3 affiche en gros : ce que Yao sort de sa poche au comptoir.
   @BuiltValueField(wireName: r'montant_avance')
   int get montantAvance;
 
@@ -88,6 +94,10 @@ abstract class ArretCourse implements Built<ArretCourse, ArretCourseBuilder> {
   /// Prestataire visé.
   @BuiltValueField(wireName: r'prestataire_id')
   String get prestataireId;
+
+  /// Part prise en charge par le vendeur (VND-08), `0` sinon. Non nulle, l'app affiche l'explication de l'écart plutôt qu'un net inexpliqué.
+  @BuiltValueField(wireName: r'retenue_appliquee_unites')
+  int get retenueAppliqueeUnites;
 
   /// Position attendue du site.
   @BuiltValueField(wireName: r'site_lat')
@@ -181,6 +191,11 @@ class _$ArretCourseSerializer implements PrimitiveSerializer<ArretCourse> {
       object.lignes,
       specifiedType: const FullType(BuiltList, [FullType(LigneArret)]),
     );
+    yield r'montant_articles_unites';
+    yield serializers.serialize(
+      object.montantArticlesUnites,
+      specifiedType: const FullType(int),
+    );
     yield r'montant_avance';
     yield serializers.serialize(
       object.montantAvance,
@@ -205,6 +220,11 @@ class _$ArretCourseSerializer implements PrimitiveSerializer<ArretCourse> {
     yield serializers.serialize(
       object.prestataireId,
       specifiedType: const FullType(String),
+    );
+    yield r'retenue_appliquee_unites';
+    yield serializers.serialize(
+      object.retenueAppliqueeUnites,
+      specifiedType: const FullType(int),
     );
     yield r'site_lat';
     yield serializers.serialize(
@@ -318,6 +338,13 @@ class _$ArretCourseSerializer implements PrimitiveSerializer<ArretCourse> {
           ) as BuiltList<LigneArret>;
           result.lignes.replace(valueDes);
           break;
+        case r'montant_articles_unites':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.montantArticlesUnites = valueDes;
+          break;
         case r'montant_avance':
           final valueDes = serializers.deserialize(
             value,
@@ -352,6 +379,13 @@ class _$ArretCourseSerializer implements PrimitiveSerializer<ArretCourse> {
             specifiedType: const FullType(String),
           ) as String;
           result.prestataireId = valueDes;
+          break;
+        case r'retenue_appliquee_unites':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.retenueAppliqueeUnites = valueDes;
           break;
         case r'site_lat':
           final valueDes = serializers.deserialize(

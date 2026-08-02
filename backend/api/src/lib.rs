@@ -10,6 +10,7 @@ pub mod admin_commandes_http;
 pub mod admin_coursier_http;
 /// Surface HTTP admin du cycle DSP (alertes, pool, reprise manuelle).
 pub mod admin_dispatch_http;
+pub mod admin_paiements_http;
 pub mod admin_prestataires_http;
 pub mod admin_tarification_http;
 pub mod adresses_http;
@@ -27,11 +28,14 @@ pub mod dispatch_http;
 pub mod erreurs_commandes;
 /// Mapping HTTP partagé des refus du domaine dispatch (cycle DSP 009, T021).
 pub mod erreurs_dispatch;
+pub mod erreurs_paiements;
 pub mod health;
 /// Impl RÉELLE du port `ProximiteRoutiere` au-dessus du moteur de routage (T020).
 pub mod infra_dispatch;
 pub mod infra_redis;
 pub mod infra_s3;
+pub mod paiements_http;
+pub mod paiements_webhook_http;
 pub mod prestataires_http;
 pub mod qr_http;
 pub mod signalements_http;
@@ -107,6 +111,9 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_prestataires_http::corriger_prestataire)
         .service(vendeur_http::basculer_disponibilite)
         .service(admin_prestataires_http::basculer_disponibilite_admin)
+        .service(vendeur_http::definir_offre_livraison)
+        .service(admin_prestataires_http::definir_offre_livraison_admin)
+        .service(vendeur_http::recu_arret)
         .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
         .service(prestataires_http::resoudre_plaque)
@@ -120,6 +127,11 @@ pub fn api_openapi() -> OpenApi {
         .service(coursier_http::etat_preuves)
         .service(coursier_http::ma_caisse)
         .service(coursier_http::ma_journee)
+        .service(admin_paiements_http::registre_transactions)
+        .service(admin_paiements_http::file_dossiers)
+        .service(admin_paiements_http::clore_dossier)
+        .service(admin_paiements_http::file_creances)
+        .service(admin_paiements_http::regler_creance)
         .service(admin_coursier_http::remises_bloquees)
         .service(admin_coursier_http::debloquer_code)
         .service(admin_coursier_http::autoriser_depot)
@@ -159,6 +171,10 @@ pub fn api_openapi() -> OpenApi {
         .service(admin_dispatch_http::pool_dispatch)
         .service(admin_dispatch_http::reprendre_course_admin)
         .service(admin_commandes_http::enregistrer_issue)
+        .service(paiements_http::ouvrir_paiement)
+        .service(paiements_http::etat_paiement)
+        .service(paiements_http::recu_commande)
+        .service(paiements_webhook_http::recevoir_notification)
         .split_for_parts();
     openapi.info = InfoBuilder::new()
         .title("Mefali API")
@@ -261,6 +277,28 @@ async fn job_purge_reperes(depot: PgComptes) {
 /// Le job ne fait qu'écrire ce que la lecture savait déjà — une décision
 /// d'argent ne dépend pas de la vie d'un processus.
 const BALAYAGE_SUBSTITUTIONS: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Intervalle de balayage des sessions de paiement ÉCHUES (cycle PAY 011, R7).
+///
+/// 10 s, comme [`BALAYAGE_SUBSTITUTIONS`] et pour la même raison : SC-005 exige
+/// qu'une commande abandonnée soit annulée **moins d'une minute** après son
+/// échéance. Un pas plus long laisserait le vendeur préparer une commande qui
+/// n'existe plus, et le dispatch la proposer.
+///
+/// ⚠ Ce job n'est PAS la source de vérité de l'expiration : `expire_le` est
+/// PERSISTÉE et toute lecture la respecte déjà — `POST /commandes/{id}/paiement`
+/// refuse une session échue avant même que le balayage ne l'ait matérialisée.
+/// Le job ne fait qu'écrire ce que la lecture savait déjà.
+const BALAYAGE_SESSIONS_PAIEMENT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// En-tête où l'agrégateur place sa signature de notification (cycle PAY 011).
+///
+/// Ici plutôt qu'en configuration parce qu'aucun agrégateur n'est encore
+/// retenu : le jour où il l'est, cette constante devient une variable
+/// d'environnement — c'est le seul changement que la bascule demandera de ce
+/// côté (`crates/paiements/README.md`). Le nom générique évite qu'un nom
+/// propriétaire entre dans le binaire (FR-003).
+const ENTETE_SIGNATURE_AGREGATEUR: &str = "x-signature";
 
 /// **PREMIER consommateur outbox réel du produit.**
 ///
@@ -379,6 +417,39 @@ async fn job_tic_dispatch(depot: dispatch::PgDispatch, pool: sqlx::PgPool) {
 /// À l'expiration on APPELLE, puis l'article est retiré et non facturé. Une
 /// erreur est journalisée et le passage suivant retente : un incident de
 /// balayage ne doit jamais faire tomber l'API.
+/// Balayage périodique des sessions de paiement échues (FR-027, FR-031).
+///
+/// Le passage RÉCONCILIE avant d'annuler : un webhook perdu ne doit coûter ni
+/// la commande ni l'argent du client. Un fournisseur injoignable ne fait rien
+/// annuler du tout — les sessions sont reportées au passage suivant.
+///
+/// Une erreur est journalisée et retentée : un incident de balayage ne doit
+/// **jamais** faire tomber l'API.
+async fn job_expirer_sessions(
+    depot: paiements::PgPaiements,
+    commandes: commandes::PgCommandes,
+    fournisseur: Arc<dyn paiements::PaymentProvider>,
+) {
+    let mut horloge = tokio::time::interval(BALAYAGE_SESSIONS_PAIEMENT);
+    loop {
+        horloge.tick().await;
+        match paiements::balayer(&depot, &commandes, fournisseur.as_ref()).await {
+            // Le cas nominal est le silence : la plupart des passages ne
+            // trouvent rien, et une ligne de journal toutes les 10 s noierait
+            // celles qui comptent.
+            Ok(bilan) if bilan.examinees == 0 => {}
+            Ok(bilan) => tracing::info!(
+                examinees = bilan.examinees,
+                expirees = bilan.expirees,
+                rattrapees = bilan.rattrapees,
+                reportees = bilan.reportees,
+                "balayage des sessions de paiement",
+            ),
+            Err(e) => tracing::error!(erreur = %e, "balayage des sessions de paiement échoué"),
+        }
+    }
+}
+
 async fn job_expirer_substitutions(depot: commandes::PgCommandes) {
     let mut horloge = tokio::time::interval(BALAYAGE_SUBSTITUTIONS);
     loop {
@@ -463,6 +534,47 @@ impl socle::ConsommateurOutbox for CaisseOutbox {
     }
 }
 
+/// **Troisième consommateur réel** (PAY 011, T057) — les dossiers d'anomalie.
+///
+/// Adaptateur seulement : la traduction événement → dossier vit dans le crate
+/// `paiements`. Il écoute deux faits que `commandes` produit et que `paiements`
+/// ne peut pas voir autrement — la flèche `commandes ──▶ paiements` n'existe
+/// pas et ne doit pas naître (constitution II, research R14).
+struct PaiementsOutbox {
+    depot: paiements::PgPaiements,
+}
+
+#[async_trait::async_trait]
+impl socle::ConsommateurOutbox for PaiementsOutbox {
+    fn nom(&self) -> &'static str {
+        "paiements"
+    }
+
+    async fn consommer(
+        &self,
+        evenement: &socle::EvenementPublie,
+    ) -> Result<(), socle::ConsommationError> {
+        match paiements::consommer_pour_paiements(&self.depot, evenement).await {
+            Ok(()) => Ok(()),
+            // Panne d'infrastructure : l'événement reste non publié et sera
+            // rejoué. `dossier.evenement_id UNIQUE` rend le rejeu inoffensif.
+            Err(paiements::ErreurPaiements::Sql(e)) => {
+                Err(socle::ConsommationError(format!("base de données : {e}")))
+            }
+            // Issue métier : journalisée, JAMAIS rejouée — rejouer ne changerait
+            // rien et bloquerait la ligne d'outbox pour tous les consommateurs
+            // derrière (patron `DispatchOutbox`, `CaisseOutbox`).
+            Err(e) => {
+                tracing::warn!(
+                    evenement = %evenement.id, type_evenement = %evenement.type_evenement,
+                    erreur = %e, "aucun dossier ouvert — l'événement reste consommé",
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Purge périodique des photos de **preuve d'échec** échues (CRS-05, FR-064).
 ///
 /// Même patron que [`job_purge_photos_collecte`], à une différence près : la
@@ -525,6 +637,13 @@ pub async fn run() -> std::io::Result<()> {
     let mut commandes_domaine_opt: Option<commandes::PgCommandes> = None;
     let mut dispatch_opt: Option<dispatch::PgDispatch> = None;
     let mut coursier_opt: Option<coursier::PgCoursier> = None;
+    // PAY 011 — le dépôt de paiement et le fournisseur ACTIF, derrière son
+    // trait. Deux options distinctes parce qu'elles ont deux durées de vie :
+    // le dépôt suit la base, le fournisseur suit la CONFIGURATION (il existe
+    // même quand la base est indisponible — ce qui n'aide personne, mais évite
+    // qu'un `expect` masque la vraie cause au démarrage).
+    let mut paiements_opt: Option<paiements::PgPaiements> = None;
+    let mut fournisseur_opt: Option<Arc<dyn paiements::PaymentProvider>> = None;
     let mut traces_opt: Option<Arc<SmsTraces>> = None;
     let pool_opt = match socle::Config::from_env() {
         Ok(config) => match socle::connect_pg(&config.database_url).await {
@@ -736,6 +855,11 @@ pub async fn run() -> std::io::Result<()> {
                     "pipeline DSP câblé (pool Redis, double verrou Lua, proximité routière ; \
                      note AVI, paires CRS-07 et transport NTF-01 non construits)"
                 );
+                // Construit ICI et pas dans le bloc PAY plus bas : le worker
+                // outbox se monte avec TOUS ses consommateurs d'un coup, et
+                // `PgPaiements` ne demande rien d'autre que le pool.
+                let depot_paiements = paiements::PgPaiements::new(pool.clone());
+
                 // Le worker outbox démarre ICI, et pas plus tôt : il attendait
                 // son premier consommateur réel (research R1).
                 let worker = socle::WorkerOutbox::new(
@@ -752,6 +876,13 @@ pub async fn run() -> std::io::Result<()> {
                         Arc::new(CaisseOutbox {
                             depot: depot_coursier_pour_caisse,
                         }),
+                        // PAY 011 — le TROISIÈME. Même raison, autre sens :
+                        // `paiements` dépend de `commandes`, jamais l'inverse,
+                        // donc il apprend l'écrêtage d'une retenue et le
+                        // remboursement dû par le journal (contrats §4, R14).
+                        Arc::new(PaiementsOutbox {
+                            depot: depot_paiements.clone(),
+                        }),
                     ],
                 );
                 tokio::spawn(worker.run());
@@ -761,6 +892,65 @@ pub async fn run() -> std::io::Result<()> {
                      tic de dispatch toutes les 5 s"
                 );
                 dispatch_opt = Some(depot_dispatch);
+
+                // PAY 011 — le fournisseur de paiement, derrière son trait.
+                //
+                // La sélection est la SEULE chose que la configuration décide :
+                // aucune règle métier ne lit `nom()`, et le contrôle
+                // `scripts/verifier-frontiere-paiement.sh` le vérifie en CI
+                // (FR-003). Changer d'agrégateur, c'est changer trois variables
+                // d'environnement — pas rouvrir la chaîne d'argent.
+                //
+                // Le mode `agregateur` a déjà été validé par
+                // `socle::Config::valider` : arriver ici sans secret est
+                // impossible, l'API aurait refusé de démarrer (FR-045).
+                let fournisseur: Arc<dyn paiements::PaymentProvider> =
+                    match config.paiement_fournisseur {
+                        socle::PaiementFournisseur::Simule => {
+                            Arc::new(paiements::FournisseurSimule::nouveau())
+                        }
+                        socle::PaiementFournisseur::Agregateur => {
+                            // `Config::valider` a déjà garanti que les trois
+                            // valeurs sont là et que le secret fait ≥ 32 octets
+                            // (FR-045) : arriver ici sans elles est impossible,
+                            // l'API aurait refusé de démarrer.
+                            let client = paiements::AgregateurHttp::nouveau(
+                                config.paiement_base_url.clone().unwrap_or_default(),
+                                config.paiement_cle_api.clone().unwrap_or_default(),
+                                config
+                                    .paiement_webhook_secret
+                                    .clone()
+                                    .unwrap_or_default()
+                                    .into_bytes(),
+                                ENTETE_SIGNATURE_AGREGATEUR,
+                            )
+                            .map_err(|e| {
+                                std::io::Error::other(format!(
+                                    "client d'agrégateur inconstructible : {e}"
+                                ))
+                            })?;
+                            Arc::new(client)
+                        }
+                    };
+                eprintln!(
+                    "domaine PAY câblé (PgPaiements ; fournisseur actif « {} ») ; \
+                     consommateur outbox `paiements` monté (dossiers d'écrêtage et de \
+                     remboursement dû) ; remboursements PAY-04 non construits \
+                     (`refund` définie, jamais appelée)",
+                    fournisseur.nom(),
+                );
+                tokio::spawn(job_expirer_sessions(
+                    depot_paiements.clone(),
+                    depot_commandes.clone(),
+                    fournisseur.clone(),
+                ));
+                eprintln!(
+                    "balayage des sessions de paiement toutes les {} s (réconciliation \
+                     AVANT annulation)",
+                    BALAYAGE_SESSIONS_PAIEMENT.as_secs(),
+                );
+                fournisseur_opt = Some(fournisseur);
+                paiements_opt = Some(depot_paiements);
 
                 commandes_domaine_opt = Some(depot_commandes);
                 tarification_opt = Some(tarification);
@@ -860,6 +1050,9 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_prestataires_http::corriger_prestataire)
         .service(vendeur_http::basculer_disponibilite)
         .service(admin_prestataires_http::basculer_disponibilite_admin)
+        .service(vendeur_http::definir_offre_livraison)
+        .service(admin_prestataires_http::definir_offre_livraison_admin)
+        .service(vendeur_http::recu_arret)
         .service(signalements_http::signaler_rupture)
         .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
@@ -873,7 +1066,12 @@ pub async fn run() -> std::io::Result<()> {
             .service(coursier_http::etat_preuves)
             .service(coursier_http::ma_caisse)
             .service(coursier_http::ma_journee)
-            .service(admin_coursier_http::remises_bloquees)
+            .service(admin_paiements_http::registre_transactions)
+        .service(admin_paiements_http::file_dossiers)
+        .service(admin_paiements_http::clore_dossier)
+        .service(admin_paiements_http::file_creances)
+        .service(admin_paiements_http::regler_creance)
+        .service(admin_coursier_http::remises_bloquees)
             .service(admin_coursier_http::debloquer_code)
             .service(admin_coursier_http::autoriser_depot)
             .service(admin_coursier_http::preuves_de_livraison)
@@ -918,6 +1116,10 @@ pub async fn run() -> std::io::Result<()> {
         .service(admin_dispatch_http::pool_dispatch)
         .service(admin_dispatch_http::reprendre_course_admin)
             .service(admin_commandes_http::enregistrer_issue)
+            .service(paiements_http::ouvrir_paiement)
+            .service(paiements_http::etat_paiement)
+            .service(paiements_http::recu_commande)
+            .service(paiements_webhook_http::recevoir_notification)
             .split_for_parts();
         let mut app = app
             .configure(mount_docs(prod, openapi))
@@ -927,7 +1129,11 @@ pub async fn run() -> std::io::Result<()> {
             // Rôle hors énumération dans le chemin → 404 (ressource inexistante).
             .app_data(comptes_http::config_path())
             // Corps multipart démesuré → 422 avant bufferisation (CPT-04/05).
-            .app_data(comptes_http::config_multipart());
+            .app_data(comptes_http::config_multipart())
+            // Corps BRUT plafonné à 64 Kio → 413 pendant la réception. Ne
+            // concerne que le webhook de paiement : c'est la seule route à
+            // extraire un corps brut (T040, constitution VIII).
+            .app_data(paiements_webhook_http::config_payload());
         if let Some(pool) = pool_opt.clone() {
             app = app.app_data(web::Data::new(pool));
         }
@@ -951,6 +1157,12 @@ pub async fn run() -> std::io::Result<()> {
         }
         if let Some(depot) = coursier_opt.clone() {
             app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(depot) = paiements_opt.clone() {
+            app = app.app_data(web::Data::new(depot));
+        }
+        if let Some(fournisseur) = fournisseur_opt.clone() {
+            app = app.app_data(web::Data::new(fournisseur));
         }
         app.configure(mount_dev(prod, traces_opt.clone()))
             // Rate-limit par IP (politeness) sur toute la surface publique.
@@ -1266,7 +1478,13 @@ mod tests {
         // rien ne le fournissait. Ce sont des TEXTES d'affichage servis par la
         // liste blanche publique de `/config` — pas des seuils : ils ne
         // rejoignent donc pas les « sept paramètres » de research R17.
-        assert_eq!(apres_un.4, 90, "50 (pays) + 40 (ville) paramètres");
+        // + 4 (pays, cycle 011 : durée de session de prépaiement, fenêtre de
+        // réconciliation avant annulation, seuil d'alerte d'exposition en
+        // créances, et le coupe-circuit `paiement.moyens_actifs` — VIDE par
+        // défaut, donc sans effet : FR-011 interdit de masquer un moyen au
+        // client, il n'existe que pour couper en urgence un moyen défaillant
+        // chez l'agrégateur).
+        assert_eq!(apres_un.4, 94, "54 (pays) + 40 (ville) paramètres");
         assert_eq!(
             apres_un.5,
             Some(serde_json::json!(false)),

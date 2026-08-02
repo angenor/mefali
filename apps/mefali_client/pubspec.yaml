@@ -27,6 +27,22 @@ dependencies:
   # « Utiliser ma position actuelle » de l'écran d'adresse (maquette C3-3a′) —
   # même plugin et même version que le scan de proximité de mefali_pro.
   geolocator: ^14.0.2
+  # Ouverture de l'accès de paiement dans le NAVIGATEUR SYSTÈME
+  # (`LaunchMode.externalApplication`) — cycle PAY 011, research R17. Version
+  # alignée sur mefali_pro, figée par lockfile (constitution X).
+  #
+  # ⚠ PLUGIN NATIF, donc NON PATCHABLE PAR SHOREBIRD. Shorebird ne patche que le
+  # Dart : toute correction qui touche ce plugin passe par le store. C'est un
+  # coût de livraison annoncé maintenant, pas découvert au moment du correctif.
+  # C'est le TROISIÈME plugin natif du produit après ceux du cycle CRS 010, et
+  # le PREMIER de `mefali_client`, qui n'en avait aucun.
+  #
+  # Aucune permission Android nouvelle : `externalApplication` délègue à un
+  # navigateur déjà installé via un Intent implicite. Une WebView embarquée
+  # aurait été un plugin natif également, plus lourd, et une page de paiement
+  # bancaire dans une WebView applicative est un motif de refus chez plusieurs
+  # agrégateurs.
+  url_launcher: 6.3.2
   mefali_core:
     path: ../packages/mefali_core
   # Client Dart GÉNÉRÉ — consulté DIRECTEMENT pour la fiche publique d'un

@@ -14,15 +14,15 @@
 //! ces cycles brancher leur implémentation réelle sans toucher au contrat.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::modele::{
-    ArretACollecter, ErreurCommandes, EtatLivraison, ModePaiement, PreferenceSubstitution,
-    Restrictions, Sanction, StatutArret, StatutLigne,
+    ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement, ModePaiement,
+    PreferenceSubstitution, Restrictions, Sanction, StatutArret, StatutLigne,
 };
 
 /// Lecture de l'arrêt à collecter d'un coursier chez un prestataire donné.
@@ -370,8 +370,25 @@ pub struct ArretDeCourse {
     /// tant que le tronçon n'est pas figé à la création, l'app masque la ligne
     /// plutôt que d'afficher un chiffre faux.
     pub distance_precedent_m: Option<i64>,
-    /// Montant à avancer à CE vendeur (unités mineures).
+    /// Montant à avancer à CE vendeur (unités mineures) — **net de retenue**.
+    ///
+    /// C'est le chiffre que K3 affiche en gros : ce que Yao sort de sa poche au
+    /// comptoir. Avant le scan c'est une prévision (`articles − retenue
+    /// prévue`), après c'est le montant réellement versé. Les deux coïncident,
+    /// sauf si des lignes bougent entre-temps — auquel cas la prévision suit.
     pub montant_avance: i64,
+    /// Articles bruts de cet arrêt, AVANT retenue (cycle PAY 011, FR-092).
+    ///
+    /// Sans lui, l'app afficherait un net inexpliqué : « pourquoi 2 500 alors
+    /// que le vendeur en demande 3 000 ? ». Un coursier qui ne comprend pas un
+    /// écart d'argent appelle le support — ou paie le brut de sa poche.
+    pub montant_articles_unites: i64,
+    /// Part prise en charge par le vendeur (VND-08), `0` sinon.
+    ///
+    /// Avant la collecte c'est la retenue **prévue**, calculée par la règle du
+    /// scan (research R9) ; après, c'est celle qui a été appliquée — l'histoire
+    /// ne se réécrit pas.
+    pub retenue_appliquee_unites: i64,
     /// Où en est cet arrêt.
     pub statut: StatutArret,
     /// Départ vers l'arrêt déclaré (horodatage serveur).
@@ -862,17 +879,27 @@ impl PositionCoursier for PositionFixe {
 #[derive(Debug, Clone)]
 pub struct TarifFixe {
     devis: tarification::Devis,
+    /// Demandes REÇUES, dans l'ordre. Le double ne rejoue pas l'arbitrage du
+    /// moteur (ce serait un second moteur, et il mentirait le jour où le vrai
+    /// changerait) : il se contente de garder trace de ce qu'on lui a passé,
+    /// pour qu'un test puisse prouver que CMD transmet bien l'offre du vendeur
+    /// — et seulement en mono-vendeur (cycle 011, T054/T056).
+    demandes: Arc<Mutex<Vec<tarification::DemandeDevis>>>,
 }
 
 impl TarifFixe {
     /// Devis fixe complet.
     pub fn nouveau(devis: tarification::Devis) -> Self {
-        Self { devis }
+        Self {
+            devis,
+            demandes: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     /// Devis simple : prix client, part coursier, marge, en XOF.
     pub fn simple(prix_client: i64, part_coursier: i64, marge: i64) -> Self {
         Self {
+            demandes: Arc::new(Mutex::new(Vec::new())),
             devis: tarification::Devis {
                 prix_client,
                 part_coursier,
@@ -913,6 +940,12 @@ impl TarifFixe {
     pub fn devis(&self) -> &tarification::Devis {
         &self.devis
     }
+
+    /// Demandes d'évaluation reçues, dans l'ordre — ce que CMD a réellement
+    /// transmis au moteur (offre du vendeur, drapeau mono-vendeur, panier).
+    pub fn demandes_recues(&self) -> Vec<tarification::DemandeDevis> {
+        self.demandes.lock().expect("verrou du double").clone()
+    }
 }
 
 #[async_trait]
@@ -926,6 +959,10 @@ impl tarification::EvaluationTarifaire for TarifFixe {
         // L'ordre suit le nombre de retraits demandés : un double qui renverrait
         // un ordre plus court ferait silencieusement disparaître des arrêts.
         devis.ordre = (0..demande.retraits.len()).collect();
+        self.demandes
+            .lock()
+            .expect("verrou du double")
+            .push(demande);
         Ok(devis)
     }
 }
@@ -946,6 +983,204 @@ impl tarification::OptimisationArrets for TarifFixe {
             troncons: Vec::new(),
             exhaustif: true,
         })
+    }
+}
+
+// ── Port CommandesAPayer (cycle PAY 011, contracts §2) ─────────────────────
+
+/// Ce que le crate `paiements` a besoin de savoir d'une commande pour ouvrir
+/// une session — et rien de plus.
+///
+/// Le total est **figé** : c'est lui qui est comparé au montant annoncé par une
+/// notification (FR-024). Le comparer au total *courant* de la commande
+/// transformerait un retrait de ligne postérieur en divergence de paiement.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandeAPayer {
+    pub commande_id: Uuid,
+    pub zone_id: Uuid,
+    /// Propriétaire — la garde de propriété de l'endpoint s'appuie dessus.
+    pub client_id: Uuid,
+    pub total_unites: i64,
+    pub devise: String,
+    pub mode_paiement: ModePaiement,
+    pub etat: EtatCommande,
+    pub etat_paiement: EtatPaiement,
+}
+
+impl CommandeAPayer {
+    /// Vrai si une session de prépaiement a lieu d'être ouverte (FR-010).
+    ///
+    /// Trois conditions, et chacune correspond à un `409 paiement_non_requis` :
+    /// une commande **cash** ne passe par aucun fournisseur ; une commande
+    /// **déjà réglée** ne se paie pas deux fois ; une commande qui n'est plus
+    /// `en_attente_paiement` (annulée, déjà partie) n'attend plus rien.
+    pub fn attend_un_paiement(&self) -> bool {
+        self.mode_paiement == ModePaiement::MobileMoney
+            && self.etat == EtatCommande::EnAttentePaiement
+            && self.etat_paiement != EtatPaiement::Regle
+    }
+}
+
+/// Ce que `paiements` demande à `commandes`.
+///
+/// Deux des quatre méthodes **branchent un chemin existant** plutôt que d'en
+/// écrire un second (FR-032) : `confirmer_prepaiement` et l'annulation vivent
+/// depuis le cycle 008, avec leurs transitions gardées et leurs événements. Ce
+/// cycle les appelle ; il ne les réécrit pas. Une seconde règle d'annulation
+/// aurait divergé de la première au premier correctif.
+#[async_trait]
+pub trait CommandesAPayer: Send + Sync {
+    /// Total FIGÉ, devise, propriétaire et état — ce sur quoi la session
+    /// s'ouvre.
+    async fn a_payer(&self, commande: Uuid) -> Result<CommandeAPayer, ErreurCommandes>;
+
+    /// Pose `etat_paiement = 'en_attente'` (research R16, FR-014).
+    ///
+    /// La valeur d'enum existe depuis la migration 0008 et **aucune ligne de
+    /// code ne l'a jamais écrite** : une commande mobile money restait à `'du'`,
+    /// indiscernable d'une commande cash. C'est ce cycle qui la pose enfin.
+    async fn marquer_paiement_en_attente(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes>;
+
+    /// Chemin **existant** du cycle 008 : `en_attente_paiement → nouvelle`,
+    /// `etat_paiement = 'regle'`, événement `commande.paiement_confirme`
+    /// (déjà consommé par le pipeline de dispatch depuis le cycle 009).
+    async fn confirmer_prepaiement(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes>;
+
+    /// Chemin **existant** d'annulation, avec le motif d'expiration (FR-031,
+    /// FR-032). Sans frais, et sans part coursier due : rien n'a été acheté.
+    async fn annuler_pour_expiration(
+        &self,
+        commande: Uuid,
+        quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes>;
+}
+
+/// Motif d'annulation d'une session de paiement expirée.
+///
+/// Clé i18n, jamais du texte libre : elle sera lue par Awa, dans sa langue — et
+/// **sans jargon de paiement** (ni « transaction », ni « session », ni
+/// « fournisseur »). Elle n'a pas à connaître notre plomberie pour comprendre
+/// qu'elle n'a rien payé.
+pub const MOTIF_ANNULATION_EXPIRATION: &str = "commande.annulation.paiement_expire";
+
+/// Double **en mémoire** de [`CommandesAPayer`] — patron `ArretsFixes`.
+///
+/// Permet d'exercer `paiements` sans base : ouverture, idempotence, expiration
+/// et réconciliation se testent sur des types purs. Il note les appels reçus
+/// pour que les tests puissent asserter qu'un chemin a bien été emprunté —
+/// notamment qu'une session expirée annule **une** fois et pas deux.
+#[derive(Debug, Default)]
+pub struct CommandesAPayerEnMemoire {
+    commandes: Mutex<HashMap<Uuid, CommandeAPayer>>,
+    en_attente: Mutex<Vec<Uuid>>,
+    confirmees: Mutex<Vec<Uuid>>,
+    annulees: Mutex<Vec<Uuid>>,
+}
+
+impl CommandesAPayerEnMemoire {
+    pub fn nouveau() -> Self {
+        Self::default()
+    }
+
+    /// Enregistre une commande interrogeable.
+    pub fn ajouter(&self, commande: CommandeAPayer) {
+        self.commandes
+            .lock()
+            .expect("commandes")
+            .insert(commande.commande_id, commande);
+    }
+
+    /// Commande mobile money en attente de paiement — le cas nominal.
+    pub fn ajouter_prepayable(
+        &self,
+        commande_id: Uuid,
+        client_id: Uuid,
+        total_unites: i64,
+    ) -> CommandeAPayer {
+        let c = CommandeAPayer {
+            commande_id,
+            zone_id: Uuid::now_v7(),
+            client_id,
+            total_unites,
+            devise: "XOF".to_owned(),
+            mode_paiement: ModePaiement::MobileMoney,
+            etat: EtatCommande::EnAttentePaiement,
+            etat_paiement: EtatPaiement::Du,
+        };
+        self.ajouter(c.clone());
+        c
+    }
+
+    /// Commandes passées à `marquer_paiement_en_attente`.
+    pub fn mises_en_attente(&self) -> Vec<Uuid> {
+        self.en_attente.lock().expect("en_attente").clone()
+    }
+
+    /// Commandes confirmées.
+    pub fn confirmees(&self) -> Vec<Uuid> {
+        self.confirmees.lock().expect("confirmees").clone()
+    }
+
+    /// Commandes annulées pour expiration.
+    pub fn annulees(&self) -> Vec<Uuid> {
+        self.annulees.lock().expect("annulees").clone()
+    }
+}
+
+#[async_trait]
+impl CommandesAPayer for CommandesAPayerEnMemoire {
+    async fn a_payer(&self, commande: Uuid) -> Result<CommandeAPayer, ErreurCommandes> {
+        self.commandes
+            .lock()
+            .expect("commandes")
+            .get(&commande)
+            .cloned()
+            .ok_or(ErreurCommandes::CommandeInconnue(commande))
+    }
+
+    async fn marquer_paiement_en_attente(
+        &self,
+        commande: Uuid,
+        _quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        self.en_attente.lock().expect("en_attente").push(commande);
+        if let Some(c) = self.commandes.lock().expect("commandes").get_mut(&commande) {
+            c.etat_paiement = EtatPaiement::EnAttente;
+        }
+        Ok(())
+    }
+
+    async fn confirmer_prepaiement(
+        &self,
+        commande: Uuid,
+        _quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        self.confirmees.lock().expect("confirmees").push(commande);
+        if let Some(c) = self.commandes.lock().expect("commandes").get_mut(&commande) {
+            c.etat = EtatCommande::Nouvelle;
+            c.etat_paiement = EtatPaiement::Regle;
+        }
+        Ok(())
+    }
+
+    async fn annuler_pour_expiration(
+        &self,
+        commande: Uuid,
+        _quand: DateTime<Utc>,
+    ) -> Result<(), ErreurCommandes> {
+        self.annulees.lock().expect("annulees").push(commande);
+        if let Some(c) = self.commandes.lock().expect("commandes").get_mut(&commande) {
+            c.etat = EtatCommande::Annulee;
+        }
+        Ok(())
     }
 }
 
@@ -985,6 +1220,125 @@ impl PaiementSimule {
     /// Vrai si le prépaiement de cette commande a expiré.
     pub fn est_expire(&self, commande: Uuid) -> bool {
         self.expires.lock().expect("expires").contains(&commande)
+    }
+}
+
+#[cfg(test)]
+mod tests_paiement {
+    use super::*;
+
+    /// Les trois cas où l'ouverture d'une session est REFUSÉE, et le seul où
+    /// elle est permise. Chacun correspond à un `409 paiement_non_requis` de
+    /// l'endpoint (FR-010) : le test les nomme ici pour que la règle vive dans
+    /// le domaine et non dans le handler HTTP.
+    #[test]
+    fn seule_une_commande_mobile_money_en_attente_appelle_un_paiement() {
+        let base = CommandeAPayer {
+            commande_id: Uuid::now_v7(),
+            zone_id: Uuid::now_v7(),
+            client_id: Uuid::now_v7(),
+            total_unites: 20_000,
+            devise: "XOF".to_owned(),
+            mode_paiement: ModePaiement::MobileMoney,
+            etat: EtatCommande::EnAttentePaiement,
+            etat_paiement: EtatPaiement::Du,
+        };
+        assert!(base.attend_un_paiement(), "le cas nominal");
+
+        // Une commande CASH ne passe par aucun fournisseur.
+        let mut cash = base.clone();
+        cash.mode_paiement = ModePaiement::Cash;
+        assert!(!cash.attend_un_paiement());
+
+        // Une commande DÉJÀ RÉGLÉE ne se paie pas deux fois. C'est la garde
+        // qui empêche un second `POST` de rouvrir une session sur une commande
+        // confirmée entre-temps.
+        let mut reglee = base.clone();
+        reglee.etat_paiement = EtatPaiement::Regle;
+        assert!(!reglee.attend_un_paiement());
+
+        // Une commande ANNULÉE (ou déjà partie) n'attend plus rien.
+        let mut annulee = base.clone();
+        annulee.etat = EtatCommande::Annulee;
+        assert!(!annulee.attend_un_paiement());
+    }
+
+    /// Le double suit l'état comme le ferait la base : marquer, confirmer,
+    /// annuler laissent la commande dans l'état que l'endpoint relira.
+    #[tokio::test]
+    async fn le_double_suit_les_trois_ecritures() {
+        let depot = CommandesAPayerEnMemoire::nouveau();
+        let commande = Uuid::now_v7();
+        let client = Uuid::now_v7();
+        depot.ajouter_prepayable(commande, client, 20_000);
+        let quand = Utc::now();
+
+        depot
+            .marquer_paiement_en_attente(commande, quand)
+            .await
+            .unwrap();
+        assert_eq!(depot.mises_en_attente(), vec![commande]);
+        assert_eq!(
+            depot.a_payer(commande).await.unwrap().etat_paiement,
+            EtatPaiement::EnAttente,
+            "R16 — la valeur `en_attente` existe depuis 0008 et personne ne la posait",
+        );
+
+        depot.confirmer_prepaiement(commande, quand).await.unwrap();
+        let apres = depot.a_payer(commande).await.unwrap();
+        assert_eq!(apres.etat, EtatCommande::Nouvelle, "le tronc repart");
+        assert_eq!(apres.etat_paiement, EtatPaiement::Regle);
+        assert!(
+            !apres.attend_un_paiement(),
+            "une commande confirmée n'attend plus de paiement",
+        );
+    }
+
+    /// L'annulation pour expiration passe par le double sans le rejouer : le
+    /// test d'expiration s'appuie dessus pour prouver qu'une session échue
+    /// n'annule qu'UNE fois.
+    #[tokio::test]
+    async fn l_annulation_pour_expiration_est_observable() {
+        let depot = CommandesAPayerEnMemoire::nouveau();
+        let commande = Uuid::now_v7();
+        depot.ajouter_prepayable(commande, Uuid::now_v7(), 20_000);
+
+        assert!(depot.annulees().is_empty());
+        depot
+            .annuler_pour_expiration(commande, Utc::now())
+            .await
+            .unwrap();
+        assert_eq!(depot.annulees(), vec![commande]);
+        assert_eq!(depot.a_payer(commande).await.unwrap().etat, EtatCommande::Annulee);
+    }
+
+    /// Une commande inconnue est une erreur nommée, pas un `None` silencieux :
+    /// l'endpoint doit pouvoir rendre `404` plutôt que d'ouvrir une session sur
+    /// du vide.
+    #[tokio::test]
+    async fn une_commande_inconnue_est_une_erreur() {
+        let depot = CommandesAPayerEnMemoire::nouveau();
+        assert!(matches!(
+            depot.a_payer(Uuid::now_v7()).await.unwrap_err(),
+            ErreurCommandes::CommandeInconnue(_),
+        ));
+    }
+
+    /// Le motif d'annulation est une CLÉ i18n, et elle ne contient aucun jargon
+    /// de paiement : Awa lira « votre commande a été annulée », pas
+    /// « transaction expirée ».
+    #[test]
+    fn le_motif_d_expiration_est_une_cle_sans_jargon() {
+        assert_eq!(
+            MOTIF_ANNULATION_EXPIRATION,
+            "commande.annulation.paiement_expire",
+        );
+        for jargon in ["transaction", "session", "fournisseur", "webhook"] {
+            assert!(
+                !MOTIF_ANNULATION_EXPIRATION.contains(jargon),
+                "la clé ne doit pas porter le mot « {jargon} »",
+            );
+        }
     }
 }
 
@@ -1050,6 +1404,10 @@ mod tests {
                 site_lon: -4.823,
                 distance_precedent_m: None,
                 montant_avance: 1_500,
+                // Aucune livraison offerte dans le cas type : le net et le brut
+                // coïncident, et c'est bien la situation ordinaire.
+                montant_articles_unites: 1_500,
+                retenue_appliquee_unites: 0,
                 statut: StatutArret::ACollecter,
                 en_route_le: None,
                 arrive_le: None,

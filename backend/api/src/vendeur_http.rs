@@ -52,6 +52,15 @@ pub struct PrestatairePilotableDto {
     pub statut: StatutPrestataireDto,
     /// État effectif de la boutique.
     pub boutique: EffectifBoutiqueDto,
+    /// Offre de livraison déclarée (VND-08) : `jamais` | `toujours` | `au_dela`.
+    ///
+    /// Champ ADDITIF (cycle PAY 011) : l'app livrée l'ignore et continue de
+    /// fonctionner. Servi ici plutôt que par une route dédiée parce que le
+    /// réglage vit sur l'écran boutique, et qu'un second aller-retour pour deux
+    /// scalaires n'aurait servi personne.
+    pub offre_livraison: String,
+    /// Seuil de panier de l'offre `au_dela`, `null` sinon.
+    pub offre_livraison_seuil_unites: Option<i64>,
 }
 
 /// Prestataires que ce compte pilote (rattachements du cycle VND).
@@ -88,11 +97,19 @@ pub async fn mes_prestataires(
                 ouvert: false,
                 reouverture_estimee: None,
             });
+        let offre = depot.offre_livraison(id).await?;
+        let (valeur_offre, seuil) = match offre {
+            None => ("jamais", None),
+            Some(tarification::OffreLivraison::Toujours) => ("toujours", None),
+            Some(tarification::OffreLivraison::AuDela(s)) => ("au_dela", Some(s)),
+        };
         sortie.push(PrestatairePilotableDto {
             id: p.id,
             nom: p.nom,
             statut: p.statut.into(),
             boutique: boutique.into(),
+            offre_livraison: valeur_offre.to_owned(),
+            offre_livraison_seuil_unites: seuil,
         });
     }
     Ok(HttpResponse::Ok().json(sortie))
@@ -461,6 +478,211 @@ pub async fn modifier_horaires(
     tx.commit().await.map_err(sql)?;
     let boutique = depot.boutique_vendeur(prestataire).await?;
     Ok(HttpResponse::Ok().json(BoutiqueVendeurDto::from(boutique)))
+}
+
+// ── Offre de livraison (VND-08 minimal — cycle 011, FR-046) ────────────────
+
+/// Clé i18n rappelée par la réponse : le réglage ne retarife **rien** de ce qui
+/// est déjà commandé (FR-048). Le vendeur doit le lire, pas le deviner.
+pub(crate) const CLE_COMMANDES_EN_COURS: &str = "vendeur.offre_livraison.commandes_en_cours_inchangees";
+
+/// Déclaration d'offre de livraison — `seuil_unites` n'a de sens que pour
+/// `au_dela`, et y est alors **obligatoire**.
+#[derive(Debug, serde::Deserialize, utoipa::ToSchema)]
+#[schema(as = OffreLivraisonDeclaration)]
+pub struct OffreLivraisonDeclarationDto {
+    /// `jamais` | `toujours` | `au_dela`.
+    pub offre: String,
+    /// Montant de panier à partir duquel l'offre joue (unités mineures).
+    pub seuil_unites: Option<i64>,
+}
+
+impl OffreLivraisonDeclarationDto {
+    /// Traduit vers le type de `tarification` — `None` = `jamais`.
+    ///
+    /// Une valeur inconnue est un `400 offre_seuil_manquant` comme un seuil
+    /// absent : dans les deux cas la déclaration est inexploitable, et il n'y a
+    /// pas de raison d'offrir deux codes à distinguer côté app.
+    pub(crate) fn vers_domaine(
+        &self,
+    ) -> Result<Option<tarification::OffreLivraison>, ErreurPresta> {
+        match self.offre.as_str() {
+            "jamais" => Ok(None),
+            "toujours" => Ok(Some(tarification::OffreLivraison::Toujours)),
+            "au_dela" => match self.seuil_unites {
+                Some(seuil) if seuil > 0 => Ok(Some(tarification::OffreLivraison::AuDela(seuil))),
+                _ => Err(ErreurPresta::OffreSeuilManquant),
+            },
+            _ => Err(ErreurPresta::OffreSeuilManquant),
+        }
+    }
+}
+
+/// Offre en vigueur après le geste.
+///
+/// ⚠ Le nom de schéma est `OffreLivraisonReglee`, PAS `OffreLivraisonVendeur` :
+/// ce dernier est déjà pris par l'**entrée de calcul** de `tarification`
+/// (`admin_tarification_http`), dont la forme est tout autre (`toujours`,
+/// `au_dela`). Deux types qui revendiquent le même nom de schéma n'en laissent
+/// qu'un dans `openapi.json` — et le client généré désérialise alors la réponse
+/// de cette route avec le mauvais modèle. Trouvé sur appareil en T085 : le
+/// vendeur voyait « Impossible de charger la boutique » sur un réglage
+/// **pourtant enregistré**.
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = OffreLivraisonReglee)]
+pub struct OffreLivraisonDto {
+    /// `jamais` | `toujours` | `au_dela`.
+    pub offre: String,
+    /// Seuil déclaré (`null` hors `au_dela`).
+    pub seuil_unites: Option<i64>,
+    /// Rappel en clair que les commandes en cours ne bougent pas (FR-048).
+    pub message_cle: String,
+}
+
+impl From<Option<tarification::OffreLivraison>> for OffreLivraisonDto {
+    fn from(offre: Option<tarification::OffreLivraison>) -> Self {
+        let (valeur, seuil) = match offre {
+            None => ("jamais", None),
+            Some(tarification::OffreLivraison::Toujours) => ("toujours", None),
+            Some(tarification::OffreLivraison::AuDela(s)) => ("au_dela", Some(s)),
+        };
+        Self {
+            offre: valeur.to_owned(),
+            seuil_unites: seuil,
+            message_cle: CLE_COMMANDES_EN_COURS.to_owned(),
+        }
+    }
+}
+
+/// Applique la déclaration — chemin partagé par la surface vendeur et son
+/// miroir admin (FR-046 : l'exploitation configure pour un vendeur sans app).
+pub(crate) async fn appliquer_offre_livraison(
+    depot: &PgPrestataires,
+    prestataire: Uuid,
+    corps: &OffreLivraisonDeclarationDto,
+    acteur: Uuid,
+) -> Result<OffreLivraisonDto, ErreurPresta> {
+    let offre = corps.vers_domaine()?;
+    let mut tx = depot.pool().begin().await.map_err(sql)?;
+    depot
+        .definir_offre_livraison(&mut tx, prestataire, offre, acteur)
+        .await?;
+    tx.commit().await.map_err(sql)?;
+    Ok(OffreLivraisonDto::from(offre))
+}
+
+/// Déclare l'offre de livraison du vendeur (VND-08 minimal — FR-046).
+#[utoipa::path(
+    put,
+    path = "/vendeur/prestataires/{id}/offre-livraison",
+    tag = "vendeur",
+    params(("id" = Uuid, Path, description = "Prestataire piloté.")),
+    request_body = OffreLivraisonDeclarationDto,
+    responses(
+        (status = 200, description = "Offre déclarée — elle vaut pour les commandes À VENIR. \
+         Aucune commande existante n'est retarifée : le devis est figé à la création \
+         (FR-048). Émet `vendeur.offre_livraison_modifiee`.", body = OffreLivraisonDto),
+        (status = 400, description = "Offre `au_dela` sans seuil strictement positif, ou \
+         valeur d'offre inconnue.", body = ErreurApiDto),
+        (status = 403, description = "Refus de pilotage.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[put("/vendeur/prestataires/{id}/offre-livraison")]
+pub async fn definir_offre_livraison(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    corps: web::Json<OffreLivraisonDeclarationDto>,
+    depot: web::Data<PgPrestataires>,
+) -> Result<HttpResponse, ErreurPresta> {
+    let prestataire = chemin.into_inner();
+    exiger_pilotage(&auth, &depot, prestataire).await?;
+    let sortie = appliquer_offre_livraison(&depot, prestataire, &corps, auth.compte_id).await?;
+    Ok(HttpResponse::Ok().json(sortie))
+}
+
+// ── Reçu d'un arrêt collecté (T059, contrats §3.2) ─────────────────────────
+
+/// Reçu vendeur d'un arrêt collecté — **les mêmes trois chiffres** que le reçu
+/// client (FR-053, FR-071).
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = RecuArret)]
+pub struct RecuArretDto {
+    /// Arrêt collecté.
+    pub arret_id: Uuid,
+    /// Prestataire chez qui la collecte a eu lieu.
+    pub prestataire_id: Uuid,
+    /// Devise ISO 4217.
+    pub devise: String,
+    /// Instant du scan (horloge SERVEUR).
+    pub collecte_le: Option<chrono::DateTime<chrono::Utc>>,
+    /// Lignes de cet arrêt, retirées comprises.
+    pub lignes: Vec<crate::paiements_http::LigneRecuDto>,
+    /// Articles bruts, AVANT retenue.
+    pub montant_articles_unites: i64,
+    /// Retenue au titre de la livraison offerte.
+    pub retenue_livraison_offerte_unites: i64,
+    /// Ce que le coursier a effectivement versé — `articles − retenue`.
+    pub net_verse_unites: i64,
+    /// Clé i18n du motif de retenue, `null` s'il n'y en a pas.
+    pub motif_retenue_cle: Option<String>,
+}
+
+/// Reçu d'un arrêt collecté chez un prestataire piloté.
+#[utoipa::path(
+    get,
+    path = "/vendeur/arrets/{arret_id}/recu",
+    tag = "vendeur",
+    params(("arret_id" = Uuid, Path, description = "Arrêt COLLECTÉ chez un prestataire piloté.")),
+    responses(
+        (status = 200, description = "Articles, retenue et net versé — les MÊMES montants que le \
+         reçu client, au franc près (FR-053). Aucun recalcul : la retenue a été posée au scan \
+         et n'est que relue.", body = RecuArretDto),
+        (status = 404, description = "Arrêt inconnu, ou pas encore collecté : il n'y a pas de \
+         versement à attester avant le scan.", body = ErreurApiDto),
+        (status = 403, description = "L'arrêt n'appartient à aucun prestataire piloté par \
+         l'appelant.", body = ErreurApiDto),
+        (status = 401, description = "Session absente, invalide ou révoquée.", body = ErreurApiDto),
+    ),
+    security(("bearerAuth" = [])),
+)]
+#[get("/vendeur/arrets/{arret_id}/recu")]
+pub async fn recu_arret(
+    auth: Auth,
+    chemin: web::Path<Uuid>,
+    depot: web::Data<PgPrestataires>,
+    commandes: web::Data<commandes::PgCommandes>,
+) -> Result<HttpResponse, ErreurPresta> {
+    if !auth.a_role(Role::Vendeur) {
+        return Err(ErreurPresta::RoleVendeurRequis);
+    }
+    let arret_id = chemin.into_inner();
+
+    let recu = commandes
+        .recu_arret(arret_id)
+        .await
+        .map_err(|_| ErreurPresta::Introuvable)?;
+    // La garde de propriété se pose APRÈS la lecture, sur le prestataire que
+    // l'arrêt désigne : c'est le rattachement qui délimite, jamais le rôle seul
+    // (FR-011).
+    exiger_pilotage(&auth, &depot, recu.prestataire_id).await?;
+
+    Ok(HttpResponse::Ok().json(RecuArretDto {
+        arret_id: recu.arret_id,
+        prestataire_id: recu.prestataire_id,
+        devise: recu.devise,
+        collecte_le: recu.collecte_le,
+        lignes: recu
+            .lignes
+            .into_iter()
+            .map(crate::paiements_http::ligne_dto)
+            .collect(),
+        montant_articles_unites: recu.montant_articles_unites,
+        retenue_livraison_offerte_unites: recu.retenue_livraison_offerte_unites,
+        net_verse_unites: recu.net_verse_unites,
+        motif_retenue_cle: recu.motif_retenue_cle,
+    }))
 }
 
 // ── Disponibilité (VND-04 — bascule En stock / Rupture, écran V2) ──────────

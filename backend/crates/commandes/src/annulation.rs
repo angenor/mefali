@@ -27,6 +27,19 @@ pub enum AuteurAnnulation {
     Client,
     /// Un administrateur — **motif obligatoire**, journalisé.
     Admin,
+    /// Le système, sans acteur humain (cycle PAY 011, FR-031).
+    ///
+    /// La taxonomie déclarait cette valeur (`par: client | admin | systeme`)
+    /// depuis le cycle 008 et **aucune ligne de code ne l'écrivait** : rien
+    /// n'annulait automatiquement. L'expiration d'une session de paiement est
+    /// le premier cas — et elle **réutilise ce chemin**, sans seconde règle
+    /// d'annulation (FR-032). Une seconde règle aurait divergé de la première
+    /// au premier correctif, et l'une des deux aurait cessé de rembourser.
+    ///
+    /// Son motif est **toujours fourni** par l'appelant : un geste sans humain
+    /// doit dire pourquoi encore plus clairement qu'un geste humain, puisque
+    /// personne ne pourra l'expliquer après coup.
+    Systeme,
 }
 
 impl AuteurAnnulation {
@@ -35,6 +48,7 @@ impl AuteurAnnulation {
         match self {
             AuteurAnnulation::Client => "client",
             AuteurAnnulation::Admin => "admin",
+            AuteurAnnulation::Systeme => "systeme",
         }
     }
 
@@ -43,6 +57,7 @@ impl AuteurAnnulation {
         match self {
             AuteurAnnulation::Client => Acteur::Client,
             AuteurAnnulation::Admin => Acteur::Admin,
+            AuteurAnnulation::Systeme => Acteur::Systeme,
         }
     }
 }
@@ -90,9 +105,17 @@ impl PgCommandes {
         // FR-054 — un admin qui annule la commande de quelqu'un doit dire
         // pourquoi. Le motif est une CLÉ i18n, jamais du texte libre : il sera
         // lu par le client, dans sa langue.
+        //
+        // `Systeme` est traité comme `Admin` : un geste sans humain doit dire
+        // pourquoi encore plus clairement qu'un geste humain, puisque personne
+        // ne pourra l'expliquer après coup.
         let motif_cle = match (auteur, motif_cle) {
-            (AuteurAnnulation::Admin, None) => return Err(ErreurCommandes::MotifRequis),
-            (AuteurAnnulation::Admin, Some(m)) if m.trim().is_empty() => {
+            (AuteurAnnulation::Admin | AuteurAnnulation::Systeme, None) => {
+                return Err(ErreurCommandes::MotifRequis)
+            }
+            (AuteurAnnulation::Admin | AuteurAnnulation::Systeme, Some(m))
+                if m.trim().is_empty() =>
+            {
                 return Err(ErreurCommandes::MotifRequis)
             }
             (_, Some(m)) => m.to_owned(),

@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE paiements.transaction\n                SET etat = $2,\n                    moyen = COALESCE($3, moyen),\n                    reference_fournisseur = COALESCE($4, reference_fournisseur),\n                    issue_le = $5,\n                    acces_paiement = CASE WHEN $6 THEN acces_paiement ELSE NULL END\n              WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "paiements.etat_transaction",
+            "kind": {
+              "Enum": [
+                "ouverte",
+                "reglee",
+                "echouee",
+                "expiree",
+                "payee_hors_delai"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "paiements.moyen_paiement",
+            "kind": {
+              "Enum": [
+                "inconnu",
+                "wave",
+                "orange_money",
+                "mtn_momo",
+                "moov_money",
+                "carte",
+                "autre"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Timestamptz",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "38c4bc783cc529ef716cf387eb72f06276b7ad65e2f2d6fc5cecd5ad79e80fd0"
+}

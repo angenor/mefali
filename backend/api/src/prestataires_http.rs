@@ -67,6 +67,10 @@ pub enum ErreurPresta {
     CategorieInconnue,
     /// 422 — corps, média ou champ invalide.
     CorpsInvalide,
+    /// 400 — offre `au_dela` déclarée sans seuil strictement positif (FR-046).
+    /// Un `400` et non un `422` : le contrat du cycle 011 le nomme ainsi, et
+    /// l'app vendeur en fait un message de saisie, pas une erreur de règle.
+    OffreSeuilManquant,
     /// 500 — erreur interne (SQL, S3, configuration de zone).
     Interne,
 }
@@ -88,6 +92,7 @@ impl ErreurPresta {
             | ErreurPresta::ZoneNonVille
             | ErreurPresta::CategorieInconnue
             | ErreurPresta::CorpsInvalide => StatusCode::UNPROCESSABLE_ENTITY,
+            ErreurPresta::OffreSeuilManquant => StatusCode::BAD_REQUEST,
             ErreurPresta::Interne => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -110,6 +115,7 @@ impl ErreurPresta {
             ErreurPresta::ZoneNonVille => "zone_non_ville",
             ErreurPresta::CategorieInconnue => "categorie_inconnue",
             ErreurPresta::CorpsInvalide => "corps_invalide",
+            ErreurPresta::OffreSeuilManquant => "offre_seuil_manquant",
             ErreurPresta::Interne => "erreur_interne",
         }
     }

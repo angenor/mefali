@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO commandes.arret\n                     (id, segment_id, prestataire_id, ordre, type_arret,\n                      site_lat, site_lon, montant_avance, devise,\n                      montant_articles_unites, retenue_appliquee_unites)\n                 VALUES ($1, $2, $3, $4, 'collecte', $5, $6, $7, $8, $7, 0)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int2",
+        "Float8",
+        "Float8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "470f2fba7922118c2081cd0c32152632a1778d579aa8158f16218af3545c93e7"
+}
