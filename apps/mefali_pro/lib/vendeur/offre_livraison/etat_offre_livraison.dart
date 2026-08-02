@@ -3,8 +3,6 @@ import 'package:mefali_api_client/mefali_api_client.dart';
 import 'package:mefali_core/mefali_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../pilotage.dart';
-
 part 'etat_offre_livraison.g.dart';
 
 /// Le réglage d'**offre de livraison** d'un vendeur (VND-08 minimal, FR-046).
@@ -21,9 +19,12 @@ class OffreLivraison extends _$OffreLivraison {
   /// refus — le patron des gestes du cycle 010 : l'appelant décide où et
   /// comment l'afficher, jamais le notifier.
   ///
-  /// Recharge le pilotage au succès : c'est lui qui porte la valeur affichée,
-  /// et un écran qui garderait l'ancienne ferait douter le vendeur d'avoir
-  /// validé.
+  /// Ne recharge PAS le pilotage : ce porteur est auto-dispose, et sa portée
+  /// meurt avec la feuille. Un `ref.read` après l'aller-retour y lèverait une
+  /// `UnmountedRefException` — qui n'est pas une `DioException`, traverse donc
+  /// le `catch`, et laisse la feuille figée sur un réglage pourtant enregistré
+  /// (constaté sur appareil en T085). Le rechargement appartient à l'écran,
+  /// dont la portée survit : voir `ecran_boutique.dart`.
   Future<String?> declarer(String offre, int? seuilUnites) async {
     try {
       await ref.read(clientSessionProvider).getVendeurApi().definirOffreLivraison(
@@ -32,7 +33,6 @@ class OffreLivraison extends _$OffreLivraison {
               ..offre = offre
               ..seuilUnites = seuilUnites),
           );
-      await ref.read(pilotageProvider.notifier).recharger();
       return null;
     } on DioException catch (e) {
       // Le serveur nomme le refus (`offre_seuil_manquant`) ; l'app le traduit.

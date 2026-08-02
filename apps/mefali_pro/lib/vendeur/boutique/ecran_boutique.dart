@@ -276,14 +276,24 @@ class _CarteOffreLivraison extends ConsumerWidget {
               offre: pilote.offreLivraison,
               seuilUnites: seuil,
               devise: 'XOF',
-              onEnregistrer: (offre, seuilUnites) => ref
-                  .read(offreLivraisonProvider(pilote.id).notifier)
-                  .declarer(offre, seuilUnites)
-                  .then((code) => code == null
-                      ? null
-                      : (code == 'offre_seuil_manquant'
-                          ? l10n.payOffreSeuilManquant
-                          : l10n.proBoutiqueErreur)),
+              // Le rechargement appartient à l'ÉCRAN, pas au porteur du geste :
+              // `offreLivraisonProvider` est auto-dispose et sa portée meurt
+              // avec la feuille, alors que celle de cet écran survit. Le faire
+              // depuis le notifier laissait la carte sur l'ANCIENNE valeur —
+              // exactement ce que son commentaire dit vouloir éviter (constaté
+              // sur appareil en T085).
+              onEnregistrer: (offre, seuilUnites) async {
+                final code = await ref
+                    .read(offreLivraisonProvider(pilote.id).notifier)
+                    .declarer(offre, seuilUnites);
+                if (code != null) {
+                  return code == 'offre_seuil_manquant'
+                      ? l10n.payOffreSeuilManquant
+                      : l10n.proBoutiqueErreur;
+                }
+                await ref.read(pilotageProvider.notifier).recharger();
+                return null;
+              },
             ),
             icon: const Icon(Symbols.edit),
             label: Text(l10n.payOffreLivraisonModifier),
