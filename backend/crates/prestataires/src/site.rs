@@ -142,8 +142,16 @@ impl PgPrestataires {
 
         let avant = self.horaires_dans_tx(tx, site_id).await?;
         if &avant != horaires {
-            self.remplacer_horaires(tx, prestataire, site_id, &avant, horaires, SourceBascule::Admin, acteur)
-                .await?;
+            self.remplacer_horaires(
+                tx,
+                prestataire,
+                site_id,
+                &avant,
+                horaires,
+                SourceBascule::Admin,
+                acteur,
+            )
+            .await?;
         }
         self.site_dans_tx(tx, prestataire).await
     }
@@ -183,9 +191,12 @@ impl PgPrestataires {
         source: SourceBascule,
         acteur: Uuid,
     ) -> Result<(), ErreurPrestataires> {
-        sqlx::query!("DELETE FROM prestataires.horaire_site WHERE site_id = $1", site)
-            .execute(&mut **tx)
-            .await?;
+        sqlx::query!(
+            "DELETE FROM prestataires.horaire_site WHERE site_id = $1",
+            site
+        )
+        .execute(&mut **tx)
+        .await?;
         for (jour, plages) in apres.jours.iter().enumerate() {
             for plage in plages {
                 sqlx::query!(
@@ -326,13 +337,12 @@ impl PgPrestataires {
     pub(crate) async fn fuseau_de(&self, zone: Uuid) -> Result<Tz, ErreurPrestataires> {
         use zones::ConfigurationZones;
         let valeur = self.zones.parametre(zone, "zone.fuseau_horaire").await?;
-        let nom = valeur
-            .as_ref()
-            .and_then(|v| v.as_str())
-            .ok_or(ErreurPrestataires::ConfigurationZoneInvalide {
+        let nom = valeur.as_ref().and_then(|v| v.as_str()).ok_or(
+            ErreurPrestataires::ConfigurationZoneInvalide {
                 cle: "zone.fuseau_horaire",
                 raison: "absent de toute la chaîne d'héritage".to_owned(),
-            })?;
+            },
+        )?;
         nom.parse()
             .map_err(|_| ErreurPrestataires::ConfigurationZoneInvalide {
                 cle: "zone.fuseau_horaire",
@@ -414,9 +424,10 @@ impl PgPrestataires {
                 if duree_minutes <= 0 {
                     return Err(ErreurPrestataires::DureeRequise);
                 }
-                let Some(echeance) = site.pause_fin.filter(|_| {
-                    site.statut_boutique == StatutBoutique::EnPause
-                }) else {
+                let Some(echeance) = site
+                    .pause_fin
+                    .filter(|_| site.statut_boutique == StatutBoutique::EnPause)
+                else {
                     return Err(ErreurPrestataires::ProlongationSansPause);
                 };
                 // Depuis l'échéance si la pause court encore, depuis
@@ -843,7 +854,10 @@ mod tests {
             debut: h(11, 0),
             fin: h(15, 0),
         });
-        assert!(valider_horaires(&chevauche).is_err(), "chevauchement refusé");
+        assert!(
+            valider_horaires(&chevauche).is_err(),
+            "chevauchement refusé"
+        );
 
         let mut deux_plages = HorairesSemaine::default();
         deux_plages.jours[0].push(Plage {

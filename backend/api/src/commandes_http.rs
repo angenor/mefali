@@ -882,7 +882,10 @@ pub async fn intention_appel(
     depot: web::Data<PgCommandes>,
 ) -> Result<HttpResponse, ErreurCommandesHttp> {
     auth.exiger_role(Role::Client)?;
-    let motif = corps.into_inner().motif.unwrap_or_else(|| "suivi".to_owned());
+    let motif = corps
+        .into_inner()
+        .motif
+        .unwrap_or_else(|| "suivi".to_owned());
     depot
         .journaliser_appel(
             chemin.into_inner(),

@@ -105,13 +105,12 @@ async fn parcours(bac: &Bac, journal: &Journal) -> (uuid::Uuid, Secrets) {
         .await;
     assert_eq!(statut, 200);
 
-    let reference_fournisseur: String = sqlx::query_scalar(
-        "SELECT reference_fournisseur FROM paiements.transaction WHERE id = $1",
-    )
-    .bind(transaction)
-    .fetch_one(&bac.cmd.pool)
-    .await
-    .expect("la référence du fournisseur est stockée pour rapprocher les comptes");
+    let reference_fournisseur: String =
+        sqlx::query_scalar("SELECT reference_fournisseur FROM paiements.transaction WHERE id = $1")
+            .bind(transaction)
+            .fetch_one(&bac.cmd.pool)
+            .await
+            .expect("la référence du fournisseur est stockée pour rapprocher les comptes");
 
     (
         commande,
@@ -144,7 +143,10 @@ async fn aucun_evenement_ne_porte_de_secret(pool: sqlx::PgPool) {
     for (quoi, secret) in [
         ("l'accès de paiement", &secrets.acces),
         ("la signature", &secrets.signature),
-        ("la référence du fournisseur", &secrets.reference_fournisseur),
+        (
+            "la référence du fournisseur",
+            &secrets.reference_fournisseur,
+        ),
     ] {
         assert!(
             !tout.contains(secret.as_str()),

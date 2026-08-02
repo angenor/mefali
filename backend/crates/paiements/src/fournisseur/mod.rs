@@ -79,8 +79,10 @@ pub trait PaymentProvider: Send + Sync {
     ///
     /// Il n'existe aucun chemin partiel : ni ici, ni dans le schéma, ni dans la
     /// machine à états (constitution III).
-    async fn create_checkout(&self, demande: DemandeCheckout)
-        -> Result<Checkout, ErreurFournisseur>;
+    async fn create_checkout(
+        &self,
+        demande: DemandeCheckout,
+    ) -> Result<Checkout, ErreurFournisseur>;
 
     /// Vérifie la signature d'une notification et la traduit.
     ///

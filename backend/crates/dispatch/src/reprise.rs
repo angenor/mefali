@@ -64,8 +64,7 @@ impl PgDispatch {
         horodatage: DateTime<Utc>,
     ) -> Result<Option<Progression>, ErreurDispatch> {
         let etat = self.commandes.etat_progression(livraison).await?;
-        let (Some(cible_lat), Some(cible_lon)) =
-            (etat.premier_arret_lat, etat.premier_arret_lon)
+        let (Some(cible_lat), Some(cible_lon)) = (etat.premier_arret_lat, etat.premier_arret_lon)
         else {
             // Plus aucun arrêt à résoudre : il n'y a rien vers quoi progresser.
             return Ok(None);
@@ -526,7 +525,9 @@ impl PgDispatch {
         .await?;
         tx.commit().await?;
 
-        self.commandes.retirer_coursier(livraison, maintenant).await?;
+        self.commandes
+            .retirer_coursier(livraison, maintenant)
+            .await?;
         self.oublier_progression(livraison).await?;
         Ok(incident_id)
     }
@@ -638,7 +639,11 @@ impl PgDispatch {
                     commande_id: e.commande_id,
                     zone_id: e.zone_id,
                     age_s: e.payload.get("age_s").and_then(|v| v.as_i64()).unwrap_or(0),
-                    seuil_s: e.payload.get("seuil_s").and_then(|v| v.as_i64()).unwrap_or(0),
+                    seuil_s: e
+                        .payload
+                        .get("seuil_s")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0),
                     chemin: e
                         .payload
                         .get("chemin")

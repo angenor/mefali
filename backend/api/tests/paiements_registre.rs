@@ -178,7 +178,10 @@ async fn la_file_des_dossiers_montre_les_anomalies_avec_leur_motif(pool: PgPool)
     assert_eq!(statut, 200);
 
     let (statut, corps) = bac
-        .get("/admin/paiements/dossiers?etat=ouvert", &bac.cmd.jeton_admin)
+        .get(
+            "/admin/paiements/dossiers?etat=ouvert",
+            &bac.cmd.jeton_admin,
+        )
         .await;
     assert_eq!(statut, 200, "{corps}");
     let dossiers = corps["dossiers"].as_array().unwrap();
@@ -234,7 +237,8 @@ async fn un_dossier_se_clot_une_fois_avec_son_motif(pool: PgPool) {
         .unwrap()
         .to_owned();
 
-    let corps_cloture = serde_json::json!({ "motif_cle": "paiement.dossier.clos.rembourse_hors_produit" });
+    let corps_cloture =
+        serde_json::json!({ "motif_cle": "paiement.dossier.clos.rembourse_hors_produit" });
     let (statut, corps) = bac
         .post(
             &format!("/admin/paiements/dossiers/{dossier_id}/clore"),
@@ -264,7 +268,10 @@ async fn un_dossier_se_clot_une_fois_avec_son_motif(pool: PgPool) {
 
     // Sans motif : refusé.
     let (_, corps) = bac
-        .get("/admin/paiements/dossiers?etat=ouvert", &bac.cmd.jeton_admin)
+        .get(
+            "/admin/paiements/dossiers?etat=ouvert",
+            &bac.cmd.jeton_admin,
+        )
         .await;
     assert!(
         corps["dossiers"].as_array().unwrap().is_empty(),
@@ -293,10 +300,7 @@ async fn un_dossier_inconnu_se_distingue_d_un_dossier_clos(pool: PgPool) {
 async fn les_surfaces_d_exploitation_exigent_le_role_admin(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
 
-    for uri in [
-        "/admin/paiements/transactions",
-        "/admin/paiements/dossiers",
-    ] {
+    for uri in ["/admin/paiements/transactions", "/admin/paiements/dossiers"] {
         let (statut, corps) = bac.get(uri, &bac.cmd.jeton_client).await;
         assert_eq!(statut, 403, "{uri} : {corps}");
     }

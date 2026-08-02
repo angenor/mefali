@@ -30,14 +30,13 @@ pub mod session;
 mod test_zones;
 
 pub use adresse::{
-    EcritureAdresse, ModificationAdresse, NouvelleAdresse, NoteVocale, LIBELLE_MAX,
+    EcritureAdresse, ModificationAdresse, NoteVocale, NouvelleAdresse, LIBELLE_MAX,
     NOTE_VOCALE_MIMES, NOTE_VOCALE_TAILLE_MAX, REPERE_TEXTE_MAX,
 };
 pub use depot::{Comptes, PgComptes};
 pub use dossier::{
     DossierCoursierAdmin, IssueSoumission, IssueVehicules, PieceIdentite, SoumissionDossier,
-    PIECE_MIMES,
-    PIECE_TAILLE_MAX, REFERENT_NOM_MAX,
+    PIECE_MIMES, PIECE_TAILLE_MAX, REFERENT_NOM_MAX,
 };
 pub use inscription::{IssueVerification, SessionOuverte};
 pub use modele::{

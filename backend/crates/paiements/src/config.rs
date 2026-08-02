@@ -181,9 +181,9 @@ async fn liste(
     tableau
         .iter()
         .map(|v| {
-            v.as_str()
-                .map(str::to_owned)
-                .ok_or_else(|| ErreurPaiements::ValeurInconnue(format!("{cle} : élément non textuel")))
+            v.as_str().map(str::to_owned).ok_or_else(|| {
+                ErreurPaiements::ValeurInconnue(format!("{cle} : élément non textuel"))
+            })
         })
         .collect()
 }

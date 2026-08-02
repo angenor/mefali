@@ -62,16 +62,28 @@ async fn commande_sans_livraison(pool: &sqlx::PgPool) -> (Uuid, Uuid) {
     let commande = Uuid::now_v7();
 
     sqlx::query("INSERT INTO zones.zone (id, type, nom) VALUES ($1, 'pays', 'CI')")
-        .bind(pays).execute(pool).await.unwrap();
+        .bind(pays)
+        .execute(pool)
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO zones.zone (id, parent_id, type, nom) VALUES ($1, $2, 'ville', 'Tiassalé')",
-    ).bind(ville).bind(pays).execute(pool).await.unwrap();
+    )
+    .bind(ville)
+    .bind(pays)
+    .execute(pool)
+    .await
+    .unwrap();
     // Une catégorie de service SANS livraison : le vertical « artisan »
     // qu'aucun cycle n'a encore construit, mais que le socle doit accepter.
     sqlx::query(
         "INSERT INTO zones.categorie (id, slug, nom_cle, workflow_vendeur)
          VALUES ($1, 'artisanat', 'categorie.artisanat.nom', 'marche_etals')",
-    ).bind(categorie).execute(pool).await.unwrap();
+    )
+    .bind(categorie)
+    .execute(pool)
+    .await
+    .unwrap();
     sqlx::query(
         "INSERT INTO comptes.compte (id, telephone_e164, zone_id, consentement_version, consentement_le)
          VALUES ($1, '+2250700000009', $2, '2026-07', now())",
@@ -84,8 +96,14 @@ async fn commande_sans_livraison(pool: &sqlx::PgPool) -> (Uuid, Uuid) {
              code_livraison, code_livraison_hash, jeton_reception, jeton_reception_hash)
          VALUES ($1, $2, $3, $4, 5.900, -4.820, 'Cour de la mosquée',
                  12000, 12000, 'XOF', 'cash', '4821', 'h-code', 'jeton', 'h-jeton')",
-    ).bind(commande).bind(client).bind(ville).bind(categorie)
-        .execute(pool).await.unwrap();
+    )
+    .bind(commande)
+    .bind(client)
+    .bind(ville)
+    .bind(categorie)
+    .execute(pool)
+    .await
+    .unwrap();
 
     (commande, client)
 }
@@ -125,9 +143,7 @@ async fn une_commande_sans_livraison_est_valide(pool: sqlx::PgPool) {
 /// un devis vide, qu'aucune assertion n'attrapait et que l'API servait tels
 /// quels. Un identifiant nul a la forme d'un identifiant : il traverse tout.
 #[sqlx::test(migrations = "../../migrations")]
-async fn le_rejeu_d_une_commande_sans_livraison_ne_fabrique_aucun_identifiant(
-    pool: sqlx::PgPool,
-) {
+async fn le_rejeu_d_une_commande_sans_livraison_ne_fabrique_aucun_identifiant(pool: sqlx::PgPool) {
     let (commande, client) = commande_sans_livraison(&pool).await;
 
     // Rejeu : la clé d'idempotence EST l'identifiant, et la commande existe
@@ -224,7 +240,13 @@ async fn le_tronc_ne_porte_aucune_colonne_logistique(pool: sqlx::PgPool) {
 
     // Contrôle NÉGATIF : sans lui, ce test passerait aussi sur une table vide
     // ou mal nommée. Le tronc porte bien ses colonnes de TRONC.
-    for attendue in ["client_id", "zone_id", "categorie_id", "total_unites", "etat"] {
+    for attendue in [
+        "client_id",
+        "zone_id",
+        "categorie_id",
+        "total_unites",
+        "etat",
+    ] {
         assert!(
             colonnes.iter().any(|c| c == attendue),
             "le tronc doit porter « {attendue} »",

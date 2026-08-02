@@ -46,18 +46,18 @@ pub mod suivi;
 pub mod workflow;
 
 pub use annulation::{AnnulationFaite, AuteurAnnulation};
-pub use echec::{DemandeEchec, IssueEnregistree, ResolutionIssue};
 pub use collecte::{
     ActionArret, DemandeRemise, DemandeTransitionArret, MotifIndisponible, PreuveRemise,
     RemiseFaite, TransitionArret,
 };
 pub use depot::PgCommandes;
+pub use echec::{DemandeEchec, IssueEnregistree, ResolutionIssue};
 pub use etats::{transition_existe, verifier_transition, Acteur, Niveau};
 pub use exploitation::{DecisionDepot, RemiseBloquee};
 pub use modele::{
-    ArretACollecter, Detenteur, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement,
-    IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution, ProgressionCollecte,
-    reference_courte, Restrictions, Sanction, StatutArret, StatutLigne, TypeArret,
+    reference_courte, ArretACollecter, Detenteur, ErreurCommandes, EtatCommande, EtatLivraison,
+    EtatPaiement, IssueSubstitution, ModeCollecte, ModePaiement, PreferenceSubstitution,
+    ProgressionCollecte, Restrictions, Sanction, StatutArret, StatutLigne, TypeArret,
     TypeIssueEchec,
 };
 pub use panier::{
@@ -71,9 +71,7 @@ pub use ports::{
     PositionCoursier, PositionDatee, PositionFixe, PreuvesEchec, PreuvesFixes, RemiseDeCourse,
     RestrictionsCompte, RestrictionsSimulees, TarifFixe, MOTIF_ANNULATION_EXPIRATION,
 };
-pub use substitution::{
-    DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture,
-};
 pub use recu::{LigneRecu, RecuArret, RecuCommande, MOTIF_RETENUE_CLE};
+pub use substitution::{DemandeRupture, IssueRupture, MontantsRevises, ResolutionRupture};
 pub use suivi::{CommandeResumee, VueSuivi};
 pub use workflow::{CoursesWorkflow, RestaurationWorkflow, ServiceWorkflow};

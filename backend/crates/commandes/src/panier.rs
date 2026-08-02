@@ -65,7 +65,10 @@ pub struct GroupeVendeur {
 impl GroupeVendeur {
     /// Nombre d'articles du groupe (quantités cumulées).
     pub fn nb_articles(&self) -> i32 {
-        self.lignes.iter().map(|l| i32::from(l.ligne.quantite)).sum()
+        self.lignes
+            .iter()
+            .map(|l| i32::from(l.ligne.quantite))
+            .sum()
     }
 
     /// Sous-total du vendeur, en unités mineures.
@@ -489,9 +492,7 @@ impl PgCommandes {
         sqlx::query_scalar!("SELECT id FROM zones.categorie WHERE slug = $1", slug)
             .fetch_optional(&self.pool)
             .await?
-            .ok_or_else(|| {
-                ErreurCommandes::PanierInvalide(format!("catégorie inconnue : {slug}"))
-            })
+            .ok_or_else(|| ErreurCommandes::PanierInvalide(format!("catégorie inconnue : {slug}")))
     }
 }
 

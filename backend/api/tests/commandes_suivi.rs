@@ -26,7 +26,10 @@ async fn progression_par_arret_sans_compter_la_remise(pool: sqlx::PgPool) {
     let course = bac.course_prete().await;
 
     let (statut, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200, "{corps}");
     assert_eq!(corps["etat"], "en_cours");
@@ -40,13 +43,19 @@ async fn progression_par_arret_sans_compter_la_remise(pool: sqlx::PgPool) {
     let nom = corps["progression"]["arret_courant"]["prestataire_nom"]
         .as_str()
         .expect("le vendeur de l'arrêt courant est nommé");
-    assert!(bac.vendeurs.iter().any(|v| v.nom == nom), "nom inconnu : {nom}");
+    assert!(
+        bac.vendeurs.iter().any(|v| v.nom == nom),
+        "nom inconnu : {nom}"
+    );
 
     // Deux collectes faites → « 2 sur 3 ».
     bac.collecter(course.collectes[0]).await;
     bac.collecter(course.collectes[1]).await;
     let (_, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(corps["progression"]["collectes_faites"], 2);
     assert_eq!(corps["progression"]["collectes_total"], 3);
@@ -54,7 +63,10 @@ async fn progression_par_arret_sans_compter_la_remise(pool: sqlx::PgPool) {
     // Tout collecté → la course part vers le client, l'état change de mot.
     bac.collecter(course.collectes[2]).await;
     let (_, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(corps["progression"]["collectes_faites"], 3);
     assert_eq!(corps["etat_cle"], "suivi.etat.en_route_vers_vous");
@@ -73,11 +85,19 @@ async fn un_arret_indisponible_compte_comme_resolu(pool: sqlx::PgPool) {
     let course = bac.course_prete().await;
 
     bac.collecter(course.collectes[0]).await;
-    bac.action_coursier(course.livraison, course.collectes[1], "indisponible", Uuid::now_v7())
-        .await;
+    bac.action_coursier(
+        course.livraison,
+        course.collectes[1],
+        "indisponible",
+        Uuid::now_v7(),
+    )
+    .await;
 
     let (_, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(
         corps["progression"]["collectes_faites"], 2,
@@ -104,7 +124,10 @@ async fn position_servie_avec_son_age(pool: sqlx::PgPool) {
     );
 
     let (_, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(corps["position"]["age_s"], 12);
     assert_eq!(corps["position"]["lat"], 5.899);
@@ -125,7 +148,10 @@ async fn absence_de_position_ne_casse_pas_le_suivi(pool: sqlx::PgPool) {
     // Aucun `definir` : le double n'a aucune position, comme un TTL expiré.
 
     let (statut, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200, "un suivi sans position reste un suivi");
     assert!(corps["position"].is_null());
@@ -143,7 +169,10 @@ async fn absence_de_position_ne_casse_pas_le_suivi(pool: sqlx::PgPool) {
     );
     bac.positions.retirer(bac.coursier);
     let (statut, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200);
     assert!(corps["position"].is_null());
@@ -157,18 +186,27 @@ async fn secrets_de_remise_reserves_au_proprietaire(pool: sqlx::PgPool) {
     let course = bac.course_prete().await;
 
     let (statut, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200);
     let code = corps["remise"]["code_livraison"].as_str().unwrap();
     assert_eq!(code.len(), 4, "code à 4 chiffres");
     assert!(code.chars().all(|c| c.is_ascii_digit()));
-    assert!(!corps["remise"]["jeton_reception"].as_str().unwrap().is_empty());
+    assert!(!corps["remise"]["jeton_reception"]
+        .as_str()
+        .unwrap()
+        .is_empty());
 
     // L'intrus ne voit RIEN — 404, pas 403 : un identifiant deviné ne doit pas
     // devenir un oracle d'existence.
     let (statut, corps) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_intrus)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_intrus,
+        )
         .await;
     assert_eq!(statut, 404, "{corps}");
     assert_eq!(corps["code"], "commande_inconnue");
@@ -187,17 +225,18 @@ async fn mes_commandes_les_plus_recentes_d_abord(pool: sqlx::PgPool) {
         .creer_commande_api("marche", vec![bac.vendeurs[0].ligne(1)])
         .await;
     let seconde = bac
-        .creer_commande_api(
-            "marche",
-            bac.vendeurs.iter().map(|v| v.ligne(1)).collect(),
-        )
+        .creer_commande_api("marche", bac.vendeurs.iter().map(|v| v.ligne(1)).collect())
         .await;
 
     let (statut, corps) = bac.get("/moi/commandes", &bac.jeton_client).await;
     assert_eq!(statut, 200, "{corps}");
     let liste = corps["commandes"].as_array().unwrap();
     assert_eq!(liste.len(), 2);
-    assert_eq!(liste[0]["id"], seconde.to_string(), "la plus récente d'abord");
+    assert_eq!(
+        liste[0]["id"],
+        seconde.to_string(),
+        "la plus récente d'abord"
+    );
     assert_eq!(liste[0]["nb_vendeurs"], 3);
     assert_eq!(liste[1]["id"], premiere.to_string());
     assert_eq!(liste[1]["nb_vendeurs"], 1);

@@ -59,13 +59,12 @@ async fn aucun_secret_n_echappe_du_parcours_complet(pool: PgPool) {
     let secrets = bac.secrets_remise(course.commande).await;
 
     // Le code de secours de la plaque du premier vendeur — troisième secret.
-    let code_vendeur: Option<String> = sqlx::query_scalar(
-        "SELECT code_secours FROM prestataires.prestataire WHERE id = $1",
-    )
-    .bind(bac.vendeurs[0].id)
-    .fetch_optional(&bac.pool)
-    .await
-    .unwrap();
+    let code_vendeur: Option<String> =
+        sqlx::query_scalar("SELECT code_secours FROM prestataires.prestataire WHERE id = $1")
+            .bind(bac.vendeurs[0].id)
+            .fetch_optional(&bac.pool)
+            .await
+            .unwrap();
 
     // Le parcours complet, par la voie HTTP.
     let mut reponses: Vec<Value> = Vec::new();
@@ -167,7 +166,9 @@ async fn la_course_active_ne_sert_que_des_empreintes(pool: PgPool) {
     let remise = &corps["remise"];
 
     assert!(
-        remise["empreinte_code"].as_str().is_some_and(|e| !e.is_empty()),
+        remise["empreinte_code"]
+            .as_str()
+            .is_some_and(|e| !e.is_empty()),
         "l'empreinte du code est INDISPENSABLE à la validation hors ligne",
     );
     assert_ne!(remise["empreinte_code"], json!(secrets.code));

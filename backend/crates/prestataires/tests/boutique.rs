@@ -30,11 +30,19 @@ fn horaires_continus() -> HorairesSemaine {
 
 /// Vendeur agréé (catégorie active, seuil 1), horaires continus.
 async fn vendeur_pret(bac: &Bac) -> Uuid {
-    let id = bac.prospect_complet("Boutique Kofi", "boutique_superette").await;
+    let id = bac
+        .prospect_complet("Boutique Kofi", "boutique_superette")
+        .await;
     bac.agreer(id).await;
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .modifier_horaires(&mut tx, id, &horaires_continus(), SourceBascule::Admin, bac.admin)
+        .modifier_horaires(
+            &mut tx,
+            id,
+            &horaires_continus(),
+            SourceBascule::Admin,
+            bac.admin,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -60,14 +68,24 @@ async fn chaque_geste_emet_son_evenement(pool: PgPool) {
     geste(&bac, id, ActionBoutique::Fermer, SourceBascule::Vendeur).await;
     let boutique = bac.depot.boutique_vendeur(id).await.unwrap();
     assert_eq!(boutique.statut, StatutBoutique::Ferme);
-    assert!(!boutique.effectif.ouvert, "aucune lecture ne rend l'état précédent");
+    assert!(
+        !boutique.effectif.ouvert,
+        "aucune lecture ne rend l'état précédent"
+    );
     assert!(
         !bac.depot.commandabilite(id).await.unwrap().commandable(),
         "boutique fermée → non commandable (SC-004)"
     );
 
     geste(&bac, id, ActionBoutique::Ouvrir, SourceBascule::Admin).await;
-    assert!(bac.depot.boutique_vendeur(id).await.unwrap().effectif.ouvert);
+    assert!(
+        bac.depot
+            .boutique_vendeur(id)
+            .await
+            .unwrap()
+            .effectif
+            .ouvert
+    );
 
     let evenements = bac.evenements("site.statut_boutique_change").await;
     assert_eq!(evenements.len(), 2);
@@ -135,7 +153,13 @@ async fn prolongation_puis_fermeture_pour_la_journee(pool: PgPool) {
         SourceBascule::Vendeur,
     )
     .await;
-    let echeance_initiale = bac.depot.boutique_vendeur(id).await.unwrap().pause_fin.unwrap();
+    let echeance_initiale = bac
+        .depot
+        .boutique_vendeur(id)
+        .await
+        .unwrap()
+        .pause_fin
+        .unwrap();
     geste(
         &bac,
         id,
@@ -143,26 +167,39 @@ async fn prolongation_puis_fermeture_pour_la_journee(pool: PgPool) {
         SourceBascule::Vendeur,
     )
     .await;
-    let prolongee = bac.depot.boutique_vendeur(id).await.unwrap().pause_fin.unwrap();
+    let prolongee = bac
+        .depot
+        .boutique_vendeur(id)
+        .await
+        .unwrap()
+        .pause_fin
+        .unwrap();
     assert!(
         prolongee > echeance_initiale,
         "l'échéance est repoussée depuis l'échéance en cours"
     );
 
-    geste(&bac, id, ActionBoutique::FermerPourLaJournee, SourceBascule::Vendeur).await;
+    geste(
+        &bac,
+        id,
+        ActionBoutique::FermerPourLaJournee,
+        SourceBascule::Vendeur,
+    )
+    .await;
     let journee = bac.depot.boutique_vendeur(id).await.unwrap();
     assert_eq!(journee.statut, StatutBoutique::FermeJournee);
     assert!(!journee.effectif.ouvert);
 
     // Lendemain : la journée couverte est passée — rouvert, sans écriture.
-    sqlx::query(
-        "UPDATE prestataires.site SET ferme_journee_le = current_date - interval '1 day'",
-    )
-    .execute(&bac.pool)
-    .await
-    .unwrap();
+    sqlx::query("UPDATE prestataires.site SET ferme_journee_le = current_date - interval '1 day'")
+        .execute(&bac.pool)
+        .await
+        .unwrap();
     let lendemain = bac.depot.boutique_vendeur(id).await.unwrap();
-    assert!(lendemain.effectif.ouvert, "sans que le vendeur ait à revenir rouvrir");
+    assert!(
+        lendemain.effectif.ouvert,
+        "sans que le vendeur ait à revenir rouvrir"
+    );
     assert_eq!(
         bac.evenements("site.statut_boutique_change").await.len(),
         3,
@@ -228,8 +265,15 @@ async fn hors_horaires_ferme_et_catalogue_en_lecture_seule(pool: PgPool) {
     tx.commit().await.unwrap();
 
     let boutique = bac.depot.boutique_vendeur(id).await.unwrap();
-    assert_eq!(boutique.statut, StatutBoutique::Ouvert, "l'interrupteur dit ouvert");
-    assert!(!boutique.effectif.ouvert, "hors horaires : FERMÉ quand même");
+    assert_eq!(
+        boutique.statut,
+        StatutBoutique::Ouvert,
+        "l'interrupteur dit ouvert"
+    );
+    assert!(
+        !boutique.effectif.ouvert,
+        "hors horaires : FERMÉ quand même"
+    );
     let c = bac.depot.commandabilite(id).await.unwrap();
     assert!(c.agree && c.categorie_active && !c.boutique_ouverte && !c.commandable());
 
@@ -246,17 +290,37 @@ async fn rappel_ouverture_puis_extinction_par_la_journee(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let id = vendeur_pret(&bac).await;
 
-    assert!(!bac.depot.boutique_vendeur(id).await.unwrap().rappel_ouverture);
+    assert!(
+        !bac.depot
+            .boutique_vendeur(id)
+            .await
+            .unwrap()
+            .rappel_ouverture
+    );
 
     geste(&bac, id, ActionBoutique::Fermer, SourceBascule::Vendeur).await;
     assert!(
-        bac.depot.boutique_vendeur(id).await.unwrap().rappel_ouverture,
+        bac.depot
+            .boutique_vendeur(id)
+            .await
+            .unwrap()
+            .rappel_ouverture,
         "fermé manuel pendant les horaires habituels → rappel"
     );
 
-    geste(&bac, id, ActionBoutique::FermerPourLaJournee, SourceBascule::Vendeur).await;
+    geste(
+        &bac,
+        id,
+        ActionBoutique::FermerPourLaJournee,
+        SourceBascule::Vendeur,
+    )
+    .await;
     assert!(
-        !bac.depot.boutique_vendeur(id).await.unwrap().rappel_ouverture,
+        !bac.depot
+            .boutique_vendeur(id)
+            .await
+            .unwrap()
+            .rappel_ouverture,
         "« je reste fermé aujourd'hui » : le rappel ne réapparaît plus (FR-035)"
     );
 }

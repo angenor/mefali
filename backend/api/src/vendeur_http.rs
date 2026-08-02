@@ -334,7 +334,13 @@ pub async fn retirer_article(
     exiger_pilotage(&auth, &depot, prestataire).await?;
     let mut tx = depot.pool().begin().await.map_err(sql)?;
     let article = depot
-        .retirer_article(&mut tx, prestataire, article, SourceBascule::Vendeur, auth.compte_id)
+        .retirer_article(
+            &mut tx,
+            prestataire,
+            article,
+            SourceBascule::Vendeur,
+            auth.compte_id,
+        )
         .await?;
     tx.commit().await.map_err(sql)?;
     Ok(HttpResponse::Ok().json(article_vendeur_dto(&depot, article).await?))
@@ -369,7 +375,13 @@ pub async fn remettre_article(
     exiger_pilotage(&auth, &depot, prestataire).await?;
     let mut tx = depot.pool().begin().await.map_err(sql)?;
     let article = depot
-        .remettre_article(&mut tx, prestataire, article, SourceBascule::Vendeur, auth.compte_id)
+        .remettre_article(
+            &mut tx,
+            prestataire,
+            article,
+            SourceBascule::Vendeur,
+            auth.compte_id,
+        )
         .await?;
     tx.commit().await.map_err(sql)?;
     Ok(HttpResponse::Ok().json(article_vendeur_dto(&depot, article).await?))
@@ -435,7 +447,13 @@ pub async fn action_boutique(
 
     let mut tx = depot.pool().begin().await.map_err(sql)?;
     depot
-        .changer_statut_boutique(&mut tx, prestataire, action, SourceBascule::Vendeur, auth.compte_id)
+        .changer_statut_boutique(
+            &mut tx,
+            prestataire,
+            action,
+            SourceBascule::Vendeur,
+            auth.compte_id,
+        )
         .await?;
     tx.commit().await.map_err(sql)?;
     let boutique = depot.boutique_vendeur(prestataire).await?;
@@ -473,7 +491,13 @@ pub async fn modifier_horaires(
 
     let mut tx = depot.pool().begin().await.map_err(sql)?;
     depot
-        .modifier_horaires(&mut tx, prestataire, &horaires, SourceBascule::Vendeur, auth.compte_id)
+        .modifier_horaires(
+            &mut tx,
+            prestataire,
+            &horaires,
+            SourceBascule::Vendeur,
+            auth.compte_id,
+        )
         .await?;
     tx.commit().await.map_err(sql)?;
     let boutique = depot.boutique_vendeur(prestataire).await?;
@@ -484,7 +508,8 @@ pub async fn modifier_horaires(
 
 /// Clé i18n rappelée par la réponse : le réglage ne retarife **rien** de ce qui
 /// est déjà commandé (FR-048). Le vendeur doit le lire, pas le deviner.
-pub(crate) const CLE_COMMANDES_EN_COURS: &str = "vendeur.offre_livraison.commandes_en_cours_inchangees";
+pub(crate) const CLE_COMMANDES_EN_COURS: &str =
+    "vendeur.offre_livraison.commandes_en_cours_inchangees";
 
 /// Déclaration d'offre de livraison — `seuil_unites` n'a de sens que pour
 /// `au_dela`, et y est alors **obligatoire**.

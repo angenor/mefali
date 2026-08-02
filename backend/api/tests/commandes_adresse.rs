@@ -116,12 +116,11 @@ async fn adresse_du_carnet_denormalisee_et_usage_marque(pool: sqlx::PgPool) {
     let (statut, _) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), corps).await;
     assert_eq!(statut, 201);
 
-    let (lat, repere, adresse): (f64, Option<String>, Option<Uuid>) = sqlx::query_as(
-        "SELECT lieu_lat, repere_texte, adresse_id FROM commandes.commande",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let (lat, repere, adresse): (f64, Option<String>, Option<Uuid>) =
+        sqlx::query_as("SELECT lieu_lat, repere_texte, adresse_id FROM commandes.commande")
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert!((lat - 5.9051).abs() < 1e-9, "pin COPIÉ sur le tronc");
     assert_eq!(repere.as_deref(), Some("Près de la pharmacie"));
     assert_eq!(adresse, Some(adresse_id));

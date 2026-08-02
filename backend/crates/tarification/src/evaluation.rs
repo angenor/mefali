@@ -231,11 +231,7 @@ impl PgTarification {
     }
 
     /// Grille contre laquelle évaluer, selon la source demandée.
-    async fn grille_source(
-        &self,
-        zone: Uuid,
-        source: SourceGrille,
-    ) -> Result<Grille, ErreurTarif> {
+    async fn grille_source(&self, zone: Uuid, source: SourceGrille) -> Result<Grille, ErreurTarif> {
         match source {
             SourceGrille::EnVigueur => self
                 .grille_en_vigueur(zone)

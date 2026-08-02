@@ -80,10 +80,7 @@ pub fn echeance(ouverte_le: DateTime<Utc>, config: &ConfigPaiements) -> DateTime
 /// que la commande existe et qu'elle est déjà réglée. La garde de propriété
 /// passe donc en premier, et elle rend le même refus que la commande existe ou
 /// non (FR-005).
-pub fn garder_ouverture(
-    commande: &CommandeAPayer,
-    appelant: Uuid,
-) -> Result<(), ErreurPaiements> {
+pub fn garder_ouverture(commande: &CommandeAPayer, appelant: Uuid) -> Result<(), ErreurPaiements> {
     if commande.client_id != appelant {
         return Err(ErreurPaiements::CommandeNonProprietaire);
     }
@@ -353,7 +350,9 @@ mod tests {
         let mut annulee = nominale.clone();
         annulee.etat = EtatCommande::Annulee;
         assert_eq!(
-            garder_ouverture(&annulee, client).unwrap_err().message_cle(),
+            garder_ouverture(&annulee, client)
+                .unwrap_err()
+                .message_cle(),
             Some("paiement_non_requis"),
         );
     }
@@ -383,7 +382,10 @@ mod tests {
         let commande = Uuid::now_v7();
         for lien in [retour_succes(commande), retour_annulation(commande)] {
             assert!(lien.contains(&commande.to_string()));
-            assert!(lien.starts_with("mefali://"), "deep link d'app, pas une URL web");
+            assert!(
+                lien.starts_with("mefali://"),
+                "deep link d'app, pas une URL web"
+            );
         }
         assert_ne!(retour_succes(commande), retour_annulation(commande));
     }

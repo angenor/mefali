@@ -807,7 +807,9 @@ pub async fn etat_preuves(
     let livraison = chemin.into_inner();
     // `etat_preuves` sert aussi le port `PreuvesEchec`, qui n'a pas d'acteur :
     // la garde de propriété est donc explicite ici (FR-006).
-    coursier.exiger_proprietaire(livraison, auth.compte_id).await?;
+    coursier
+        .exiger_proprietaire(livraison, auth.compte_id)
+        .await?;
     let etat = coursier.etat_preuves(livraison).await?;
     Ok(HttpResponse::Ok().json(EtatPreuvesDto::from(etat)))
 }

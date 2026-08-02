@@ -47,7 +47,13 @@ async fn structure_produite_tronc_livraison_segment_arrets(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
     let lignes: Vec<Value> = bac.vendeurs.iter().map(|v| v.ligne(2)).collect();
 
-    let (statut, corps) = creer(&bac, &bac.jeton_client, Uuid::now_v7(), demande(&bac, lignes)).await;
+    let (statut, corps) = creer(
+        &bac,
+        &bac.jeton_client,
+        Uuid::now_v7(),
+        demande(&bac, lignes),
+    )
+    .await;
     assert_eq!(statut, 201);
     assert_eq!(corps["etat"], "nouvelle");
 
@@ -57,7 +63,8 @@ async fn structure_produite_tronc_livraison_segment_arrets(pool: sqlx::PgPool) {
         1,
     );
     assert_eq!(
-        bac.compter("SELECT count(*) FROM commandes.livraison").await,
+        bac.compter("SELECT count(*) FROM commandes.livraison")
+            .await,
         1,
     );
     assert_eq!(
@@ -87,15 +94,17 @@ async fn structure_produite_tronc_livraison_segment_arrets(pool: sqlx::PgPool) {
     .unwrap();
     assert_eq!(ordre, 3, "la remise passe après les 3 collectes");
     assert!(presta.is_none(), "une remise n'a pas de vendeur");
-    assert_eq!(montant, 0, "le coursier encaisse à la remise, il n'avance pas");
+    assert_eq!(
+        montant, 0,
+        "le coursier encaisse à la remise, il n'avance pas"
+    );
 
     // Chaque ligne est rattachée à SON arrêt de collecte.
-    let orphelines: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM commandes.ligne_commande WHERE arret_id IS NULL",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let orphelines: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM commandes.ligne_commande WHERE arret_id IS NULL")
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(orphelines, 0);
 
     // Constitution II — AUCUNE colonne logistique sur le tronc.
@@ -124,7 +133,11 @@ async fn structure_produite_tronc_livraison_segment_arrets(pool: sqlx::PgPool) {
     assert_eq!(bac.evenements("commande.creee").await.len(), 1);
     assert_eq!(bac.evenements("livraison.creee").await.len(), 1);
     let pretes = bac.evenements("commande.prete_a_dispatcher").await;
-    assert_eq!(pretes.len(), 1, "contrat SANS consommateur, émis quand même");
+    assert_eq!(
+        pretes.len(),
+        1,
+        "contrat SANS consommateur, émis quand même"
+    );
     assert_eq!(pretes[0]["nb_arrets"], 4);
     let _ = commande_id;
 }
@@ -175,12 +188,11 @@ async fn prix_verrouilles_et_devis_fige(pool: sqlx::PgPool) {
     assert_eq!(fige, vendeur.prix[0], "le prix verrouillé est invariant");
 
     // Le devis figé est COPIÉ sur la livraison, pas référencé.
-    let (prix_client, part): (i64, i64) = sqlx::query_as(
-        "SELECT devis_prix_client, devis_part_coursier FROM commandes.livraison",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let (prix_client, part): (i64, i64) =
+        sqlx::query_as("SELECT devis_prix_client, devis_part_coursier FROM commandes.livraison")
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(prix_client, DEVIS_PRIX_CLIENT);
     assert_eq!(part, bac_commandes::DEVIS_PART_COURSIER);
 }
@@ -245,8 +257,14 @@ async fn le_rejeu_ne_sert_ses_secrets_qu_au_proprietaire(pool: sqlx::PgPool) {
     )
     .await;
     assert_eq!(statut, 201);
-    let code = corps["remise"]["code_livraison"].as_str().unwrap().to_owned();
-    let jeton = corps["remise"]["jeton_reception"].as_str().unwrap().to_owned();
+    let code = corps["remise"]["code_livraison"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let jeton = corps["remise"]["jeton_reception"]
+        .as_str()
+        .unwrap()
+        .to_owned();
 
     // L'intrus rejoue la clé de la commande d'autrui, avec son propre panier.
     let (statut, corps) = creer(
@@ -388,7 +406,9 @@ async fn plafond_cash_bascule_en_prepaiement(pool: sqlx::PgPool) {
     assert_eq!(requis.len(), 1);
     assert_eq!(requis[0]["motif"], "plafond");
     assert!(
-        bac.evenements("commande.prete_a_dispatcher").await.is_empty(),
+        bac.evenements("commande.prete_a_dispatcher")
+            .await
+            .is_empty(),
         "rien ne part au dispatch tant que le prépaiement n'est pas réglé",
     );
 }
@@ -396,9 +416,7 @@ async fn plafond_cash_bascule_en_prepaiement(pool: sqlx::PgPool) {
 /// **FR-024** — le plafond RÉDUIT s'applique à la 1ʳᵉ commande de restauration,
 /// puis se lève une fois une commande TERMINÉE au compteur.
 #[sqlx::test(migrations = "../migrations")]
-async fn plafond_reduit_restauration_puis_leve_apres_une_commande_terminee(
-    pool: sqlx::PgPool,
-) {
+async fn plafond_reduit_restauration_puis_leve_apres_une_commande_terminee(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
     // Le maquis coûte 2 000 l'unité : 3 unités = 6 000, au-dessus du plafond
     // réduit (5 000) mais sous le plafond ordinaire (15 000).
@@ -472,7 +490,11 @@ async fn aucun_reglement_fractionne_possible(pool: sqlx::PgPool) {
     .fetch_all(&bac.pool)
     .await
     .unwrap();
-    for interdite in ["acompte_unites", "montant_partiel_unites", "reste_du_unites"] {
+    for interdite in [
+        "acompte_unites",
+        "montant_partiel_unites",
+        "reste_du_unites",
+    ] {
         assert!(
             !colonnes.iter().any(|c| c == interdite),
             "aucun chemin de paiement partiel ne doit exister : « {interdite} »",
@@ -533,12 +555,11 @@ async fn secrets_de_remise_rendus_au_client_et_empreintes_stockees(pool: sqlx::P
     assert!(code.chars().all(|c| c.is_ascii_digit()));
     assert!(jeton.len() >= 32, "jeton long, non devinable");
 
-    let (code_hash, jeton_hash): (String, String) = sqlx::query_as(
-        "SELECT code_livraison_hash, jeton_reception_hash FROM commandes.commande",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let (code_hash, jeton_hash): (String, String) =
+        sqlx::query_as("SELECT code_livraison_hash, jeton_reception_hash FROM commandes.commande")
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     // Le coursier ne reçoit QUE ces empreintes — jamais le code (R6).
     assert_eq!(code_hash, socle::empreinte_code(cle, code));
     assert_eq!(jeton_hash, socle::empreinte_jeton(jeton));

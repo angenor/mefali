@@ -223,7 +223,10 @@ async fn cache_routage() -> Option<api::infra_redis::RedisCacheRoutage> {
     let cache = api::infra_redis::RedisCacheRoutage::nouveau(&url).ok()?;
     // Sonde : un pool se crée sans jamais toucher au serveur, il faut donc une
     // vraie commande pour savoir si Redis répond.
-    cache.lire(&["tarif:route:v1:sonde".to_owned()]).await.ok()?;
+    cache
+        .lire(&["tarif:route:v1:sonde".to_owned()])
+        .await
+        .ok()?;
     Some(cache)
 }
 
@@ -286,7 +289,10 @@ async fn cache_routage_aller_retour_et_ordre() {
         .query_async::<()>(&mut conn)
         .await
         .unwrap();
-    assert_eq!(cache.lire(std::slice::from_ref(&cle_a)).await.unwrap(), vec![None]);
+    assert_eq!(
+        cache.lire(std::slice::from_ref(&cle_a)).await.unwrap(),
+        vec![None]
+    );
 
     // Ménage.
     redis::cmd("DEL")

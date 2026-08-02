@@ -13,7 +13,10 @@ async fn suspendu_refuse_puis_retabli_collectable(pool: sqlx::PgPool) {
     bac.suspendre(tantie).await;
     let e = bac
         .qr
-        .collecter(bac.coursier, demande_scan(arrets[0], &jeton, SITE_LAT, SITE_LON))
+        .collecter(
+            bac.coursier,
+            demande_scan(arrets[0], &jeton, SITE_LAT, SITE_LON),
+        )
         .await
         .unwrap_err();
     assert_eq!(e.message_cle(), Some("prestataire_indisponible"));
@@ -27,7 +30,10 @@ async fn suspendu_refuse_puis_retabli_collectable(pool: sqlx::PgPool) {
     bac.retablir(tantie).await;
     let r = bac
         .qr
-        .collecter(bac.coursier, demande_scan(arrets[0], &jeton, SITE_LAT, SITE_LON))
+        .collecter(
+            bac.coursier,
+            demande_scan(arrets[0], &jeton, SITE_LAT, SITE_LON),
+        )
         .await
         .unwrap();
     assert!(r.en_livraison);
@@ -44,7 +50,10 @@ async fn jeton_forge_plaque_invalide(pool: sqlx::PgPool) {
     let forge = "f0".repeat(40);
     let e = bac
         .qr
-        .collecter(bac.coursier, demande_scan(arrets[0], &forge, SITE_LAT, SITE_LON))
+        .collecter(
+            bac.coursier,
+            demande_scan(arrets[0], &forge, SITE_LAT, SITE_LON),
+        )
         .await
         .unwrap_err();
     assert_eq!(e.message_cle(), Some("plaque_invalide"));

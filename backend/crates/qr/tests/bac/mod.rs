@@ -14,9 +14,7 @@ use std::sync::Arc;
 use chrono::NaiveDate;
 use comptes::{MemoireEphemere, PgComptes, SmsTraces};
 use prestataires::modele::{HorairesSemaine, Plage};
-use prestataires::{
-    AucuneCommandeActive, CommandesActives, NouveauPrestataire, PgPrestataires,
-};
+use prestataires::{AucuneCommandeActive, CommandesActives, NouveauPrestataire, PgPrestataires};
 use qr::{CompteurEssais, CompteurMemoire, PgQr};
 use serde_json::json;
 use socle::{DepotObjets, MemoireObjets};
@@ -64,8 +62,18 @@ impl Bac {
         let categorie_restauration = Uuid::now_v7();
         let categorie_pharmacie = Uuid::now_v7();
         for (id, slug, workflow, politique) in [
-            (categorie_restauration, "restauration", "restauration", "facultative"),
-            (categorie_pharmacie, "pharmacie", "coursier_acheteur", "obligatoire"),
+            (
+                categorie_restauration,
+                "restauration",
+                "restauration",
+                "facultative",
+            ),
+            (
+                categorie_pharmacie,
+                "pharmacie",
+                "coursier_acheteur",
+                "obligatoire",
+            ),
         ] {
             sqlx::query(
                 "INSERT INTO zones.categorie (id, slug, nom_cle, workflow_vendeur, politique_photo)
@@ -182,7 +190,11 @@ impl Bac {
     }
 
     /// Agrée un prestataire (fiche complète) et renvoie `(id, jeton, code)`.
-    pub async fn prestataire_agree(&self, nom: &str, categorie_slug: &str) -> (Uuid, String, String) {
+    pub async fn prestataire_agree(
+        &self,
+        nom: &str,
+        categorie_slug: &str,
+    ) -> (Uuid, String, String) {
         let mut tx = self.pool.begin().await.unwrap();
         let p = self
             .prestataires
@@ -200,7 +212,13 @@ impl Bac {
             .await
             .unwrap();
         self.prestataires
-            .ajouter_photo(&mut tx, p.id, vec![0xFF, 0xD8, 0xFF], "image/jpeg", self.admin)
+            .ajouter_photo(
+                &mut tx,
+                p.id,
+                vec![0xFF, 0xD8, 0xFF],
+                "image/jpeg",
+                self.admin,
+            )
             .await
             .unwrap();
         self.prestataires
@@ -216,10 +234,21 @@ impl Bac {
             .await
             .unwrap();
         self.prestataires
-            .definir_site(&mut tx, p.id, SITE_LAT, SITE_LON, &Self::horaires_type(), None, self.admin)
+            .definir_site(
+                &mut tx,
+                p.id,
+                SITE_LAT,
+                SITE_LON,
+                &Self::horaires_type(),
+                None,
+                self.admin,
+            )
             .await
             .unwrap();
-        self.prestataires.agreer(&mut tx, p.id, self.admin).await.unwrap();
+        self.prestataires
+            .agreer(&mut tx, p.id, self.admin)
+            .await
+            .unwrap();
         tx.commit().await.unwrap();
 
         let ctx = self

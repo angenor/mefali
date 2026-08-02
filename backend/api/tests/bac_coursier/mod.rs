@@ -27,9 +27,9 @@ use actix_web::web;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use commandes::{PgCommandes, PositionFixe, PreuvesFixes, RestrictionsSimulees, TarifFixe};
 use comptes::{MemoireEphemere, PgComptes, SmsTraces};
+use coursier::PgCoursier;
 use prestataires::modele::{HorairesSemaine, Plage};
 use prestataires::{AucuneCommandeActive, NouveauPrestataire, PgPrestataires};
-use coursier::PgCoursier;
 use qr::{CompteurMemoire, PgQr};
 use serde_json::{json, Value};
 use socle::{DepotObjets, MemoireObjets};
@@ -249,7 +249,10 @@ impl Bac {
             ("categorie.marche.perissable", json!(false)),
             ("commande.repere_texte_min_caracteres", json!(10)),
             // Le seuil d'essais du cycle 008, RÉUTILISÉ tel quel (R5, FR-106).
-            ("commande.essais_code_livraison", json!(ESSAIS_CODE_LIVRAISON)),
+            (
+                "commande.essais_code_livraison",
+                json!(ESSAIS_CODE_LIVRAISON),
+            ),
             ("commande.historique_min_commandes_terminees", json!(1)),
             ("substitution.delai_validation_s", json!(60)),
             ("substitution.ecart_prix_max_pourcent", json!(20)),
@@ -543,7 +546,13 @@ impl Bac {
             .await
             .unwrap();
         self.prestataires
-            .ajouter_photo(&mut tx, p.id, vec![0xFF, 0xD8, 0xFF], "image/jpeg", self.admin)
+            .ajouter_photo(
+                &mut tx,
+                p.id,
+                vec![0xFF, 0xD8, 0xFF],
+                "image/jpeg",
+                self.admin,
+            )
             .await
             .unwrap();
         self.prestataires
@@ -610,8 +619,8 @@ impl Bac {
     pub fn configurer(&self) -> impl FnOnce(&mut web::ServiceConfig) {
         use api::admin_coursier_http as adm010;
         use api::commandes_http as cmd;
-        use api::course_http as crs;
         use api::comptes_http as cpt;
+        use api::course_http as crs;
         use api::coursier_http as crs010;
         let pool = self.pool.clone();
         let comptes = self.comptes.clone();
@@ -679,7 +688,8 @@ impl Bac {
 
     /// Crée une commande par l'API (mêmes gardes qu'en production).
     pub async fn creer_commande_api(&self, categorie_slug: &str, lignes: Vec<Value>) -> Uuid {
-        self.creer_commande_mode(categorie_slug, lignes, "cash").await
+        self.creer_commande_mode(categorie_slug, lignes, "cash")
+            .await
     }
 
     /// Variante avec le mode de paiement explicite.
@@ -849,12 +859,14 @@ impl Bac {
 
     /// Recule l'arrivée du coursier chez le client — base du délai des preuves.
     pub async fn reculer_arrivee(&self, arret: Uuid, duree: Duration) {
-        sqlx::query("UPDATE commandes.arret SET arrive_le = arrive_le - $2::interval WHERE id = $1")
-            .bind(arret)
-            .bind(duree)
-            .execute(&self.pool)
-            .await
-            .unwrap();
+        sqlx::query(
+            "UPDATE commandes.arret SET arrive_le = arrive_le - $2::interval WHERE id = $1",
+        )
+        .bind(arret)
+        .bind(duree)
+        .execute(&self.pool)
+        .await
+        .unwrap();
     }
 
     /// Pose une série de relevés de présence, espacés de `pas`, en remontant
@@ -995,7 +1007,12 @@ impl Bac {
     /// plupart des tests veulent un appel distinct. Ceux qui testent le REJEU
     /// fixent l'UUID eux-mêmes, et c'est exactement la différence qu'ils
     /// cherchent à montrer.
-    pub async fn remise(&self, livraison: Uuid, mut demande: Value, avec_photo: bool) -> (u16, Value) {
+    pub async fn remise(
+        &self,
+        livraison: Uuid,
+        mut demande: Value,
+        avec_photo: bool,
+    ) -> (u16, Value) {
         if demande.get("uuid_client").is_none() {
             demande["uuid_client"] = json!(Uuid::now_v7());
         }
@@ -1095,7 +1112,10 @@ impl Bac {
     /// `GET /courses/{livraison}/preuves` — l'état vu par le coursier.
     pub async fn lire_preuves(&self, livraison: Uuid) -> Value {
         let (statut, corps) = self
-            .get(&format!("/courses/{livraison}/preuves"), &self.jeton_coursier)
+            .get(
+                &format!("/courses/{livraison}/preuves"),
+                &self.jeton_coursier,
+            )
             .await;
         assert_eq!(statut, 200, "lecture des preuves refusée : {corps}");
         corps

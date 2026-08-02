@@ -173,7 +173,10 @@ impl PgCommandes {
             return Err(ErreurCommandes::ArretInconnu(demande.arret_id));
         }
 
-        let resultat = match self.transiter_sous_verrou(&mut tx, coursier, &demande, horodatage_serveur).await {
+        let resultat = match self
+            .transiter_sous_verrou(&mut tx, coursier, &demande, horodatage_serveur)
+            .await
+        {
             Ok(resultat) => resultat,
             // ── Refus de PROPRIÉTÉ au rejeu (FR-006, FR-088) ─────────────
             // La course a changé de porteur pendant la coupure. On abandonne la
@@ -371,7 +374,9 @@ impl PgCommandes {
         horodatage_local: DateTime<Utc>,
         horodatage_serveur: DateTime<Utc>,
     ) -> Result<TransitionArret, ErreurCommandes> {
-        let ctx = self.charger_arret_du_coursier(tx, arret_id, coursier).await?;
+        let ctx = self
+            .charger_arret_du_coursier(tx, arret_id, coursier)
+            .await?;
 
         if let Some(rejeu) = self.rejeu_transition(tx, &ctx, uuid_client).await? {
             return Ok(rejeu);
@@ -495,7 +500,9 @@ impl PgCommandes {
         horodatage_local: DateTime<Utc>,
         horodatage_serveur: DateTime<Utc>,
     ) -> Result<TransitionArret, ErreurCommandes> {
-        let ctx = self.charger_arret_du_coursier(tx, arret_id, coursier).await?;
+        let ctx = self
+            .charger_arret_du_coursier(tx, arret_id, coursier)
+            .await?;
 
         if let Some(rejeu) = self.rejeu_transition(tx, &ctx, uuid_client).await? {
             return Ok(rejeu);
@@ -578,7 +585,9 @@ impl PgCommandes {
         horodatage_local: DateTime<Utc>,
         horodatage_serveur: DateTime<Utc>,
     ) -> Result<TransitionArret, ErreurCommandes> {
-        let ctx = self.charger_arret_du_coursier(tx, arret_id, coursier).await?;
+        let ctx = self
+            .charger_arret_du_coursier(tx, arret_id, coursier)
+            .await?;
 
         if let Some(rejeu) = self.rejeu_transition(tx, &ctx, uuid_client).await? {
             return Ok(rejeu);
@@ -831,7 +840,11 @@ impl PgCommandes {
         rejeu: bool,
     ) -> Result<TransitionArret, ErreurCommandes> {
         let progression = self
-            .progression(tx, ctx.livraison_id, livraison_etat == EtatLivraison::EnLivraison)
+            .progression(
+                tx,
+                ctx.livraison_id,
+                livraison_etat == EtatLivraison::EnLivraison,
+            )
             .await?;
         Ok(TransitionArret {
             arret_id: ctx.arret_id,

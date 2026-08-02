@@ -420,10 +420,7 @@ impl PgCoursier {
     /// **Vaut 0 au MVP** : `devis_marge` est nul jusqu'à M4, donc le minimum
     /// l'est aussi. La lecture est écrite complète malgré tout — le jour où la
     /// marge devient non nulle, il n'y aura rien à écrire dans l'urgence.
-    pub(crate) async fn detenu_pour_mefali(
-        &self,
-        coursier: Uuid,
-    ) -> Result<i64, ErreurCoursier> {
+    pub(crate) async fn detenu_pour_mefali(&self, coursier: Uuid) -> Result<i64, ErreurCoursier> {
         Ok(sqlx::query_scalar!(
             r#"SELECT COALESCE(SUM(
                           CASE WHEN e.type = 'frais_encaisses'
@@ -653,10 +650,7 @@ impl PgCoursier {
     /// arête permanente entre deux domaines pour un seul nombre serait un prix
     /// trop élevé (contrat §2). La table appartient à `dispatch` et n'est ici
     /// que **lue**.
-    async fn plafond_declare_du_jour(
-        &self,
-        coursier: Uuid,
-    ) -> Result<Option<i64>, ErreurCoursier> {
+    async fn plafond_declare_du_jour(&self, coursier: Uuid) -> Result<Option<i64>, ErreurCoursier> {
         Ok(sqlx::query_scalar!(
             r#"SELECT plafond_unites FROM dispatch.plafond_jour
                 WHERE coursier_id = $1 ORDER BY jour DESC LIMIT 1"#,
@@ -996,7 +990,10 @@ mod tests {
         assert_eq!(derive, evenement_derive(evenement, DERIVE_FRAIS_ENCAISSES));
         assert_ne!(derive, evenement);
         assert_ne!(derive, evenement_derive(evenement, "autre_chose"));
-        assert_ne!(derive, evenement_derive(Uuid::now_v7(), DERIVE_FRAIS_ENCAISSES));
+        assert_ne!(
+            derive,
+            evenement_derive(Uuid::now_v7(), DERIVE_FRAIS_ENCAISSES)
+        );
     }
 
     /// Les six natures d'écriture portent des libellés SQL stables : ce sont

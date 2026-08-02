@@ -100,8 +100,13 @@ impl Bouchon {
     }
 
     fn client(&self) -> AgregateurHttp {
-        AgregateurHttp::nouveau(&self.base_url, "cle-api-de-test", SECRET.to_vec(), "x-signature")
-            .unwrap()
+        AgregateurHttp::nouveau(
+            &self.base_url,
+            "cle-api-de-test",
+            SECRET.to_vec(),
+            "x-signature",
+        )
+        .unwrap()
     }
 
     fn recues(&self) -> Vec<RequeteRecue> {
@@ -144,9 +149,16 @@ async fn l_ouverture_envoie_un_montant_entier_et_s_authentifie() {
     );
 
     let recue = &bouchon.recues()[0];
-    assert!(recue.ligne.starts_with("POST /checkouts "), "{}", recue.ligne);
     assert!(
-        recue.autorisation.to_ascii_lowercase().contains("bearer cle-api-de-test"),
+        recue.ligne.starts_with("POST /checkouts "),
+        "{}",
+        recue.ligne
+    );
+    assert!(
+        recue
+            .autorisation
+            .to_ascii_lowercase()
+            .contains("bearer cle-api-de-test"),
         "la clé d'API voyage en Bearer : {}",
         recue.autorisation,
     );
@@ -170,19 +182,23 @@ async fn les_codes_d_etat_se_traduisent_vers_nos_cinq_variantes() {
         r#"{"erreur":"montant hors bornes"}"#.to_owned(),
     )])
     .await;
-    let erreur = refus.client().create_checkout(demande(1)).await.unwrap_err();
+    let erreur = refus
+        .client()
+        .create_checkout(demande(1))
+        .await
+        .unwrap_err();
     assert!(
         matches!(erreur, ErreurFournisseur::RefuseParFournisseur(_)),
         "un 4xx : le fournisseur a COMPRIS et a dit non — {erreur}",
     );
 
     // Deux 500 d'affilée : la reprise s'épuise et l'erreur remonte.
-    let panne = Bouchon::demarrer(vec![
-        (500, "boom".to_owned()),
-        (500, "boom".to_owned()),
-    ])
-    .await;
-    let erreur = panne.client().create_checkout(demande(1)).await.unwrap_err();
+    let panne = Bouchon::demarrer(vec![(500, "boom".to_owned()), (500, "boom".to_owned())]).await;
+    let erreur = panne
+        .client()
+        .create_checkout(demande(1))
+        .await
+        .unwrap_err();
     assert!(
         matches!(erreur, ErreurFournisseur::Indisponible(_)),
         "un 5xx : la panne n'est pas la nôtre — {erreur}",
@@ -228,7 +244,10 @@ async fn une_reponse_non_json_est_illisible_pas_fatale() {
         .create_checkout(demande(1_000))
         .await
         .unwrap_err();
-    assert!(matches!(erreur, ErreurFournisseur::ChargeIllisible(_)), "{erreur}");
+    assert!(
+        matches!(erreur, ErreurFournisseur::ChargeIllisible(_)),
+        "{erreur}"
+    );
 }
 
 /// La consultation lit l'état d'un encaissement — c'est elle qui empêche un

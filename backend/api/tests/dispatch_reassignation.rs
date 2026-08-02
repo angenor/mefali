@@ -66,8 +66,12 @@ async fn un_coursier_immobile_est_repris(pool: sqlx::PgPool) {
     assert_eq!(motif, "sans_mouvement");
 
     // Les DEUX parties sont prévenues (FR-073).
-    assert!(bac.notifications.contient_cle("dispatch.reassignation.coursier"));
-    assert!(bac.notifications.contient_cle("dispatch.reassignation.client"));
+    assert!(bac
+        .notifications
+        .contient_cle("dispatch.reassignation.coursier"));
+    assert!(bac
+        .notifications
+        .contient_cle("dispatch.reassignation.client"));
 
     let payloads = bac.evenements("dispatch.reassignation").await;
     assert_eq!(payloads[0]["acteur"], "systeme");
@@ -223,7 +227,10 @@ async fn une_reassignation_ne_touche_pas_au_devis_fige(pool: sqlx::PgPool) {
     .fetch_one(&bac.cmd.pool)
     .await
     .unwrap();
-    assert_eq!(avant, apres, "le devis figé ne se recalcule jamais (FR-077)");
+    assert_eq!(
+        avant, apres,
+        "le devis figé ne se recalcule jamais (FR-077)"
+    );
 }
 
 /// La reprise manuelle **refuse** quand aucun arrêt n'est collecté : dans ce
@@ -280,5 +287,4 @@ async fn la_reprise_manuelle_exige_un_motif(pool: sqlx::PgPool) {
         )
         .await;
     assert_eq!(statut, 403);
-
 }

@@ -135,7 +135,10 @@ mod tests {
                 "« {erreur} » est un refus MÉTIER : il doit porter sa clé i18n",
             );
             let cle = corps["message_cle"].as_str().unwrap();
-            assert!(cle.starts_with("dispatch.erreur."), "clé mal préfixée : {cle}");
+            assert!(
+                cle.starts_with("dispatch.erreur."),
+                "clé mal préfixée : {cle}"
+            );
         }
     }
 

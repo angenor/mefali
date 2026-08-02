@@ -126,7 +126,10 @@ async fn publier_ecrit_les_trois_cles_et_relit_l_etat() {
     assert_eq!(relu.capacites, vec![Capacite::transport("moto")]);
     assert_eq!(relu.plafond_unites, 10_000);
     assert_eq!(relu.devise, "XOF");
-    assert_eq!(relu.note_centiemes, None, "aucune note tant qu'AVI n'existe pas");
+    assert_eq!(
+        relu.note_centiemes, None,
+        "aucune note tant qu'AVI n'existe pas"
+    );
     assert!(relu.age_s < 5, "l'âge est calculé à la lecture");
 
     // L'index géographique répond au pré-filtre.
@@ -294,7 +297,9 @@ async fn redis_injoignable_degrade_les_lectures_sans_erreur() {
 /// reçoit `CommandeDejaOfferte` (et doit abandonner son passage).
 #[tokio::test]
 async fn pose_concurrente_sur_la_meme_commande() {
-    let Some(verrous) = verrous().await else { return };
+    let Some(verrous) = verrous().await else {
+        return;
+    };
     let commande = Uuid::now_v7();
     let (a, b) = (Uuid::now_v7(), Uuid::now_v7());
     let (jeton_a, jeton_b) = (Uuid::now_v7(), Uuid::now_v7());
@@ -316,7 +321,9 @@ async fn pose_concurrente_sur_la_meme_commande() {
 /// `CoursierDejaPorteur` et passe au candidat suivant. SC-014 en dépend.
 #[tokio::test]
 async fn pose_concurrente_sur_le_meme_coursier() {
-    let Some(verrous) = verrous().await else { return };
+    let Some(verrous) = verrous().await else {
+        return;
+    };
     let coursier = Uuid::now_v7();
     let (cmd_a, cmd_b) = (Uuid::now_v7(), Uuid::now_v7());
     let (jeton_a, jeton_b) = (Uuid::now_v7(), Uuid::now_v7());
@@ -339,7 +346,9 @@ async fn pose_concurrente_sur_le_meme_coursier() {
 /// une offre qui n'a jamais existé, et personne ne pourrait la prendre.
 #[tokio::test]
 async fn le_premier_verrou_est_relache_quand_le_second_echoue() {
-    let Some(verrous) = verrous().await else { return };
+    let Some(verrous) = verrous().await else {
+        return;
+    };
     let coursier = Uuid::now_v7();
     let (cmd_a, cmd_b) = (Uuid::now_v7(), Uuid::now_v7());
     let jeton_a = Uuid::now_v7();
@@ -372,7 +381,9 @@ async fn le_premier_verrou_est_relache_quand_le_second_echoue() {
 /// ne doit pas effacer les verrous d'une offre reprise entre-temps.
 #[tokio::test]
 async fn liberer_avec_un_mauvais_jeton_ne_libere_rien() {
-    let Some(verrous) = verrous().await else { return };
+    let Some(verrous) = verrous().await else {
+        return;
+    };
     let (commande, coursier) = (Uuid::now_v7(), Uuid::now_v7());
     let jeton = Uuid::now_v7();
     let ttl = Duration::from_secs(45);
@@ -399,7 +410,9 @@ async fn liberer_avec_un_mauvais_jeton_ne_libere_rien() {
 /// niveau de l'exclusivité (la garantie Postgres, elle, est testée à part).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn n_poses_paralleles_une_seule_gagne() {
-    let Some(verrous) = verrous().await else { return };
+    let Some(verrous) = verrous().await else {
+        return;
+    };
     let verrous = Arc::new(verrous);
     let commande = Uuid::now_v7();
     const N: usize = 8;

@@ -30,7 +30,10 @@ async fn devis_route_et_invariant(pool: PgPool) {
         .await
         .expect("un devis");
 
-    assert_eq!(devis.distance_m, 900, "distance de l'itinéraire, pas à vol d'oiseau");
+    assert_eq!(
+        devis.distance_m, 900,
+        "distance de l'itinéraire, pas à vol d'oiseau"
+    );
     assert!(!devis.degraded, "routage nominal → jamais marqué dégradé");
     assert_eq!(devis.devise, "XOF");
     // Moto : base 200 (150 + 50), 900 m < seuil 2 km → aucun km facturé.
@@ -141,7 +144,10 @@ async fn degrade_aboutit_et_se_journalise(pool: PgPool) {
         devis.prix_client,
         "le prix client se décompose exactement",
     );
-    assert_eq!(devis.part_coursier, 275, "le reliquat d'arrondi va au coursier");
+    assert_eq!(
+        devis.part_coursier, 275,
+        "le reliquat d'arrondi va au coursier"
+    );
     assert_eq!(devis.marge, 50, "la marge est INCHANGÉE par l'arrondi");
     assert_eq!(devis.invariant_verifie(), Some(true));
 
@@ -251,9 +257,15 @@ async fn vnd08_mono_vendeur_seulement(pool: PgPool) {
     mono.mono_vendeur = true;
     mono.offre_livraison_vendeur = Some(OffreLivraison::Toujours);
     let devis = moteur.evaluer(mono, SourceGrille::EnVigueur).await.unwrap();
-    assert_eq!(devis.prix_client, 0, "le vendeur prend la livraison en charge");
+    assert_eq!(
+        devis.prix_client, 0,
+        "le vendeur prend la livraison en charge"
+    );
     assert_eq!(devis.part_coursier, 250, "part coursier INCHANGÉE");
-    assert_eq!(devis.composantes.retenue_vendeur, 300, "montant pris en charge");
+    assert_eq!(
+        devis.composantes.retenue_vendeur, 300,
+        "montant pris en charge"
+    );
 
     // Panier MULTI-vendeurs : l'offre d'un vendeur ne couvre pas la course.
     let mut multi = bac.demande("moto", 2);
@@ -285,7 +297,10 @@ async fn vnd08_mono_vendeur_seulement(pool: PgPool) {
     au_seuil.mono_vendeur = true;
     au_seuil.offre_livraison_vendeur = Some(OffreLivraison::AuDela(5_000));
     au_seuil.montant_panier = 5_000;
-    let devis = moteur.evaluer(au_seuil, SourceGrille::EnVigueur).await.unwrap();
+    let devis = moteur
+        .evaluer(au_seuil, SourceGrille::EnVigueur)
+        .await
+        .unwrap();
     assert_eq!(devis.prix_client, 0, "au seuil, l'offre joue");
 }
 
@@ -386,7 +401,10 @@ async fn plafond_d_eclatement_dormant_par_defaut(pool: PgPool) {
         .evaluer(bac.demande("moto", 2), SourceGrille::EnVigueur)
         .await
         .unwrap();
-    assert!(devis.proposer_scission, "détour au-delà du seuil de la zone");
+    assert!(
+        devis.proposer_scission,
+        "détour au-delà du seuil de la zone"
+    );
 }
 
 /// Edge case FR-010 — aucune règle applicable : refus explicite, jamais un prix

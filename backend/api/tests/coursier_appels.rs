@@ -138,7 +138,10 @@ async fn aucun_numero_n_entre_dans_l_evenement(pool: PgPool) {
     let payloads = bac.evenements("appel.intention").await;
     assert_eq!(payloads.len(), 1);
     let brut = payloads[0].to_string();
-    assert!(brut.contains("\"de\":\"coursier\""), "premier émetteur : {brut}");
+    assert!(
+        brut.contains("\"de\":\"coursier\""),
+        "premier émetteur : {brut}"
+    );
     assert!(brut.contains("client_absent"));
     assert!(
         !brut.contains("+225"),

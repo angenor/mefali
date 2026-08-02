@@ -23,8 +23,8 @@ use tarification::{EvaluationTarifaire, OptimisationArrets};
 use uuid::Uuid;
 use zones::PgZones;
 
-use crate::etats::{verifier_transition, Acteur, Niveau};
 use crate::annulation::AuteurAnnulation;
+use crate::etats::{verifier_transition, Acteur, Niveau};
 use crate::modele::{
     ArretACollecter, ErreurCommandes, EtatCommande, EtatLivraison, EtatPaiement, ModeCollecte,
     ModePaiement, ProgressionCollecte, StatutArret,
@@ -1165,10 +1165,7 @@ impl CommandesADispatcher for PgCommandes {
     /// Le « premier arrêt non résolu » est celui contre lequel le rapprochement
     /// se mesure : viser l'arrêt 1 quand le coursier vient de le collecter
     /// ferait passer un coursier qui progresse pour un immobile.
-    async fn etat_progression(
-        &self,
-        livraison: Uuid,
-    ) -> Result<EtatProgression, ErreurCommandes> {
+    async fn etat_progression(&self, livraison: Uuid) -> Result<EtatProgression, ErreurCommandes> {
         let ligne = sqlx::query!(
             r#"SELECT l.commande_id, l.coursier_id, l.assignee_le,
                       (SELECT count(*) FROM commandes.arret a
@@ -1282,7 +1279,8 @@ impl CommandesADispatcher for PgCommandes {
         commande: Uuid,
         horodatage: DateTime<Utc>,
     ) -> Result<(), ErreurCommandes> {
-        self.mettre_en_attente_coursier(commande, horodatage).await?;
+        self.mettre_en_attente_coursier(commande, horodatage)
+            .await?;
         Ok(())
     }
 

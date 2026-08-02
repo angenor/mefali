@@ -94,7 +94,10 @@ impl PgDispatch {
         }
 
         // 4. Réassignations (DSP-07), garde d'argent comprise.
-        match self.reprendre_courses_immobiles(zone, &config, maintenant).await {
+        match self
+            .reprendre_courses_immobiles(zone, &config, maintenant)
+            .await
+        {
             Ok((reprises, bloquees)) => {
                 resultat.reassignations = reprises;
                 resultat.courses_bloquees = bloquees;

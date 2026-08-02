@@ -24,10 +24,8 @@ async fn declarer(
     demande: Value,
     avec_photo: bool,
 ) -> (u16, Value) {
-    let app = actix_web::test::init_service(
-        actix_web::App::new().configure(bac.configurer()),
-    )
-    .await;
+    let app =
+        actix_web::test::init_service(actix_web::App::new().configure(bac.configurer())).await;
     let frontiere = "----mefali-test";
     let mut corps = format!(
         "--{frontiere}\r\nContent-Disposition: form-data; name=\"demande\"\r\n\r\n{demande}\r\n"
@@ -230,10 +228,21 @@ async fn preference_remplacer_ouvre_une_proposition_puis_acceptee(pool: sqlx::Pg
 
     // Le client voit la proposition dans son suivi, avec son compte à rebours.
     let (_, suivi) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
-    assert_eq!(suivi["substitution_en_attente"]["id"], substitution.to_string());
-    assert!(suivi["substitution_en_attente"]["reste_s"].as_i64().unwrap() > 0);
+    assert_eq!(
+        suivi["substitution_en_attente"]["id"],
+        substitution.to_string()
+    );
+    assert!(
+        suivi["substitution_en_attente"]["reste_s"]
+            .as_i64()
+            .unwrap()
+            > 0
+    );
 
     // Acceptation : la ligne devient `remplacee` au prix proposé.
     let (statut, corps) = bac
@@ -399,16 +408,21 @@ async fn expiration_appelle_puis_retire_sans_facturer(pool: sqlx::PgPool) {
     let substitution: Uuid = corps["substitution_id"].as_str().unwrap().parse().unwrap();
 
     // L'échéance est PERSISTÉE : on la fait passer, sans attendre 60 s.
-    sqlx::query("UPDATE commandes.substitution SET echeance = now() - interval '1 second' WHERE id = $1")
-        .bind(substitution)
-        .execute(&bac.pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE commandes.substitution SET echeance = now() - interval '1 second' WHERE id = $1",
+    )
+    .bind(substitution)
+    .execute(&bac.pool)
+    .await
+    .unwrap();
 
     // Le suivi ne sert plus la proposition comme « en attente » : la résolution
     // se fait à la LECTURE, avant même le balayage (research R10).
     let (_, suivi) = bac
-        .get(&format!("/commandes/{}", course.commande), &bac.jeton_client)
+        .get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_client,
+        )
         .await;
     assert!(suivi["substitution_en_attente"].is_null());
 
@@ -486,13 +500,12 @@ async fn arret_entierement_indisponible(pool: sqlx::PgPool) {
         "…mais rien n'y a été COLLECTÉ — le compteur d'achats ne ment pas",
     );
 
-    let avance: i64 = sqlx::query_scalar(
-        "SELECT montant_avance FROM commandes.arret WHERE id = $1",
-    )
-    .bind(course.collectes[0])
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let avance: i64 =
+        sqlx::query_scalar("SELECT montant_avance FROM commandes.arret WHERE id = $1")
+            .bind(course.collectes[0])
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(avance, 0, "rien acheté, rien avancé");
 
     let retirees = bac.evenements("ligne.retiree").await;
@@ -500,7 +513,10 @@ async fn arret_entierement_indisponible(pool: sqlx::PgPool) {
     assert_eq!(retirees[0]["motif"], "arret_indisponible");
 
     let (_, total_apres) = montants(&bac, course.commande).await;
-    assert!(total_apres < total_avant, "les articles non achetés sortent");
+    assert!(
+        total_apres < total_avant,
+        "les articles non achetés sortent"
+    );
     assert_eq!(
         devis(&bac, course.livraison).await,
         avant_devis,
@@ -532,14 +548,8 @@ async fn rejeu_et_double_resolution(pool: sqlx::PgPool) {
         true,
     )
     .await;
-    let (statut, second) = declarer(
-        &bac,
-        &bac.jeton_coursier,
-        course.livraison,
-        demande,
-        true,
-    )
-    .await;
+    let (statut, second) =
+        declarer(&bac, &bac.jeton_coursier, course.livraison, demande, true).await;
     assert_eq!(statut, 200);
     assert_eq!(
         second["substitution_id"], premier["substitution_id"],

@@ -21,9 +21,7 @@ use deadpool_redis::{Config as ConfigRedis, Pool, Runtime};
 use chrono::{DateTime, TimeZone, Utc};
 use commandes::{ErreurCommandes, PositionCoursier, PositionDatee};
 use comptes::{Compteur, DepotEphemere, ErreurEphemere, IssueDefi, JetonInscription};
-use dispatch::{
-    Capacite, ErreurDispatch, InscriptionPool, PoolCoursiers, PoseVerrou, VerrouOffre,
-};
+use dispatch::{Capacite, ErreurDispatch, InscriptionPool, PoolCoursiers, PoseVerrou, VerrouOffre};
 use qr::{CompteurEssais, ErreurCompteur};
 use tarification::{CacheRoutage, ErreurCache, Troncon};
 use uuid::Uuid;
@@ -328,11 +326,12 @@ impl CacheRoutage for RedisCacheRoutage {
             .map_err(|e| ErreurCache(format!("connexion Redis : {e}")))?;
         // MGET : UN aller-retour pour toute la matrice. Un appel par paire
         // ferait N² allers-retours et coûterait plus cher que le routage lui-même.
-        let brut: Vec<Option<String>> = redis::cmd("MGET")
-            .arg(cles)
-            .query_async(&mut conn)
-            .await
-            .map_err(|e| ErreurCache(format!("lecture des tronçons : {e}")))?;
+        let brut: Vec<Option<String>> =
+            redis::cmd("MGET")
+                .arg(cles)
+                .query_async(&mut conn)
+                .await
+                .map_err(|e| ErreurCache(format!("lecture des tronçons : {e}")))?;
         Ok(brut
             .into_iter()
             .map(|v| v.as_deref().and_then(Self::decoder))

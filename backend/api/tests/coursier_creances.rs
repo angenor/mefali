@@ -133,7 +133,11 @@ async fn le_reglement_ecrit_au_livre_et_remonte_le_solde(pool: PgPool) {
         solde_avant + DEVIS_PART_COURSIER,
         "le solde remonte exactement du montant versé",
     );
-    assert_eq!(bac.du_par_mefali(bac.coursier).await, 0, "plus rien n'est dû");
+    assert_eq!(
+        bac.du_par_mefali(bac.coursier).await,
+        0,
+        "plus rien n'est dû"
+    );
     assert_eq!(
         bac.nb_evenements("caisse.creance_reglee").await,
         1,

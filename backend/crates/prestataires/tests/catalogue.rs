@@ -28,11 +28,19 @@ fn horaires_continus() -> HorairesSemaine {
 
 /// Un vendeur agréé, catégorie active (seuil 1), boutique toujours ouverte.
 async fn vendeur_pret(bac: &Bac) -> Uuid {
-    let id = bac.prospect_complet("Boutique Kofi", "boutique_superette").await;
+    let id = bac
+        .prospect_complet("Boutique Kofi", "boutique_superette")
+        .await;
     bac.agreer(id).await;
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .modifier_horaires(&mut tx, id, &horaires_continus(), SourceBascule::Admin, bac.admin)
+        .modifier_horaires(
+            &mut tx,
+            id,
+            &horaires_continus(),
+            SourceBascule::Admin,
+            bac.admin,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -101,7 +109,9 @@ async fn prix_barre_strictement_superieur(pool: PgPool) {
     .await
     .unwrap_err();
     assert!(
-        contrainte.to_string().contains("prix_barre_strictement_superieur"),
+        contrainte
+            .to_string()
+            .contains("prix_barre_strictement_superieur"),
         "le CHECK porte FR-023 au niveau du schéma : {contrainte}"
     );
 
@@ -111,7 +121,10 @@ async fn prix_barre_strictement_superieur(pool: PgPool) {
     let publie = fiche.articles.iter().find(|a| a.id == article).unwrap();
     assert_eq!(publie.prix_unites, 800);
     assert_eq!(publie.prix_barre_unites, Some(1_000));
-    assert_eq!(publie.devise, "XOF", "posée par le serveur, jamais par le client");
+    assert_eq!(
+        publie.devise, "XOF",
+        "posée par le serveur, jamais par le client"
+    );
 
     // Edge case spec — baisser le prix SOUS le barré reste valide…
     let mut tx = bac.pool.begin().await.unwrap();
@@ -164,7 +177,11 @@ async fn prix_fige_invariant(pool: PgPool) {
 
     // Verrouillage — la commande d'Awa, simulée par appel direct (R6).
     let mut tx = bac.pool.begin().await.unwrap();
-    let fige = bac.depot.figer_prix(&mut tx, vendeur, article).await.unwrap();
+    let fige = bac
+        .depot
+        .figer_prix(&mut tx, vendeur, article)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert_eq!(fige.prix_unites, 1_500);
 
@@ -188,12 +205,19 @@ async fn prix_fige_invariant(pool: PgPool) {
     tx.commit().await.unwrap();
 
     let relu = bac.depot.prix_fige(fige.id).await.unwrap();
-    assert_eq!(relu.prix_unites, 1_500, "le montant figé n'a pas bougé (SC-005)");
+    assert_eq!(
+        relu.prix_unites, 1_500,
+        "le montant figé n'a pas bougé (SC-005)"
+    );
     assert_eq!(relu.devise, "XOF");
 
     // Un verrouillage SUIVANT prend le nouveau prix (FR-024).
     let mut tx = bac.pool.begin().await.unwrap();
-    let suivant = bac.depot.figer_prix(&mut tx, vendeur, article).await.unwrap();
+    let suivant = bac
+        .depot
+        .figer_prix(&mut tx, vendeur, article)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert_eq!(suivant.prix_unites, 1_200);
 }
@@ -215,7 +239,10 @@ async fn retrait_reversible_du_catalogue(pool: PgPool) {
 
     // Plus servi, plus commandable, la LIGNE subsiste.
     let fiche = bac.depot.fiche_publique_de(vendeur).await.unwrap().unwrap();
-    assert!(fiche.articles.iter().all(|a| a.id != article), "absent du public");
+    assert!(
+        fiche.articles.iter().all(|a| a.id != article),
+        "absent du public"
+    );
     assert!(
         bac.depot
             .articles_commandables_de(vendeur)
@@ -226,7 +253,8 @@ async fn retrait_reversible_du_catalogue(pool: PgPool) {
         "non commandable (SC-004)"
     );
     assert_eq!(
-        bac.compter("SELECT count(*) FROM prestataires.article").await,
+        bac.compter("SELECT count(*) FROM prestataires.article")
+            .await,
         1,
         "la ligne subsiste (commandes passées, agrégats)"
     );
@@ -282,11 +310,13 @@ async fn rupture_grisee_ou_masquee_selon_la_categorie(pool: PgPool) {
     let en_vente = creer(&bac, vendeur, "riz sauce graine", 2_000, None).await;
     let en_rupture = creer(&bac, vendeur, "garba", 1_000, None).await;
     // La bascule de disponibilité arrive avec US5 — l'état est posé en SQL.
-    sqlx::query("UPDATE prestataires.disponibilite_article SET disponible = false WHERE article_id = $1")
-        .bind(en_rupture)
-        .execute(&bac.pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE prestataires.disponibilite_article SET disponible = false WHERE article_id = $1",
+    )
+    .bind(en_rupture)
+    .execute(&bac.pool)
+    .await
+    .unwrap();
 
     // Mode `grise` (seed) : servi, indisponible, non commandable.
     let fiche = bac.depot.fiche_publique_de(vendeur).await.unwrap().unwrap();

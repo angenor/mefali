@@ -120,7 +120,10 @@ async fn le_hors_delai_ne_se_compte_qu_une_fois(pool: sqlx::PgPool) {
             .count(),
         1,
     );
-    assert_eq!(bac.etats_transactions(commande).await, vec!["payee_hors_delai"]);
+    assert_eq!(
+        bac.etats_transactions(commande).await,
+        vec!["payee_hors_delai"]
+    );
 }
 
 /// `payee_hors_delai` est **terminal** : plus rien n'en sort.
@@ -146,7 +149,10 @@ async fn payee_hors_delai_ne_se_rouvre_pas(pool: sqlx::PgPool) {
         reponse["traite"], false,
         "la transition est refusée par la table fermée",
     );
-    assert_eq!(bac.etats_transactions(commande).await, vec!["payee_hors_delai"]);
+    assert_eq!(
+        bac.etats_transactions(commande).await,
+        vec!["payee_hors_delai"]
+    );
     assert_eq!(bac.etat_commande(commande).await, "annulee");
     assert_eq!(
         bac.evenements("paiement.hors_delai").await.len(),

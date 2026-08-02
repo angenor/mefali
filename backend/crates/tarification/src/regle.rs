@@ -221,7 +221,10 @@ mod tests {
         assert_eq!(err.message_cle(), Some("marge_hors_bornes"));
         // La marge 0 du LANCEMENT ne vient jamais d'une règle (research R4) :
         // elle est produite par le drapeau `gratuite_commissions`.
-        assert!(verifier_marge(bornes, 0).is_err(), "marge 0 refusée en règle");
+        assert!(
+            verifier_marge(bornes, 0).is_err(),
+            "marge 0 refusée en règle"
+        );
     }
 
     #[test]
@@ -268,7 +271,10 @@ mod tests {
         assert_eq!(choisie.id, petite.id, "départage déterministe par id");
         // Rejouable : l'ordre de lecture ne change rien.
         let inverse = vec![petite.clone(), grande];
-        assert_eq!(selectionner(&inverse, &criteres(3000)).unwrap().id, petite.id);
+        assert_eq!(
+            selectionner(&inverse, &criteres(3000)).unwrap().id,
+            petite.id
+        );
     }
 
     /// À spécificité de forme égale, la tranche la plus étroite l'emporte.
@@ -298,12 +304,21 @@ mod tests {
 
         let mut bornee = regle_base(Uuid::now_v7());
         bornee.distance_max_m = Some(800);
-        assert!(selectionner(&[bornee.clone()], &criteres(800)).is_some(), "≤ inclusif");
-        assert!(selectionner(&[bornee], &criteres(801)).is_none(), "hors tranche");
+        assert!(
+            selectionner(&[bornee.clone()], &criteres(800)).is_some(),
+            "≤ inclusif"
+        );
+        assert!(
+            selectionner(&[bornee], &criteres(801)).is_none(),
+            "hors tranche"
+        );
 
         let mut inactive = regle_base(Uuid::now_v7());
         inactive.actif = false;
-        assert!(selectionner(&[inactive], &criteres(1000)).is_none(), "inactive");
+        assert!(
+            selectionner(&[inactive], &criteres(1000)).is_none(),
+            "inactive"
+        );
     }
 
     /// Plages horaires : cas simple, cas qui ENJAMBE minuit, et jours.

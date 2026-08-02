@@ -83,8 +83,16 @@ impl PgPrestataires {
             return Err(ErreurPrestataires::SiteInconnu(prestataire));
         }
 
-        self.emettre_bascule(tx, prestataire, article, disponible, source, Some(acteur), false)
-            .await?;
+        self.emettre_bascule(
+            tx,
+            prestataire,
+            article,
+            disponible,
+            source,
+            Some(acteur),
+            false,
+        )
+        .await?;
         self.article_dans_tx(tx, prestataire, article).await
     }
 

@@ -118,10 +118,9 @@ fn aucun_chemin_du_produit_n_invoque_refund() {
 /// passerait pour une raison stupide.
 #[test]
 fn refund_est_bien_definie_sur_le_trait() {
-    let trait_source = std::fs::read_to_string(
-        racine_backend().join("crates/paiements/src/fournisseur/mod.rs"),
-    )
-    .expect("le module fournisseur est lisible");
+    let trait_source =
+        std::fs::read_to_string(racine_backend().join("crates/paiements/src/fournisseur/mod.rs"))
+            .expect("le module fournisseur est lisible");
 
     assert!(
         trait_source.contains("async fn refund("),

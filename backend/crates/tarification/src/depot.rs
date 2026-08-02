@@ -129,7 +129,11 @@ impl PgTarification {
     // ── Knobs de zone (configuration héritée — constitution I) ─────────────
 
     /// Paramètre hérité brut (`None` si explicitement absent de la chaîne).
-    pub(crate) async fn parametre(&self, zone: Uuid, cle: &str) -> Result<Option<Value>, ErreurTarif> {
+    pub(crate) async fn parametre(
+        &self,
+        zone: Uuid,
+        cle: &str,
+    ) -> Result<Option<Value>, ErreurTarif> {
         Ok(self.zones.parametre(zone, cle).await?)
     }
 
@@ -172,12 +176,10 @@ impl PgTarification {
     /// pour un objectif de « devis perçu instantané ».
     pub async fn knobs(&self, zone: Uuid) -> Result<Knobs, ErreurTarif> {
         let config = self.zones.configuration_effective(zone).await?;
-        let entier = |cle: &str, defaut: i64| {
-            config.valeur(cle).and_then(Value::as_i64).unwrap_or(defaut)
-        };
-        let flottant = |cle: &str, defaut: f64| {
-            config.valeur(cle).and_then(Value::as_f64).unwrap_or(defaut)
-        };
+        let entier =
+            |cle: &str, defaut: i64| config.valeur(cle).and_then(Value::as_i64).unwrap_or(defaut);
+        let flottant =
+            |cle: &str, defaut: f64| config.valeur(cle).and_then(Value::as_f64).unwrap_or(defaut);
         // Un drapeau ABSENT vaut `false` : « absent » et « défini à faux » ont
         // ici le même effet tarifaire (aucun forçage).
         let drapeau = |cle: &str| {
@@ -221,10 +223,7 @@ impl PgTarification {
                 max: entier("tarification.marge.max", defauts::MARGE_MAX),
             },
             arrondi_pas: entier("tarification.arrondi_pas", defauts::ARRONDI_PAS),
-            supplement_pluie: entier(
-                "tarification.supplement_pluie",
-                defauts::SUPPLEMENT_PLUIE,
-            ),
+            supplement_pluie: entier("tarification.supplement_pluie", defauts::SUPPLEMENT_PLUIE),
             facteur_degrade: flottant("routage.facteur_degrade", defauts::FACTEUR_DEGRADE),
             vitesse_degradee_kmh: flottant(
                 "routage.vitesse_degradee_kmh",

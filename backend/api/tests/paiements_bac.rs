@@ -259,7 +259,9 @@ async fn deux_sessions_vivantes_sont_impossibles(pool: sqlx::PgPool) {
         }
     };
 
-    poser(uuid::Uuid::now_v7()).await.expect("la première passe");
+    poser(uuid::Uuid::now_v7())
+        .await
+        .expect("la première passe");
     let seconde = poser(uuid::Uuid::now_v7()).await;
     assert!(
         seconde.is_err(),

@@ -19,10 +19,10 @@ pub mod commandes_http;
 pub mod comptes_http;
 /// Surface HTTP coursier du cycle CMD (boucle d'arrêt, remise, échec).
 pub mod course_http;
-/// Surface réservée au dev — montée hors production seulement (voir le module).
-pub mod dev_http;
 /// Surface HTTP coursier du cycle DSP (disponibilité, position, offres).
 pub mod coursier_http;
+/// Surface réservée au dev — montée hors production seulement (voir le module).
+pub mod dev_http;
 pub mod dispatch_http;
 /// Mapping HTTP partagé des refus du domaine commandes (T014).
 pub mod erreurs_commandes;
@@ -227,10 +227,7 @@ fn mount_docs(prod: bool, openapi: OpenApi) -> impl FnOnce(&mut web::ServiceConf
 ///
 /// `traces` est `None` quand la configuration est absente (mode dégradé,
 /// `/health` seul) : pas de journal, donc rien à relire.
-fn mount_dev(
-    prod: bool,
-    traces: Option<Arc<SmsTraces>>,
-) -> impl FnOnce(&mut web::ServiceConfig) {
+fn mount_dev(prod: bool, traces: Option<Arc<SmsTraces>>) -> impl FnOnce(&mut web::ServiceConfig) {
     move |cfg: &mut web::ServiceConfig| {
         if let (false, Some(traces)) = (prod, traces) {
             cfg.app_data(web::Data::new(traces))
@@ -471,7 +468,10 @@ async fn job_purge_photos_substitution(depot: commandes::PgCommandes) {
         horloge.tick().await;
         match depot.purger_photos_substitution().await {
             Ok(0) => {}
-            Ok(n) => tracing::info!(purgees = n, "photos de substitution purgées (rétention de zone)"),
+            Ok(n) => tracing::info!(
+                purgees = n,
+                "photos de substitution purgées (rétention de zone)"
+            ),
             Err(e) => tracing::error!(erreur = %e, "purge des photos de substitution échouée"),
         }
     }
@@ -485,7 +485,10 @@ async fn job_purge_photos_collecte(depot: qr::PgQr) {
         horloge.tick().await;
         match depot.purger_photos_collecte().await {
             Ok(0) => {}
-            Ok(n) => tracing::info!(purgees = n, "photos de récupération purgées (rétention de zone)"),
+            Ok(n) => tracing::info!(
+                purgees = n,
+                "photos de récupération purgées (rétention de zone)"
+            ),
             Err(e) => tracing::error!(erreur = %e, "purge des photos de récupération échouée"),
         }
     }
@@ -734,12 +737,12 @@ pub async fn run() -> std::io::Result<()> {
                 // second client OSRM doublerait le cache et les connexions.
                 let routage_dyn = routage.clone();
                 let cache_routage_dyn = cache_routage.clone();
-                let tarification = tarification::PgTarification::new(
-                    pool.clone(),
-                    routage,
-                    cache_routage,
+                let tarification =
+                    tarification::PgTarification::new(pool.clone(), routage, cache_routage);
+                eprintln!(
+                    "moteur de tarification câblé (OSRM {} ; cache Redis)",
+                    config.osrm_url
                 );
-                eprintln!("moteur de tarification câblé (OSRM {} ; cache Redis)", config.osrm_url);
 
                 // CMD 008 — domaine commandes COMPLET, puis QRC 006 par-dessus.
                 // Le dépôt commandes est câblé APRÈS la tarification : il en
@@ -782,8 +785,12 @@ pub async fn run() -> std::io::Result<()> {
                     objets.clone(),
                     essais_qr,
                 ));
-                tokio::spawn(job_purge_photos_collecte(qr_opt.clone().expect("PgQr câblé")));
-                eprintln!("ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré");
+                tokio::spawn(job_purge_photos_collecte(
+                    qr_opt.clone().expect("PgQr câblé"),
+                ));
+                eprintln!(
+                    "ports CMD et QRC câblés (PgCommandes, PgQr) ; job de purge des photos démarré"
+                );
 
                 // CRS 010 — domaine coursier. Câblé APRÈS `qr` (dont il
                 // consomme la plaque résolue) et AVANT le dispatch : aucune
@@ -1019,42 +1026,42 @@ pub async fn run() -> std::io::Result<()> {
             .service(adresses_http::ecouter_repere_vocal)
             .service(adresses_http::remplacer_repere_vocal)
             .service(admin_prestataires_http::creer_prestataire)
-        .service(admin_prestataires_http::lister_prestataires)
-        .service(admin_prestataires_http::consulter_prestataire_admin)
-        .service(admin_prestataires_http::modifier_prestataire)
-        .service(admin_prestataires_http::ajouter_photo)
-        .service(admin_prestataires_http::supprimer_photo)
-        .service(admin_prestataires_http::deposer_charte)
-        .service(admin_prestataires_http::definir_site)
-        .service(admin_prestataires_http::agreer_prestataire)
-        .service(admin_prestataires_http::rattacher_compte)
-        .service(admin_prestataires_http::detacher_compte)
-        .service(vendeur_http::mes_prestataires)
-        .service(vendeur_http::mes_articles)
-        .service(vendeur_http::creer_article)
-        .service(vendeur_http::modifier_article)
-        .service(vendeur_http::photo_article)
-        .service(vendeur_http::retirer_article)
-        .service(vendeur_http::remettre_article)
-        .service(admin_prestataires_http::creer_article_admin)
-        .service(admin_prestataires_http::modifier_article_admin)
-        .service(admin_prestataires_http::photo_article_admin)
-        .service(admin_prestataires_http::retirer_article_admin)
-        .service(admin_prestataires_http::remettre_article_admin)
-        .service(vendeur_http::ma_boutique)
-        .service(vendeur_http::action_boutique)
-        .service(vendeur_http::modifier_horaires)
-        .service(admin_prestataires_http::action_boutique_admin)
-        .service(admin_prestataires_http::suspendre_prestataire)
-        .service(admin_prestataires_http::retablir_prestataire)
-        .service(admin_prestataires_http::corriger_prestataire)
-        .service(vendeur_http::basculer_disponibilite)
-        .service(admin_prestataires_http::basculer_disponibilite_admin)
-        .service(vendeur_http::definir_offre_livraison)
-        .service(admin_prestataires_http::definir_offre_livraison_admin)
-        .service(vendeur_http::recu_arret)
-        .service(signalements_http::signaler_rupture)
-        .service(prestataires_http::consulter_prestataire)
+            .service(admin_prestataires_http::lister_prestataires)
+            .service(admin_prestataires_http::consulter_prestataire_admin)
+            .service(admin_prestataires_http::modifier_prestataire)
+            .service(admin_prestataires_http::ajouter_photo)
+            .service(admin_prestataires_http::supprimer_photo)
+            .service(admin_prestataires_http::deposer_charte)
+            .service(admin_prestataires_http::definir_site)
+            .service(admin_prestataires_http::agreer_prestataire)
+            .service(admin_prestataires_http::rattacher_compte)
+            .service(admin_prestataires_http::detacher_compte)
+            .service(vendeur_http::mes_prestataires)
+            .service(vendeur_http::mes_articles)
+            .service(vendeur_http::creer_article)
+            .service(vendeur_http::modifier_article)
+            .service(vendeur_http::photo_article)
+            .service(vendeur_http::retirer_article)
+            .service(vendeur_http::remettre_article)
+            .service(admin_prestataires_http::creer_article_admin)
+            .service(admin_prestataires_http::modifier_article_admin)
+            .service(admin_prestataires_http::photo_article_admin)
+            .service(admin_prestataires_http::retirer_article_admin)
+            .service(admin_prestataires_http::remettre_article_admin)
+            .service(vendeur_http::ma_boutique)
+            .service(vendeur_http::action_boutique)
+            .service(vendeur_http::modifier_horaires)
+            .service(admin_prestataires_http::action_boutique_admin)
+            .service(admin_prestataires_http::suspendre_prestataire)
+            .service(admin_prestataires_http::retablir_prestataire)
+            .service(admin_prestataires_http::corriger_prestataire)
+            .service(vendeur_http::basculer_disponibilite)
+            .service(admin_prestataires_http::basculer_disponibilite_admin)
+            .service(vendeur_http::definir_offre_livraison)
+            .service(admin_prestataires_http::definir_offre_livraison_admin)
+            .service(vendeur_http::recu_arret)
+            .service(signalements_http::signaler_rupture)
+            .service(prestataires_http::consulter_prestataire)
             .service(prestataires_http::resoudre_plaque)
             .service(qr_http::telecharger_plaque)
             .service(qr_http::collecter)
@@ -1067,11 +1074,11 @@ pub async fn run() -> std::io::Result<()> {
             .service(coursier_http::ma_caisse)
             .service(coursier_http::ma_journee)
             .service(admin_paiements_http::registre_transactions)
-        .service(admin_paiements_http::file_dossiers)
-        .service(admin_paiements_http::clore_dossier)
-        .service(admin_paiements_http::file_creances)
-        .service(admin_paiements_http::regler_creance)
-        .service(admin_coursier_http::remises_bloquees)
+            .service(admin_paiements_http::file_dossiers)
+            .service(admin_paiements_http::clore_dossier)
+            .service(admin_paiements_http::file_creances)
+            .service(admin_paiements_http::regler_creance)
+            .service(admin_coursier_http::remises_bloquees)
             .service(admin_coursier_http::debloquer_code)
             .service(admin_coursier_http::autoriser_depot)
             .service(admin_coursier_http::preuves_de_livraison)
@@ -1109,12 +1116,12 @@ pub async fn run() -> std::io::Result<()> {
             .service(admin_dispatch_http::alertes_dispatch)
             .service(admin_dispatch_http::pool_dispatch)
             .service(admin_dispatch_http::reprendre_course_admin)
-        .service(dispatch_http::offre_courante)
-        .service(dispatch_http::accepter_offre)
-        .service(dispatch_http::refuser_offre)
-        .service(admin_dispatch_http::alertes_dispatch)
-        .service(admin_dispatch_http::pool_dispatch)
-        .service(admin_dispatch_http::reprendre_course_admin)
+            .service(dispatch_http::offre_courante)
+            .service(dispatch_http::accepter_offre)
+            .service(dispatch_http::refuser_offre)
+            .service(admin_dispatch_http::alertes_dispatch)
+            .service(admin_dispatch_http::pool_dispatch)
+            .service(admin_dispatch_http::reprendre_course_admin)
             .service(admin_commandes_http::enregistrer_issue)
             .service(paiements_http::ouvrir_paiement)
             .service(paiements_http::etat_paiement)
@@ -1613,7 +1620,10 @@ mod tests {
             .iter()
             .find(|a| a.nom == "Alloco")
             .expect("promo au catalogue");
-        assert_eq!((alloco.prix_unites, alloco.prix_barre_unites), (800, Some(1000)));
+        assert_eq!(
+            (alloco.prix_unites, alloco.prix_barre_unites),
+            (800, Some(1000))
+        );
         let savon = fiche
             .articles
             .iter()

@@ -228,7 +228,11 @@ async fn ecretage_ouvre_son_dossier_une_seule_fois(pool: PgPool) {
     assert_eq!(commande_id, Some(ecrete));
     assert_eq!(arret_id, Some(collectes[0]));
     assert_eq!(constate, Some(0), "plus rien à payer au vendeur");
-    assert_eq!(attendu, Some(0), "la retenue a été ramenée à ce qui existait");
+    assert_eq!(
+        attendu,
+        Some(0),
+        "la retenue a été ramenée à ce qui existait"
+    );
 
     // Le dossier a son événement — sans lui, l'exploitation ne serait prévenue
     // par rien (contrats §6).

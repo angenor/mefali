@@ -166,7 +166,11 @@ async fn edition_post_simulation_rearme_la_garde(pool: PgPool) {
         bac,
         format!("/admin/tarification/brouillon/{grille}/publier")
     );
-    assert_eq!(reponse.status(), StatusCode::CONFLICT, "suppression = édition");
+    assert_eq!(
+        reponse.status(),
+        StatusCode::CONFLICT,
+        "suppression = édition"
+    );
 }
 
 /// SC-005 (2) — une règle hors bornes bloque la publication, même simulée.
@@ -188,7 +192,8 @@ async fn regle_hors_bornes_bloque_la_publication(pool: PgPool) {
     );
 
     // Marge de la règle : 50. On resserre les bornes à 25–40.
-    bac.poser_parametre("tarification.marge.max", json!(40)).await;
+    bac.poser_parametre("tarification.marge.max", json!(40))
+        .await;
 
     let reponse = poster!(
         app,
@@ -202,7 +207,8 @@ async fn regle_hors_bornes_bloque_la_publication(pool: PgPool) {
 
     // Bornes rétablies → la publication passe (la simulation reste valide : le
     // CONTENU du brouillon n'a pas changé).
-    bac.poser_parametre("tarification.marge.max", json!(100)).await;
+    bac.poser_parametre("tarification.marge.max", json!(100))
+        .await;
     let reponse = poster!(
         app,
         bac,
@@ -234,7 +240,10 @@ async fn publication_archive_et_journalise(pool: PgPool) {
     assert_eq!(reponse.status(), StatusCode::OK);
     let corps: Value = test::read_body_json(reponse).await;
     assert_eq!(corps["etat"], json!("en_vigueur"));
-    assert!(corps["effet_le"].is_string(), "date d'entrée en vigueur posée");
+    assert!(
+        corps["effet_le"].is_string(),
+        "date d'entrée en vigueur posée"
+    );
     assert_eq!(bac.etat_grille(v1).await, "en_vigueur");
 
     // Seconde publication : la première passe à l'historique.
@@ -255,10 +264,8 @@ async fn publication_archive_et_journalise(pool: PgPool) {
     assert_eq!(bac.etat_grille(v1).await, "historique", "version conservée");
     assert_eq!(bac.etat_grille(v2).await, "en_vigueur");
     assert_eq!(
-        bac.compter(
-            "SELECT count(*) FROM tarification.grille WHERE etat = 'en_vigueur'"
-        )
-        .await,
+        bac.compter("SELECT count(*) FROM tarification.grille WHERE etat = 'en_vigueur'")
+            .await,
         1,
         "au plus UNE grille en vigueur par zone"
     );
@@ -307,9 +314,7 @@ async fn simulateur_detaille_et_sans_effet_de_bord(pool: PgPool) {
         bac,
         format!("/admin/tarification/brouillon/{v1}/publier")
     );
-    let evenements_avant = bac
-        .compter("SELECT count(*) FROM outbox.evenement")
-        .await;
+    let evenements_avant = bac.compter("SELECT count(*) FROM outbox.evenement").await;
 
     // Un brouillon au tarif différent, simulé plusieurs fois.
     let v2 = brouillon!(app, bac);

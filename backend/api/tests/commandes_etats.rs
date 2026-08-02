@@ -93,13 +93,37 @@ fn table_de_l_arret_ligne_par_ligne() {
 #[test]
 fn transitions_absentes_refusees() {
     // Livrer avant d'avoir tout collecté.
-    assert!(!transition_existe(Niveau::Livraison, Some("assignee"), "livree"));
-    assert!(!transition_existe(Niveau::Livraison, Some("en_collecte"), "livree"));
+    assert!(!transition_existe(
+        Niveau::Livraison,
+        Some("assignee"),
+        "livree"
+    ));
+    assert!(!transition_existe(
+        Niveau::Livraison,
+        Some("en_collecte"),
+        "livree"
+    ));
     // Revenir en arrière, à chaque niveau.
-    assert!(!transition_existe(Niveau::Commande, Some("en_cours"), "nouvelle"));
-    assert!(!transition_existe(Niveau::Livraison, Some("en_livraison"), "en_collecte"));
-    assert!(!transition_existe(Niveau::Arret, Some("arrive"), "en_route"));
-    assert!(!transition_existe(Niveau::Arret, Some("collecte"), "a_collecter"));
+    assert!(!transition_existe(
+        Niveau::Commande,
+        Some("en_cours"),
+        "nouvelle"
+    ));
+    assert!(!transition_existe(
+        Niveau::Livraison,
+        Some("en_livraison"),
+        "en_collecte"
+    ));
+    assert!(!transition_existe(
+        Niveau::Arret,
+        Some("arrive"),
+        "en_route"
+    ));
+    assert!(!transition_existe(
+        Niveau::Arret,
+        Some("collecte"),
+        "a_collecter"
+    ));
     // Ressusciter un état terminal.
     for terminal in ["terminee", "annulee", "echouee"] {
         for vers in ["nouvelle", "en_cours", "terminee", "annulee", "echouee"] {
@@ -111,27 +135,55 @@ fn transitions_absentes_refusees() {
     }
     // Scanner sans avoir déclaré son arrivée : `arrive_le` fonderait la prime
     // d'attente TRF-06, on ne peut pas l'effacer d'un raccourci.
-    assert!(!transition_existe(Niveau::Arret, Some("en_route"), "collecte"));
+    assert!(!transition_existe(
+        Niveau::Arret,
+        Some("en_route"),
+        "collecte"
+    ));
     // Les niveaux ne se mélangent jamais.
-    assert!(!transition_existe(Niveau::Commande, Some("nouvelle"), "en_collecte"));
-    assert!(!transition_existe(Niveau::Livraison, Some("en_livraison"), "terminee"));
+    assert!(!transition_existe(
+        Niveau::Commande,
+        Some("nouvelle"),
+        "en_collecte"
+    ));
+    assert!(!transition_existe(
+        Niveau::Livraison,
+        Some("en_livraison"),
+        "terminee"
+    ));
 }
 
 /// Une transition qui EXISTE mais qu'un autre acteur demande est refusée —
 /// et c'est un refus différent : `403`, pas `409`.
 #[test]
 fn acteur_non_autorise_refuse_meme_si_la_transition_existe() {
-    assert!(transition_existe(Niveau::Commande, Some("en_cours"), "terminee"));
+    assert!(transition_existe(
+        Niveau::Commande,
+        Some("en_cours"),
+        "terminee"
+    ));
     assert!(
-        verifier_transition(Niveau::Commande, Some("en_cours"), "terminee", Acteur::Client)
-            .is_err(),
+        verifier_transition(
+            Niveau::Commande,
+            Some("en_cours"),
+            "terminee",
+            Acteur::Client
+        )
+        .is_err(),
         "la remise est l'affaire du coursier, jamais du client",
     );
-    assert!(transition_existe(Niveau::Arret, Some("a_collecter"), "en_route"));
-    assert!(
-        verifier_transition(Niveau::Arret, Some("a_collecter"), "en_route", Acteur::Client)
-            .is_err(),
-    );
+    assert!(transition_existe(
+        Niveau::Arret,
+        Some("a_collecter"),
+        "en_route"
+    ));
+    assert!(verifier_transition(
+        Niveau::Arret,
+        Some("a_collecter"),
+        "en_route",
+        Acteur::Client
+    )
+    .is_err(),);
 }
 
 // ── 2. Le parcours réel, par les endpoints ────────────────────────────────
@@ -151,16 +203,29 @@ async fn parcours_complet_trois_collectes(pool: sqlx::PgPool) {
 
     // Premier arrêt : en route → la course s'ouvre EN_COLLECTE.
     let (statut, corps) = bac
-        .action_coursier(course.livraison, course.collectes[0], "en-route", Uuid::now_v7())
+        .action_coursier(
+            course.livraison,
+            course.collectes[0],
+            "en-route",
+            Uuid::now_v7(),
+        )
         .await;
     assert_eq!(statut, 200, "{corps}");
     assert_eq!(corps["statut"], "en_route");
     assert_eq!(corps["livraison_etat"], "en_collecte");
-    assert_eq!(corps["collectes_total"], 3, "la remise n'est pas une collecte");
+    assert_eq!(
+        corps["collectes_total"], 3,
+        "la remise n'est pas une collecte"
+    );
 
     // Arrivé, puis collecté.
     let (statut, corps) = bac
-        .action_coursier(course.livraison, course.collectes[0], "arrive", Uuid::now_v7())
+        .action_coursier(
+            course.livraison,
+            course.collectes[0],
+            "arrive",
+            Uuid::now_v7(),
+        )
         .await;
     assert_eq!(statut, 200, "{corps}");
     assert_eq!(corps["statut"], "arrive");
@@ -351,7 +416,10 @@ async fn l_arret_de_remise_ne_compte_pas_dans_la_progression(pool: sqlx::PgPool)
         .await;
     assert_eq!(statut, 200, "{corps}");
     assert_eq!(corps["collectes_faites"], 3);
-    assert_eq!(corps["collectes_total"], 3, "la remise n'est pas une collecte");
+    assert_eq!(
+        corps["collectes_total"], 3,
+        "la remise n'est pas une collecte"
+    );
     assert_eq!(
         corps["livraison_etat"], "en_livraison",
         "la course est déjà en livraison : partir vers le client ne la rouvre pas",
@@ -399,10 +467,8 @@ async fn prepaiement_confirme_rend_la_commande_dispatchable(pool: sqlx::PgPool) 
     // Un plat de restauration à 2 000 × 3 = 6 000 > plafond réduit (5 000) pour
     // un client sans historique : le prépaiement est imposé.
     let lignes = vec![bac.resto.ligne(3)];
-    let app = actix_web::test::init_service(
-        actix_web::App::new().configure(bac.configurer()),
-    )
-    .await;
+    let app =
+        actix_web::test::init_service(actix_web::App::new().configure(bac.configurer())).await;
     let mut demande = bac.demande_creation("restauration", lignes);
     demande["mode_paiement"] = serde_json::json!("mobile_money");
     let req = actix_web::test::TestRequest::post()
@@ -522,7 +588,10 @@ async fn retrait_du_coursier_renvoie_la_commande_a_la_file(pool: sqlx::PgPool) {
         .await
         .expect("le coursier n'avance pas : la course lui est retirée");
 
-    assert_eq!(bac.etat_commande(course.commande).await, "en_attente_coursier");
+    assert_eq!(
+        bac.etat_commande(course.commande).await,
+        "en_attente_coursier"
+    );
     assert_eq!(
         bac.etat_livraison(course.livraison).await,
         "assignee",

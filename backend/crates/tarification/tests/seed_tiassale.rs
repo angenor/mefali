@@ -96,7 +96,10 @@ async fn montants_tiassale_au_fcfa_pres(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(devis.prix_client, 500, "plafond moto");
-    assert_eq!(devis.part_coursier, 450, "le coursier garde tout sauf la marge");
+    assert_eq!(
+        devis.part_coursier, 450,
+        "le coursier garde tout sauf la marge"
+    );
 
     // Pluie : +100 (drapeau de zone, OFF par défaut au seed).
     sqlx::query("UPDATE zones.parametre_zone SET valeur = 'true' WHERE cle = 'drapeau.pluie'")
@@ -139,7 +142,10 @@ async fn drapeaux_de_lancement_du_seed(pool: PgPool) {
         .unwrap();
     assert_eq!(devis.prix_client, 0, "livraison offerte");
     assert_eq!(devis.marge, 0, "gratuité des commissions");
-    assert_eq!(devis.part_coursier, 250, "part coursier CALCULÉE quand même");
+    assert_eq!(
+        devis.part_coursier, 250,
+        "part coursier CALCULÉE quand même"
+    );
     assert_eq!(
         devis.invariant_verifie(),
         None,
@@ -163,10 +169,12 @@ async fn seed_idempotent(pool: PgPool) {
             compter("SELECT count(*) FROM tarification.grille").await,
             compter("SELECT count(*) FROM tarification.regle").await,
             compter("SELECT count(*) FROM outbox.evenement").await,
-            sqlx::query_scalar("SELECT marge FROM tarification.regle WHERE transport_slug = 'moto'")
-                .fetch_optional(pool)
-                .await
-                .unwrap(),
+            sqlx::query_scalar(
+                "SELECT marge FROM tarification.regle WHERE transport_slug = 'moto'",
+            )
+            .fetch_optional(pool)
+            .await
+            .unwrap(),
             sqlx::query_scalar(
                 "SELECT valeur FROM zones.parametre_zone WHERE cle = 'effort.paliers_articles'",
             )

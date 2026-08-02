@@ -65,7 +65,11 @@ impl PgCoursier {
         // étape que Yao doit tout de même faire.
         let mut plaques: HashMap<Uuid, qr::PlaqueResolue> = HashMap::new();
         for a in &course.arrets {
-            if let Some(p) = self.qr.plaque_resolue(a.prestataire_id, a.montant_avance).await? {
+            if let Some(p) = self
+                .qr
+                .plaque_resolue(a.prestataire_id, a.montant_avance)
+                .await?
+            {
                 plaques.insert(a.prestataire_id, p);
             }
         }
@@ -170,7 +174,9 @@ pub(crate) fn composer(
                     .unwrap_or_default(),
                 site_lat: a.site_lat,
                 site_lon: a.site_lon,
-                empreinte_jeton: plaque.map(|p| p.empreinte_jeton.clone()).unwrap_or_default(),
+                empreinte_jeton: plaque
+                    .map(|p| p.empreinte_jeton.clone())
+                    .unwrap_or_default(),
                 empreinte_code: plaque.map(|p| p.empreinte_code.clone()).unwrap_or_default(),
                 montant_avance: a.montant_avance,
                 montant_articles_unites: a.montant_articles_unites,
@@ -365,7 +371,10 @@ mod tests {
         );
         assert!(a.photo_exigee, "politique photo résolue par qr");
         assert_eq!(a.distance_max_m, 100);
-        assert_eq!(vue.remise.essais_max, 3, "seuil du cycle 008, pas un nouveau");
+        assert_eq!(
+            vue.remise.essais_max, 3,
+            "seuil du cycle 008, pas un nouveau"
+        );
         assert_eq!(vue.remise.seuils_preuves.presence_s, 600);
         assert_eq!(vue.client.repere_vocal_duree_s, Some(12));
         assert_eq!(

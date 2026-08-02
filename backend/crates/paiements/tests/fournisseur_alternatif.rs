@@ -84,10 +84,7 @@ impl FournisseurAlternatif {
 
     /// En-tête de signature prêt à poser sur une requête.
     pub fn entete(&self, corps: &[u8], quand: DateTime<Utc>) -> (String, String) {
-        (
-            ENTETE_ALT.to_owned(),
-            self.signature.signer(corps, quand),
-        )
+        (ENTETE_ALT.to_owned(), self.signature.signer(corps, quand))
     }
 
     /// Remboursements demandés — **doit rester nul** (FR-041).
@@ -147,13 +144,11 @@ impl PaymentProvider for FournisseurAlternatif {
 
         Ok(Notification {
             reference_fournisseur: charge["txn_id"].as_str().unwrap_or_default().to_owned(),
-            reference_marchande: charge["merchant_ref"]
-                .as_str()
-                .and_then(|s| s.parse().ok()),
+            reference_marchande: charge["merchant_ref"].as_str().and_then(|s| s.parse().ok()),
             issue,
-            montant_unites: charge["amt"].as_i64().ok_or_else(|| {
-                ErreurFournisseur::ChargeIllisible("amt absent".to_owned())
-            })?,
+            montant_unites: charge["amt"]
+                .as_i64()
+                .ok_or_else(|| ErreurFournisseur::ChargeIllisible("amt absent".to_owned()))?,
             devise: charge["ccy"].as_str().unwrap_or_default().to_owned(),
             // Libellé de canal propre à ce fournisseur : `WAVE_CI` et non
             // `wave`. La traduction vit ICI, pas dans le domaine.

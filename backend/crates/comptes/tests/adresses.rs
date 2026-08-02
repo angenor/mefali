@@ -7,9 +7,7 @@
 mod bac;
 
 use bac::{Bac, SAISIE_LOCALE};
-use comptes::adresse::{
-    ModificationAdresse, NoteVocale, NouvelleAdresse, NOTE_VOCALE_TAILLE_MAX,
-};
+use comptes::adresse::{ModificationAdresse, NoteVocale, NouvelleAdresse, NOTE_VOCALE_TAILLE_MAX};
 use comptes::ErreurComptes;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -63,8 +61,13 @@ async fn cycle_complet_de_l_adresse(pool: PgPool) {
     let id = Uuid::now_v7();
 
     // Enregistrement (scénario 1).
-    let adresse = enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
-    assert_eq!(adresse.id, id, "l'id EST la clé d'idempotence du client (R14)");
+    let adresse = enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
+    assert_eq!(
+        adresse.id, id,
+        "l'id EST la clé d'idempotence du client (R14)"
+    );
     assert_eq!(adresse.libelle, "Maison");
     assert!(adresse.a_repere_vocal());
     assert_eq!(adresse.repere_vocal_duree_s, Some(12));
@@ -98,7 +101,10 @@ async fn cycle_complet_de_l_adresse(pool: PgPool) {
     let liste = bac.depot.adresses(awa).await.unwrap();
     assert_eq!(liste.len(), 1);
     assert_eq!(liste[0].lat, 5.898);
-    assert_eq!(liste[0].repere_texte.as_deref(), Some("Derrière la pharmacie, portail bleu"));
+    assert_eq!(
+        liste[0].repere_texte.as_deref(),
+        Some("Derrière la pharmacie, portail bleu")
+    );
 
     // Renommage (scénario 4).
     let renommee = {
@@ -145,9 +151,13 @@ async fn rejeu_rend_l_adresse_existante_sans_doublon(pool: PgPool) {
     let awa = bac.inscrire(SAISIE_LOCALE).await;
     let id = Uuid::now_v7();
 
-    let premiere = enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    let premiere = enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
     // Le réseau a coupé : le client rejoue la MÊME clé.
-    let rejeu = enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    let rejeu = enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
 
     assert_eq!(rejeu.id, premiere.id);
     assert_eq!(
@@ -171,8 +181,12 @@ async fn purge_repere_vocal(pool: PgPool) {
     let vieille = Uuid::now_v7();
     let recente = Uuid::now_v7();
 
-    enregistrer(&bac, vieille, awa, &nouvelle("Maison")).await.unwrap();
-    enregistrer(&bac, recente, awa, &nouvelle("Bureau")).await.unwrap();
+    enregistrer(&bac, vieille, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
+    enregistrer(&bac, recente, awa, &nouvelle("Bureau"))
+        .await
+        .unwrap();
     let cle_vieille = bac
         .depot
         .adresse(vieille, awa)
@@ -203,7 +217,13 @@ async fn purge_repere_vocal(pool: PgPool) {
     // …mais elle reste UTILISABLE (FR-022) : c'est tout l'enjeu.
     assert_eq!(purgee.libelle, "Maison");
     assert_eq!(purgee.lat, 5.898);
-    assert!(bac.depot.adresses(awa).await.unwrap().iter().any(|a| a.id == vieille));
+    assert!(bac
+        .depot
+        .adresses(awa)
+        .await
+        .unwrap()
+        .iter()
+        .any(|a| a.id == vieille));
 
     // L'événement porte la rétention APPLIQUÉE (celle de la zone, pas 365 en dur).
     let purges = bac.evenements("adresse.repere_vocal_purge").await;
@@ -212,7 +232,12 @@ async fn purge_repere_vocal(pool: PgPool) {
     assert_eq!(purges[0]["compte"], serde_json::json!(awa));
 
     // La récente est intacte.
-    assert!(bac.depot.adresse(recente, awa).await.unwrap().a_repere_vocal());
+    assert!(bac
+        .depot
+        .adresse(recente, awa)
+        .await
+        .unwrap()
+        .a_repere_vocal());
 
     // Idempotence du job : un second passage ne repurge rien.
     assert_eq!(bac.depot.purger_reperes_vocaux().await.unwrap(), 0);
@@ -225,7 +250,9 @@ async fn adresse_utilisee_repousse_sa_purge(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let awa = bac.inscrire(SAISIE_LOCALE).await;
     let id = Uuid::now_v7();
-    enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
 
     sqlx::query("UPDATE comptes.adresse SET derniere_utilisation_le = now() - interval '366 days' WHERE id = $1")
         .bind(id)
@@ -235,7 +262,10 @@ async fn adresse_utilisee_repousse_sa_purge(pool: PgPool) {
 
     // Awa recommande à cette adresse (ce que fera le cycle CMD).
     let mut tx = bac.pool.begin().await.unwrap();
-    bac.depot.marquer_adresse_utilisee(&mut tx, id).await.unwrap();
+    bac.depot
+        .marquer_adresse_utilisee(&mut tx, id)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
 
     assert_eq!(
@@ -252,7 +282,9 @@ async fn retention_lue_dans_la_configuration_de_zone(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let awa = bac.inscrire(SAISIE_LOCALE).await;
     let id = Uuid::now_v7();
-    enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
 
     sqlx::query("UPDATE comptes.adresse SET derniere_utilisation_le = now() - interval '40 days' WHERE id = $1")
         .bind(id)
@@ -279,7 +311,10 @@ async fn retention_lue_dans_la_configuration_de_zone(pool: PgPool) {
 
     assert_eq!(bac.depot.purger_reperes_vocaux().await.unwrap(), 1);
     let purges = bac.evenements("adresse.repere_vocal_purge").await;
-    assert_eq!(purges[0]["retention_jours"], 30, "la rétention appliquée est celle de la zone");
+    assert_eq!(
+        purges[0]["retention_jours"], 30,
+        "la rétention appliquée est celle de la zone"
+    );
 }
 
 /// FR-022 — après purge, un nouveau repère peut être capté.
@@ -288,7 +323,9 @@ async fn repere_vocal_remplacable_apres_purge(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let awa = bac.inscrire(SAISIE_LOCALE).await;
     let id = Uuid::now_v7();
-    enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
 
     sqlx::query("UPDATE comptes.adresse SET derniere_utilisation_le = now() - interval '366 days' WHERE id = $1")
         .bind(id)
@@ -389,7 +426,9 @@ async fn adresse_sans_note_vocale_acceptee(pool: PgPool) {
         note_vocale: None,
         ..nouvelle("Bureau")
     };
-    let adresse = enregistrer(&bac, Uuid::now_v7(), awa, &texte_seul).await.unwrap();
+    let adresse = enregistrer(&bac, Uuid::now_v7(), awa, &texte_seul)
+        .await
+        .unwrap();
     assert!(!adresse.a_repere_vocal());
     assert!(adresse.repere_texte.is_some());
     assert_eq!(bac.objets.nombre(), 0);
@@ -399,8 +438,13 @@ async fn adresse_sans_note_vocale_acceptee(pool: PgPool) {
         note_vocale: None,
         ..nouvelle("Chantier")
     };
-    let nue = enregistrer(&bac, Uuid::now_v7(), awa, &sans_rien).await.unwrap();
-    assert!(nue.repere_texte.is_none(), "pas de contrainte « au moins un repère »");
+    let nue = enregistrer(&bac, Uuid::now_v7(), awa, &sans_rien)
+        .await
+        .unwrap();
+    assert!(
+        nue.repere_texte.is_none(),
+        "pas de contrainte « au moins un repère »"
+    );
 }
 
 /// L'adresse d'autrui est INTROUVABLE — jamais interdite.
@@ -410,7 +454,9 @@ async fn propriete_stricte_des_adresses(pool: PgPool) {
     let awa = bac.inscrire(SAISIE_LOCALE).await;
     let kofi = bac.inscrire("0709080706").await;
     let id = Uuid::now_v7();
-    enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
 
     assert!(matches!(
         bac.depot.adresse(id, kofi).await,
@@ -455,7 +501,9 @@ async fn repere_texte_effacable_et_distinct_de_non_touche(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let awa = bac.inscrire(SAISIE_LOCALE).await;
     let id = Uuid::now_v7();
-    enregistrer(&bac, id, awa, &nouvelle("Maison")).await.unwrap();
+    enregistrer(&bac, id, awa, &nouvelle("Maison"))
+        .await
+        .unwrap();
 
     // Ne toucher qu'au libellé laisse le repère en place.
     let mut tx = bac.pool.begin().await.unwrap();

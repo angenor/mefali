@@ -240,7 +240,10 @@ impl ConfigDispatch {
     /// 2. somme des quatre poids = 100 — sinon le score n'est plus sur l'échelle
     ///    des composantes et le classement devient incomparable d'une zone à
     ///    l'autre.
-    pub async fn charger(zones: &dyn ConfigurationZones, zone: Uuid) -> Result<Self, ErreurDispatch> {
+    pub async fn charger(
+        zones: &dyn ConfigurationZones,
+        zone: Uuid,
+    ) -> Result<Self, ErreurDispatch> {
         let devise = zones.devise(zone).await?;
         let grille_avance = charger_grille(zones, zone).await?;
         let poids = Poids {
@@ -273,8 +276,12 @@ impl ConfigDispatch {
                 cles::REASSIGNATION_DEPLACEMENT_MIN_M,
             )
             .await?,
-            reassignation_sans_mouvement_s: entier(zones, zone, cles::REASSIGNATION_SANS_MOUVEMENT_S)
-                .await?,
+            reassignation_sans_mouvement_s: entier(
+                zones,
+                zone,
+                cles::REASSIGNATION_SANS_MOUVEMENT_S,
+            )
+            .await?,
             reassignation_sans_scan_marge_s: entier(
                 zones,
                 zone,

@@ -39,9 +39,9 @@ pub mod routage;
 
 pub use depot::{BornesMarge, PgTarification};
 pub use modele::{
-    Attente, Composantes, DemandeDevis, Devis, DrapeauxZone, ErreurRoutage, ErreurTarif, EtatGrille,
-    Evaluation, Grille, Itineraire, Matrice, OffreLivraison, Point, Regle, RegleRetenue,
-    RegleUpsert, SourceGrille, Troncon,
+    Attente, Composantes, DemandeDevis, Devis, DrapeauxZone, ErreurRoutage, ErreurTarif,
+    EtatGrille, Evaluation, Grille, Itineraire, Matrice, OffreLivraison, Point, Regle,
+    RegleRetenue, RegleUpsert, SourceGrille, Troncon,
 };
 pub use ports::{
     CacheDesactive, CacheMemoire, CacheRoutage, ErreurCache, EvaluationTarifaire,

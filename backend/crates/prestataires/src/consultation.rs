@@ -114,7 +114,9 @@ impl PgPrestataires {
             return Ok(None);
         };
 
-        let affichage_rupture = self.affichage_rupture_de(p.ville_id, &p.categorie_slug).await?;
+        let affichage_rupture = self
+            .affichage_rupture_de(p.ville_id, &p.categorie_slug)
+            .await?;
         let lignes = sqlx::query!(
             r#"SELECT a.id, a.nom, a.prix_unites, a.devise, a.prix_barre_unites,
                       a.photo_cle, a.categorie_interne,

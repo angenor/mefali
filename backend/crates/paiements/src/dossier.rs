@@ -150,7 +150,10 @@ pub async fn consommer_pour_paiements(
 ) -> Result<(), ErreurPaiements> {
     let (type_dossier, anomalie) = match evenement.type_evenement.as_str() {
         "arret.collecte" => {
-            if !evenement.payload["retenue_ecretee"].as_bool().unwrap_or(false) {
+            if !evenement.payload["retenue_ecretee"]
+                .as_bool()
+                .unwrap_or(false)
+            {
                 return Ok(());
             }
             (
@@ -170,7 +173,10 @@ pub async fn consommer_pour_paiements(
             )
         }
         "commande.annulee" => {
-            if !evenement.payload["remboursement_du"].as_bool().unwrap_or(false) {
+            if !evenement.payload["remboursement_du"]
+                .as_bool()
+                .unwrap_or(false)
+            {
                 return Ok(());
             }
             (

@@ -55,7 +55,8 @@ use commandes::CommandesAPayer;
 use crate::depot::PgPaiements;
 use crate::dossier::{self, Anomalie};
 use crate::fournisseur::{
-    empreinte, ErreurFournisseur, IssuePaiement, Notification, NotificationEntrante, PaymentProvider,
+    empreinte, ErreurFournisseur, IssuePaiement, Notification, NotificationEntrante,
+    PaymentProvider,
 };
 use crate::modele::{
     verifier_transition, ErreurPaiements, EtatTransaction, MoyenPaiement, Transaction, TypeDossier,
@@ -292,7 +293,10 @@ pub async fn traiter_notification(
 /// le même nombre et ne sont pas le même argent. Comparer les montants d'abord
 /// laisserait passer le second cas.
 fn divergence(transaction: &Transaction, notification: &Notification) -> Option<TypeDossier> {
-    if !notification.devise.eq_ignore_ascii_case(&transaction.devise) {
+    if !notification
+        .devise
+        .eq_ignore_ascii_case(&transaction.devise)
+    {
         return Some(TypeDossier::DeviseDivergente);
     }
     if notification.montant_unites != transaction.montant_unites {
@@ -658,7 +662,10 @@ mod tests {
             motifs_echec::REFUS_OPERATEUR,
             motifs_echec::ANNULE_PAR_PAYEUR,
         ] {
-            assert!(cle.starts_with("paiement.echec."), "clé mal préfixée : {cle}");
+            assert!(
+                cle.starts_with("paiement.echec."),
+                "clé mal préfixée : {cle}"
+            );
             assert!(!cle.contains(' '), "une clé n'est pas une phrase : {cle}");
         }
     }

@@ -249,7 +249,16 @@ mod tests {
     #[test]
     fn paliers_articles_bornes_incluses() {
         let p = params();
-        for (articles, attendu) in [(1, 0), (5, 0), (6, 50), (10, 50), (11, 100), (20, 100), (21, 150), (99, 150)] {
+        for (articles, attendu) in [
+            (1, 0),
+            (5, 0),
+            (6, 50),
+            (10, 50),
+            (11, 100),
+            (20, 100),
+            (21, 150),
+            (99, 150),
+        ] {
             let effort = calculer(&p, articles, &[], &[]);
             assert_eq!(
                 effort.paliers, attendu,
@@ -269,8 +278,16 @@ mod tests {
     #[test]
     fn prime_attente_une_seule_fois_par_course() {
         let p = params();
-        assert_eq!(calculer(&p, 1, &[], &[]).attente, 0, "aucune attente tracée");
-        assert_eq!(calculer(&p, 1, &[attente(15)], &[]).attente, 0, "15 min pile : pas encore");
+        assert_eq!(
+            calculer(&p, 1, &[], &[]).attente,
+            0,
+            "aucune attente tracée"
+        );
+        assert_eq!(
+            calculer(&p, 1, &[attente(15)], &[]).attente,
+            0,
+            "15 min pile : pas encore"
+        );
         assert_eq!(calculer(&p, 1, &[attente(16)], &[]).attente, 100);
         assert_eq!(
             calculer(&p, 1, &[attente(20), attente(30)], &[]).attente,
@@ -310,7 +327,14 @@ mod tests {
     #[test]
     fn supplement_arret_par_tranche() {
         let p = params();
-        for (distance, attendu) in [(0, 25), (99, 25), (100, 50), (999, 50), (1_000, 100), (5_000, 100)] {
+        for (distance, attendu) in [
+            (0, 25),
+            (99, 25),
+            (100, 50),
+            (999, 50),
+            (1_000, 100),
+            (5_000, 100),
+        ] {
             let effort = calculer(&p, 1, &[], &[troncon(distance)]);
             assert_eq!(effort.arrets, attendu, "{distance} m → {attendu} attendu");
         }
@@ -349,7 +373,11 @@ mod tests {
             "effort.prime_attente" => Some(json!({"montant": 100})), // seuil absent
             _ => None,
         });
-        assert_eq!(params.paliers_articles.len(), 1, "la tranche fautive sautée");
+        assert_eq!(
+            params.paliers_articles.len(),
+            1,
+            "la tranche fautive sautée"
+        );
         assert_eq!(calculer(&params, 8, &[], &[]).paliers, 50);
         assert!(params.prime_attente.is_none(), "prime incomplète = absente");
     }

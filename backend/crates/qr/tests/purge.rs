@@ -24,11 +24,13 @@ async fn photo_purgee_apres_retention(pool: sqlx::PgPool) {
     assert!(bac.objets.lire(&cle).is_some());
 
     // Antidater la collecte au-delà de la rétention → purge.
-    sqlx::query("UPDATE commandes.arret SET collecte_le = now() - interval '400 days' WHERE id = $1")
-        .bind(arrets[0])
-        .execute(&bac.pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE commandes.arret SET collecte_le = now() - interval '400 days' WHERE id = $1",
+    )
+    .bind(arrets[0])
+    .execute(&bac.pool)
+    .await
+    .unwrap();
     assert_eq!(bac.qr.purger_photos_collecte().await.unwrap(), 1);
     assert!(bac.objets.lire(&cle).is_none(), "photo supprimée");
     let photo_cle: Option<String> =

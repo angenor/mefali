@@ -108,15 +108,8 @@ impl PgDispatch {
         self.pool_coursiers.retirer(coursier, config.zone).await?;
 
         if let Some(etat) = etat {
-            self.emettre_disponibilite(
-                coursier,
-                config,
-                false,
-                &etat.capacites,
-                motif,
-                horodatage,
-            )
-            .await?;
+            self.emettre_disponibilite(coursier, config, false, &etat.capacites, motif, horodatage)
+                .await?;
         }
         Ok(())
     }

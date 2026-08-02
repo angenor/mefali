@@ -71,9 +71,7 @@ impl PgDispatch {
                 .poser(commande, coursier, offre_id, config.verrou_ttl())
                 .await?
             {
-                PoseVerrou::CoursierDejaPorteur => {
-                    return Ok(IssueEmission::CoursierIndisponible)
-                }
+                PoseVerrou::CoursierDejaPorteur => return Ok(IssueEmission::CoursierIndisponible),
                 PoseVerrou::CommandeDejaOfferte => return Ok(IssueEmission::CommandeDejaTenue),
                 PoseVerrou::Obtenu => {}
             },
@@ -209,11 +207,7 @@ impl PgDispatch {
     }
 
     /// Une offre par son identifiant, **si elle appartient à ce coursier**.
-    pub async fn offre_de(
-        &self,
-        offre_id: Uuid,
-        coursier: Uuid,
-    ) -> Result<Offre, ErreurDispatch> {
+    pub async fn offre_de(&self, offre_id: Uuid, coursier: Uuid) -> Result<Offre, ErreurDispatch> {
         let ligne = sqlx::query_as!(
             LigneOffre,
             r#"SELECT id, commande_id, coursier_id, zone_id, mode::text AS "mode!",
@@ -764,11 +758,7 @@ impl PgDispatch {
         let destination_distance_m = distances.last().copied().unwrap_or(0);
 
         let plafond_retenu = self
-            .plafond_du_jour(
-                offre.coursier,
-                &self.config(offre.zone).await?,
-                maintenant,
-            )
+            .plafond_du_jour(offre.coursier, &self.config(offre.zone).await?, maintenant)
             .await?
             .retenu_unites;
 
@@ -863,8 +853,7 @@ pub fn decomposer_gain(part_coursier: i64, composantes: &serde_json::Value) -> G
 
     let total = part_coursier.max(0);
     let arrets = composante("effort_arrets").min(total);
-    let effort = (composante("effort_paliers") + composante("effort_attente"))
-        .min(total - arrets);
+    let effort = (composante("effort_paliers") + composante("effort_attente")).min(total - arrets);
     GainDetaille {
         deplacement: total - arrets - effort,
         arrets,

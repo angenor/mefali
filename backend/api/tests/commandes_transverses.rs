@@ -66,24 +66,21 @@ async fn photo_de_substitution_purgee_la_ligne_survit(pool: sqlx::PgPool) {
     assert_eq!(bac.commandes.purger_photos_substitution().await.unwrap(), 0);
 
     // On fait vieillir la proposition au-delà de la rétention.
-    sqlx::query(
-        "UPDATE commandes.substitution SET proposee_le = now() - interval '400 days'",
-    )
-    .execute(&bac.pool)
-    .await
-    .unwrap();
+    sqlx::query("UPDATE commandes.substitution SET proposee_le = now() - interval '400 days'")
+        .execute(&bac.pool)
+        .await
+        .unwrap();
     assert_eq!(bac.commandes.purger_photos_substitution().await.unwrap(), 1);
 
     assert!(
         !bac.commandes.objets().existe(&photo_cle).await.unwrap(),
         "l'objet est supprimé du stockage, pas seulement déréférencé",
     );
-    let (restantes, cle_videe): (i64, String) = sqlx::query_as(
-        "SELECT count(*), max(photo_cle) FROM commandes.substitution",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let (restantes, cle_videe): (i64, String) =
+        sqlx::query_as("SELECT count(*), max(photo_cle) FROM commandes.substitution")
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(restantes, 1, "la LIGNE survit : c'est une trace d'argent");
     assert_eq!(cle_videe, "", "seule la clé de l'image est effacée");
 
@@ -178,11 +175,19 @@ async fn chaque_refus_de_l_api_porte_une_cle_i18n(pool: sqlx::PgPool) {
     // Un échantillon des trois surfaces — client, coursier, admin.
     let refus: Vec<(u16, serde_json::Value)> = vec![
         // Coursier : transition hors séquence.
-        bac.action_coursier(course.livraison, course.collectes[0], "arrive", Uuid::now_v7())
-            .await,
+        bac.action_coursier(
+            course.livraison,
+            course.collectes[0],
+            "arrive",
+            Uuid::now_v7(),
+        )
+        .await,
         // Client : commande d'autrui.
-        bac.get(&format!("/commandes/{}", course.commande), &bac.jeton_intrus)
-            .await,
+        bac.get(
+            &format!("/commandes/{}", course.commande),
+            &bac.jeton_intrus,
+        )
+        .await,
         // Admin : annulation sans motif.
         bac.post(
             &format!("/admin/commandes/{}/annuler", course.commande),
@@ -238,8 +243,7 @@ async fn chaque_refus_de_l_api_porte_une_cle_i18n(pool: sqlx::PgPool) {
 /// glissé « juste une fois ».
 #[test]
 fn p3_commandes_n_ecrit_jamais_dans_comptes_compte() {
-    let racine = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../crates/commandes/src");
+    let racine = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/commandes/src");
     let mut fautives = Vec::new();
     for entree in std::fs::read_dir(&racine).expect("source du crate commandes") {
         let chemin = entree.unwrap().path();
@@ -248,7 +252,11 @@ fn p3_commandes_n_ecrit_jamais_dans_comptes_compte() {
         }
         let source = std::fs::read_to_string(&chemin).unwrap();
         let minuscule = source.to_lowercase();
-        for verbe in ["update comptes.compte", "insert into comptes.compte", "delete from comptes.compte"] {
+        for verbe in [
+            "update comptes.compte",
+            "insert into comptes.compte",
+            "delete from comptes.compte",
+        ] {
             if minuscule.contains(verbe) {
                 fautives.push(format!("{} → « {verbe} »", chemin.display()));
             }
@@ -275,9 +283,5 @@ fn p5_le_workspace_compte_toujours_treize_crates() {
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();
     noms.sort();
-    assert_eq!(
-        noms.len(),
-        13,
-        "P5 — 13 crates attendus, trouvés {noms:?}",
-    );
+    assert_eq!(noms.len(), 13, "P5 — 13 crates attendus, trouvés {noms:?}",);
 }

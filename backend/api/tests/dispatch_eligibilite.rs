@@ -58,9 +58,7 @@ async fn motif_course_active(pool: sqlx::PgPool) {
 
     let commande = bac.commande_prete().await;
     bac.dispatcher(commande).await;
-    assert!(motifs_de(&bac)
-        .await
-        .contains(&"course_active".to_owned()));
+    assert!(motifs_de(&bac).await.contains(&"course_active".to_owned()));
 }
 
 /// **CAPACITÉ NON COUVERTE** — la course exige un transport que le coursier n'a
@@ -170,10 +168,11 @@ async fn motif_paire_bloquee(pool: sqlx::PgPool) {
         bac.notifications.clone(),
     );
 
-    avec_paires.dispatcher(commande, chrono::Utc::now()).await.unwrap();
-    assert!(motifs_de(&bac)
+    avec_paires
+        .dispatcher(commande, chrono::Utc::now())
         .await
-        .contains(&"paire_bloquee".to_owned()));
+        .unwrap();
+    assert!(motifs_de(&bac).await.contains(&"paire_bloquee".to_owned()));
 }
 
 /// **COMPTE INDISPONIBLE** — FR-009, et c'est LE cas qui justifie la
@@ -221,9 +220,7 @@ async fn motif_offre_en_vol(pool: sqlx::PgPool) {
     // Une seconde commande arrive : le seul coursier porte déjà une offre.
     let seconde = bac.commande_prete().await;
     bac.dispatcher(seconde).await;
-    assert!(motifs_de(&bac)
-        .await
-        .contains(&"offre_en_vol".to_owned()));
+    assert!(motifs_de(&bac).await.contains(&"offre_en_vol".to_owned()));
 }
 
 /// **SC-012** — bascule prépaiement : la capacité d'avance est le SEUL obstacle.
@@ -295,7 +292,10 @@ async fn un_pool_vide_pour_une_autre_raison_part_en_file(pool: sqlx::PgPool) {
         0,
         "exiger un prépaiement ici ferait perdre la commande pour rien",
     );
-    assert_eq!(bac.nb_evenements("commande.mise_en_attente_coursier").await, 1);
+    assert_eq!(
+        bac.nb_evenements("commande.mise_en_attente_coursier").await,
+        1
+    );
 }
 
 /// **OSRM indisponible** — le classement passe en dégradé, mais le dispatch

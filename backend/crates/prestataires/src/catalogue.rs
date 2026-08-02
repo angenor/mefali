@@ -571,7 +571,9 @@ fn valider_article(
     prix_barre_unites: Option<i64>,
 ) -> Result<(), ErreurPrestataires> {
     if nom.trim().is_empty() {
-        return Err(ErreurPrestataires::FicheInvalide("nom d'article vide".to_owned()));
+        return Err(ErreurPrestataires::FicheInvalide(
+            "nom d'article vide".to_owned(),
+        ));
     }
     if prix_unites < 0 {
         return Err(ErreurPrestataires::MontantInvalide(

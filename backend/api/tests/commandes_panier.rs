@@ -33,12 +33,7 @@ async fn regroupement_sous_totaux_et_preference_par_defaut(pool: sqlx::PgPool) {
         .flat_map(|v| [v.ligne_de(0, 2), v.ligne_de(1, 2)])
         .collect();
 
-    let (statut, corps) = devis(
-        &bac,
-        &bac.jeton_client,
-        bac.demande_devis("marche", lignes),
-    )
-    .await;
+    let (statut, corps) = devis(&bac, &bac.jeton_client, bac.demande_devis("marche", lignes)).await;
     assert_eq!(statut, 200);
 
     let groupes = corps["groupes"].as_array().unwrap();
@@ -87,12 +82,7 @@ async fn devis_nominal_sans_aucun_effet_de_bord(pool: sqlx::PgPool) {
     let evenements_avant = bac.total_evenements().await;
 
     let lignes = vec![bac.vendeurs[0].ligne(2), bac.vendeurs[1].ligne(1)];
-    let (statut, _) = devis(
-        &bac,
-        &bac.jeton_client,
-        bac.demande_devis("marche", lignes),
-    )
-    .await;
+    let (statut, _) = devis(&bac, &bac.jeton_client, bac.demande_devis("marche", lignes)).await;
     assert_eq!(statut, 200);
 
     assert_eq!(
@@ -106,7 +96,8 @@ async fn devis_nominal_sans_aucun_effet_de_bord(pool: sqlx::PgPool) {
         0,
     );
     assert_eq!(
-        bac.compter("SELECT count(*) FROM commandes.livraison").await,
+        bac.compter("SELECT count(*) FROM commandes.livraison")
+            .await,
         0,
     );
     assert_eq!(
@@ -131,7 +122,10 @@ async fn categorie_non_mixable_propose_une_scission_chiffree(pool: sqlx::PgPool)
         bac.demande_devis("restauration", lignes),
     )
     .await;
-    assert_eq!(statut, 200, "le devis RÉPOND — c'est la création qui refuse");
+    assert_eq!(
+        statut, 200,
+        "le devis RÉPOND — c'est la création qui refuse"
+    );
 
     let scission = &corps["scission"];
     assert_eq!(scission["cause"], "categorie_non_mixable");
@@ -185,18 +179,14 @@ async fn plafond_eclatement_produit_le_meme_bloc(pool: sqlx::PgPool) {
     );
 
     let lignes: Vec<Value> = bac.vendeurs.iter().map(|v| v.ligne(1)).collect();
-    let (statut, corps) = devis(
-        &bac,
-        &bac.jeton_client,
-        bac.demande_devis("marche", lignes),
-    )
-    .await;
+    let (statut, corps) = devis(&bac, &bac.jeton_client, bac.demande_devis("marche", lignes)).await;
     assert_eq!(statut, 200);
 
     let scission = &corps["scission"];
     assert_eq!(scission["cause"], "plafond_eclatement");
     assert_eq!(
-        scission["message_cle"], "panier.scission.plafond_eclatement",
+        scission["message_cle"],
+        "panier.scission.plafond_eclatement",
     );
     assert_eq!(
         scission["commandes_proposees"].as_array().unwrap().len(),
@@ -255,12 +245,7 @@ async fn refus_portent_leur_cle_i18n(pool: sqlx::PgPool) {
     let evenements_avant = bac.total_evenements().await;
 
     // Panier vide → 422 panier_invalide.
-    let (statut, corps) = devis(
-        &bac,
-        &bac.jeton_client,
-        bac.demande_devis("marche", vec![]),
-    )
-    .await;
+    let (statut, corps) = devis(&bac, &bac.jeton_client, bac.demande_devis("marche", vec![])).await;
     assert_eq!(statut, 422);
     assert_eq!(corps["code"], "panier_invalide");
     assert_eq!(corps["message_cle"], "commande.erreur.panier_invalide");
@@ -343,5 +328,8 @@ async fn plafond_cash_et_sa_raison(pool: sqlx::PgPool) {
         gros["paiement"]["motif_cle"], "commande.cash.plafond_depasse",
         "le client voit POURQUOI le cash est grisé, jamais un bouton mort",
     );
-    assert_eq!(gros["paiement"]["plafond_unites"], bac_commandes::PLAFOND_CASH);
+    assert_eq!(
+        gros["paiement"]["plafond_unites"],
+        bac_commandes::PLAFOND_CASH
+    );
 }

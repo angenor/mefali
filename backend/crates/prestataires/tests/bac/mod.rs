@@ -65,7 +65,11 @@ impl Bac {
         let categorie_boutique = Uuid::now_v7();
         for (id, slug, workflow) in [
             (categorie_restauration, "restauration", "restauration"),
-            (categorie_boutique, "boutique_superette", "coursier_acheteur"),
+            (
+                categorie_boutique,
+                "boutique_superette",
+                "coursier_acheteur",
+            ),
         ] {
             sqlx::query(
                 "INSERT INTO zones.categorie (id, slug, nom_cle, workflow_vendeur)
@@ -250,7 +254,11 @@ impl Bac {
     /// Agrée (transaction dédiée) et rend la fiche.
     pub async fn agreer(&self, prestataire: Uuid) -> Prestataire {
         let mut tx = self.pool.begin().await.unwrap();
-        let p = self.depot.agreer(&mut tx, prestataire, self.admin).await.unwrap();
+        let p = self
+            .depot
+            .agreer(&mut tx, prestataire, self.admin)
+            .await
+            .unwrap();
         tx.commit().await.unwrap();
         p
     }

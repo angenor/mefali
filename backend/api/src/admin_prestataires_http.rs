@@ -16,9 +16,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use comptes::Role;
-use prestataires::{
-    ModificationPrestataire, NouveauPrestataire, PgPrestataires, Prestataire,
-};
+use prestataires::{ModificationPrestataire, NouveauPrestataire, PgPrestataires, Prestataire};
 
 use crate::auth_http::{Auth, ErreurApiDto};
 use crate::prestataires_http::{
@@ -1115,8 +1113,7 @@ pub async fn action_boutique_admin(
         .await?;
     tx.commit().await.map_err(sql)?;
     let boutique = depot.boutique_vendeur(prestataire).await?;
-    Ok(HttpResponse::Ok()
-        .json(crate::prestataires_http::BoutiqueVendeurDto::from(boutique)))
+    Ok(HttpResponse::Ok().json(crate::prestataires_http::BoutiqueVendeurDto::from(boutique)))
 }
 
 // ── Suspension, rétablissement, correction (US4 — VND-01) ──────────────────
@@ -1285,13 +1282,9 @@ pub async fn definir_offre_livraison_admin(
 ) -> Result<HttpResponse, ErreurPresta> {
     auth.exiger_role(Role::Admin).map_err(ErreurPresta::from)?;
     let prestataire = chemin.into_inner();
-    let sortie = crate::vendeur_http::appliquer_offre_livraison(
-        &depot,
-        prestataire,
-        &corps,
-        auth.compte_id,
-    )
-    .await?;
+    let sortie =
+        crate::vendeur_http::appliquer_offre_livraison(&depot, prestataire, &corps, auth.compte_id)
+            .await?;
     Ok(HttpResponse::Ok().json(sortie))
 }
 

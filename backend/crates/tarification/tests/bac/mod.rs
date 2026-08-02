@@ -101,8 +101,10 @@ impl Bac {
         };
         // Grille de départ Tiassalé (FR-026) : à pied 100 (≤ 800 m),
         // vélo 150 (≤ 2 km), moto 200 + 50/km au-delà de 2 km, plafond 500.
-        bac.poser_regle("a_pied", 50, 50, 0, 0, Some(800), None).await;
-        bac.poser_regle("velo", 100, 50, 0, 0, Some(2_000), None).await;
+        bac.poser_regle("a_pied", 50, 50, 0, 0, Some(800), None)
+            .await;
+        bac.poser_regle("velo", 100, 50, 0, 0, Some(2_000), None)
+            .await;
         bac.poser_regle("moto", 150, 50, 50, 2_000, None, Some(500))
             .await;
         bac
@@ -159,13 +161,20 @@ impl Bac {
     }
 
     /// Moteur branché sur les doubles fournis.
-    pub fn moteur(&self, routage: Arc<dyn Routage>, cache: Arc<dyn CacheRoutage>) -> PgTarification {
+    pub fn moteur(
+        &self,
+        routage: Arc<dyn Routage>,
+        cache: Arc<dyn CacheRoutage>,
+    ) -> PgTarification {
         PgTarification::new(self.pool.clone(), routage, cache)
     }
 
     /// Moteur sur routage indisponible (mode dégradé).
     pub fn moteur_degrade(&self) -> PgTarification {
-        self.moteur(Arc::new(RoutageIndisponible), Arc::new(CacheMemoire::nouveau()))
+        self.moteur(
+            Arc::new(RoutageIndisponible),
+            Arc::new(CacheMemoire::nouveau()),
+        )
     }
 
     /// Payloads des événements outbox d'un type, dans l'ordre d'écriture.

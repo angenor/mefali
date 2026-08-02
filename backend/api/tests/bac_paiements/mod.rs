@@ -96,14 +96,16 @@ impl Bac {
     }
 
     async fn depuis(cmd: bac_commandes::Bac, pool: sqlx::PgPool) -> Self {
-
         // Les 4 paramètres du cycle, au PAYS — hérités par Tiassalé, comme en
         // production. Les poser sur la ville rendrait le test vert alors que la
         // production, qui hérite, échouerait.
         let z = zones::PgZones::new(pool.clone());
         let mut tx = pool.begin().await.unwrap();
         for (cle, valeur) in [
-            (paiements::cles_config::SESSION_DUREE_S, json!(SESSION_DUREE_S)),
+            (
+                paiements::cles_config::SESSION_DUREE_S,
+                json!(SESSION_DUREE_S),
+            ),
             (
                 paiements::cles_config::RECONCILIATION_AVANT_EXPIRATION_S,
                 json!(RECONCILIATION_S),
@@ -264,9 +266,13 @@ impl Bac {
     /// Appelé directement plutôt qu'en montant le job : un test qui attend un
     /// ordonnancement asynchrone n'est pas un test, c'est un pari.
     pub async fn balayer(&self) -> paiements::BilanBalayage {
-        paiements::balayer(&self.paiements, &self.cmd.commandes, self.fournisseur.as_ref())
-            .await
-            .expect("le balayage aboutit")
+        paiements::balayer(
+            &self.paiements,
+            &self.cmd.commandes,
+            self.fournisseur.as_ref(),
+        )
+        .await
+        .expect("le balayage aboutit")
     }
 
     /// Crée un compte porteur du rôle **vendeur**, rattaché au prestataire
@@ -276,7 +282,10 @@ impl Bac {
     /// coursier et l'admin. Le reçu vendeur (T059) est le premier à en avoir
     /// besoin ici.
     pub async fn compte_vendeur(&self, prestataire: Uuid, e164: &str) -> (Uuid, String) {
-        let (compte, jeton) = self.cmd.compte_avec_roles(e164, &["client", "vendeur"]).await;
+        let (compte, jeton) = self
+            .cmd
+            .compte_avec_roles(e164, &["client", "vendeur"])
+            .await;
         let mut tx = self.cmd.pool.begin().await.unwrap();
         self.cmd
             .prestataires

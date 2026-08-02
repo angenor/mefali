@@ -95,7 +95,9 @@ async fn cycle_complet_du_dossier_et_de_la_porte(pool: PgPool) {
     assert!(dossier.vehicules[0].actif_zone);
 
     // La pièce est bien partie au stockage objet, sous la clé conventionnelle.
-    assert!(dossier.piece_cle_objet.starts_with(&format!("comptes/pieces/{yao}/")));
+    assert!(dossier
+        .piece_cle_objet
+        .starts_with(&format!("comptes/pieces/{yao}/")));
     assert_eq!(
         bac.objets.lire(&dossier.piece_cle_objet).as_deref(),
         Some(&b"octets-de-la-piece"[..]),
@@ -119,7 +121,14 @@ async fn cycle_complet_du_dossier_et_de_la_porte(pool: PgPool) {
     assert_eq!(soumis[0]["compte"], serde_json::json!(yao));
 
     // Refus motivé (FR-017) — la porte reste fermée.
-    decider(&bac, yao, ActionRole::Refuser, admin, Some("pièce illisible")).await;
+    decider(
+        &bac,
+        yao,
+        ActionRole::Refuser,
+        admin,
+        Some("pièce illisible"),
+    )
+    .await;
     assert!(!bac.depot.coursier_autorise_en_ligne(yao).await.unwrap());
     let refuse = bac.depot.dossier_coursier(yao).await.unwrap();
     assert_eq!(refuse.statut, StatutRole::Refuse);
@@ -227,7 +236,11 @@ async fn dossier_incomplet_non_soumis(pool: PgPool) {
         );
     }
 
-    assert_eq!(bac.compter("SELECT count(*) FROM comptes.dossier_coursier").await, 0);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM comptes.dossier_coursier")
+            .await,
+        0
+    );
     assert_eq!(
         bac.depot.attributions(yao).await.unwrap().len(),
         1,
@@ -262,7 +275,11 @@ async fn vehicule_hors_zone_refuse(pool: PgPool) {
     ));
 
     assert_eq!(bac.objets.nombre(), 0, "rien n'est déposé pour un refus");
-    assert_eq!(bac.compter("SELECT count(*) FROM comptes.vehicule_declare").await, 0);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM comptes.vehicule_declare")
+            .await,
+        0
+    );
 }
 
 /// Edge case spec — un type DÉSACTIVÉ après déclaration reste déclaré, signalé.
@@ -306,16 +323,16 @@ async fn rejeu_pendant_en_attente_est_idempotent(pool: PgPool) {
     bac.seeder_transports().await;
     let yao = bac.inscrire(SAISIE_LOCALE).await;
 
-    let IssueSoumission::Soumis { dossier: premier, .. } =
-        soumettre(&bac, yao, &soumission(&["moto"])).await.unwrap()
+    let IssueSoumission::Soumis {
+        dossier: premier, ..
+    } = soumettre(&bac, yao, &soumission(&["moto"])).await.unwrap()
     else {
         panic!("première soumission");
     };
 
     // Le réseau a coupé, le client rejoue.
-    let IssueSoumission::DejaEnAttente(rejeu) = soumettre(&bac, yao, &soumission(&["velo"]))
-        .await
-        .unwrap()
+    let IssueSoumission::DejaEnAttente(rejeu) =
+        soumettre(&bac, yao, &soumission(&["velo"])).await.unwrap()
     else {
         panic!("un rejeu pendant `en_attente` doit être reconnu comme tel");
     };
@@ -352,10 +369,7 @@ async fn deux_soumissions_concurrentes_une_seule_gagne(pool: PgPool) {
     // Les deux soumissions partent EN MÊME TEMPS (le pool de test tient
     // plusieurs connexions) : c'est la course R14, pas un rejeu séquentiel.
     let (moto, velo) = (soumission(&["moto"]), soumission(&["velo"]));
-    let (a, b) = tokio::join!(
-        soumettre(&bac, yao, &moto),
-        soumettre(&bac, yao, &velo),
-    );
+    let (a, b) = tokio::join!(soumettre(&bac, yao, &moto), soumettre(&bac, yao, &velo),);
 
     // Exactement une `Soumis`, exactement une `DejaEnAttente` — peu importe
     // laquelle des deux a gagné la course.
@@ -484,8 +498,16 @@ async fn rollback_ne_laisse_ni_dossier_ni_evenement(pool: PgPool) {
         .unwrap();
     tx.rollback().await.unwrap();
 
-    assert_eq!(bac.compter("SELECT count(*) FROM comptes.dossier_coursier").await, 0);
-    assert_eq!(bac.compter("SELECT count(*) FROM comptes.vehicule_declare").await, 0);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM comptes.dossier_coursier")
+            .await,
+        0
+    );
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM comptes.vehicule_declare")
+            .await,
+        0
+    );
     assert_eq!(bac.evenements("role.demande").await.len(), 0);
     assert_eq!(bac.evenements("dossier_coursier.soumis").await.len(), 0);
     assert!(!bac.depot.coursier_autorise_en_ligne(yao).await.unwrap());
@@ -503,12 +525,18 @@ async fn vehicule_declare_deux_fois_est_dedoublonne(pool: PgPool) {
     let yao = bac.inscrire(SAISIE_LOCALE).await;
 
     let IssueSoumission::Soumis { dossier, .. } =
-        soumettre(&bac, yao, &soumission(&["moto", "moto"])).await.unwrap()
+        soumettre(&bac, yao, &soumission(&["moto", "moto"]))
+            .await
+            .unwrap()
     else {
         panic!("soumission");
     };
     assert_eq!(dossier.vehicules.len(), 1);
-    assert_eq!(bac.compter("SELECT count(*) FROM comptes.vehicule_declare").await, 1);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM comptes.vehicule_declare")
+            .await,
+        1
+    );
 }
 
 /// Un compte inconnu n'a pas de dossier à soumettre ni à lire.
@@ -796,11 +824,7 @@ async fn une_flotte_vide_est_refusee(pool: PgPool) {
         Err(ErreurComptes::DossierIncomplet)
     ));
     assert_eq!(
-        bac.depot
-            .capacites_transport(yao)
-            .await
-            .unwrap()
-            .len(),
+        bac.depot.capacites_transport(yao).await.unwrap().len(),
         1,
         "le refus ne laisse pas la flotte à moitié effacée"
     );
@@ -817,5 +841,8 @@ async fn un_vehicule_hors_zone_est_refuse(pool: PgPool) {
         remplacer(&bac, yao, &["helicoptere"]).await,
         Err(ErreurComptes::VehiculeHorsZone(_))
     ));
-    assert_eq!(bac.depot.capacites_transport(yao).await.unwrap()[0].slug, "moto");
+    assert_eq!(
+        bac.depot.capacites_transport(yao).await.unwrap()[0].slug,
+        "moto"
+    );
 }

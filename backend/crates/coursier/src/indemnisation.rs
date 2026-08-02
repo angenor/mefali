@@ -19,9 +19,7 @@ use uuid::Uuid;
 
 use crate::caisse::DemandeEcriture;
 use crate::depot::PgCoursier;
-use crate::modele::{
-    ErreurCoursier, EtatIndemnisation, IndemnisationVue, TypeEcriture,
-};
+use crate::modele::{ErreurCoursier, EtatIndemnisation, IndemnisationVue, TypeEcriture};
 
 /// Ce qu'une décision d'exploitation produit.
 #[derive(Debug, Clone, PartialEq, Eq)]

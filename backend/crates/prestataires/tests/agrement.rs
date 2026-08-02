@@ -46,7 +46,9 @@ async fn agrement_incomplet_refuse_avec_manques(pool: PgPool) {
 async fn agrement_complet_sans_compte(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     // boutique_superette : seuil 1 — un seul agrément active la catégorie.
-    let id = bac.prospect_complet("Boutique Kofi", "boutique_superette").await;
+    let id = bac
+        .prospect_complet("Boutique Kofi", "boutique_superette")
+        .await;
     let p = bac.agreer(id).await;
 
     // Plaque : jeton 80 hex + code 4 chiffres, posés à CET agrément (FR-013).
@@ -59,7 +61,12 @@ async fn agrement_complet_sans_compte(pool: PgPool) {
     let resolution = bac.depot.resolution_plaque(&jeton).await.unwrap().unwrap();
     assert_eq!(resolution.prestataire_id, id);
     assert!(resolution.valide);
-    assert!(bac.depot.resolution_plaque("f0".repeat(40).as_str()).await.unwrap().is_none());
+    assert!(bac
+        .depot
+        .resolution_plaque("f0".repeat(40).as_str())
+        .await
+        .unwrap()
+        .is_none());
 
     // Commandable (FR-028) : agréé ∧ catégorie activée (seuil 1 franchi —
     // SC-010) ∧ boutique ouverte (statut initial + horaires... si le test
@@ -67,11 +74,19 @@ async fn agrement_complet_sans_compte(pool: PgPool) {
     // fermé : on vérifie la décomposition, pas l'instant).
     let c = bac.depot.commandabilite(id).await.unwrap();
     assert!(c.agree);
-    assert!(c.categorie_active, "seuil 1 franchi par CET agrément (SC-010)");
+    assert!(
+        c.categorie_active,
+        "seuil 1 franchi par CET agrément (SC-010)"
+    );
     assert!(bac.categorie_active(bac.categorie_boutique).await);
 
     // Fiche publique SERVIE (catalogue encore vide), sans compte rattaché.
-    let fiche = bac.depot.fiche_publique_de(id).await.unwrap().expect("servie");
+    let fiche = bac
+        .depot
+        .fiche_publique_de(id)
+        .await
+        .unwrap()
+        .expect("servie");
     assert_eq!(fiche.nom, "Boutique Kofi");
     assert!(fiche.articles.is_empty());
     assert_eq!(fiche.photos.len(), 1);
@@ -87,7 +102,10 @@ async fn agrement_complet_sans_compte(pool: PgPool) {
     assert_eq!(agrements.len(), 1);
     assert_eq!(agrements[0]["plaque_creee"], serde_json::json!(true));
     assert_eq!(agrements[0]["acteur"], serde_json::json!(bac.admin));
-    assert!(agrements[0].get("nom").is_none(), "payload sans nom (FR-052)");
+    assert!(
+        agrements[0].get("nom").is_none(),
+        "payload sans nom (FR-052)"
+    );
 }
 
 /// SC-010 / edge case spec — sous le seuil, la fiche n'est NI servie NI
@@ -106,7 +124,11 @@ async fn franchissement_du_seuil_active_la_categorie(pool: PgPool) {
     let c = bac.depot.commandabilite(premier).await.unwrap();
     assert!(c.agree && !c.categorie_active && !c.commandable());
     assert!(
-        bac.depot.fiche_publique_de(premier).await.unwrap().is_none(),
+        bac.depot
+            .fiche_publique_de(premier)
+            .await
+            .unwrap()
+            .is_none(),
         "catégorie inactive → fiche NON servie (edge case spec)"
     );
 
@@ -116,7 +138,12 @@ async fn franchissement_du_seuil_active_la_categorie(pool: PgPool) {
         bac.categorie_active(bac.categorie_restauration).await,
         "2 agréés = seuil : activation sans action manuelle (SC-010)"
     );
-    assert!(bac.depot.fiche_publique_de(premier).await.unwrap().is_some());
+    assert!(bac
+        .depot
+        .fiche_publique_de(premier)
+        .await
+        .unwrap()
+        .is_some());
     let activations = bac.evenements("categorie.activation_changee").await;
     assert_eq!(activations.len(), 1, "émis au SEUL franchissement");
     assert_eq!(activations[0]["origine"], serde_json::json!("seuil"));
@@ -167,7 +194,9 @@ async fn rattachement_attribue_le_role_et_reste_idempotent(pool: PgPool) {
 
     // Agréé : le rattachement attribue le rôle vendeur — l'agrément VAUT
     // validation, aucune demande in-app (US1 scénario 6).
-    let boutique = bac.prospect_complet("Boutique Kofi", "boutique_superette").await;
+    let boutique = bac
+        .prospect_complet("Boutique Kofi", "boutique_superette")
+        .await;
     bac.agreer(boutique).await;
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
@@ -195,7 +224,9 @@ async fn rattachement_attribue_le_role_et_reste_idempotent(pool: PgPool) {
     assert_eq!(bac.evenements("role.attribue").await.len(), 1);
 
     // Second prestataire, MÊME compte : rattaché sans rejouer l'attribution.
-    let second = bac.prospect_complet("Boutique 2", "boutique_superette").await;
+    let second = bac
+        .prospect_complet("Boutique 2", "boutique_superette")
+        .await;
     bac.agreer(second).await;
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot

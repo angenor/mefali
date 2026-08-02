@@ -20,9 +20,7 @@
 use actix_web::{get, post, put, web, HttpResponse};
 use chrono::{DateTime, Utc};
 use comptes::Role;
-use dispatch::{
-    Capacite, ErreurDispatch, InscriptionPool, MotifDisponibilite, PgDispatch,
-};
+use dispatch::{Capacite, ErreurDispatch, InscriptionPool, MotifDisponibilite, PgDispatch};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -152,7 +150,11 @@ async fn etat_courant(
         note_centiemes: plafond.note_centiemes,
         devise: plafond.devise,
         jour: plafond.jour.to_string(),
-        capacites: exploitable.capacites.iter().map(CapaciteDto::from).collect(),
+        capacites: exploitable
+            .capacites
+            .iter()
+            .map(CapaciteDto::from)
+            .collect(),
         dans_le_pool,
         periode_position_s: config.position_periode_s,
     })

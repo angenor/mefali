@@ -83,7 +83,14 @@ impl PgPrestataires {
         let role_attribue = statut_role.is_none();
         if role_attribue {
             self.comptes
-                .decider_role(tx, compte, Role::Vendeur, ActionRole::Attribuer, acteur, None)
+                .decider_role(
+                    tx,
+                    compte,
+                    Role::Vendeur,
+                    ActionRole::Attribuer,
+                    acteur,
+                    None,
+                )
                 .await?;
         }
 

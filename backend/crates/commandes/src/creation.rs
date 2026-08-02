@@ -103,7 +103,12 @@ impl PgCommandes {
         let plafond_ordinaire = self.parametre_i64(zone_id, cles::PLAFOND_CASH).await?;
 
         // 1. Sanction de compte : rien ne la contourne.
-        if self.restrictions.restrictions(client_id).await?.prepaiement_impose {
+        if self
+            .restrictions
+            .restrictions(client_id)
+            .await?
+            .prepaiement_impose
+        {
             return Ok(DecisionPaiement {
                 cash_autorise: false,
                 motif: Some(MotifPrepaiement::PrepaiementImpose),
@@ -449,7 +454,12 @@ impl PgCommandes {
         }
 
         // ── 1. Compte bloqué : refus AVANT tout (FR-026) ───────────────────
-        if self.restrictions.restrictions(demande.client_id).await?.bloque {
+        if self
+            .restrictions
+            .restrictions(demande.client_id)
+            .await?
+            .bloque
+        {
             return Err(ErreurCommandes::CompteBloque);
         }
 
@@ -480,7 +490,10 @@ impl PgCommandes {
         // `resoudre_panier` a déjà refusé un vendeur non commandable ; ce
         // second passage ferme la fenêtre entre le devis et la confirmation.
         for groupe in &panier.groupes {
-            let c = self.prestataires.commandabilite(groupe.prestataire_id).await?;
+            let c = self
+                .prestataires
+                .commandabilite(groupe.prestataire_id)
+                .await?;
             if !c.commandable() {
                 return Err(ErreurCommandes::VendeurIndisponible(groupe.prestataire_id));
             }
@@ -562,7 +575,11 @@ impl PgCommandes {
             total,
             panier.devise,
             demande.mode_paiement.comme_str(),
-            if demande.mode_paiement == ModePaiement::Cash { "du" } else { "en_attente" },
+            if demande.mode_paiement == ModePaiement::Cash {
+                "du"
+            } else {
+                "en_attente"
+            },
             etat_initial.comme_str(),
             secrets.code_livraison,
             socle::empreinte_code(demande.id, &secrets.code_livraison),

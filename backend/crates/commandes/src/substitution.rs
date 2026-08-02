@@ -16,9 +16,7 @@ use socle::{ecrire_evenement, NouvelEvenement};
 use uuid::Uuid;
 
 use crate::depot::PgCommandes;
-use crate::modele::{
-    ErreurCommandes, IssueSubstitution, PreferenceSubstitution, StatutLigne,
-};
+use crate::modele::{ErreurCommandes, IssueSubstitution, PreferenceSubstitution, StatutLigne};
 
 /// Montants d'une commande après révision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -732,7 +730,9 @@ impl PgCommandes {
             commande_id: ligne.commande_id,
             zone_id: ligne.zone_id,
             prestataire_id: ligne.prestataire_id,
-            arret_id: ligne.arret_id.ok_or(ErreurCommandes::ArretInconnu(ligne_id))?,
+            arret_id: ligne
+                .arret_id
+                .ok_or(ErreurCommandes::ArretInconnu(ligne_id))?,
             quantite: ligne.quantite,
             prix_unitaire_unites: ligne.prix_unites,
             preference: ligne.preference.parse()?,

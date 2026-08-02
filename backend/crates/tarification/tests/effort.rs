@@ -69,13 +69,19 @@ async fn marche_douze_articles_trois_etals_voisins(pool: PgPool) {
         .unwrap();
 
     let c = devis.composantes;
-    assert_eq!(c.effort_arrets, 50, "2 arrêts supplémentaires × 25 (< 100 m)");
+    assert_eq!(
+        c.effort_arrets, 50,
+        "2 arrêts supplémentaires × 25 (< 100 m)"
+    );
     assert_eq!(c.effort_paliers, 100, "palier 11–20 articles");
     assert_eq!(c.effort_attente, 0, "aucune attente tracée");
     assert_eq!(c.effort_total(), 150);
     // Déplacement sur les km RÉELS : 580 m < seuil 2 km → aucun kilométrage.
     assert_eq!(devis.distance_m, 580);
-    assert_eq!(c.km, 0, "le supplément d'arrêt ne remplace jamais la distance");
+    assert_eq!(
+        c.km, 0,
+        "le supplément d'arrêt ne remplace jamais la distance"
+    );
     assert_eq!(c.base, 200);
     // 200 + 150 = 350, déjà multiple de 25.
     assert_eq!(devis.prix_client, 350);
@@ -203,7 +209,10 @@ async fn promo_effort_journalise_non_facture(pool: PgPool) {
         .evaluer(demande, SourceGrille::EnVigueur)
         .await
         .unwrap();
-    assert_eq!(devis.prix_client, 300, "200 de base + 100 d'effort, facturés");
+    assert_eq!(
+        devis.prix_client, 300,
+        "200 de base + 100 d'effort, facturés"
+    );
     assert_eq!(devis.part_coursier, 250, "part coursier identique");
     assert_eq!(
         bac.evenements("effort.calcule").await.len(),
@@ -229,7 +238,11 @@ async fn ordre_optimise_nourrit_l_effort(pool: PgPool) {
         .optimiser(bac.ville, &retraits, point_a(0.0))
         .await
         .unwrap();
-    assert_eq!(itineraire.ordre, vec![0, 2, 1], "du plus loin au plus proche");
+    assert_eq!(
+        itineraire.ordre,
+        vec![0, 2, 1],
+        "du plus loin au plus proche"
+    );
     assert_eq!(itineraire.distance_m, 2_000);
     assert!(itineraire.exhaustif);
     assert_eq!(
@@ -251,7 +264,10 @@ async fn ordre_optimise_nourrit_l_effort(pool: PgPool) {
         devis.composantes.effort_arrets, 100,
         "2 × 50 (jambes de 950 m, tranche 100 m–1 km)"
     );
-    assert_eq!(devis.composantes.effort_paliers, 0, "2 articles → aucun palier");
+    assert_eq!(
+        devis.composantes.effort_paliers, 0,
+        "2 articles → aucun palier"
+    );
 }
 
 /// FR-032 — au-delà du plafond d'éclatement de la zone, le devis PROPOSE une

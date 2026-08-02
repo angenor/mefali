@@ -74,8 +74,12 @@ async fn rejouer(bac: &Bac, file: &[ActionEnFile]) -> Vec<(u16, Value)> {
             )
             .await
         } else {
-            bac.post(&action.endpoint, &bac.jeton_coursier, action.demande.clone())
-                .await
+            bac.post(
+                &action.endpoint,
+                &bac.jeton_coursier,
+                action.demande.clone(),
+            )
+            .await
         };
         issues.push(issue);
     }
@@ -172,12 +176,11 @@ async fn le_reseau_coupe_entre_le_scan_et_la_remise_ne_double_rien(pool: sqlx::P
     assert_eq!(bac.etat_commande(course.commande).await, "terminee");
     assert_eq!(bac.etat_livraison(course.livraison).await, "livree");
 
-    let remises: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM commandes.livraison WHERE livree_le IS NOT NULL",
-    )
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let remises: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM commandes.livraison WHERE livree_le IS NOT NULL")
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(remises, 1);
 
     // ── 7. Un SECOND rejeu complet : aucun effet ─────────────────────────
@@ -245,9 +248,7 @@ async fn la_file_se_rejoue_dans_l_ordre_de_creation(pool: sqlx::PgPool) {
 /// refuse **et** émet `coursier.action_reconciliee` — c'est ce qui ouvre le
 /// litige plutôt que de le rendre invisible.
 #[sqlx::test(migrations = "../migrations")]
-async fn une_course_reassignee_refuse_et_trace_les_actions_de_l_ancien_porteur(
-    pool: sqlx::PgPool,
-) {
+async fn une_course_reassignee_refuse_et_trace_les_actions_de_l_ancien_porteur(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
     let course = bac.course_prete().await;
     let secrets = bac.secrets_remise(course.commande).await;
@@ -319,9 +320,7 @@ async fn une_course_reassignee_refuse_et_trace_les_actions_de_l_ancien_porteur(
 /// client et déclencherait une indemnisation sur une course qui appartient
 /// désormais à quelqu'un d'autre.
 #[sqlx::test(migrations = "../migrations")]
-async fn un_echec_rejoue_par_un_coursier_desassigne_ne_deroule_pas_l_arbre(
-    pool: sqlx::PgPool,
-) {
+async fn un_echec_rejoue_par_un_coursier_desassigne_ne_deroule_pas_l_arbre(pool: sqlx::PgPool) {
     let bac = Bac::nouveau(pool).await;
     let course = bac.course_prete().await;
     bac.collecter_tout(&course).await;

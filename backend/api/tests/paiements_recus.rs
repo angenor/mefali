@@ -58,12 +58,18 @@ async fn les_deux_recus_portent_les_memes_montants(pool: PgPool) {
     bac.cmd.collecter(collectes[0]).await;
 
     let (statut, client) = bac
-        .get(&format!("/commandes/{commande}/recu"), &bac.cmd.jeton_client)
+        .get(
+            &format!("/commandes/{commande}/recu"),
+            &bac.cmd.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200, "reçu client : {client}");
 
     let (statut, vendeur_recu) = bac
-        .get(&format!("/vendeur/arrets/{}/recu", collectes[0]), &jeton_vendeur)
+        .get(
+            &format!("/vendeur/arrets/{}/recu", collectes[0]),
+            &jeton_vendeur,
+        )
         .await;
     assert_eq!(statut, 200, "reçu vendeur : {vendeur_recu}");
 
@@ -84,7 +90,9 @@ async fn les_deux_recus_portent_les_memes_montants(pool: PgPool) {
     assert_eq!(
         vendeur_recu["net_verse_unites"].as_i64().unwrap(),
         vendeur_recu["montant_articles_unites"].as_i64().unwrap()
-            - vendeur_recu["retenue_livraison_offerte_unites"].as_i64().unwrap(),
+            - vendeur_recu["retenue_livraison_offerte_unites"]
+                .as_i64()
+                .unwrap(),
         "net = articles − retenue, et pas autre chose",
     );
 
@@ -113,7 +121,10 @@ async fn recu_d_une_prepayee_ne_reclame_rien(pool: PgPool) {
 
     // Avant la confirmation : rien n'est réglé.
     let (statut, avant) = bac
-        .get(&format!("/commandes/{commande}/recu"), &bac.cmd.jeton_client)
+        .get(
+            &format!("/commandes/{commande}/recu"),
+            &bac.cmd.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200, "{avant}");
     assert_eq!(avant["deja_regle"], false);
@@ -149,7 +160,10 @@ async fn recu_d_une_prepayee_ne_reclame_rien(pool: PgPool) {
     assert_eq!(statut, 200);
 
     let (statut, apres) = bac
-        .get(&format!("/commandes/{commande}/recu"), &bac.cmd.jeton_client)
+        .get(
+            &format!("/commandes/{commande}/recu"),
+            &bac.cmd.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200, "{apres}");
     assert_eq!(apres["deja_regle"], true, "FR-073");
@@ -195,7 +209,10 @@ async fn refus_croises_sur_les_deux_recus(pool: PgPool) {
     // Le reçu vendeur n'existe pas avant le scan : il n'y a pas de versement à
     // attester.
     let (statut, _) = bac
-        .get(&format!("/vendeur/arrets/{}/recu", collectes[0]), &jeton_vendeur)
+        .get(
+            &format!("/vendeur/arrets/{}/recu", collectes[0]),
+            &jeton_vendeur,
+        )
         .await;
     assert_eq!(statut, 404, "pas encore collecté");
 
@@ -203,13 +220,19 @@ async fn refus_croises_sur_les_deux_recus(pool: PgPool) {
 
     // Le vendeur de l'arrêt le lit.
     let (statut, _) = bac
-        .get(&format!("/vendeur/arrets/{}/recu", collectes[0]), &jeton_vendeur)
+        .get(
+            &format!("/vendeur/arrets/{}/recu", collectes[0]),
+            &jeton_vendeur,
+        )
         .await;
     assert_eq!(statut, 200);
 
     // Un AUTRE vendeur, rattaché à un autre prestataire, ne le lit pas.
     let (statut, corps) = bac
-        .get(&format!("/vendeur/arrets/{}/recu", collectes[0]), &jeton_autre)
+        .get(
+            &format!("/vendeur/arrets/{}/recu", collectes[0]),
+            &jeton_autre,
+        )
         .await;
     assert_eq!(statut, 403, "{corps}");
     assert_eq!(corps["code"], "prestataire_non_rattache");
@@ -218,7 +241,10 @@ async fn refus_croises_sur_les_deux_recus(pool: PgPool) {
     // pas `403` : lui répondre « interdit » lui apprendrait que la commande
     // existe.
     let (statut, corps) = bac
-        .get(&format!("/commandes/{commande}/recu"), &bac.cmd.jeton_intrus)
+        .get(
+            &format!("/commandes/{commande}/recu"),
+            &bac.cmd.jeton_intrus,
+        )
         .await;
     assert_eq!(statut, 404, "{corps}");
 }
@@ -232,7 +258,10 @@ async fn les_lignes_retirees_expliquent_l_ecart(pool: PgPool) {
         .cmd
         .creer_commande_api(
             "marche",
-            vec![bac.cmd.vendeurs[0].ligne(2), bac.cmd.vendeurs[0].ligne_de(1, 3)],
+            vec![
+                bac.cmd.vendeurs[0].ligne(2),
+                bac.cmd.vendeurs[0].ligne_de(1, 3),
+            ],
         )
         .await;
     let livraison = bac
@@ -246,7 +275,10 @@ async fn les_lignes_retirees_expliquent_l_ecart(pool: PgPool) {
     bac.cmd.retirer_ligne(lignes[0]).await;
 
     let (statut, recu) = bac
-        .get(&format!("/commandes/{commande}/recu"), &bac.cmd.jeton_client)
+        .get(
+            &format!("/commandes/{commande}/recu"),
+            &bac.cmd.jeton_client,
+        )
         .await;
     assert_eq!(statut, 200, "{recu}");
 

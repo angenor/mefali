@@ -218,7 +218,11 @@ mod tests_lecture_matrice {
     #[test]
     fn la_colonne_lit_chaque_origine_vers_la_destination() {
         let trajets = colonne_vers(&matrice_asymetrique(), 2);
-        assert_eq!(trajets.trajets.len(), 2, "la destination n'est pas une origine");
+        assert_eq!(
+            trajets.trajets.len(),
+            2,
+            "la destination n'est pas une origine"
+        );
         // 0 → 2 puis 1 → 2, et surtout PAS 2 → 0 (200) ni 2 → 1 (201).
         assert_eq!(trajets.trajets[0].distance_m, 2);
         assert_eq!(trajets.trajets[1].distance_m, 102);

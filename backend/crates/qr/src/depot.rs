@@ -243,7 +243,9 @@ impl PgQr {
             arret.site_lon,
         );
         if distance > max_m as f64 {
-            return self.rejeter_definitif(&arret, &demande, "hors_zone", coursier).await;
+            return self
+                .rejeter_definitif(&arret, &demande, "hors_zone", coursier)
+                .await;
         }
         let distance_m = distance.round() as i32;
 
@@ -263,7 +265,9 @@ impl PgQr {
                     // Prestataire suspendu (révocation observée, QRC-03) : refus
                     // DÉFINITIF (réconciliation hors-ligne — arret.collecte_rejetee).
                     Some(r) if !r.valide => {
-                        return self.rejeter_definitif(&arret, &demande, "jeton_revoque", coursier).await
+                        return self
+                            .rejeter_definitif(&arret, &demande, "jeton_revoque", coursier)
+                            .await
                     }
                     Some(_) => {}
                 }
@@ -282,7 +286,9 @@ impl PgQr {
                 // au rejeu), épuisé. L'app borne localement à 3 saisies
                 // (`_maxEssais = 3`) — ce seuil doit rester aligné.
                 if essais > 3 {
-                    return self.rejeter_definitif(&arret, &demande, "code_epuise", coursier).await;
+                    return self
+                        .rejeter_definitif(&arret, &demande, "code_epuise", coursier)
+                        .await;
                 }
                 let code = demande
                     .code
@@ -293,7 +299,9 @@ impl PgQr {
                     self.prestataires.resolution_plaque(&ctx.jeton_plaque).await?,
                     Some(r) if !r.valide
                 ) {
-                    return self.rejeter_definitif(&arret, &demande, "jeton_revoque", coursier).await;
+                    return self
+                        .rejeter_definitif(&arret, &demande, "jeton_revoque", coursier)
+                        .await;
                 }
                 // Comparaison au code du prestataire de l'arrêt (jamais globale).
                 // Refus RETRYABLE : ni enregistrement, ni événement.
@@ -422,7 +430,11 @@ impl PgQr {
 
     /// Lit un paramètre de zone hérité comme entier (`None` si absent/illisible).
     async fn parametre_int(&self, zone: Uuid, cle: &str) -> Result<Option<i64>, ErreurQr> {
-        Ok(self.zones.parametre(zone, cle).await?.and_then(|v| v.as_i64()))
+        Ok(self
+            .zones
+            .parametre(zone, cle)
+            .await?
+            .and_then(|v| v.as_i64()))
     }
 
     /// Issue enregistrée pour un `uuid_client` (`collecte` | `rejet:<motif>`).
@@ -612,4 +624,3 @@ impl PgQr {
         }
     }
 }
-

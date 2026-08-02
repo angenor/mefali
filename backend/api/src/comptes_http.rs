@@ -14,8 +14,8 @@ use uuid::Uuid;
 
 use comptes::dossier::{IssueSoumission, IssueVehicules, PieceIdentite, SoumissionDossier};
 use comptes::{
-    ActionRole, DossierCoursier, DossierCoursierAdmin, PgComptes, Role, StatutRole, VehiculeDeclare,
-    PIECE_TAILLE_MAX,
+    ActionRole, DossierCoursier, DossierCoursierAdmin, PgComptes, Role, StatutRole,
+    VehiculeDeclare, PIECE_TAILLE_MAX,
 };
 
 use crate::auth_http::{Auth, ErreurApi, ErreurApiDto, EtatRoleDto};
@@ -250,7 +250,11 @@ impl From<DossierCoursier> for DossierCoursierDto {
             motif: d.motif,
             referent_nom: d.referent_nom,
             referent_telephone_e164: d.referent_telephone_e164,
-            vehicules: d.vehicules.into_iter().map(VehiculeDeclareDto::from).collect(),
+            vehicules: d
+                .vehicules
+                .into_iter()
+                .map(VehiculeDeclareDto::from)
+                .collect(),
             soumis_le: d.soumis_le,
         }
     }
@@ -293,7 +297,11 @@ impl DossierCoursierAdminDto {
             motif: d.motif,
             referent_nom: d.referent_nom,
             referent_telephone_e164: d.referent_telephone_e164,
-            vehicules: d.vehicules.into_iter().map(VehiculeDeclareDto::from).collect(),
+            vehicules: d
+                .vehicules
+                .into_iter()
+                .map(VehiculeDeclareDto::from)
+                .collect(),
             soumis_le: d.soumis_le,
         }
     }
@@ -1053,7 +1061,8 @@ mod tests {
                 .insert_header(("authorization", format!("Bearer {acces}")))
                 .to_request()
         };
-        let resp = atest::call_service(&app, lister(acces_admin.clone(), "?statut=en_attente")).await;
+        let resp =
+            atest::call_service(&app, lister(acces_admin.clone(), "?statut=en_attente")).await;
         assert_eq!(resp.status(), StatusCode::OK);
         let corps: serde_json::Value = atest::read_body_json(resp).await;
         assert_eq!(corps.as_array().unwrap().len(), 1);
@@ -1073,13 +1082,22 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
         let corps: serde_json::Value = atest::read_body_json(resp).await;
         assert!(
-            corps["piece_url"].as_str().unwrap().contains("comptes/pieces/"),
+            corps["piece_url"]
+                .as_str()
+                .unwrap()
+                .contains("comptes/pieces/"),
             "l'admin reçoit un lien vers la pièce (FR-017 scénario 2)"
         );
         assert_eq!(corps["referent_nom"], "K. Abou");
 
         // Validation → la porte s'ouvre.
-        let resp = decider!(app, acces_admin, yao, "coursier", json!({ "action": "valider" }));
+        let resp = decider!(
+            app,
+            acces_admin,
+            yao,
+            "coursier",
+            json!({ "action": "valider" })
+        );
         assert_eq!(resp.status(), StatusCode::OK);
         assert!(depot.coursier_autorise_en_ligne(yao).await.unwrap());
     }
@@ -1206,7 +1224,13 @@ mod tests {
         let acces_admin = jeton(&depot, ADMIN.parse().unwrap()).await;
 
         soumettre!(app, acces, &["moto"]);
-        decider!(app, acces_admin, yao, "coursier", json!({ "action": "valider" }));
+        decider!(
+            app,
+            acces_admin,
+            yao,
+            "coursier",
+            json!({ "action": "valider" })
+        );
 
         let resp = soumettre!(app, acces, &["velo"]);
         assert_eq!(resp.status(), StatusCode::CONFLICT);

@@ -31,7 +31,9 @@ async fn le_parcours_nominal_ouvre_une_session(pool: sqlx::PgPool) {
     assert_eq!(corps["etat"], "ouverte");
     assert_eq!(corps["devise"], "XOF");
     assert!(
-        corps["acces_paiement"].as_str().is_some_and(|u| !u.is_empty()),
+        corps["acces_paiement"]
+            .as_str()
+            .is_some_and(|u| !u.is_empty()),
         "une session vivante sert l'accès à ouvrir dans le navigateur système",
     );
     assert_eq!(
@@ -48,7 +50,10 @@ async fn le_parcours_nominal_ouvre_une_session(pool: sqlx::PgPool) {
     );
 
     // L'échéance est PERSISTÉE, et calculée depuis le paramètre de zone.
-    let echeance = bac.echeance(commande).await.expect("une échéance persistée");
+    let echeance = bac
+        .echeance(commande)
+        .await
+        .expect("une échéance persistée");
     let ouverture = echeance - Bac::duree_session();
     assert!(
         (chrono::Utc::now() - ouverture).num_seconds().abs() < 60,
@@ -162,7 +167,8 @@ async fn un_fournisseur_indisponible_laisse_la_commande_intacte(pool: sqlx::PgPo
     let commande = bac.commande_prepayee().await;
     let uri = format!("/commandes/{commande}/paiement");
 
-    bac.fournisseur.scenario(paiements::ScenarioSimule::Indisponible);
+    bac.fournisseur
+        .scenario(paiements::ScenarioSimule::Indisponible);
     let (statut, corps) = bac.post_vide(&uri, &bac.cmd.jeton_client).await;
     assert_eq!(statut, 502, "{corps}");
     assert_eq!(corps["code"], "fournisseur_indisponible");

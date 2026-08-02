@@ -97,9 +97,9 @@ pub fn statut(e: &ErreurPaiements) -> StatusCode {
         ErreurPaiements::Commandes(e) => crate::erreurs_commandes::statut(e),
 
         // Infrastructure : configuration de zone absente, base, outbox.
-        ErreurPaiements::ParametreAbsent(_) | ErreurPaiements::Zones(_) | ErreurPaiements::Sql(_) => {
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
+        ErreurPaiements::ParametreAbsent(_)
+        | ErreurPaiements::Zones(_)
+        | ErreurPaiements::Sql(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
@@ -136,7 +136,8 @@ impl ResponseError for ErreurPaiementsHttp {
             ErreurPaiementsHttp::Api(e) => e.error_response(),
             ErreurPaiementsHttp::Domaine(e) => {
                 let statut = statut(e);
-                if statut == StatusCode::INTERNAL_SERVER_ERROR || statut == StatusCode::BAD_GATEWAY {
+                if statut == StatusCode::INTERNAL_SERVER_ERROR || statut == StatusCode::BAD_GATEWAY
+                {
                     tracing::error!(erreur = %e, "panne du domaine paiement");
                 }
                 HttpResponse::build(statut).json(corps(e))
@@ -168,7 +169,10 @@ mod tests {
                 "« {erreur} » est un refus MÉTIER : il doit porter sa clé i18n",
             );
             let cle = corps["message_cle"].as_str().unwrap();
-            assert!(cle.starts_with("paiement.erreur."), "clé mal préfixée : {cle}");
+            assert!(
+                cle.starts_with("paiement.erreur."),
+                "clé mal préfixée : {cle}"
+            );
         }
     }
 

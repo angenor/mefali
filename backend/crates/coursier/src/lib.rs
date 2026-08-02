@@ -40,20 +40,19 @@ pub mod ports;
 pub mod presence;
 pub mod preuves;
 
-pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
 pub use appels::{AppelEnregistre, DemandeAppel};
-pub use presence::{PresenceEnregistree, ReleveDePresence};
-pub use preuves::{PhotoPreuveDeposee, PhotoPreuveVue, PreuvesExploitation};
 pub use caisse::{AvancesOuvertes, DemandeEcriture, JourneeCoursier};
+pub use config::{cles as cles_config, ConfigCoursier, PHOTOS_PREUVE_MIN};
 pub use creance::{part_course, Creance, EtatCreance, NatureCreance, NouvelleCreance};
-pub use indemnisation::DecisionIndemnisation;
 pub use depot::PgCoursier;
-pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
+pub use indemnisation::DecisionIndemnisation;
 pub use modele::{
-    PositionsCaisse,
     ActionRejouee, AppelJournalise, ArretComplet, CibleAppel, ClientCourse, CourseComplete,
     ErreurCoursier, EtatIndemnisation, EtatPreuves, ExpositionCash, IndemnisationVue, IssueAppel,
-    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, MouvementCaisse, LitigeVu, MotifAppel, PreuveAppels,
-    PreuvePhotos, PreuvePresence, RemisePreprovisionnee, SeuilsPreuves, TypeEcriture, VueCaisse,
-    VueJournee,
+    IssueRejeu, LigneArret, LigneExposition, LigneHistorique, LitigeVu, MotifAppel,
+    MouvementCaisse, PositionsCaisse, PreuveAppels, PreuvePhotos, PreuvePresence,
+    RemisePreprovisionnee, SeuilsPreuves, TypeEcriture, VueCaisse, VueJournee,
 };
+pub use ports::{AucunLitige, LitigesFixes, LitigesOuverts};
+pub use presence::{PresenceEnregistree, ReleveDePresence};
+pub use preuves::{PhotoPreuveDeposee, PhotoPreuveVue, PreuvesExploitation};

@@ -14,12 +14,11 @@ use uuid::Uuid;
 
 /// Sollicitations par coursier, tous dispatches confondus.
 async fn sollicitations(bac: &Bac) -> HashMap<Uuid, i64> {
-    let lignes: Vec<(Uuid, i64)> = sqlx::query_as(
-        "SELECT coursier_id, count(*) FROM dispatch.offre GROUP BY 1",
-    )
-    .fetch_all(&bac.cmd.pool)
-    .await
-    .unwrap();
+    let lignes: Vec<(Uuid, i64)> =
+        sqlx::query_as("SELECT coursier_id, count(*) FROM dispatch.offre GROUP BY 1")
+            .fetch_all(&bac.cmd.pool)
+            .await
+            .unwrap();
     lignes.into_iter().collect()
 }
 
@@ -69,12 +68,7 @@ async fn sc007_vingt_dispatches_personne_n_est_oublie(pool: sqlx::PgPool) {
         };
         let faite = bac
             .dispatch
-            .accepter_offre(
-                offre.id,
-                offre.coursier,
-                Uuid::now_v7(),
-                chrono::Utc::now(),
-            )
+            .accepter_offre(offre.id, offre.coursier, Uuid::now_v7(), chrono::Utc::now())
             .await
             .expect("le destinataire accepte");
 
@@ -116,10 +110,18 @@ async fn sans_poids_d_inactivite_l_equite_disparait(pool: sqlx::PgPool) {
         bac.dans_le_pool(i, 15_000).await;
     }
     // Tout le poids sur la proximité, et une proximité qui DÉPARTAGE.
-    bac.poser_parametre(bac.cmd.ville, "dispatch.poids_inactivite", serde_json::json!(0))
-        .await;
-    bac.poser_parametre(bac.cmd.ville, "dispatch.poids_proximite", serde_json::json!(70))
-        .await;
+    bac.poser_parametre(
+        bac.cmd.ville,
+        "dispatch.poids_inactivite",
+        serde_json::json!(0),
+    )
+    .await;
+    bac.poser_parametre(
+        bac.cmd.ville,
+        "dispatch.poids_proximite",
+        serde_json::json!(70),
+    )
+    .await;
     bac.proximite.defaut(3_000, 900);
     bac.proximite.depuis(
         tarification::Point {
@@ -217,10 +219,19 @@ async fn changer_les_poids_change_l_ordre_sans_redeployer(pool: sqlx::PgPool) {
     );
 
     // Tout à la proximité : le plus proche gagne.
-    bac.poser_parametre(bac.cmd.ville, "dispatch.poids_proximite", serde_json::json!(100))
-        .await;
-    for cle in ["dispatch.poids_inactivite", "dispatch.poids_note", "dispatch.poids_acceptation"] {
-        bac.poser_parametre(bac.cmd.ville, cle, serde_json::json!(0)).await;
+    bac.poser_parametre(
+        bac.cmd.ville,
+        "dispatch.poids_proximite",
+        serde_json::json!(100),
+    )
+    .await;
+    for cle in [
+        "dispatch.poids_inactivite",
+        "dispatch.poids_note",
+        "dispatch.poids_acceptation",
+    ] {
+        bac.poser_parametre(bac.cmd.ville, cle, serde_json::json!(0))
+            .await;
     }
     let commande = bac.commande_prete().await;
     let DecisionPipeline::OffreEmise(offre) = bac.dispatcher(commande).await else {
@@ -234,8 +245,12 @@ async fn changer_les_poids_change_l_ordre_sans_redeployer(pool: sqlx::PgPool) {
 
     // Tout à l'inactivité : c'est l'autre qui passe devant, **sans un seul
     // déploiement** — juste une ligne changée en base.
-    bac.poser_parametre(bac.cmd.ville, "dispatch.poids_proximite", serde_json::json!(0))
-        .await;
+    bac.poser_parametre(
+        bac.cmd.ville,
+        "dispatch.poids_proximite",
+        serde_json::json!(0),
+    )
+    .await;
     bac.poser_parametre(
         bac.cmd.ville,
         "dispatch.poids_inactivite",
@@ -263,13 +278,11 @@ async fn changer_les_poids_change_l_ordre_sans_redeployer(pool: sqlx::PgPool) {
         .assigner_coursier(livree, bac.coursiers[1].id, chrono::Utc::now())
         .await
         .unwrap();
-    sqlx::query(
-        "UPDATE commandes.livraison SET etat = 'livree', livree_le = now() WHERE id = $1",
-    )
-    .bind(livraison)
-    .execute(&bac.cmd.pool)
-    .await
-    .unwrap();
+    sqlx::query("UPDATE commandes.livraison SET etat = 'livree', livree_le = now() WHERE id = $1")
+        .bind(livraison)
+        .execute(&bac.cmd.pool)
+        .await
+        .unwrap();
     // Le TRONC reste `en_cours` : le passer `terminee` exigerait un paiement
     // réglé (CHECK `commande_terminee_payee`), et c'est la LIVRAISON qui fonde
     // l'inactivité — pas l'état du tronc.

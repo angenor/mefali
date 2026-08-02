@@ -866,7 +866,10 @@ mod tests {
         let resp = atest::call_service(&app, requete).await;
         let corps: serde_json::Value = atest::read_body_json(resp).await;
         assert_eq!(corps[0]["a_repere_vocal"], false);
-        assert_eq!(corps[0]["libelle"], "Maison", "l'adresse a survécu à sa purge");
+        assert_eq!(
+            corps[0]["libelle"], "Maison",
+            "l'adresse a survécu à sa purge"
+        );
 
         // Re-capture.
         let resp = remplacer_repere!(app, acces, id, b"nouvelle-note", 8);

@@ -342,7 +342,10 @@ mod tests {
         // Une chaîne VIDE est un manque, pas une valeur : un `.env` avec
         // `PAIEMENT_BASE_URL=` doit échouer comme une variable absente.
         config.paiement_base_url = Some(String::new());
-        assert!(config.valider().is_err(), "une valeur vide vaut une absence");
+        assert!(
+            config.valider().is_err(),
+            "une valeur vide vaut une absence"
+        );
     }
 
     /// Sans clé d'API, le fournisseur refuse chaque appel : même effet, même

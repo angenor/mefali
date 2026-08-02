@@ -599,8 +599,7 @@ mod tests {
             IssuePaiement::Annule,
             IssuePaiement::EnCours,
         ] {
-            let corps =
-                FournisseurSimule::corps_notification(Uuid::now_v7(), 12_500, "XOF", issue);
+            let corps = FournisseurSimule::corps_notification(Uuid::now_v7(), 12_500, "XOF", issue);
             let maintenant = Utc::now();
             let entetes = entrantes(&f.signer(&corps, maintenant));
             let n = f
@@ -621,12 +620,8 @@ mod tests {
     #[test]
     fn l_empreinte_distingue_en_cours_de_reussi() {
         let reference = Uuid::now_v7();
-        let a = FournisseurSimule::corps_notification(
-            reference,
-            12_500,
-            "XOF",
-            IssuePaiement::EnCours,
-        );
+        let a =
+            FournisseurSimule::corps_notification(reference, 12_500, "XOF", IssuePaiement::EnCours);
         let b =
             FournisseurSimule::corps_notification(reference, 12_500, "XOF", IssuePaiement::Reussi);
         assert_ne!(empreinte(&a), empreinte(&b));

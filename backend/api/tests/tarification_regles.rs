@@ -64,7 +64,13 @@ async fn marge_hors_bornes_refusee(pool: PgPool) {
     let app = test::init_service(App::new().configure(bac.configurer())).await;
     let grille = brouillon!(app, bac);
 
-    let reponse = put_regle!(app, bac.jeton_admin, grille, Uuid::now_v7(), regle_moto(110));
+    let reponse = put_regle!(
+        app,
+        bac.jeton_admin,
+        grille,
+        Uuid::now_v7(),
+        regle_moto(110)
+    );
     assert_eq!(reponse.status(), StatusCode::CONFLICT);
     let corps: Value = test::read_body_json(reponse).await;
     assert_eq!(corps["code"], json!("marge_hors_bornes"));
@@ -79,7 +85,10 @@ async fn marge_hors_bornes_refusee(pool: PgPool) {
 
     // Rien n'est entré en base : une règle hors bornes ne peut pas alimenter un
     // brouillon publiable (SC-001).
-    assert_eq!(bac.compter("SELECT count(*) FROM tarification.regle").await, 0);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM tarification.regle").await,
+        0
+    );
 
     // Les DEUX bornes sont incluses.
     for marge in [MARGE_MIN, MARGE_MAX] {
@@ -95,7 +104,11 @@ async fn marge_hors_bornes_refusee(pool: PgPool) {
     // La marge 0 du LANCEMENT ne vient JAMAIS d'une règle (research R4) : elle
     // est produite par le drapeau `gratuite_commissions` à l'évaluation.
     let reponse = put_regle!(app, bac.jeton_admin, grille, Uuid::now_v7(), regle_moto(0));
-    assert_eq!(reponse.status(), StatusCode::CONFLICT, "marge 0 refusée en règle");
+    assert_eq!(
+        reponse.status(),
+        StatusCode::CONFLICT,
+        "marge 0 refusée en règle"
+    );
 }
 
 /// FR-023/FR-025 — une règle en devise étrangère est REJETÉE, jamais convertie.
@@ -113,7 +126,10 @@ async fn devise_etrangere_refusee(pool: PgPool) {
     assert_eq!(corps["code"], json!("devise_incoherente"));
     assert_eq!(corps["attendue"], json!("XOF"));
     assert_eq!(corps["fournie"], json!("EUR"));
-    assert_eq!(bac.compter("SELECT count(*) FROM tarification.regle").await, 0);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM tarification.regle").await,
+        0
+    );
 }
 
 /// FR-005 — la surface d'administration est FERMÉE : 401 sans jeton, 403 pour
@@ -134,11 +150,8 @@ async fn role_admin_exige(pool: PgPool) {
     ];
     for chemin in &chemins {
         // Sans jeton du tout.
-        let anonyme = test::call_service(
-            &app,
-            test::TestRequest::get().uri(chemin).to_request(),
-        )
-        .await;
+        let anonyme =
+            test::call_service(&app, test::TestRequest::get().uri(chemin).to_request()).await;
         assert!(
             matches!(
                 anonyme.status(),
@@ -168,7 +181,10 @@ async fn role_admin_exige(pool: PgPool) {
         regle_moto(50)
     );
     assert_eq!(ecriture.status(), StatusCode::FORBIDDEN);
-    assert_eq!(bac.compter("SELECT count(*) FROM tarification.regle").await, 0);
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM tarification.regle").await,
+        0
+    );
 
     // Et sans jeton, l'écriture est un 401 franc.
     let anonyme = test::call_service(
@@ -196,19 +212,28 @@ async fn brouillon_idempotent_et_clone(pool: PgPool) {
     let second = brouillon!(app, bac);
     assert_eq!(premier, second, "second appel → MÊME brouillon");
     assert_eq!(
-        bac.compter("SELECT count(*) FROM tarification.grille").await,
+        bac.compter("SELECT count(*) FROM tarification.grille")
+            .await,
         1,
         "aucune grille en double"
     );
 
     // Une règle dans le brouillon, puis on force la grille en vigueur (la
     // publication réelle arrive en US3) et on redemande un brouillon.
-    put_regle!(app, bac.jeton_admin, premier, Uuid::now_v7(), regle_moto(50));
-    sqlx::query("UPDATE tarification.grille SET etat = 'en_vigueur', effet_le = now() WHERE id = $1")
-        .bind(premier)
-        .execute(&bac.pool)
-        .await
-        .unwrap();
+    put_regle!(
+        app,
+        bac.jeton_admin,
+        premier,
+        Uuid::now_v7(),
+        regle_moto(50)
+    );
+    sqlx::query(
+        "UPDATE tarification.grille SET etat = 'en_vigueur', effet_le = now() WHERE id = $1",
+    )
+    .bind(premier)
+    .execute(&bac.pool)
+    .await
+    .unwrap();
 
     let clone = brouillon!(app, bac);
     assert_ne!(clone, premier, "nouveau brouillon");
@@ -240,7 +265,13 @@ async fn brouillon_idempotent_et_clone(pool: PgPool) {
 
     // Écrire DANS une grille en vigueur est refusé (409) : la tarification en
     // cours ne se modifie pas sous les pieds des clients.
-    let refus = put_regle!(app, bac.jeton_admin, premier, Uuid::now_v7(), regle_moto(50));
+    let refus = put_regle!(
+        app,
+        bac.jeton_admin,
+        premier,
+        Uuid::now_v7(),
+        regle_moto(50)
+    );
     assert_eq!(refus.status(), StatusCode::CONFLICT);
     let corps: Value = test::read_body_json(refus).await;
     assert_eq!(corps["code"], json!("pas_un_brouillon"));

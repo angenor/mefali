@@ -15,7 +15,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 async fn vendeur_avec_article(bac: &Bac) -> (Uuid, Uuid) {
-    let vendeur = bac.prospect_complet("Boutique Kofi", "boutique_superette").await;
+    let vendeur = bac
+        .prospect_complet("Boutique Kofi", "boutique_superette")
+        .await;
     bac.agreer(vendeur).await;
     let mut tx = bac.pool.begin().await.unwrap();
     let article = bac
@@ -78,17 +80,34 @@ async fn bascules_vendeur_et_admin_tracees(pool: PgPool) {
     let mut tx = bac.pool.begin().await.unwrap();
     let bascule = bac
         .depot
-        .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Vendeur, kofi)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            false,
+            SourceBascule::Vendeur,
+            kofi,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
     assert!(!bascule.disponible);
-    assert_eq!(bascule.source_derniere_bascule, Some(SourceBascule::Vendeur));
+    assert_eq!(
+        bascule.source_derniere_bascule,
+        Some(SourceBascule::Vendeur)
+    );
 
     // Rejeu sans changement d'état : aucune écriture, aucun événement.
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Vendeur, kofi)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            false,
+            SourceBascule::Vendeur,
+            kofi,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -101,7 +120,14 @@ async fn bascules_vendeur_et_admin_tracees(pool: PgPool) {
     // Remise en vente par le vendeur (bascule non admin) : autorisée.
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, true, SourceBascule::Vendeur, kofi)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            true,
+            SourceBascule::Vendeur,
+            kofi,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -118,7 +144,14 @@ async fn rupture_admin_verrouillee(pool: PgPool) {
 
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Admin, bac.admin)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            false,
+            SourceBascule::Admin,
+            bac.admin,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -126,7 +159,14 @@ async fn rupture_admin_verrouillee(pool: PgPool) {
     let mut tx = bac.pool.begin().await.unwrap();
     let refus = bac
         .depot
-        .basculer_disponibilite(&mut tx, vendeur, article, true, SourceBascule::Vendeur, kofi)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            true,
+            SourceBascule::Vendeur,
+            kofi,
+        )
         .await
         .unwrap_err();
     assert!(matches!(refus, ErreurPrestataires::RuptureAdmin));
@@ -134,7 +174,14 @@ async fn rupture_admin_verrouillee(pool: PgPool) {
 
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, true, SourceBascule::Admin, bac.admin)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            true,
+            SourceBascule::Admin,
+            bac.admin,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -157,7 +204,8 @@ async fn masquage_automatique_de_bout_en_bout(pool: PgPool) {
         .unwrap_err();
     assert!(matches!(refus, ErreurPrestataires::SignalementInterdit));
     assert_eq!(
-        bac.compter("SELECT count(*) FROM prestataires.signalement_rupture").await,
+        bac.compter("SELECT count(*) FROM prestataires.signalement_rupture")
+            .await,
         0
     );
 
@@ -176,7 +224,10 @@ async fn masquage_automatique_de_bout_en_bout(pool: PgPool) {
     assert!(rejeu.rejeu);
     // Second signalement du MÊME coursier : compté pour UN (edge case).
     signaler(&bac, Uuid::now_v7(), article, yao).await.unwrap();
-    assert!(disponible(&bac, vendeur, article).await, "1 coursier distinct < 2");
+    assert!(
+        disponible(&bac, vendeur, article).await,
+        "1 coursier distinct < 2"
+    );
     assert_eq!(bac.evenements("signalement_rupture.recu").await.len(), 2);
 
     // 2e coursier DISTINCT : masquage automatique (FR-040).
@@ -187,13 +238,23 @@ async fn masquage_automatique_de_bout_en_bout(pool: PgPool) {
     assert_eq!(auto.len(), 1);
     assert_eq!(auto[0]["source"], serde_json::json!("coursier"));
     assert_eq!(auto[0]["automatique"], serde_json::json!(true));
-    assert!(auto[0]["acteur"].is_null(), "masquage automatique : pas d'acteur");
+    assert!(
+        auto[0]["acteur"].is_null(),
+        "masquage automatique : pas d'acteur"
+    );
 
     // Le vendeur PEUT lever le masquage automatique (FR-041)…
     let kofi = bac.creer_compte("+2250700000002").await;
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, true, SourceBascule::Vendeur, kofi)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            true,
+            SourceBascule::Vendeur,
+            kofi,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -224,7 +285,14 @@ async fn masquage_automatique_de_bout_en_bout(pool: PgPool) {
     .unwrap();
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, true, SourceBascule::Vendeur, kofi)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            true,
+            SourceBascule::Vendeur,
+            kofi,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -254,18 +322,28 @@ async fn article_retire_ni_basculable_ni_signalable(pool: PgPool) {
     let mut tx = bac.pool.begin().await.unwrap();
     assert!(matches!(
         bac.depot
-            .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Vendeur, bac.admin)
+            .basculer_disponibilite(
+                &mut tx,
+                vendeur,
+                article,
+                false,
+                SourceBascule::Vendeur,
+                bac.admin
+            )
             .await
             .unwrap_err(),
         ErreurPrestataires::ArticleRetire(_)
     ));
     drop(tx);
     assert!(matches!(
-        signaler(&bac, Uuid::now_v7(), article, yao).await.unwrap_err(),
+        signaler(&bac, Uuid::now_v7(), article, yao)
+            .await
+            .unwrap_err(),
         ErreurPrestataires::ArticleRetire(_)
     ));
     assert_eq!(
-        bac.compter("SELECT count(*) FROM prestataires.signalement_rupture").await,
+        bac.compter("SELECT count(*) FROM prestataires.signalement_rupture")
+            .await,
         0
     );
 }
@@ -301,7 +379,8 @@ async fn bascule_refusee_tant_que_le_site_manque(pool: PgPool) {
         .id;
     tx.commit().await.unwrap();
     assert_eq!(
-        bac.compter("SELECT count(*) FROM prestataires.disponibilite_article").await,
+        bac.compter("SELECT count(*) FROM prestataires.disponibilite_article")
+            .await,
         0,
         "sans site, aucune ligne de disponibilité n'est garnie"
     );
@@ -311,7 +390,14 @@ async fn bascule_refusee_tant_que_le_site_manque(pool: PgPool) {
         let mut tx = bac.pool.begin().await.unwrap();
         assert!(matches!(
             bac.depot
-                .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Admin, bac.admin)
+                .basculer_disponibilite(
+                    &mut tx,
+                    vendeur,
+                    article,
+                    false,
+                    SourceBascule::Admin,
+                    bac.admin
+                )
                 .await
                 .unwrap_err(),
             ErreurPrestataires::SiteInconnu(_)
@@ -330,7 +416,14 @@ async fn bascule_refusee_tant_que_le_site_manque(pool: PgPool) {
 
     let mut tx = bac.pool.begin().await.unwrap();
     bac.depot
-        .basculer_disponibilite(&mut tx, vendeur, article, false, SourceBascule::Admin, bac.admin)
+        .basculer_disponibilite(
+            &mut tx,
+            vendeur,
+            article,
+            false,
+            SourceBascule::Admin,
+            bac.admin,
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();

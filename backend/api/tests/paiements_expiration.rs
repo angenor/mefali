@@ -32,13 +32,9 @@ async fn session_ouverte(bac: &Bac) -> (uuid::Uuid, uuid::Uuid, i64) {
 
 /// Un passage de balayage, tel que le job le fait toutes les 10 s.
 async fn balayer(bac: &Bac) -> paiements::BilanBalayage {
-    paiements::balayer(
-        &bac.paiements,
-        &bac.cmd.commandes,
-        bac.fournisseur.as_ref(),
-    )
-    .await
-    .expect("le balayage aboutit")
+    paiements::balayer(&bac.paiements, &bac.cmd.commandes, bac.fournisseur.as_ref())
+        .await
+        .expect("le balayage aboutit")
 }
 
 /// FR-031 — l'annulation par expiration : **sans frais, sans part coursier**.
@@ -69,7 +65,10 @@ async fn une_session_abandonnee_annule_sa_commande_sans_frais(pool: sqlx::PgPool
     assert_eq!(annulations.len(), 1);
     let annulation = &annulations[0];
     assert_eq!(annulation["par"], "systeme");
-    assert_eq!(annulation["motif_cle"], commandes::MOTIF_ANNULATION_EXPIRATION);
+    assert_eq!(
+        annulation["motif_cle"],
+        commandes::MOTIF_ANNULATION_EXPIRATION
+    );
     assert_eq!(annulation["sans_frais"], true);
     assert_eq!(annulation["part_coursier_due"], 0);
 

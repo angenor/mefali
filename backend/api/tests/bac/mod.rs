@@ -106,7 +106,9 @@ impl Bac {
             client: Uuid::nil(),
             jeton_client: String::new(),
         };
-        let (admin, jeton_admin) = bac.compte_avec_roles("+2250700000001", &["client", "admin"]).await;
+        let (admin, jeton_admin) = bac
+            .compte_avec_roles("+2250700000001", &["client", "admin"])
+            .await;
         let (client, jeton_client) = bac.compte_avec_roles("+2250700000002", &["client"]).await;
         bac.admin = admin;
         bac.jeton_admin = jeton_admin;

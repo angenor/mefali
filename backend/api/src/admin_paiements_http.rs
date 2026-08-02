@@ -295,9 +295,11 @@ pub async fn clore_dossier(
         .await?
         .ok_or(paiements::ErreurPaiements::DossierInconnu(dossier_id))?;
 
-    let mut tx = paiements.pool().begin().await.map_err(|e| {
-        ErreurPaiementsHttp::Domaine(paiements::ErreurPaiements::Sql(e))
-    })?;
+    let mut tx = paiements
+        .pool()
+        .begin()
+        .await
+        .map_err(|e| ErreurPaiementsHttp::Domaine(paiements::ErreurPaiements::Sql(e)))?;
     let clos = paiements
         .clore_dossier(
             &mut tx,
@@ -310,9 +312,9 @@ pub async fn clore_dossier(
     if !clos {
         return Err(paiements::ErreurPaiements::DossierDejaClos.into());
     }
-    tx.commit().await.map_err(|e| {
-        ErreurPaiementsHttp::Domaine(paiements::ErreurPaiements::Sql(e))
-    })?;
+    tx.commit()
+        .await
+        .map_err(|e| ErreurPaiementsHttp::Domaine(paiements::ErreurPaiements::Sql(e)))?;
 
     let dossier = paiements
         .dossier(dossier_id)
@@ -378,9 +380,7 @@ pub async fn file_creances(
         }
     };
 
-    let creances = coursier
-        .lister_creances(filtre.coursier_id, etat)
-        .await?;
+    let creances = coursier.lister_creances(filtre.coursier_id, etat).await?;
     let total_du_unites = creances
         .iter()
         .filter(|c| c.etat == coursier::EtatCreance::Due)

@@ -204,7 +204,8 @@ mod tests {
         let s = signataire();
         let vides = EntetesNotification::default();
         assert!(matches!(
-            s.verifier_entetes(&vides, &corps(), Utc::now()).unwrap_err(),
+            s.verifier_entetes(&vides, &corps(), Utc::now())
+                .unwrap_err(),
             ErreurFournisseur::SignatureInvalide,
         ));
     }

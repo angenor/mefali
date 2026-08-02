@@ -39,5 +39,9 @@ async fn composition_et_plan_de_reference(pool: PgPool) {
         .parametre(bac.ville, "categorie.restauration.affichage_rupture")
         .await
         .unwrap();
-    assert_eq!(affichage, Some(serde_json::json!("grise")), "hérité du pays");
+    assert_eq!(
+        affichage,
+        Some(serde_json::json!("grise")),
+        "hérité du pays"
+    );
 }

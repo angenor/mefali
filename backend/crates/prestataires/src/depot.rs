@@ -57,10 +57,7 @@ pub trait Prestataires: Send + Sync {
 
     /// Prestataires que ce compte pilote (rattachements) — la PORTE des
     /// surfaces vendeur (FR-011), et celle du cycle CRS plus tard.
-    async fn prestataires_pilotables(
-        &self,
-        compte: Uuid,
-    ) -> Result<Vec<Uuid>, ErreurPrestataires>;
+    async fn prestataires_pilotables(&self, compte: Uuid) -> Result<Vec<Uuid>, ErreurPrestataires>;
 }
 
 /// Lectures de la SPÉCIALISATION vendeur — consommées par le module commandes

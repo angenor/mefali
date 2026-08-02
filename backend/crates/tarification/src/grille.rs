@@ -13,7 +13,9 @@ use uuid::Uuid;
 
 use socle::{ecrire_evenement, NouvelEvenement};
 
-use crate::modele::{DemandeDevis, ErreurTarif, EtatGrille, Evaluation, Grille, Regle, SourceGrille};
+use crate::modele::{
+    DemandeDevis, ErreurTarif, EtatGrille, Evaluation, Grille, Regle, SourceGrille,
+};
 use crate::regle;
 use crate::PgTarification;
 
@@ -48,7 +50,10 @@ pub(crate) async fn charger_entete(
         id: l.id,
         zone_id: l.zone_id,
         version: l.version,
-        etat: l.etat.parse().expect("énum Postgres tarification.etat_grille"),
+        etat: l
+            .etat
+            .parse()
+            .expect("énum Postgres tarification.etat_grille"),
         effet_le: l.effet_le,
         simulee_le: l.simulee_le,
         simulee_empreinte: l.simulee_empreinte,

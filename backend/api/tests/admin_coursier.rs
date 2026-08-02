@@ -54,7 +54,11 @@ async fn indemnisation_demandee(bac: &Bac) -> (Course, Uuid, i64) {
     let (statut, file) = bac.get("/admin/indemnisations", &bac.jeton_admin).await;
     assert_eq!(statut, 200, "file des indemnisations : {file}");
     let i = &file["indemnisations"][0];
-    let id: Uuid = i["id"].as_str().expect("une indemnisation attendue").parse().unwrap();
+    let id: Uuid = i["id"]
+        .as_str()
+        .expect("une indemnisation attendue")
+        .parse()
+        .unwrap();
     (course, id, i["montant_unites"].as_i64().unwrap())
 }
 
@@ -237,7 +241,10 @@ async fn une_indemnisation_deja_decidee_ne_se_redecide_pas(pool: PgPool) {
 
     for (chemin, corps) in [
         ("valider", json!({})),
-        ("refuser", json!({ "motif_cle": "indemnisation.refus.erreur" })),
+        (
+            "refuser",
+            json!({ "motif_cle": "indemnisation.refus.erreur" }),
+        ),
     ] {
         let (statut, _) = bac
             .post(

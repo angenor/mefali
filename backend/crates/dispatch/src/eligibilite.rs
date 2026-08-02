@@ -247,9 +247,7 @@ impl PgDispatch {
             //    mis le déclaré.
             let (palier, _) = config.grille_avance.palier(inscription.note_centiemes);
             let plafond_retenu = palier.plafond_unites.min(inscription.plafond_unites);
-            if demande.montant_a_avancer > plafond_retenu
-                || demande.devise != inscription.devise
-            {
+            if demande.montant_a_avancer > plafond_retenu || demande.devise != inscription.devise {
                 motifs.push(MotifEcart::CapaciteAvance);
             }
 

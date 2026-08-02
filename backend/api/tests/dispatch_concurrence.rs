@@ -288,7 +288,9 @@ async fn le_rejeu_d_une_acceptation_ne_double_rien(pool: sqlx::PgPool) {
         json!({ "uuid_client": uuid_client, "horodatage_local": chrono::Utc::now() });
     let uri = format!("/courses/offres/{}/accepter", offre.id);
 
-    let (s1, c1) = bac.post(&uri, &bac.coursiers[0].jeton, corps_demande.clone()).await;
+    let (s1, c1) = bac
+        .post(&uri, &bac.coursiers[0].jeton, corps_demande.clone())
+        .await;
     let (s2, c2) = bac.post(&uri, &bac.coursiers[0].jeton, corps_demande).await;
 
     assert_eq!(s1, 200, "{c1}");

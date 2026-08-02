@@ -460,8 +460,12 @@ mod tests {
     #[test]
     fn facteur_degrade_parametrable() {
         let points = [p(5.898, -4.823), p(5.908, -4.823)];
-        let brut = matrice_degradee(&points, 1.0, 20.0).troncon(0, 1).distance_m;
-        let majore = matrice_degradee(&points, 1.4, 20.0).troncon(0, 1).distance_m;
+        let brut = matrice_degradee(&points, 1.0, 20.0)
+            .troncon(0, 1)
+            .distance_m;
+        let majore = matrice_degradee(&points, 1.4, 20.0)
+            .troncon(0, 1)
+            .distance_m;
         assert_eq!(majore, (brut as f64 * 1.4).round() as i64);
     }
 

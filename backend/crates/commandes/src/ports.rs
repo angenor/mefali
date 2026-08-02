@@ -207,10 +207,7 @@ pub trait CommandesADispatcher: Send + Sync {
     async fn capacites_requises(&self, commande: Uuid) -> Result<Vec<Capacite>, ErreurCommandes>;
 
     /// Ce que la réassignation doit savoir avant de retirer quoi que ce soit.
-    async fn etat_progression(
-        &self,
-        livraison: Uuid,
-    ) -> Result<EtatProgression, ErreurCommandes>;
+    async fn etat_progression(&self, livraison: Uuid) -> Result<EtatProgression, ErreurCommandes>;
 
     /// Retire le coursier et remet la commande dans le pipeline :
     /// `livraison.coursier_id = NULL`, tronc `en_cours → en_attente_coursier`,
@@ -606,7 +603,12 @@ impl CourseCoursier for CourseFixe {
         &self,
         coursier: Uuid,
     ) -> Result<Option<CourseDuCoursier>, ErreurCommandes> {
-        Ok(self.courses.lock().expect("courses").get(&coursier).cloned())
+        Ok(self
+            .courses
+            .lock()
+            .expect("courses")
+            .get(&coursier)
+            .cloned())
     }
 
     async fn montant_a_encaisser(&self, livraison: Uuid) -> Result<Montant, ErreurCommandes> {
@@ -1214,7 +1216,10 @@ impl PaiementSimule {
 
     /// Vrai si le prépaiement de cette commande a été confirmé.
     pub fn est_confirme(&self, commande: Uuid) -> bool {
-        self.confirmes.lock().expect("confirmes").contains(&commande)
+        self.confirmes
+            .lock()
+            .expect("confirmes")
+            .contains(&commande)
     }
 
     /// Vrai si le prépaiement de cette commande a expiré.
@@ -1309,7 +1314,10 @@ mod tests_paiement {
             .await
             .unwrap();
         assert_eq!(depot.annulees(), vec![commande]);
-        assert_eq!(depot.a_payer(commande).await.unwrap().etat, EtatCommande::Annulee);
+        assert_eq!(
+            depot.a_payer(commande).await.unwrap().etat,
+            EtatCommande::Annulee
+        );
     }
 
     /// Une commande inconnue est une erreur nommée, pas un `None` silencieux :
@@ -1498,7 +1506,10 @@ mod tests {
             ],
         );
 
-        let jour = fixe.livrees_du_jour(coursier, minuit, demain).await.unwrap();
+        let jour = fixe
+            .livrees_du_jour(coursier, minuit, demain)
+            .await
+            .unwrap();
         assert_eq!(jour.len(), 1, "seule la course du jour compte");
         assert_eq!(jour[0].part_coursier_unites, 1_200);
     }
@@ -1569,7 +1580,13 @@ mod tests {
                 bloque: false,
             },
         );
-        assert!(doubles.restrictions(compte).await.unwrap().prepaiement_impose);
+        assert!(
+            doubles
+                .restrictions(compte)
+                .await
+                .unwrap()
+                .prepaiement_impose
+        );
         assert!(!doubles.restrictions(compte).await.unwrap().bloque);
     }
 }

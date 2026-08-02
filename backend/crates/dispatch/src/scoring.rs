@@ -174,7 +174,11 @@ impl PgDispatch {
         config: &ConfigDispatch,
         maintenant: DateTime<Utc>,
     ) -> Result<i64, ErreurDispatch> {
-        if let Some(fin) = self.commandes.fin_derniere_course(eligible.coursier).await? {
+        if let Some(fin) = self
+            .commandes
+            .fin_derniere_course(eligible.coursier)
+            .await?
+        {
             return Ok((maintenant - fin).num_seconds().max(0));
         }
         let bascule = sqlx::query_scalar!(

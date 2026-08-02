@@ -120,7 +120,10 @@ async fn les_trois_preuves_reunies_ouvrent_la_declaration(pool: PgPool) {
     assert_eq!(vu["total"], 3);
 
     let (statut, corps) = declarer_echec(&bac, &course).await;
-    assert_eq!(statut, 200, "échec refusé alors que tout est prouvé : {corps}");
+    assert_eq!(
+        statut, 200,
+        "échec refusé alors que tout est prouvé : {corps}"
+    );
 }
 
 // ── L'espacement des appels (SC-007) ───────────────────────────────────────
@@ -139,7 +142,10 @@ async fn des_appels_trop_rapproches_ne_valent_qu_une_preuve(pool: PgPool) {
     }
 
     let vu = bac.lire_preuves(course.livraison).await;
-    assert_eq!(vu["appels"]["faits"], 1, "les deux appels ont compté : {vu}");
+    assert_eq!(
+        vu["appels"]["faits"], 1,
+        "les deux appels ont compté : {vu}"
+    );
     assert_eq!(vu["appels"]["espacement_ok"], false);
     assert_eq!(vu["appels"]["ok"], false);
     assert_eq!(
@@ -181,8 +187,11 @@ async fn les_appels_de_suivi_ne_prouvent_rien(pool: PgPool) {
             .await;
         assert_eq!(statut, 201, "{corps}");
         assert_eq!(corps["compte_pour_preuve"], false);
-        bac.reculer_appels(course.livraison, Duration::seconds(PREUVE_APPELS_ESPACEMENT_S + 10))
-            .await;
+        bac.reculer_appels(
+            course.livraison,
+            Duration::seconds(PREUVE_APPELS_ESPACEMENT_S + 10),
+        )
+        .await;
     }
 
     let vu = bac.lire_preuves(course.livraison).await;
@@ -260,9 +269,13 @@ async fn un_lot_de_presence_rejoue_ne_double_rien(pool: PgPool) {
 
     let (statut, second) = bac.post(&uri, &bac.jeton_coursier, lot).await;
     assert_eq!(statut, 200);
-    assert_eq!(second, premier, "le rejeu du lot n'a pas rendu le même corps");
     assert_eq!(
-        bac.compter("SELECT count(*) FROM coursier.releve_presence").await,
+        second, premier,
+        "le rejeu du lot n'a pas rendu le même corps"
+    );
+    assert_eq!(
+        bac.compter("SELECT count(*) FROM coursier.releve_presence")
+            .await,
         2,
         "le rejeu a créé des doublons",
     );
@@ -304,7 +317,8 @@ async fn le_basculement_n_emet_qu_une_seule_fois(pool: PgPool) {
     // L'arrivée chez le client est déclarée, puis reculée : c'est depuis elle
     // que se mesure le délai porté par l'événement.
     bac.arriver_chez_le_client(&course).await;
-    bac.reculer_arrivee(course.remise, Duration::seconds(900)).await;
+    bac.reculer_arrivee(course.remise, Duration::seconds(900))
+        .await;
 
     bac.reunir_preuve_appels(course.livraison).await;
     bac.reunir_preuve_presence(course.livraison).await;
@@ -415,14 +429,24 @@ async fn une_photo_rejouee_ne_compte_pas_deux_fois(pool: PgPool) {
     let uuid = Uuid::now_v7();
     let uri = format!("/courses/{}/preuves/photo", course.livraison);
     let (statut, premier) = bac
-        .post_multipart(&uri, &bac.jeton_coursier, json!({ "uuid_client": uuid }), true)
+        .post_multipart(
+            &uri,
+            &bac.jeton_coursier,
+            json!({ "uuid_client": uuid }),
+            true,
+        )
         .await;
     assert_eq!(statut, 201, "{premier}");
     assert_eq!(premier["photos"], 1);
     assert_eq!(premier["rejeu"], false);
 
     let (statut, second) = bac
-        .post_multipart(&uri, &bac.jeton_coursier, json!({ "uuid_client": uuid }), true)
+        .post_multipart(
+            &uri,
+            &bac.jeton_coursier,
+            json!({ "uuid_client": uuid }),
+            true,
+        )
         .await;
     assert_eq!(statut, 200);
     assert_eq!(second["photo_id"], premier["photo_id"]);
@@ -466,7 +490,10 @@ async fn l_exploitation_lit_le_dossier_complet(pool: PgPool) {
 
     let photos = dossier["photos"].as_array().unwrap();
     assert_eq!(photos.len(), 1);
-    assert!(photos[0]["url"].is_string(), "photo non présignée : {dossier}");
+    assert!(
+        photos[0]["url"].is_string(),
+        "photo non présignée : {dossier}"
+    );
     assert!(photos[0]["purgee_le"].is_null());
 
     assert_eq!(dossier["etat"]["reunies"], true);

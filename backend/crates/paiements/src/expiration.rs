@@ -133,8 +133,7 @@ async fn traiter_session(
     maintenant: DateTime<Utc>,
 ) -> Result<Issue, ErreurPaiements> {
     // ── 1. Demander au fournisseur (FR-027) ───────────────────────────────
-    if let Some(rattrapee) =
-        reconcilier(depot, commandes, fournisseur, session, maintenant).await?
+    if let Some(rattrapee) = reconcilier(depot, commandes, fournisseur, session, maintenant).await?
     {
         return Ok(rattrapee);
     }
@@ -348,6 +347,9 @@ mod tests {
     #[test]
     fn un_bilan_neuf_est_vide() {
         let b = BilanBalayage::default();
-        assert_eq!((b.examinees, b.expirees, b.rattrapees, b.reportees), (0, 0, 0, 0));
+        assert_eq!(
+            (b.examinees, b.expirees, b.rattrapees, b.reportees),
+            (0, 0, 0, 0)
+        );
     }
 }

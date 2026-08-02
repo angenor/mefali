@@ -178,13 +178,12 @@ async fn partiellement_collectee_porte_les_avances_et_rien_d_autre(pool: PgPool)
     bac.collecter(course.collectes[0]).await;
     bac.drainer_caisse().await;
 
-    let avance_du_premier = sqlx::query_scalar::<_, i64>(
-        "SELECT montant_avance FROM commandes.arret WHERE id = $1",
-    )
-    .bind(course.collectes[0])
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let avance_du_premier =
+        sqlx::query_scalar::<_, i64>("SELECT montant_avance FROM commandes.arret WHERE id = $1")
+            .bind(course.collectes[0])
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
 
     let v = ventilation(&bac).await;
     assert_eq!(
@@ -217,8 +216,7 @@ async fn livree_cash_ordinaire(pool: PgPool) {
     // `M = 0` au MVP : le solde vaut donc `P`. On l'écrit `P + M` pour que la
     // ligne reste juste le jour où la marge cesse d'être nulle.
     assert_eq!(
-        v.solde_livre,
-        DEVIS_PART_COURSIER,
+        v.solde_livre, DEVIS_PART_COURSIER,
         "solde = +P+M (M nulle au MVP) — Yao a récupéré son avance ET encaissé \
          les frais",
     );
@@ -271,7 +269,10 @@ async fn livree_cash_avec_retenue_vendeur(pool: PgPool) {
         "solde = +P+M — identique au cash ordinaire, alors que le prix client \
          vaut ZÉRO. C'est tout l'objet de la formule R13.",
     );
-    assert_eq!(v.du_par_mefali, 0, "la retenue a payé la part : rien n'est dû");
+    assert_eq!(
+        v.du_par_mefali, 0,
+        "la retenue a payé la part : rien n'est dû"
+    );
     assert!(bac.creances(bac.coursier).await.is_empty());
 }
 
@@ -321,11 +322,7 @@ async fn livree_prepayee(pool: PgPool) {
         "aucun cash n'a changé de main : l'avance reste dehors, et le livre \
          le dit plutôt que d'écrire un remboursement fictif (R10)",
     );
-    assert_eq!(
-        v.du_par_mefali,
-        avances + DEVIS_PART_COURSIER,
-        "dû = A + P",
-    );
+    assert_eq!(v.du_par_mefali, avances + DEVIS_PART_COURSIER, "dû = A + P",);
 
     let creances = bac.creances(bac.coursier).await;
     assert_eq!(creances.len(), 2, "deux créances, deux causes distinctes");
@@ -497,5 +494,8 @@ async fn le_chemin_prepaye_converge_apres_reglement(pool: PgPool) {
         "−A + A + P = P : le même gain que les trois autres chemins",
     );
     assert_eq!(apres.du_par_mefali, 0);
-    assert!(avances > 0, "précondition : des avances ont bien été engagées");
+    assert!(
+        avances > 0,
+        "précondition : des avances ont bien été engagées"
+    );
 }

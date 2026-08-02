@@ -69,7 +69,10 @@ async fn dix_rejeus_ne_font_qu_une_confirmation(pool: sqlx::PgPool) {
     assert_eq!((traites, rejeux), (1, 9));
     assert_eq!(bac.etats_transactions(commande).await, vec!["reglee"]);
     assert_eq!(bac.evenements("paiement.confirme").await.len(), 1);
-    assert_eq!(bac.cmd.evenements("commande.paiement_confirme").await.len(), 1);
+    assert_eq!(
+        bac.cmd.evenements("commande.paiement_confirme").await.len(),
+        1
+    );
     assert_eq!(
         bac.notifications().await.len(),
         1,
@@ -166,7 +169,10 @@ async fn deux_notifications_concurrentes_n_ont_qu_un_effet(pool: sqlx::PgPool) {
 
     assert_eq!(bac.etats_transactions(commande).await, vec!["reglee"]);
     assert_eq!(bac.evenements("paiement.confirme").await.len(), 1);
-    assert_eq!(bac.cmd.evenements("commande.paiement_confirme").await.len(), 1);
+    assert_eq!(
+        bac.cmd.evenements("commande.paiement_confirme").await.len(),
+        1
+    );
 }
 
 /// FR-024 — **un montant divergent ne confirme RIEN** et ouvre un dossier.

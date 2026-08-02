@@ -14,7 +14,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 async fn agree_avec_compte(bac: &Bac) -> (Uuid, Uuid) {
-    let id = bac.prospect_complet("Boutique Kofi", "boutique_superette").await;
+    let id = bac
+        .prospect_complet("Boutique Kofi", "boutique_superette")
+        .await;
     bac.agreer(id).await;
     let kofi = bac.creer_compte("+2250700000002").await;
     let mut tx = bac.pool.begin().await.unwrap();
@@ -76,7 +78,10 @@ async fn suspension_coupe_tout_retablissement_a_l_identique(pool: PgPool) {
         "le rôle du compte n'a PAS bougé — aucune cascade (FR-008)"
     );
     let suspension = &bac.evenements("prestataire.suspendu").await[0];
-    assert_eq!(suspension["motif"], serde_json::json!("trois incidents graves"));
+    assert_eq!(
+        suspension["motif"],
+        serde_json::json!("trois incidents graves")
+    );
     assert_eq!(suspension["acteur"], serde_json::json!(bac.admin));
 
     // Rétablissement : tout revient, MÊME plaque (SC-003).
@@ -88,7 +93,14 @@ async fn suspension_coupe_tout_retablissement_a_l_identique(pool: PgPool) {
     assert_eq!(apres.statut, StatutPrestataire::Agree);
     assert_eq!(apres.jeton_plaque.as_deref(), Some(jeton.as_str()));
     assert_eq!(apres.code_secours.as_deref(), Some(code.as_str()));
-    assert!(bac.depot.resolution_plaque(&jeton).await.unwrap().unwrap().valide);
+    assert!(
+        bac.depot
+            .resolution_plaque(&jeton)
+            .await
+            .unwrap()
+            .unwrap()
+            .valide
+    );
     assert!(bac.depot.fiche_publique_de(id).await.unwrap().is_some());
     assert!(bac.depot.exiger_pilotage(kofi, id).await.is_ok());
     assert_eq!(bac.evenements("prestataire.retabli").await.len(), 1);
@@ -97,11 +109,17 @@ async fn suspension_coupe_tout_retablissement_a_l_identique(pool: PgPool) {
     let prospect = bac.creer_fiche("Prospect", "restauration").await;
     let mut tx = bac.pool.begin().await.unwrap();
     assert!(matches!(
-        bac.depot.suspendre(&mut tx, prospect, "motif", bac.admin).await.unwrap_err(),
+        bac.depot
+            .suspendre(&mut tx, prospect, "motif", bac.admin)
+            .await
+            .unwrap_err(),
         ErreurPrestataires::TransitionInvalide { .. }
     ));
     assert!(matches!(
-        bac.depot.retablir(&mut tx, id, bac.admin).await.unwrap_err(),
+        bac.depot
+            .retablir(&mut tx, id, bac.admin)
+            .await
+            .unwrap_err(),
         ErreurPrestataires::TransitionInvalide { .. }
     ));
 }
@@ -138,7 +156,13 @@ async fn suspension_ne_desactive_jamais_la_categorie(pool: PgPool) {
 async fn correction_recalcule_les_deux_couples(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let (id, _) = agree_avec_compte(&bac).await; // boutique_superette, activée
-    let jeton = bac.depot.prestataire(id).await.unwrap().jeton_plaque.unwrap();
+    let jeton = bac
+        .depot
+        .prestataire(id)
+        .await
+        .unwrap()
+        .jeton_plaque
+        .unwrap();
 
     // Correction vers restauration (seuil 2 — non atteint par ce seul agréé).
     let mut tx = bac.pool.begin().await.unwrap();
@@ -150,8 +174,16 @@ async fn correction_recalcule_les_deux_couples(pool: PgPool) {
 
     let p = bac.depot.prestataire(id).await.unwrap();
     assert_eq!(p.categorie_slug, "restauration");
-    assert_eq!(p.statut, StatutPrestataire::Agree, "ni suspension ni ré-agrément");
-    assert_eq!(p.jeton_plaque.as_deref(), Some(jeton.as_str()), "plaque intacte");
+    assert_eq!(
+        p.statut,
+        StatutPrestataire::Agree,
+        "ni suspension ni ré-agrément"
+    );
+    assert_eq!(
+        p.jeton_plaque.as_deref(),
+        Some(jeton.as_str()),
+        "plaque intacte"
+    );
     assert!(
         bac.categorie_active(bac.categorie_boutique).await,
         "l'ANCIENNE catégorie reste active — seuil à la hausse seulement"
@@ -161,8 +193,14 @@ async fn correction_recalcule_les_deux_couples(pool: PgPool) {
         "1 agréé < seuil 2 : la nouvelle n'est pas activée"
     );
     let correction = &bac.evenements("prestataire.corrige").await[0];
-    assert_eq!(correction["avant"]["categorie"], serde_json::json!("boutique_superette"));
-    assert_eq!(correction["apres"]["categorie"], serde_json::json!("restauration"));
+    assert_eq!(
+        correction["avant"]["categorie"],
+        serde_json::json!("boutique_superette")
+    );
+    assert_eq!(
+        correction["apres"]["categorie"],
+        serde_json::json!("restauration")
+    );
 
     // La fiche n'est plus servie (restauration inactive) mais reste
     // administrable — et re-corriger la ramène.

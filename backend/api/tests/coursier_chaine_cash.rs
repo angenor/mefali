@@ -242,7 +242,9 @@ async fn une_commande_cash_reclame_son_total(pool: PgPool) {
     assert_eq!(statut, 200, "{active}");
     assert_eq!(active["remise"]["mode_paiement"], "cash");
     assert_eq!(
-        active["remise"]["montant_a_encaisser_unites"].as_i64().unwrap(),
+        active["remise"]["montant_a_encaisser_unites"]
+            .as_i64()
+            .unwrap(),
         total_du(&bac, &course).await,
     );
 }

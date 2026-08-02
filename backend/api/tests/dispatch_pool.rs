@@ -330,7 +330,11 @@ async fn la_carte_des_coursiers_se_lit_avec_la_seule_zone(pool: sqlx::PgPool) {
     assert_eq!(corps["zone_id"], bac.cmd.ville.to_string());
 
     let coursiers = corps["coursiers"].as_array().unwrap();
-    assert_eq!(coursiers.len(), 2, "les DEUX du pool, sans centre à fournir");
+    assert_eq!(
+        coursiers.len(),
+        2,
+        "les DEUX du pool, sans centre à fournir"
+    );
     let yao = coursiers
         .iter()
         .find(|c| c["coursier_id"] == bac.coursiers[0].id.to_string())

@@ -143,14 +143,21 @@ async fn commande_livree_ne_s_annule_pas(pool: sqlx::PgPool) {
     assert_eq!(bac.etat_commande(course.commande).await, "terminee");
 
     for (jeton, uri) in [
-        (&bac.jeton_client, format!("/commandes/{}/annuler", course.commande)),
+        (
+            &bac.jeton_client,
+            format!("/commandes/{}/annuler", course.commande),
+        ),
         (
             &bac.jeton_admin,
             format!("/admin/commandes/{}/annuler", course.commande),
         ),
     ] {
         let (statut, corps) = bac
-            .post(&uri, jeton, json!({ "motif_cle": "commande.annulation.admin" }))
+            .post(
+                &uri,
+                jeton,
+                json!({ "motif_cle": "commande.annulation.admin" }),
+            )
             .await;
         assert_eq!(statut, 409, "{corps}");
         assert_eq!(corps["code"], "transition_refusee");

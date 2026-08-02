@@ -129,9 +129,7 @@ impl PgPrestataires {
             &nouveau.contact_telephone,
             nouveau.delai_preparation_min,
         )?;
-        let categorie = self
-            .categorie_par_slug(tx, &nouveau.categorie_slug)
-            .await?;
+        let categorie = self.categorie_par_slug(tx, &nouveau.categorie_slug).await?;
         self.verifier_ville(tx, nouveau.ville_id).await?;
 
         let plan: Uuid =
@@ -381,7 +379,10 @@ impl PgPrestataires {
     }
 
     /// Photos de la fiche, dans l'ordre d'affichage.
-    pub async fn photos(&self, prestataire: Uuid) -> Result<Vec<PhotoPrestataire>, ErreurPrestataires> {
+    pub async fn photos(
+        &self,
+        prestataire: Uuid,
+    ) -> Result<Vec<PhotoPrestataire>, ErreurPrestataires> {
         let lignes = sqlx::query!(
             "SELECT id, cle_objet, position FROM prestataires.photo_prestataire
              WHERE prestataire_id = $1 ORDER BY position",
@@ -469,7 +470,10 @@ impl PgPrestataires {
     }
 
     /// Chartes déposées, la plus récente d'abord (lecture ADMIN).
-    pub async fn chartes(&self, prestataire: Uuid) -> Result<Vec<CharteSignee>, ErreurPrestataires> {
+    pub async fn chartes(
+        &self,
+        prestataire: Uuid,
+    ) -> Result<Vec<CharteSignee>, ErreurPrestataires> {
         let lignes = sqlx::query!(
             "SELECT id, cle_objet, version_charte, signee_le, deposee_le
              FROM prestataires.charte_signee
@@ -695,7 +699,11 @@ impl PgPrestataires {
         acteur: Uuid,
     ) -> Result<Prestataire, ErreurPrestataires> {
         let p = self.verrouiller(tx, prestataire).await?;
-        exiger_transition(p.statut, ActionPrestataire::Agreer, StatutPrestataire::Agree)?;
+        exiger_transition(
+            p.statut,
+            ActionPrestataire::Agreer,
+            StatutPrestataire::Agree,
+        )?;
 
         // Complétude (FR-005) : fiche (≥ 1 photo), charte signée, site doté
         // d'au moins une plage d'horaires. Manques STABLES, tous remontés.
@@ -742,7 +750,10 @@ impl PgPrestataires {
         let plaque_creee = p.jeton_plaque.is_none();
         let (jeton, code) = if plaque_creee {
             (
-                Some(crate::plaque::generer_jeton(&self.secret_plaque, prestataire)),
+                Some(crate::plaque::generer_jeton(
+                    &self.secret_plaque,
+                    prestataire,
+                )),
                 Some(crate::plaque::generer_code_secours()),
             )
         } else {
@@ -1073,11 +1084,7 @@ mod tests {
             (Suspendu, Retablir, Some(Agree)),
         ];
         for (avant, action, attendu) in cas {
-            assert_eq!(
-                transition(avant, action),
-                attendu,
-                "{avant} × {action:?}"
-            );
+            assert_eq!(transition(avant, action), attendu, "{avant} × {action:?}");
         }
     }
 }

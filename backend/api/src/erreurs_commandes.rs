@@ -217,7 +217,10 @@ mod tests {
 
     #[test]
     fn les_trois_familles_de_statut() {
-        assert_eq!(statut(&ErreurCommandes::CompteBloque), StatusCode::FORBIDDEN);
+        assert_eq!(
+            statut(&ErreurCommandes::CompteBloque),
+            StatusCode::FORBIDDEN
+        );
         assert_eq!(
             statut(&ErreurCommandes::CategorieNonMixable),
             StatusCode::CONFLICT,

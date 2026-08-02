@@ -103,7 +103,11 @@ async fn le_geste_ecrit_la_fiche_et_son_evenement(pool: PgPool) {
             "au_dela",
             serde_json::json!(5_000),
         ),
-        (Some(OffreLivraison::Toujours), "toujours", serde_json::Value::Null),
+        (
+            Some(OffreLivraison::Toujours),
+            "toujours",
+            serde_json::Value::Null,
+        ),
         (None, "jamais", serde_json::Value::Null),
     ] {
         let mut tx = bac.pool.begin().await.unwrap();
@@ -124,7 +128,9 @@ async fn le_geste_ecrit_la_fiche_et_son_evenement(pool: PgPool) {
     // Trois gestes, trois traces : un « non-changement » se trace aussi — sans
     // quoi « qui a confirmé quoi » cesse d'être répondable.
     assert_eq!(
-        bac.evenements("vendeur.offre_livraison_modifiee").await.len(),
+        bac.evenements("vendeur.offre_livraison_modifiee")
+            .await
+            .len(),
         3
     );
 }

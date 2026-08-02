@@ -43,12 +43,11 @@ async fn sc008_les_dix_huit_parametres_sont_resolus(pool: sqlx::PgPool) {
     assert_eq!(config.devise, "XOF");
 
     // Contrôle d'inventaire du quickstart.
-    let n: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM zones.parametre_zone WHERE cle LIKE 'dispatch.%'",
-    )
-    .fetch_one(&bac.cmd.pool)
-    .await
-    .unwrap();
+    let n: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM zones.parametre_zone WHERE cle LIKE 'dispatch.%'")
+            .fetch_one(&bac.cmd.pool)
+            .await
+            .unwrap();
     assert_eq!(n, 18, "18 paramètres créés par le cycle, ni plus ni moins");
 }
 
@@ -72,7 +71,10 @@ async fn sc008_changer_le_rayon_change_le_vivier(pool: sqlx::PgPool) {
         .await;
     let commande = bac.commande_prete().await;
     assert!(
-        matches!(bac.dispatcher(commande).await, DecisionPipeline::MiseEnFile { .. }),
+        matches!(
+            bac.dispatcher(commande).await,
+            DecisionPipeline::MiseEnFile { .. }
+        ),
         "un paramètre changé en base agit au dispatch suivant",
     );
 }
@@ -111,9 +113,19 @@ async fn sc011_aucune_coordonnee_ni_numero_dans_les_evenements(pool: sqlx::PgPoo
     .fetch_all(&bac.cmd.pool)
     .await
     .unwrap();
-    assert!(!evenements.is_empty(), "le parcours doit produire des événements");
+    assert!(
+        !evenements.is_empty(),
+        "le parcours doit produire des événements"
+    );
 
-    const INTERDITS: [&str; 6] = ["lat", "lon", "latitude", "longitude", "telephone", "adresse"];
+    const INTERDITS: [&str; 6] = [
+        "lat",
+        "lon",
+        "latitude",
+        "longitude",
+        "telephone",
+        "adresse",
+    ];
     for (type_evenement, payload) in &evenements {
         let mut cles = Vec::new();
         collecter_cles(payload, &mut cles);

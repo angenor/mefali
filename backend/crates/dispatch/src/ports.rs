@@ -186,8 +186,8 @@ pub trait EtatCoursier: Send + Sync {
 #[async_trait]
 impl EtatCoursier for comptes::PgComptes {
     async fn coursier(&self, compte: Uuid) -> Result<Option<CoursierExploitable>, ErreurDispatch> {
-        let Some(en_ligne) = comptes::CoursierExploitablePar::coursier_exploitable(self, compte)
-            .await?
+        let Some(en_ligne) =
+            comptes::CoursierExploitablePar::coursier_exploitable(self, compte).await?
         else {
             return Ok(None);
         };
@@ -532,7 +532,9 @@ impl PoolCoursiers for MemoirePool {
                     .filter(|c| match etats.get(c) {
                         // Vol d'oiseau, comme le GEO de Redis : il MINORE la
                         // route, donc il ne peut pas écarter à tort.
-                        Some(i) => distance_grand_cercle_m(lat, lon, i.lat, i.lon) <= rayon_m as f64,
+                        Some(i) => {
+                            distance_grand_cercle_m(lat, lon, i.lat, i.lon) <= rayon_m as f64
+                        }
                         // Fantôme : il reste dans l'index, mais l'appelant ne
                         // trouvera aucun état — donc il ne recevra rien.
                         None => true,
@@ -1051,7 +1053,12 @@ mod tests {
         // Même commande, autre coursier → la commande est déjà offerte.
         assert_eq!(
             verrou
-                .poser(cmd_a, Uuid::now_v7(), Uuid::now_v7(), Duration::from_secs(45))
+                .poser(
+                    cmd_a,
+                    Uuid::now_v7(),
+                    Uuid::now_v7(),
+                    Duration::from_secs(45)
+                )
                 .await
                 .unwrap(),
             PoseVerrou::CommandeDejaOfferte,

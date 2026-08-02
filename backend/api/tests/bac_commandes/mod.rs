@@ -217,7 +217,10 @@ impl Bac {
             ("commande.repere_texte_min_caracteres", json!(10)),
             ("commande.essais_code_livraison", json!(3)),
             ("commande.historique_min_commandes_terminees", json!(1)),
-            ("substitution.delai_validation_s", json!(DELAI_SUBSTITUTION_S)),
+            (
+                "substitution.delai_validation_s",
+                json!(DELAI_SUBSTITUTION_S),
+            ),
             (
                 "substitution.ecart_prix_max_pourcent",
                 json!(ECART_PRIX_MAX_POURCENT),
@@ -433,7 +436,13 @@ impl Bac {
             .await
             .unwrap();
         self.prestataires
-            .ajouter_photo(&mut tx, p.id, vec![0xFF, 0xD8, 0xFF], "image/jpeg", self.admin)
+            .ajouter_photo(
+                &mut tx,
+                p.id,
+                vec![0xFF, 0xD8, 0xFF],
+                "image/jpeg",
+                self.admin,
+            )
             .await
             .unwrap();
         self.prestataires
@@ -546,7 +555,8 @@ impl Bac {
     /// identifiant. Panique si la création échoue : c'est une PRÉCONDITION du
     /// test, pas son objet.
     pub async fn creer_commande_api(&self, categorie_slug: &str, lignes: Vec<Value>) -> Uuid {
-        self.creer_commande_mode(categorie_slug, lignes, "cash").await
+        self.creer_commande_mode(categorie_slug, lignes, "cash")
+            .await
     }
 
     /// Variante avec le mode de paiement explicite. `mobile_money` fait naître
@@ -573,10 +583,8 @@ impl Bac {
         lignes: Vec<Value>,
         mode_paiement: &str,
     ) -> (u16, Value) {
-        let app = actix_web::test::init_service(
-            actix_web::App::new().configure(self.configurer()),
-        )
-        .await;
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
         let req = actix_web::test::TestRequest::post()
             .uri("/commandes")
             .insert_header(("authorization", format!("Bearer {}", self.jeton_client)))
@@ -658,10 +666,8 @@ impl Bac {
         action: &str,
         uuid_client: Uuid,
     ) -> (u16, Value) {
-        let app = actix_web::test::init_service(
-            actix_web::App::new().configure(self.configurer()),
-        )
-        .await;
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
         let req = actix_web::test::TestRequest::post()
             .uri(&format!("/courses/{livraison}/arrets/{arret}/{action}"))
             .insert_header(("authorization", format!("Bearer {jeton}")))
@@ -717,10 +723,8 @@ impl Bac {
 
     /// `GET` authentifié sur une route du bac.
     pub async fn get(&self, uri: &str, jeton: &str) -> (u16, Value) {
-        let app = actix_web::test::init_service(
-            actix_web::App::new().configure(self.configurer()),
-        )
-        .await;
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
         let req = actix_web::test::TestRequest::get()
             .uri(uri)
             .insert_header(("authorization", format!("Bearer {jeton}")))
@@ -733,10 +737,8 @@ impl Bac {
     /// `POST` JSON authentifié sur une route du bac. Le corps `204 No Content`
     /// est rendu `null` : il n'y a rien à désérialiser.
     pub async fn post(&self, uri: &str, jeton: &str, corps: Value) -> (u16, Value) {
-        let app = actix_web::test::init_service(
-            actix_web::App::new().configure(self.configurer()),
-        )
-        .await;
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
         let req = actix_web::test::TestRequest::post()
             .uri(uri)
             .insert_header(("authorization", format!("Bearer {jeton}")))
@@ -761,10 +763,8 @@ impl Bac {
         demande: Value,
         avec_photo: bool,
     ) -> (u16, Value) {
-        let app = actix_web::test::init_service(
-            actix_web::App::new().configure(self.configurer()),
-        )
-        .await;
+        let app =
+            actix_web::test::init_service(actix_web::App::new().configure(self.configurer())).await;
         let frontiere = "----mefali-bac";
         let mut corps = format!(
             "--{frontiere}\r\nContent-Disposition: form-data; name=\"demande\"\r\n\r\n{demande}\r\n"
@@ -849,11 +849,7 @@ impl Bac {
     }
 
     /// Déclare l'offre de livraison d'un vendeur (VND-08 — cycle 011).
-    pub async fn declarer_offre(
-        &self,
-        vendeur: Uuid,
-        offre: Option<tarification::OffreLivraison>,
-    ) {
+    pub async fn declarer_offre(&self, vendeur: Uuid, offre: Option<tarification::OffreLivraison>) {
         let mut tx = self.pool.begin().await.unwrap();
         self.prestataires
             .definir_offre_livraison(&mut tx, vendeur, offre, self.admin)
@@ -934,14 +930,20 @@ impl Bac {
     /// Rejouable sans effet : `dossier.evenement_id UNIQUE` porte l'idempotence.
     pub async fn drainer_dossiers(&self) {
         let depot = paiements::PgPaiements::new(self.pool.clone());
-        let lignes: Vec<(Uuid, String, String, Uuid, Value, chrono::DateTime<chrono::Utc>)> =
-            sqlx::query_as(
-                "SELECT id, type_evenement, entite_type, entite_id, payload, survenu_le
+        let lignes: Vec<(
+            Uuid,
+            String,
+            String,
+            Uuid,
+            Value,
+            chrono::DateTime<chrono::Utc>,
+        )> = sqlx::query_as(
+            "SELECT id, type_evenement, entite_type, entite_id, payload, survenu_le
                    FROM outbox.evenement ORDER BY cree_le, id",
-            )
-            .fetch_all(&self.pool)
-            .await
-            .unwrap();
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap();
         for (id, type_evenement, entite_type, entite_id, payload, survenu_le) in lignes {
             paiements::consommer_pour_paiements(
                 &depot,
@@ -961,7 +963,10 @@ impl Bac {
 
     /// Dossiers d'anomalie ouverts d'un type donné : `(commande, arret,
     /// montant_constate, montant_attendu)`.
-    pub async fn dossiers(&self, type_dossier: &str) -> Vec<(Option<Uuid>, Option<Uuid>, Option<i64>, Option<i64>)> {
+    pub async fn dossiers(
+        &self,
+        type_dossier: &str,
+    ) -> Vec<(Option<Uuid>, Option<Uuid>, Option<i64>, Option<i64>)> {
         sqlx::query_as(
             "SELECT commande_id, arret_id, montant_constate, montant_attendu
                FROM paiements.dossier

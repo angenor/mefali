@@ -271,12 +271,11 @@ async fn sc009_les_trois_premieres_non_reponses_du_jour_sont_franches(pool: sqlx
         bac.faire_expirer_offre(offre.id).await;
         bac.tic().await;
 
-        let franche: bool =
-            sqlx::query_scalar("SELECT franche FROM dispatch.offre WHERE id = $1")
-                .bind(offre.id)
-                .fetch_one(&bac.cmd.pool)
-                .await
-                .unwrap();
+        let franche: bool = sqlx::query_scalar("SELECT franche FROM dispatch.offre WHERE id = $1")
+            .bind(offre.id)
+            .fetch_one(&bac.cmd.pool)
+            .await
+            .unwrap();
         franches.push(franche);
     }
 

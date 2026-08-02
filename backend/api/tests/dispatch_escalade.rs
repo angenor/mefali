@@ -23,7 +23,8 @@ async fn une_alerte_et_une_annulation_sans_frais(pool: sqlx::PgPool) {
     bac.tic().await;
 
     assert_eq!(
-        bac.nb_evenements("commande.attente_coursier_escaladee").await,
+        bac.nb_evenements("commande.attente_coursier_escaladee")
+            .await,
         1,
     );
     let payloads = bac.evenements("commande.attente_coursier_escaladee").await;
@@ -61,7 +62,8 @@ async fn sc006_rebalayer_ne_reemet_rien(pool: sqlx::PgPool) {
     }
 
     assert_eq!(
-        bac.nb_evenements("commande.attente_coursier_escaladee").await,
+        bac.nb_evenements("commande.attente_coursier_escaladee")
+            .await,
         1,
         "cinq passages de tic, UNE alerte",
     );
@@ -99,7 +101,11 @@ async fn les_deux_chemins_donnent_chacun_une_alerte(pool: sqlx::PgPool) {
     bac.tic().await;
 
     let payloads = bac.evenements("commande.attente_coursier_escaladee").await;
-    assert_eq!(payloads.len(), 2, "une alerte par commande, pas une de plus");
+    assert_eq!(
+        payloads.len(),
+        2,
+        "une alerte par commande, pas une de plus"
+    );
     let chemins: Vec<&str> = payloads
         .iter()
         .map(|p| p["chemin"].as_str().unwrap())
@@ -116,7 +122,11 @@ async fn une_commande_escaladee_reste_assignable(pool: sqlx::PgPool) {
     let commande = bac.commande_prete().await;
     bac.vieillir_commande(commande, 400).await;
     bac.tic().await;
-    assert_eq!(bac.nb_evenements("commande.attente_coursier_escaladee").await, 1);
+    assert_eq!(
+        bac.nb_evenements("commande.attente_coursier_escaladee")
+            .await,
+        1
+    );
 
     // Un coursier arrive : la commande part quand même. À 400 s d'âge elle a
     // aussi dépassé le seuil de broadcast (120 s) — c'est donc un broadcast qui

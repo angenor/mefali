@@ -308,7 +308,10 @@ mod tests {
             ("drapeau.pluie", json!("oui")),
             ("transport.actifs", json!("moto")),
             ("categorie.restauration.seuil_activation", json!(0)),
-            ("categorie.restauration.affichage_rupture", json!("invisible")),
+            (
+                "categorie.restauration.affichage_rupture",
+                json!("invisible"),
+            ),
             ("rupture.masquage_seuil", json!(0)),
             ("rupture.masquage_fenetre_jours", json!("7")),
             ("charte.conservation_post_relation_annees", json!(-1)),

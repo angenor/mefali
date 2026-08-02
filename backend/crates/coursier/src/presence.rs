@@ -347,7 +347,10 @@ mod tests {
         // position, et le motif change en conséquence.
         let un = vec![e(0, 10)];
         assert_eq!(duree_presence(&un, &config()), 0);
-        assert_eq!(composer_preuve(0, &un, &config()).motif_cle, Some(motifs::EN_COURS));
+        assert_eq!(
+            composer_preuve(0, &un, &config()).motif_cle,
+            Some(motifs::EN_COURS)
+        );
     }
 
     /// Des échantillons qui arrivent tous hors du rayon : la preuve ne progresse

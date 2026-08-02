@@ -32,12 +32,14 @@ async fn file_admin(bac: &Bac, jeton: &str) -> (u16, Value) {
 /// Vieillit artificiellement une commande — l'âge est le seul critère de la
 /// file, et on ne peut pas attendre 5 minutes dans un test.
 async fn vieillir(bac: &Bac, commande: Uuid, secondes: i64) {
-    sqlx::query("UPDATE commandes.commande SET cree_le = now() - make_interval(secs => $2) WHERE id = $1")
-        .bind(commande)
-        .bind(secondes as f64)
-        .execute(&bac.pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE commandes.commande SET cree_le = now() - make_interval(secs => $2) WHERE id = $1",
+    )
+    .bind(commande)
+    .bind(secondes as f64)
+    .execute(&bac.pool)
+    .await
+    .unwrap();
 }
 
 /// Aucun coursier éligible → état d'attente ANNONCÉ, avec son événement.
@@ -61,7 +63,10 @@ async fn aucun_coursier_eligible_met_en_attente(pool: sqlx::PgPool) {
         .unwrap();
 
     assert_eq!(bac.etat_commande(commande).await, "en_attente_coursier");
-    assert_eq!(bac.nb_evenements("commande.mise_en_attente_coursier").await, 1);
+    assert_eq!(
+        bac.nb_evenements("commande.mise_en_attente_coursier").await,
+        1
+    );
     let payload = &bac.evenements("commande.mise_en_attente_coursier").await[0];
     assert_eq!(payload["motif"], "aucun_coursier_eligible");
     assert_eq!(payload["zone"], bac.ville.to_string());
@@ -154,7 +159,11 @@ async fn reprise_automatique_de_la_plus_ancienne(pool: sqlx::PgPool) {
 
     assert_eq!(bac.etat_commande(commandes[1]).await, "en_cours");
     assert_eq!(
-        bac.commandes.en_attente_coursier(bac.ville).await.unwrap().len(),
+        bac.commandes
+            .en_attente_coursier(bac.ville)
+            .await
+            .unwrap()
+            .len(),
         2,
         "les deux autres restent en file",
     );
@@ -242,7 +251,11 @@ async fn escalade_au_seuil_et_une_seule_fois(pool: sqlx::PgPool) {
         .escalader_attentes(bac.ville, chrono::Utc::now())
         .await
         .unwrap();
-    assert_eq!(escaladees, vec![vieille], "seule celle qui a franchi le seuil");
+    assert_eq!(
+        escaladees,
+        vec![vieille],
+        "seule celle qui a franchi le seuil"
+    );
 
     let payload = &bac.evenements("commande.attente_coursier_escaladee").await[0];
     assert_eq!(payload["seuil_s"], 300);
@@ -255,7 +268,11 @@ async fn escalade_au_seuil_et_une_seule_fois(pool: sqlx::PgPool) {
         .await
         .unwrap();
     assert!(encore.is_empty(), "l'escalade ne se répète pas");
-    assert_eq!(bac.nb_evenements("commande.attente_coursier_escaladee").await, 1);
+    assert_eq!(
+        bac.nb_evenements("commande.attente_coursier_escaladee")
+            .await,
+        1
+    );
 }
 
 /// La file est réservée à l'admin — et une commande déjà prise en charge n'y

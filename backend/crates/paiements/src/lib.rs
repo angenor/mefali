@@ -60,18 +60,16 @@ pub mod webhook;
 
 pub use config::{cles as cles_config, ConfigPaiements};
 pub use depot::PgPaiements;
-pub use fournisseur::{
-    AgregateurHttp,
-    Checkout, DemandeCheckout, DemandeRemboursement, EntetesNotification, ErreurFournisseur,
-    FournisseurSimule, IssuePaiement, Notification, NotificationEntrante, PaymentProvider,
-    Remboursement, ScenarioSimule,
-};
-pub use modele::{
-    LigneRegistre,
-    transition_existe, verifier_transition, Dossier, ErreurPaiements, EtatDossier, EtatTransaction,
-    MoyenPaiement, Transaction, TypeDossier,
-};
 pub use dossier::{consommer_pour_paiements, ouvrir as ouvrir_dossier, Anomalie};
 pub use expiration::{balayer, BilanBalayage};
+pub use fournisseur::{
+    AgregateurHttp, Checkout, DemandeCheckout, DemandeRemboursement, EntetesNotification,
+    ErreurFournisseur, FournisseurSimule, IssuePaiement, Notification, NotificationEntrante,
+    PaymentProvider, Remboursement, ScenarioSimule,
+};
+pub use modele::{
+    transition_existe, verifier_transition, Dossier, ErreurPaiements, EtatDossier, EtatTransaction,
+    LigneRegistre, MoyenPaiement, Transaction, TypeDossier,
+};
 pub use session::{lire_session, ouvrir_session};
 pub use webhook::{traiter_notification, ResultatWebhook};

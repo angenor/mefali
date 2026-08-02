@@ -604,10 +604,7 @@ impl crate::ports::CourseCoursier for PgCommandes {
                 // `total_unites` QUEL QUE SOIT le mode : l'app coursier
                 // réclamait à Awa un montant qu'elle avait déjà réglé, et rien
                 // dans l'écran ne disait le contraire.
-                montant_a_encaisser_unites: montant_a_encaisser(
-                    &e.mode_paiement,
-                    e.total_unites,
-                ),
+                montant_a_encaisser_unites: montant_a_encaisser(&e.mode_paiement, e.total_unites),
                 mode_paiement: e.mode_paiement.parse()?,
                 arret_remise_id: e.arret_remise_id,
                 arret_remise_statut: e

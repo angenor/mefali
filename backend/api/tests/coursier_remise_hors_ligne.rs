@@ -187,7 +187,10 @@ async fn les_essais_hors_ligne_comptent_au_rejeu(pool: sqlx::PgPool) {
             .await
             .unwrap();
     assert_eq!(essais, 3, "2 hors ligne + 1 ici");
-    assert!(bloque.is_some(), "le blocage est un ÉTAT durable de la commande");
+    assert!(
+        bloque.is_some(),
+        "le blocage est un ÉTAT durable de la commande"
+    );
 
     // L'alerte d'exploitation part dans la MÊME transaction — et sans le code.
     let alertes = bac.evenements("remise.code_epuise").await;
@@ -270,7 +273,9 @@ async fn le_blocage_remonte_a_l_exploitation_et_se_leve(pool: sqlx::PgPool) {
     );
 
     // Un coursier ne lit pas cette file : c'est une surface d'exploitation.
-    let (statut, _) = bac.get("/admin/remises/bloquees", &bac.jeton_coursier).await;
+    let (statut, _) = bac
+        .get("/admin/remises/bloquees", &bac.jeton_coursier)
+        .await;
     assert_eq!(statut, 403);
 
     // Levée SANS motif : refusée. Retirer une protection se justifie.

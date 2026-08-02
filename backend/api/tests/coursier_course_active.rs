@@ -68,7 +68,8 @@ async fn la_course_est_servie_complete_en_une_lecture(pool: PgPool) {
     let remise = &corps["remise"];
     assert_eq!(remise["essais_consommes"], 0);
     assert_eq!(
-        remise["essais_max"], bac_coursier::ESSAIS_CODE_LIVRAISON,
+        remise["essais_max"],
+        bac_coursier::ESSAIS_CODE_LIVRAISON,
         "le seuil vient du paramètre du cycle 008, pas d'un nouveau (FR-106)",
     );
     assert_eq!(remise["code_bloque"], false);
@@ -151,9 +152,7 @@ async fn un_autre_coursier_ne_voit_rien_de_la_course(pool: PgPool) {
     let bac = Bac::nouveau(pool).await;
     let course = bac.course_prete().await;
 
-    let (statut, corps) = bac
-        .get("/courses/active", &bac.jeton_autre_coursier)
-        .await;
+    let (statut, corps) = bac.get("/courses/active", &bac.jeton_autre_coursier).await;
     assert_eq!(
         statut, 204,
         "il n'a pas de course à lui — il ne voit pas celle du voisin : {corps}",
@@ -212,13 +211,12 @@ async fn une_ligne_retiree_fait_baisser_le_montant_de_l_arret(pool: PgPool) {
     let montant_avant = avant["arrets"][0]["montant_avance"].as_i64().unwrap();
     assert!(montant_avant > 0);
 
-    let ligne: uuid::Uuid = sqlx::query_scalar(
-        "SELECT id FROM commandes.ligne_commande WHERE arret_id = $1 LIMIT 1",
-    )
-    .bind(course.collectes[0])
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let ligne: uuid::Uuid =
+        sqlx::query_scalar("SELECT id FROM commandes.ligne_commande WHERE arret_id = $1 LIMIT 1")
+            .bind(course.collectes[0])
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     sqlx::query("UPDATE commandes.ligne_commande SET statut = 'retiree' WHERE id = $1")
         .bind(ligne)
         .execute(&bac.pool)

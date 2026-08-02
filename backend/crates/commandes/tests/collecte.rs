@@ -56,7 +56,11 @@ fn depot(pool: &sqlx::PgPool) -> PgCommandes {
 /// ⚠ Le tronc `commande` a reçu ses colonnes métier en migration `0009` : la
 /// fixture les renseigne désormais. Ce sont les FIXTURES qui changent, jamais
 /// les assertions du cycle 006 (critère (a) du point obligatoire P1).
-async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uuid, Uuid, Vec<Uuid>) {
+async fn semer(
+    pool: &sqlx::PgPool,
+    montants: &[i64],
+    avec_remise: bool,
+) -> (Uuid, Uuid, Vec<Uuid>) {
     let pays = Uuid::now_v7();
     let ville = Uuid::now_v7();
     let categorie = Uuid::now_v7();
@@ -68,18 +72,37 @@ async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uui
     let segment = Uuid::now_v7();
 
     sqlx::query("INSERT INTO zones.zone (id, type, nom) VALUES ($1, 'pays', 'CI')")
-        .bind(pays).execute(pool).await.unwrap();
-    sqlx::query("INSERT INTO zones.zone (id, parent_id, type, nom) VALUES ($1, $2, 'ville', 'Tiassalé')")
-        .bind(ville).bind(pays).execute(pool).await.unwrap();
+        .bind(pays)
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO zones.zone (id, parent_id, type, nom) VALUES ($1, $2, 'ville', 'Tiassalé')",
+    )
+    .bind(ville)
+    .bind(pays)
+    .execute(pool)
+    .await
+    .unwrap();
     sqlx::query(
         "INSERT INTO zones.categorie (id, slug, nom_cle, workflow_vendeur)
          VALUES ($1, 'restauration', 'c.nom', 'restauration')",
-    ).bind(categorie).execute(pool).await.unwrap();
+    )
+    .bind(categorie)
+    .execute(pool)
+    .await
+    .unwrap();
     sqlx::query(
         "INSERT INTO prestataires.prestataire
             (id, nom, categorie_id, ville_id, contact_telephone, delai_preparation_min, plan_id)
          VALUES ($1, 'P', $2, $3, '+225', 20, '00000000-0000-4000-8000-000000000001')",
-    ).bind(prestataire).bind(categorie).bind(ville).execute(pool).await.unwrap();
+    )
+    .bind(prestataire)
+    .bind(categorie)
+    .bind(ville)
+    .execute(pool)
+    .await
+    .unwrap();
     sqlx::query(
         "INSERT INTO comptes.compte (id, telephone_e164, zone_id, consentement_version, consentement_le)
          VALUES ($1, '+2250700000002', $2, '2026-07', now())",
@@ -97,12 +120,30 @@ async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uui
              code_livraison, code_livraison_hash, jeton_reception, jeton_reception_hash)
          VALUES ($1, $2, $3, $4, 5.900, -4.820, 'Près de la pharmacie',
                  $5, $5, 'XOF', 'cash', '7341', 'h-code', 'jeton', 'h-jeton')",
-    ).bind(commande).bind(client).bind(ville).bind(categorie).bind(total)
-        .execute(pool).await.unwrap();
-    sqlx::query("INSERT INTO commandes.livraison (id, commande_id, coursier_id) VALUES ($1, $2, $3)")
-        .bind(livraison).bind(commande).bind(coursier).execute(pool).await.unwrap();
+    )
+    .bind(commande)
+    .bind(client)
+    .bind(ville)
+    .bind(categorie)
+    .bind(total)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO commandes.livraison (id, commande_id, coursier_id) VALUES ($1, $2, $3)",
+    )
+    .bind(livraison)
+    .bind(commande)
+    .bind(coursier)
+    .execute(pool)
+    .await
+    .unwrap();
     sqlx::query("INSERT INTO commandes.segment (id, livraison_id, ordre) VALUES ($1, $2, 0)")
-        .bind(segment).bind(livraison).execute(pool).await.unwrap();
+        .bind(segment)
+        .bind(livraison)
+        .execute(pool)
+        .await
+        .unwrap();
 
     let mut arrets = Vec::new();
     for (i, m) in montants.iter().enumerate() {
@@ -115,8 +156,15 @@ async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uui
                 (id, segment_id, prestataire_id, ordre, site_lat, site_lon, montant_avance, devise,
                  montant_articles_unites, retenue_appliquee_unites)
              VALUES ($1, $2, $3, $4, 5.898, -4.823, $5, 'XOF', $5, 0)",
-        ).bind(arret).bind(segment).bind(prestataire).bind(i as i16).bind(m)
-            .execute(pool).await.unwrap();
+        )
+        .bind(arret)
+        .bind(segment)
+        .bind(prestataire)
+        .bind(i as i16)
+        .bind(m)
+        .execute(pool)
+        .await
+        .unwrap();
         arrets.push(arret);
     }
     if avec_remise {
@@ -126,8 +174,13 @@ async fn semer(pool: &sqlx::PgPool, montants: &[i64], avec_remise: bool) -> (Uui
             "INSERT INTO commandes.arret
                 (id, segment_id, ordre, type_arret, site_lat, site_lon, montant_avance, devise)
              VALUES ($1, $2, $3, 'remise', 5.900, -4.820, 0, 'XOF')",
-        ).bind(Uuid::now_v7()).bind(segment).bind(montants.len() as i16)
-            .execute(pool).await.unwrap();
+        )
+        .bind(Uuid::now_v7())
+        .bind(segment)
+        .bind(montants.len() as i16)
+        .execute(pool)
+        .await
+        .unwrap();
     }
     (coursier, livraison, arrets)
 }
@@ -139,13 +192,23 @@ async fn transition_et_gating_avec_indisponible(pool: sqlx::PgPool) {
 
     // Un arrêt posé indisponible (façon CMD-06) — compté résolu (FR-018).
     sqlx::query("UPDATE commandes.arret SET statut = 'indisponible' WHERE id = $1")
-        .bind(arrets[1]).execute(&pool).await.unwrap();
+        .bind(arrets[1])
+        .execute(&pool)
+        .await
+        .unwrap();
 
     // Collecter le dernier arrêt non résolu → bascule EN_LIVRAISON.
     let mut tx = pool.begin().await.unwrap();
     let p = depot
         .marquer_arret_collecte(
-            &mut tx, arrets[0], Uuid::now_v7(), ModeCollecte::ScanQr, None, 12, Utc::now(), coursier,
+            &mut tx,
+            arrets[0],
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            12,
+            Utc::now(),
+            coursier,
         )
         .await
         .unwrap();
@@ -154,15 +217,22 @@ async fn transition_et_gating_avec_indisponible(pool: sqlx::PgPool) {
     assert_eq!(p.nb_arrets, 2);
     assert_eq!(p.nb_collectes, 1);
 
-    let etat: String = sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
-        .bind(livraison).fetch_one(&pool).await.unwrap();
+    let etat: String =
+        sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
+            .bind(livraison)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(etat, "en_livraison");
 
     // arret.collecte + livraison.mise_en_livraison émis.
     let n: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM outbox.evenement
          WHERE type_evenement IN ('arret.collecte','livraison.mise_en_livraison')",
-    ).fetch_one(&pool).await.unwrap();
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(n, 2);
 }
 
@@ -195,7 +265,14 @@ async fn gating_ignore_l_arret_de_remise(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     let p1 = depot
         .marquer_arret_collecte(
-            &mut tx, collectes[0], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+            &mut tx,
+            collectes[0],
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            10,
+            Utc::now(),
+            coursier,
         )
         .await
         .unwrap();
@@ -207,7 +284,14 @@ async fn gating_ignore_l_arret_de_remise(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     let p2 = depot
         .marquer_arret_collecte(
-            &mut tx, collectes[1], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+            &mut tx,
+            collectes[1],
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            10,
+            Utc::now(),
+            coursier,
         )
         .await
         .unwrap();
@@ -222,8 +306,12 @@ async fn gating_ignore_l_arret_de_remise(pool: sqlx::PgPool) {
         "« 2 sur 2 » — la remise n'est pas une collecte (critère (c))",
     );
 
-    let etat: String = sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
-        .bind(livraison).fetch_one(&pool).await.unwrap();
+    let etat: String =
+        sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
+            .bind(livraison)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(etat, "en_livraison");
 
     // L'arrêt de remise, lui, est toujours à faire : la remise reste à venir.
@@ -250,7 +338,14 @@ async fn boucle_en_route_puis_arrive_puis_collecte(pool: sqlx::PgPool) {
 
     let mut tx = pool.begin().await.unwrap();
     let r = depot
-        .marquer_arret_en_route(&mut tx, arret, coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .marquer_arret_en_route(
+            &mut tx,
+            arret,
+            coursier,
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -259,7 +354,14 @@ async fn boucle_en_route_puis_arrive_puis_collecte(pool: sqlx::PgPool) {
 
     let mut tx = pool.begin().await.unwrap();
     let r = depot
-        .marquer_arret_arrive(&mut tx, arret, coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .marquer_arret_arrive(
+            &mut tx,
+            arret,
+            coursier,
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -280,21 +382,31 @@ async fn boucle_en_route_puis_arrive_puis_collecte(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     depot
         .marquer_arret_collecte(
-            &mut tx, arret, Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+            &mut tx,
+            arret,
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            10,
+            Utc::now(),
+            coursier,
         )
         .await
         .unwrap();
     tx.commit().await.unwrap();
 
     // Un événement par transition acceptée (constitution VI).
-    for (type_evenement, attendu) in [("arret.en_route", 1), ("arret.arrive", 1), ("arret.collecte", 1)] {
-        let n: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM outbox.evenement WHERE type_evenement = $1",
-        )
-        .bind(type_evenement)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    for (type_evenement, attendu) in [
+        ("arret.en_route", 1),
+        ("arret.arrive", 1),
+        ("arret.collecte", 1),
+    ] {
+        let n: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM outbox.evenement WHERE type_evenement = $1")
+                .bind(type_evenement)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(n, attendu, "événement « {type_evenement} »");
     }
 }
@@ -349,7 +461,14 @@ async fn transitions_hors_sequence_et_hors_course_refusees(pool: sqlx::PgPool) {
     // `à_collecter → arrivé` : absent de la table (data-model §3.3).
     let mut tx = pool.begin().await.unwrap();
     let e = depot
-        .marquer_arret_arrive(&mut tx, arrets[0], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .marquer_arret_arrive(
+            &mut tx,
+            arrets[0],
+            coursier,
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
+        )
         .await
         .unwrap_err();
     tx.rollback().await.unwrap();
@@ -359,7 +478,12 @@ async fn transitions_hors_sequence_et_hors_course_refusees(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     let e = depot
         .marquer_arret_en_route(
-            &mut tx, arrets[0], Uuid::now_v7(), Uuid::now_v7(), Utc::now(), Utc::now(),
+            &mut tx,
+            arrets[0],
+            Uuid::now_v7(),
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
         )
         .await
         .unwrap_err();
@@ -367,11 +491,12 @@ async fn transitions_hors_sequence_et_hors_course_refusees(pool: sqlx::PgPool) {
     assert_eq!(e.message_cle(), Some("non_proprietaire"));
 
     // Aucun état n'a bougé, aucun événement n'a été écrit.
-    let statut: String = sqlx::query_scalar("SELECT statut::text FROM commandes.arret WHERE id = $1")
-        .bind(arrets[0])
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let statut: String =
+        sqlx::query_scalar("SELECT statut::text FROM commandes.arret WHERE id = $1")
+            .bind(arrets[0])
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(statut, "a_collecter");
     let n: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM outbox.evenement WHERE type_evenement LIKE 'arret.%'",
@@ -393,7 +518,14 @@ async fn scanner_sans_declarer_son_arrivee_est_refuse(pool: sqlx::PgPool) {
 
     let mut tx = pool.begin().await.unwrap();
     depot
-        .marquer_arret_en_route(&mut tx, arrets[0], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .marquer_arret_en_route(
+            &mut tx,
+            arrets[0],
+            coursier,
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -401,7 +533,14 @@ async fn scanner_sans_declarer_son_arrivee_est_refuse(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     let e = depot
         .marquer_arret_collecte(
-            &mut tx, arrets[0], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+            &mut tx,
+            arrets[0],
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            10,
+            Utc::now(),
+            coursier,
         )
         .await
         .unwrap_err();
@@ -412,7 +551,14 @@ async fn scanner_sans_declarer_son_arrivee_est_refuse(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     depot
         .marquer_arret_collecte(
-            &mut tx, arrets[1], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+            &mut tx,
+            arrets[1],
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            10,
+            Utc::now(),
+            coursier,
         )
         .await
         .expect("chemin direct du cycle 006 conservé");
@@ -426,11 +572,21 @@ async fn premier_depart_ouvre_la_collecte(pool: sqlx::PgPool) {
     let (coursier, livraison, arrets) = semer(&pool, &[2000, 1500], true).await;
     let depot = depot(&pool);
     sqlx::query("UPDATE commandes.livraison SET etat = 'assignee' WHERE id = $1")
-        .bind(livraison).execute(&pool).await.unwrap();
+        .bind(livraison)
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let mut tx = pool.begin().await.unwrap();
     let r = depot
-        .marquer_arret_en_route(&mut tx, arrets[0], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .marquer_arret_en_route(
+            &mut tx,
+            arrets[0],
+            coursier,
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -440,7 +596,14 @@ async fn premier_depart_ouvre_la_collecte(pool: sqlx::PgPool) {
     // en_collecte`, et le code ne la sollicite même pas.
     let mut tx = pool.begin().await.unwrap();
     let r = depot
-        .marquer_arret_en_route(&mut tx, arrets[1], coursier, Uuid::now_v7(), Utc::now(), Utc::now())
+        .marquer_arret_en_route(
+            &mut tx,
+            arrets[1],
+            coursier,
+            Uuid::now_v7(),
+            Utc::now(),
+            Utc::now(),
+        )
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -466,7 +629,14 @@ async fn arret_indisponible_resout_et_annule_l_avance(pool: sqlx::PgPool) {
     let mut tx = pool.begin().await.unwrap();
     depot
         .marquer_arret_collecte(
-            &mut tx, arrets[0], Uuid::now_v7(), ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+            &mut tx,
+            arrets[0],
+            Uuid::now_v7(),
+            ModeCollecte::ScanQr,
+            None,
+            10,
+            Utc::now(),
+            coursier,
         )
         .await
         .unwrap();
@@ -495,18 +665,21 @@ async fn arret_indisponible_resout_et_annule_l_avance(pool: sqlx::PgPool) {
     );
     assert_eq!(r.livraison_etat.comme_str(), "en_livraison");
 
-    let (statut, avance): (String, i64) = sqlx::query_as(
-        "SELECT statut::text, montant_avance FROM commandes.arret WHERE id = $1",
-    )
-    .bind(arrets[1])
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let (statut, avance): (String, i64) =
+        sqlx::query_as("SELECT statut::text, montant_avance FROM commandes.arret WHERE id = $1")
+            .bind(arrets[1])
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(statut, "indisponible");
     assert_eq!(avance, 0, "rien acheté, rien avancé");
 
-    let etat: String = sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
-        .bind(livraison).fetch_one(&pool).await.unwrap();
+    let etat: String =
+        sqlx::query_scalar("SELECT etat::text FROM commandes.livraison WHERE id = $1")
+            .bind(livraison)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(etat, "en_livraison");
 
     let n: i64 = sqlx::query_scalar(
@@ -563,7 +736,14 @@ async fn idempotence_meme_uuid(pool: sqlx::PgPool) {
         let mut tx = pool.begin().await.unwrap();
         depot
             .marquer_arret_collecte(
-                &mut tx, arrets[0], uuid, ModeCollecte::ScanQr, None, 10, Utc::now(), coursier,
+                &mut tx,
+                arrets[0],
+                uuid,
+                ModeCollecte::ScanQr,
+                None,
+                10,
+                Utc::now(),
+                coursier,
             )
             .await
             .unwrap();
@@ -572,6 +752,9 @@ async fn idempotence_meme_uuid(pool: sqlx::PgPool) {
     // Rejeu du même uuid → une seule écriture d'événement.
     let n: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM outbox.evenement WHERE type_evenement = 'arret.collecte'",
-    ).fetch_one(&pool).await.unwrap();
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(n, 1, "aucune double collecte");
 }

@@ -207,8 +207,7 @@ impl PgCoursier {
             ok: faites >= PHOTOS_PREUVE_MIN,
         };
 
-        let reunies_sur =
-            u8::from(preuve_appels.ok) + u8::from(presence.ok) + u8::from(photos.ok);
+        let reunies_sur = u8::from(preuve_appels.ok) + u8::from(presence.ok) + u8::from(photos.ok);
         Ok(EtatPreuves {
             reunies: reunies_sur == EtatPreuves::TOTAL,
             reunies_sur,
@@ -423,8 +422,7 @@ impl PgCoursier {
         let mut purgees = 0u64;
         for c in candidats {
             let config = ConfigCoursier::charger(&self.zones, c.zone_id).await?;
-            let echeance =
-                c.prise_le + chrono::Duration::days(config.retention_photo_preuve_jours);
+            let echeance = c.prise_le + chrono::Duration::days(config.retention_photo_preuve_jours);
             if self.maintenant() < echeance {
                 continue;
             }

@@ -444,14 +444,16 @@ async fn seeder_type_transport(pool: &PgPool, slug: &str, ordre: i16) -> Uuid {
         return id;
     }
     let id = Uuid::now_v7();
-    sqlx::query("INSERT INTO zones.type_transport (id, slug, nom_cle, ordre) VALUES ($1, $2, $3, $4)")
-        .bind(id)
-        .bind(slug)
-        .bind(format!("transport.{slug}.nom"))
-        .bind(ordre)
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO zones.type_transport (id, slug, nom_cle, ordre) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(id)
+    .bind(slug)
+    .bind(format!("transport.{slug}.nom"))
+    .bind(ordre)
+    .execute(pool)
+    .await
+    .unwrap();
     id
 }
 

@@ -15,7 +15,5 @@ pub mod ports;
 pub mod verification;
 
 pub use depot::PgQr;
-pub use modele::{
-    ArretPreProvisionne, DemandeCollecte, ErreurQr, PlaqueResolue, ResultatCollecte,
-};
+pub use modele::{ArretPreProvisionne, DemandeCollecte, ErreurQr, PlaqueResolue, ResultatCollecte};
 pub use ports::{CompteurEssais, CompteurMemoire, ErreurCompteur};

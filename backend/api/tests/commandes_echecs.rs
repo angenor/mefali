@@ -142,7 +142,10 @@ async fn ligne_1_refus_non_perissable(pool: sqlx::PgPool) {
 
     let (_, argent, marchandise, litige, indemn, sanction) =
         issue_en_base(&bac, course.commande).await;
-    assert_eq!((argent.as_str(), marchandise.as_str()), ("vendeur", "vendeur"));
+    assert_eq!(
+        (argent.as_str(), marchandise.as_str()),
+        ("vendeur", "vendeur")
+    );
     assert!(!litige && !indemn);
     assert_eq!(sanction, "aucune");
 
@@ -200,7 +203,13 @@ async fn ligne_3_refus_perissable_sanctionne(pool: sqlx::PgPool) {
     let posees = bac.restrictions.posees();
     assert_eq!(posees.len(), 1);
     assert_eq!(posees[0].0, bac.client);
-    assert!(bac.restrictions.restrictions(bac.client).await.unwrap().prepaiement_impose);
+    assert!(
+        bac.restrictions
+            .restrictions(bac.client)
+            .await
+            .unwrap()
+            .prepaiement_impose
+    );
 }
 
 /// §7.5-3 (suite) — **2ᵉ refus périssable → compte BLOQUÉ**. Le rang se lit des
@@ -227,7 +236,13 @@ async fn ligne_3_second_refus_bloque_le_compte(pool: sqlx::PgPool) {
     assert_eq!(statut, 200, "{corps}");
     assert_eq!(corps["sanction"], "bloque", "2ᵉ refus → compte bloqué");
 
-    assert!(bac.restrictions.restrictions(bac.client).await.unwrap().bloque);
+    assert!(
+        bac.restrictions
+            .restrictions(bac.client)
+            .await
+            .unwrap()
+            .bloque
+    );
     let sanctions = bac.evenements("sanction.posee").await;
     assert_eq!(sanctions.len(), 0, "le double n'écrit pas dans l'outbox");
     assert_eq!(bac.restrictions.posees().len(), 2);
@@ -305,7 +320,10 @@ async fn ligne_7_non_conformite(pool: sqlx::PgPool) {
     assert_eq!(statut, 200, "{corps}");
     assert_eq!(corps["detenteur_argent"], "vendeur");
     assert_eq!(corps["detenteur_marchandise"], "vendeur");
-    assert_eq!(corps["litige_ouvert"], true, "le litige est contre le VENDEUR");
+    assert_eq!(
+        corps["litige_ouvert"], true,
+        "le litige est contre le VENDEUR"
+    );
     assert_eq!(
         corps["indemnisation_due"], false,
         "le coursier n'a rien perdu : c'est le vendeur qui reprend",
@@ -381,7 +399,10 @@ async fn ligne_10_consigne_et_relivraison_liee(pool: sqlx::PgPool) {
     .fetch_one(&bac.pool)
     .await
     .unwrap();
-    assert_eq!(segments, 1, "jamais un second segment (CMD-09 hors périmètre)");
+    assert_eq!(
+        segments, 1,
+        "jamais un second segment (CMD-09 hors périmètre)"
+    );
 }
 
 /// §7.5-11 — suspicion de faux refus : l'indemnisation est CONDITIONNÉE aux
@@ -459,21 +480,26 @@ async fn remise_par_qr_par_code_et_en_depot(pool: sqlx::PgPool) {
         let (statut, corps) = remise(&bac, course.livraison, demande, mode == "depot").await;
         assert_eq!(statut, 200, "mode {mode} : {corps}");
         assert_eq!(corps["mode_remise"], mode);
-        assert_eq!(corps["rejeu"], false, "premier envoi : ce n'est pas un rejeu");
+        assert_eq!(
+            corps["rejeu"], false,
+            "premier envoi : ce n'est pas un rejeu"
+        );
 
         assert_eq!(bac.etat_livraison(course.livraison).await, "livree");
         assert_eq!(bac.etat_commande(course.commande).await, "terminee");
-        let paiement: String = sqlx::query_scalar(
-            "SELECT etat_paiement::text FROM commandes.commande WHERE id = $1",
-        )
-        .bind(course.commande)
-        .fetch_one(&bac.pool)
-        .await
-        .unwrap();
+        let paiement: String =
+            sqlx::query_scalar("SELECT etat_paiement::text FROM commandes.commande WHERE id = $1")
+                .bind(course.commande)
+                .fetch_one(&bac.pool)
+                .await
+                .unwrap();
         assert_eq!(paiement, "regle", "un seul montant, encaissé en une fois");
         // Une remise de plus à chaque tour : les trois modes closent bien.
         assert_eq!(bac.nb_evenements("livraison.livree").await, rang as i64 + 1);
-        assert_eq!(bac.nb_evenements("commande.terminee").await, rang as i64 + 1);
+        assert_eq!(
+            bac.nb_evenements("commande.terminee").await,
+            rang as i64 + 1
+        );
     }
 }
 
@@ -602,18 +628,21 @@ async fn un_depot_sur_commande_non_autorisee_est_refuse(pool: sqlx::PgPool) {
     )
     .await;
     assert_eq!(statut, 200, "{corps}");
-    let (cle, lat): (Option<String>, Option<f64>) = sqlx::query_as(
-        "SELECT depot_photo_cle, depot_lat FROM commandes.livraison WHERE id = $1",
-    )
-    .bind(course.livraison)
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let (cle, lat): (Option<String>, Option<f64>) =
+        sqlx::query_as("SELECT depot_photo_cle, depot_lat FROM commandes.livraison WHERE id = $1")
+            .bind(course.livraison)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert!(
         cle.is_some(),
         "la photo voyage AVEC la demande, et sa clé est écrite (R18)",
     );
-    assert_eq!(lat, Some(5.898), "photo ET position : FR-048 exige les deux");
+    assert_eq!(
+        lat,
+        Some(5.898),
+        "photo ET position : FR-048 exige les deux"
+    );
 }
 
 /// **T033 / R4** — le rejeu du MÊME `uuid_client` rend le même résultat sans
@@ -660,7 +689,10 @@ async fn le_rejeu_d_une_remise_ne_cloture_qu_une_fois(pool: sqlx::PgPool) {
             .fetch_one(&bac.pool)
             .await
             .unwrap();
-    assert!(hors_ligne, "la trace du hors-ligne survit au rejeu (FR-046)");
+    assert!(
+        hors_ligne,
+        "la trace du hors-ligne survit au rejeu (FR-046)"
+    );
 }
 
 /// **T033 / R5** — les essais consommés HORS LIGNE ne voyagent pas un par un :
@@ -679,16 +711,18 @@ async fn les_essais_hors_ligne_se_consolident_en_max(pool: sqlx::PgPool) {
         false,
     )
     .await;
-    assert_eq!(statut, 423, "2 hors ligne + 1 ici = seuil de zone : {corps}");
+    assert_eq!(
+        statut, 423,
+        "2 hors ligne + 1 ici = seuil de zone : {corps}"
+    );
     assert_eq!(corps["code"], "code_epuise");
 
-    let (essais, bloque): (i16, Option<chrono::DateTime<chrono::Utc>>) = sqlx::query_as(
-        "SELECT essais_code, code_bloque_le FROM commandes.commande WHERE id = $1",
-    )
-    .bind(course.commande)
-    .fetch_one(&bac.pool)
-    .await
-    .unwrap();
+    let (essais, bloque): (i16, Option<chrono::DateTime<chrono::Utc>>) =
+        sqlx::query_as("SELECT essais_code, code_bloque_le FROM commandes.commande WHERE id = $1")
+            .bind(course.commande)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(essais, 3, "aucun essai perdu, aucun inventé");
     assert!(bloque.is_some(), "le blocage est un ÉTAT durable (R5)");
     assert_eq!(bac.nb_evenements("remise.code_epuise").await, 1);
@@ -740,11 +774,12 @@ async fn un_jeton_faux_ne_consomme_pas_d_essai_de_code(pool: sqlx::PgPool) {
         .await;
         assert_eq!(statut, 409);
     }
-    let essais: i16 = sqlx::query_scalar("SELECT essais_code FROM commandes.commande WHERE id = $1")
-        .bind(course.commande)
-        .fetch_one(&bac.pool)
-        .await
-        .unwrap();
+    let essais: i16 =
+        sqlx::query_scalar("SELECT essais_code FROM commandes.commande WHERE id = $1")
+            .bind(course.commande)
+            .fetch_one(&bac.pool)
+            .await
+            .unwrap();
     assert_eq!(essais, 0, "le plafond protège le CODE, pas le jeton");
 }
 

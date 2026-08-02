@@ -231,7 +231,10 @@ async fn un_article_retire_ne_part_pas_en_avance(pool: PgPool) {
         .iter()
         .map(|e| e["montant_avance"].as_i64().unwrap_or(0))
         .sum();
-    assert_eq!(total, apres, "somme des événements = somme des lignes vivantes");
+    assert_eq!(
+        total, apres,
+        "somme des événements = somme des lignes vivantes"
+    );
 }
 
 // ── R10 / FR-117 : la commande prépayée ────────────────────────────────────
@@ -288,17 +291,19 @@ async fn une_ecriture_de_caisse_ne_se_modifie_ni_ne_s_efface(pool: PgPool) {
     bac.collecter_tout(&course).await;
     bac.drainer_caisse().await;
 
-    let id: Uuid =
-        sqlx::query_scalar("SELECT id FROM coursier.ecriture_caisse WHERE coursier_id = $1 LIMIT 1")
-            .bind(bac.coursier)
-            .fetch_one(&bac.pool)
-            .await
-            .unwrap();
+    let id: Uuid = sqlx::query_scalar(
+        "SELECT id FROM coursier.ecriture_caisse WHERE coursier_id = $1 LIMIT 1",
+    )
+    .bind(bac.coursier)
+    .fetch_one(&bac.pool)
+    .await
+    .unwrap();
 
-    let modification = sqlx::query("UPDATE coursier.ecriture_caisse SET montant_unites = 1 WHERE id = $1")
-        .bind(id)
-        .execute(&bac.pool)
-        .await;
+    let modification =
+        sqlx::query("UPDATE coursier.ecriture_caisse SET montant_unites = 1 WHERE id = $1")
+            .bind(id)
+            .execute(&bac.pool)
+            .await;
     assert!(
         modification.is_err(),
         "un UPDATE doit être REFUSÉ par la base, pas seulement évité par le code",
@@ -308,7 +313,10 @@ async fn une_ecriture_de_caisse_ne_se_modifie_ni_ne_s_efface(pool: PgPool) {
         .bind(id)
         .execute(&bac.pool)
         .await;
-    assert!(suppression.is_err(), "un DELETE doit être REFUSÉ par la base");
+    assert!(
+        suppression.is_err(),
+        "un DELETE doit être REFUSÉ par la base"
+    );
 }
 
 /// Un lot d'outbox rejoué n'écrit rien de plus.
@@ -439,7 +447,10 @@ async fn la_caisse_ne_sert_aucun_secret(pool: PgPool) {
 
     let corps = bac.lire_caisse().await.to_string();
     assert!(!corps.contains(&secrets.code), "le code à 4 chiffres a fui");
-    assert!(!corps.contains(&secrets.jeton), "le jeton de réception a fui");
+    assert!(
+        !corps.contains(&secrets.jeton),
+        "le jeton de réception a fui"
+    );
     assert!(!corps.contains("+225"), "un numéro a fui");
 
     for payload in bac.evenements("caisse.mouvement").await {
@@ -538,7 +549,10 @@ async fn l_historique_ne_remonte_pas_la_journee_d_hier(pool: PgPool) {
         "le livre garde tout, frais encaissés compris : {ecritures:?}",
     );
     assert_eq!(
-        ecritures.iter().filter(|(t, _)| t == "frais_encaisses").count(),
+        ecritures
+            .iter()
+            .filter(|(t, _)| t == "frais_encaisses")
+            .count(),
         1,
     );
 }
@@ -579,7 +593,11 @@ async fn un_echec_indemnisable_fait_naitre_une_indemnisation_demandee(pool: PgPo
 
     let caisse = bac.lire_caisse().await;
     let indemnisations = caisse["indemnisations"].as_array().unwrap();
-    assert_eq!(indemnisations.len(), 1, "une indemnisation attendue : {caisse}");
+    assert_eq!(
+        indemnisations.len(),
+        1,
+        "une indemnisation attendue : {caisse}"
+    );
     assert_eq!(indemnisations[0]["etat"], json!("demandee"));
     assert!(
         indemnisations[0]["montant_unites"].as_i64().unwrap() > 0,

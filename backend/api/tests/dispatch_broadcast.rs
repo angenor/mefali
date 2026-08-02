@@ -80,8 +80,9 @@ async fn en_broadcast_le_premier_accepteur_gagne(pool: sqlx::PgPool) {
     let commande = bac.commande_prete().await;
     bac.vieillir_commande(commande, 200).await;
 
-    let DecisionPipeline::BroadcastOuvert { nb_destinataires, .. } =
-        bac.dispatcher(commande).await
+    let DecisionPipeline::BroadcastOuvert {
+        nb_destinataires, ..
+    } = bac.dispatcher(commande).await
     else {
         panic!("broadcast attendu");
     };
@@ -134,7 +135,10 @@ async fn deux_broadcasts_concurrents_se_serialisent(pool: sqlx::PgPool) {
     assert!(matches!(d1, DecisionPipeline::BroadcastOuvert { .. }));
     // Le second broadcast n'atteint personne : tous les coursiers portent déjà
     // un écran du premier.
-    if let DecisionPipeline::BroadcastOuvert { nb_destinataires, .. } = d2 {
+    if let DecisionPipeline::BroadcastOuvert {
+        nb_destinataires, ..
+    } = d2
+    {
         assert_eq!(
             nb_destinataires, 0,
             "aucun coursier ne doit voir deux écrans à la fois (FR-062)",
@@ -212,7 +216,9 @@ async fn un_broadcast_sans_preneur_n_arrete_pas_la_recherche(pool: sqlx::PgPool)
         "un broadcast sans preneur ne perd pas la commande",
     );
     assert!(
-        bac.nb_evenements("commande.attente_coursier_escaladee").await >= 1,
+        bac.nb_evenements("commande.attente_coursier_escaladee")
+            .await
+            >= 1,
         "le compte d'escalade continue de courir",
     );
 }

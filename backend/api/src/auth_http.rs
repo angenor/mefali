@@ -946,7 +946,10 @@ mod tests {
             .await
             .unwrap();
         // 3 : l'admin (seed 20) + Kofi (seed 30, cycle 005) + le nouveau.
-        assert_eq!(comptes, 3, "les comptes du seed + le nouveau — aucun doublon");
+        assert_eq!(
+            comptes, 3,
+            "les comptes du seed + le nouveau — aucun doublon"
+        );
     }
 
     /// SC-003 — `/auth/otp/demander` : numéro INSCRIT et numéro INCONNU

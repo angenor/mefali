@@ -497,7 +497,10 @@ mod tests {
 
     #[test]
     fn les_causes_de_broadcast_ont_leur_valeur_de_payload() {
-        assert_eq!(CauseBroadcast::CandidatsEpuises.comme_str(), "candidats_epuises");
+        assert_eq!(
+            CauseBroadcast::CandidatsEpuises.comme_str(),
+            "candidats_epuises"
+        );
         assert_eq!(CauseBroadcast::Delai.comme_str(), "delai");
     }
 }
