@@ -1096,6 +1096,8 @@
   "@crsErreurCodeEpuise": { "description": "Refus 423 à la remise (FR-043)" },
   "crsErreurCodeIncorrect": "Code incorrect.",
   "@crsErreurCodeIncorrect": { "description": "Refus 409 à la remise" },
+  "crsErreurRemiseTechnique": "La remise n'a pas pu être enregistrée. Ce n'est pas le code du client — réessayez dans un instant.",
+  "@crsErreurRemiseTechnique": { "description": "Panne SERVEUR à la remise (5xx, clé inconnue). Dit explicitement que le code n'est pas en cause : sans cette distinction, toute panne s'affichait « Code incorrect », le coursier redemandait le code au client et consommait ses trois essais jusqu'à bloquer la remise (T088)." },
 
   "payRienAEncaisser": "Rien à encaisser",
   "@payRienAEncaisser": { "description": "Commande PRÉPAYÉE, à la remise (FR-093, SC-012). Formulation choisie pour qu'aucun encaissement ne puisse être oublié : elle nomme l'action absente, pas un montant nul — « 0 F à encaisser » se lit de travers dans un couloir mal éclairé." },

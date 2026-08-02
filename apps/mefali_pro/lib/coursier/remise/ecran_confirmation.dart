@@ -135,7 +135,7 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
           ),
         ),
         if (remise.erreurCle != null) ...[
-          _Refus(message: _messageErreur(l10n, remise.erreurCle!)),
+          _Refus(message: messageErreurRemise(l10n, remise.erreurCle!)),
           const SizedBox(height: MefaliTokens.space2),
         ],
         // ── Les trois voies, dans l'ordre de la maquette ──────────────────
@@ -223,13 +223,6 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
   }
-
-  String _messageErreur(AppLocalizations l10n, String cle) => switch (cle) {
-        'depot_non_autorise' => l10n.crsErreurDepotNonAutorise,
-        'code_epuise' => l10n.crsErreurCodeEpuise,
-        'depot_preuve_incomplete' => l10n.crsRemiseDepotSansPhoto,
-        _ => l10n.crsErreurCodeIncorrect,
-      };
 
   Future<void> _ouvrirPaveCode() async {
     final etat = widget.etat;
@@ -323,6 +316,26 @@ class _EcranConfirmationState extends ConsumerState<EcranConfirmation> {
 /// Aucun lien de paiement n'est généré : c'est PAY-03 (tranche T3). Dire
 /// « indisponible » plutôt que rien est une décision — un bouton absent laisse
 /// croire à un oubli, un bouton grisé dit qu'on y a pensé.
+/// Traduit une clé de refus de remise en phrase pour le coursier.
+///
+/// ⚠ Le cas par défaut n'est PAS « code incorrect », et c'est tout l'objet de
+/// cette fonction. Une panne serveur (5xx, clé `erreur_interne`) tombait
+/// auparavant sur ce message et accusait le client à tort : le coursier
+/// redemandait le code, échouait encore, et brûlait ses trois essais jusqu'au
+/// blocage de la remise — sur une commande dont le code était parfaitement bon
+/// (constaté sur émulateur, T088). Seul un refus qui parle VRAIMENT du code le
+/// dit ; tout le reste est une panne, et se présente comme telle.
+///
+/// Fonction de premier niveau, donc directement testable : le mapping est la
+/// partie qui portait le défaut, pas le widget qui l'affiche.
+String messageErreurRemise(AppLocalizations l10n, String cle) => switch (cle) {
+      'depot_non_autorise' => l10n.crsErreurDepotNonAutorise,
+      'code_epuise' => l10n.crsErreurCodeEpuise,
+      'depot_preuve_incomplete' => l10n.crsRemiseDepotSansPhoto,
+      'remise_incorrecte' => l10n.crsErreurCodeIncorrect,
+      _ => l10n.crsErreurRemiseTechnique,
+    };
+
 class _JamaisPartiel extends StatelessWidget {
   const _JamaisPartiel({required this.enLigne});
 
