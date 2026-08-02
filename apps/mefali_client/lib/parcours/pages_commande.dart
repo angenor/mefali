@@ -14,6 +14,8 @@
 /// (constitution XII) — ce n'est l'affaire d'aucun provider.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -332,10 +334,26 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
   /// suivi rouvrirait la feuille par-dessus elle-même.
   String? _substitutionPresentee;
 
-  /// L'état de paiement a déjà été demandé. Sans ce garde, chaque
-  /// rafraîchissement du suivi relancerait une lecture — et le compte à rebours
-  /// repartirait de la valeur serveur à chaque frame, donc ne bougerait jamais.
-  bool _paiementDemande = false;
+  /// Sonde du règlement, active tant que la commande attend son paiement.
+  ///
+  /// Un garde « une seule lecture » suffisait à empêcher le compte à rebours de
+  /// se recaler à chaque frame — mais il empêchait aussi l'écran d'apprendre
+  /// quoi que ce soit APRÈS : trouvé sur appareil (T085), le suivi d'une
+  /// commande réglée continuait d'afficher « en attente de votre paiement » et
+  /// son bouton de règlement, ce qui invite à payer deux fois ; et
+  /// l'annulation par expiration n'apparaissait jamais **d'elle-même**
+  /// (FR-017), faute de quoi que ce soit qui relise.
+  ///
+  /// Ce qui manquait n'était pas la lecture, c'était son RYTHME : le tic local
+  /// fait descendre le compte à rebours entre deux recalages, et la sonde ne
+  /// parle au serveur qu'une fois toutes les [_periodeSonde].
+  Timer? _sonde;
+
+  /// Intervalle entre deux lectures du serveur pendant l'attente d'un
+  /// règlement. Assez court pour qu'un paiement confirmé se voie sans que la
+  /// cliente ait à ressortir de l'écran, assez long pour ne pas transformer
+  /// une attente de 15 minutes en 900 requêtes.
+  static const _periodeSonde = Duration(seconds: 10);
 
   /// Charge l'état de la session quand — et seulement quand — la commande en
   /// attend un. Une commande cash n'a pas de session : la lire rendrait `404`
@@ -346,9 +364,49 @@ class _PageSuiviState extends ConsumerState<PageSuivi> {
     // suivi ne porte pas le motif d'annulation. Sur une commande cash annulée,
     // la lecture rend `404` et le bandeau reste simplement muet.
     const concernes = {'en_attente_paiement', 'annulee'};
-    if (_paiementDemande || !concernes.contains(suivi.etat)) return;
-    _paiementDemande = true;
+    if (!concernes.contains(suivi.etat)) {
+      // La commande a quitté l'attente — le paiement est passé. Une DERNIÈRE
+      // lecture apprend au bandeau qu'il est réglé, sinon il resterait figé
+      // sur l'« ouverte » posée à l'ouverture de l'écran.
+      if (_sonde != null) {
+        _arreterSonde();
+        ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
+      }
+      return;
+    }
+    if (_sonde != null) return;
     ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
+    _sonde = Timer.periodic(_periodeSonde, (_) => _sonder());
+  }
+
+  /// Un tour de sonde : l'état de la session, puis celui de la commande.
+  ///
+  /// Les deux, parce qu'ils changent ensemble mais sont lus séparément : le
+  /// règlement fait passer la commande à `en_attente_coursier`, et sans
+  /// relecture du suivi l'écran continuerait d'annoncer « commande reçue »
+  /// pendant que le coursier est déjà cherché.
+  Future<void> _sonder() async {
+    await ref.read(actionsCommandeProvider).relirePaiement(widget.commandeId);
+    if (!mounted) return;
+    final session = ref.read(sessionPaiementProvider(widget.commandeId));
+    // Réglée, expirée ou payée hors délai : plus rien ne bougera côté
+    // paiement. On arrête d'interroger — mais on relit le suivi une dernière
+    // fois, puisque c'est justement là que la commande vient d'avancer.
+    if (session != null && !session.accepteEncore) _arreterSonde();
+    ref.invalidate(suiviProvider(widget.commandeId));
+  }
+
+  void _arreterSonde() {
+    _sonde?.cancel();
+    _sonde = null;
+  }
+
+  @override
+  void dispose() {
+    // Sans cela, la sonde survivrait à l'écran et interrogerait le serveur
+    // pour une commande que plus personne ne regarde.
+    _arreterSonde();
+    super.dispose();
   }
 
   Future<void> _annuler() async {
